@@ -13,8 +13,8 @@ import type {
 export const MEDIA_PAGE_LIMIT = 50
 export const BULK_CHUNK_SIZE = 5000
 export const EVENTS_PAGE_SIZE = 50
-export const PAGE_SIZE_OPTIONS = [12, 24, 48] as const
-export const DEFAULT_PAGE_SIZE = 12
+export const PAGE_SIZE_OPTIONS = [24, 48, 96] as const
+export const DEFAULT_PAGE_SIZE = 24
 export const TEMPLATE_PLACEHOLDERS = ['{username}', '{comment}', '{post_caption}'] as const
 export const INSTAGRAM_GRADIENT = 'linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
 
@@ -31,7 +31,9 @@ export type SettingsDraft = {
 
 export type DraftValidationError = 'no_channel' | 'public_template_empty' | 'dm_template_empty'
 
-export type MediaFilter = 'all' | 'enabled' | 'disabled' | 'attention' | 'post' | 'reel'
+export type MediaTab = 'all' | 'post' | 'reel'
+
+export type StatusFilter = 'all' | 'enabled' | 'disabled' | 'attention'
 
 export type MediaKind = 'post' | 'reel' | 'video' | 'carousel' | 'story' | 'ad'
 
@@ -41,7 +43,9 @@ export type TranslateFn = (key: string, fallback: string, params?: Record<string
 
 export type StatusBadgeVariant = 'secondary' | 'outline' | 'blue' | 'success' | 'warning' | 'danger' | 'violet'
 
-export const MEDIA_FILTERS: MediaFilter[] = ['all', 'enabled', 'disabled', 'attention', 'post', 'reel']
+export const MEDIA_TABS: MediaTab[] = ['all', 'post', 'reel']
+
+export const STATUS_FILTERS: StatusFilter[] = ['all', 'enabled', 'disabled', 'attention']
 
 export const EVENT_STATUSES: CommentAutomationEventStatus[] = [
   'received',
@@ -98,7 +102,18 @@ export function getEventStatusBadge(status: string): StatusBadgeVariant {
   return EVENT_STATUS_BADGE[status as CommentAutomationEventStatus] ?? 'outline'
 }
 
-export function getMediaFilterLabel(filter: MediaFilter, tx: TranslateFn) {
+export function getMediaTabLabel(tab: MediaTab, tx: TranslateFn) {
+  switch (tab) {
+    case 'post':
+      return tx('tabs.posts', 'Posts')
+    case 'reel':
+      return tx('tabs.reels', 'Reels')
+    default:
+      return tx('tabs.all', 'All')
+  }
+}
+
+export function getStatusFilterLabel(filter: StatusFilter, tx: TranslateFn) {
   switch (filter) {
     case 'enabled':
       return tx('filters.enabled', 'Enabled')
@@ -106,10 +121,6 @@ export function getMediaFilterLabel(filter: MediaFilter, tx: TranslateFn) {
       return tx('filters.disabled', 'Disabled')
     case 'attention':
       return tx('filters.attention', 'Needs attention')
-    case 'post':
-      return tx('filters.post', 'Posts')
-    case 'reel':
-      return tx('filters.reel', 'Reels')
     default:
       return tx('filters.all', 'All')
   }
@@ -147,7 +158,13 @@ export function getPreviewUrl(media: CommentAutomationMedia) {
   return media.media_url
 }
 
-export function matchesMediaFilter(media: CommentAutomationMedia, filter: MediaFilter) {
+export function matchesMediaTab(media: CommentAutomationMedia, tab: MediaTab) {
+  if (tab === 'reel') return getMediaKind(media) === 'reel'
+  if (tab === 'post') return getMediaKind(media) !== 'reel'
+  return true
+}
+
+export function matchesStatusFilter(media: CommentAutomationMedia, filter: StatusFilter) {
   switch (filter) {
     case 'enabled':
       return media.automation_enabled
@@ -155,13 +172,13 @@ export function matchesMediaFilter(media: CommentAutomationMedia, filter: MediaF
       return !media.automation_enabled
     case 'attention':
       return (media.automation_stats?.needs_attention ?? 0) > 0
-    case 'post':
-      return getMediaKind(media) !== 'reel'
-    case 'reel':
-      return getMediaKind(media) === 'reel'
     default:
       return true
   }
+}
+
+export function isVideoMedia(media: CommentAutomationMedia) {
+  return media.media_type === 'VIDEO'
 }
 
 export function matchesMediaSearch(media: CommentAutomationMedia, query: string) {
@@ -235,10 +252,6 @@ export function payloadFromDraft(draft: SettingsDraft): CommentAutomationSetting
     dm_template: draft.dm_template.trim() || null,
     ai_instructions: draft.ai_instructions.trim() || null,
   }
-}
-
-export function getSettingsKey(media: CommentAutomationMedia) {
-  return JSON.stringify(draftFromSettings(media))
 }
 
 export function getNextCursor(response: CommentAutomationMediaListResponse) {

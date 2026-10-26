@@ -175,10 +175,12 @@ export function SettingsForm({
   idPrefix,
   draft,
   onChange,
+  layout = 'columns',
 }: {
   idPrefix: string
   draft: SettingsDraft
   onChange: (draft: SettingsDraft) => void
+  layout?: 'columns' | 'stacked'
 }) {
   const tx = useCommentAutomationT()
   const usesAi = (draft.public_reply_enabled && draft.public_reply_mode === 'ai') || (draft.dm_enabled && draft.dm_mode === 'ai')
@@ -190,7 +192,7 @@ export function SettingsForm({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className={cn('grid gap-3', layout === 'columns' && 'md:grid-cols-2')}>
         <ChannelSettings
           id={`${idPrefix}-public`}
           icon={<PublicReplyIcon />}

@@ -14,37 +14,46 @@ import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
-import { SectionTitle } from '../../../shared/ui/section-title'
-import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
+import { EmptyStateBlock, ErrorStateBlock } from '../../../shared/ui/state-block'
 import { BulkSettingsDialog } from '../components/comment-automation/BulkSettingsDialog'
-import { EventsDialog } from '../components/comment-automation/EventsDialog'
-import { MediaRow } from '../components/comment-automation/MediaRow'
+import { CheckIcon, GridIcon, InstagramGlyph, PostIcon, ReelsIcon } from '../components/comment-automation/icons'
+import { MediaGridTile } from '../components/comment-automation/MediaGridTile'
+import { MediaViewerModal } from '../components/comment-automation/MediaViewerModal'
 import { PaginationBar } from '../components/comment-automation/PaginationBar'
 import { SummaryTile } from '../components/comment-automation/SummaryTile'
 import {
   BULK_CHUNK_SIZE,
   DEFAULT_PAGE_SIZE,
   INSTAGRAM_GRADIENT,
-  MEDIA_FILTERS,
   MEDIA_PAGE_LIMIT,
+  MEDIA_TABS,
   PAGE_SIZE_OPTIONS,
+  STATUS_FILTERS,
   appendUniqueMedia,
   chunkIds,
-  getMediaFilterLabel,
+  getMediaTabLabel,
   getNextCursor,
-  getSettingsKey,
-  matchesMediaFilter,
+  getStatusFilterLabel,
   matchesMediaSearch,
+  matchesMediaTab,
+  matchesStatusFilter,
   useCommentAutomationT,
-  type MediaFilter,
+  type MediaTab,
+  type StatusFilter,
 } from '../components/comment-automation/shared'
+
+function MediaTabIcon({ tab, className }: { tab: MediaTab; className?: string }) {
+  if (tab === 'reel') return <ReelsIcon className={className} />
+  if (tab === 'post') return <PostIcon className={className} />
+  return <GridIcon className={className} />
+}
 
 export function CognilabsAICommentAutomationPage() {
   const tx = useCommentAutomationT()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
   const runIdRef = useRef(0)
-  const listRef = useRef<HTMLDivElement>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
 
   const [items, setItems] = useState<CommentAutomationMedia[]>([])
   const [syncedAt, setSyncedAt] = useState<string | null>(null)
@@ -52,14 +61,16 @@ export function CognilabsAICommentAutomationPage() {
   const [pendingCursor, setPendingCursor] = useState<string | null>(null)
   const [isLoadingRest, setIsLoadingRest] = useState(false)
   const [restError, setRestError] = useState<unknown>(null)
-  const [filter, setFilter] = useState<MediaFilter>('all')
+  const [tab, setTab] = useState<MediaTab>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [isBulkSaving, setIsBulkSaving] = useState(false)
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false)
-  const [eventsMedia, setEventsMedia] = useState<CommentAutomationMedia | null>(null)
+  const [viewerId, setViewerId] = useState<string | null>(null)
 
   useEffect(() => {
     const runIds = runIdRef
@@ -120,7 +131,8 @@ export function CognilabsAICommentAutomationPage() {
 
   const isInitialLoading = firstPageQuery.isLoading && items.length === 0
   const isFullyLoaded = !firstPageQuery.isLoading && !firstPageQuery.isError && !isLoadingRest && !pendingCursor
-  const filteredItems = items.filter((media) => matchesMediaFilter(media, filter) && matchesMediaSearch(media, search))
+  const tabItems = items.filter((media) => matchesMediaTab(media, tab))
+  const filteredItems = tabItems.filter((media) => matchesStatusFilter(media, statusFilter) && matchesMediaSearch(media, search))
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize))
   const currentPage = Math.min(page, totalPages)
   const pageItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize)
@@ -131,9 +143,13 @@ export function CognilabsAICommentAutomationPage() {
   const enabledCount = items.filter((media) => media.automation_enabled).length
   const attentionCount = items.reduce((sum, media) => sum + (media.automation_stats?.needs_attention ?? 0), 0)
   const commentsCount = items.reduce((sum, media) => sum + (media.automation_stats?.comments_received ?? media.comments_count ?? 0), 0)
-  const filterCounts = Object.fromEntries(
-    MEDIA_FILTERS.map((item) => [item, items.filter((media) => matchesMediaFilter(media, item)).length]),
-  ) as Record<MediaFilter, number>
+  const tabCounts = Object.fromEntries(MEDIA_TABS.map((item) => [item, items.filter((media) => matchesMediaTab(media, item)).length])) as Record<MediaTab, number>
+  const statusCounts = Object.fromEntries(
+    STATUS_FILTERS.map((item) => [item, tabItems.filter((media) => matchesStatusFilter(media, item)).length]),
+  ) as Record<StatusFilter, number>
+
+  const viewerMedia = viewerId ? items.find((media) => media.media_id === viewerId) ?? null : null
+  const viewerIndex = viewerId ? filteredItems.findIndex((media) => media.media_id === viewerId) : -1
 
   function handleRefresh() {
     runIdRef.current += 1
@@ -149,11 +165,16 @@ export function CognilabsAICommentAutomationPage() {
 
   function handlePageChange(nextPage: number) {
     setPage(nextPage)
-    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  function handleFilterChange(nextFilter: MediaFilter) {
-    setFilter(nextFilter)
+  function handleTabChange(nextTab: MediaTab) {
+    setTab(nextTab)
+    setPage(1)
+  }
+
+  function handleStatusFilterChange(nextFilter: StatusFilter) {
+    setStatusFilter(nextFilter)
     setPage(1)
   }
 
@@ -171,13 +192,25 @@ export function CognilabsAICommentAutomationPage() {
     setItems((prev) => prev.map((media) => (media.media_id === updated.media_id ? updated : media)))
   }
 
-  function handleSelectedChange(mediaId: string, selected: boolean) {
+  function showViewerAt(index: number) {
+    const target = filteredItems[index]
+    if (!target) return
+    setViewerId(target.media_id)
+    setPage(Math.floor(index / pageSize) + 1)
+  }
+
+  function handleToggleSelected(mediaId: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      if (selected) next.add(mediaId)
-      else next.delete(mediaId)
+      if (next.has(mediaId)) next.delete(mediaId)
+      else next.add(mediaId)
       return next
     })
+  }
+
+  function handleSelectionModeToggle() {
+    if (isSelectionMode) setSelectedIds(new Set())
+    setIsSelectionMode((value) => !value)
   }
 
   function handleTogglePage() {
@@ -248,6 +281,7 @@ export function CognilabsAICommentAutomationPage() {
           { count: selectedCount },
         ),
         confirmLabel: tx('bulk.enable', 'Enable selected'),
+        cancelLabel: tx('actions.cancel', 'Cancel'),
       })
       if (!approved) return
     }
@@ -263,12 +297,10 @@ export function CognilabsAICommentAutomationPage() {
       <Card variant="glass" noPadding className="overflow-hidden rounded-xl border-[var(--border)]">
         <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-7">
           <div className="flex items-start gap-4">
-            <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md sm:inline-flex" style={{ background: INSTAGRAM_GRADIENT }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                <rect x="3" y="3" width="18" height="18" rx="5" />
-                <circle cx="12" cy="12" r="4" />
-                <circle cx="17.5" cy="6.5" r=".75" fill="currentColor" stroke="none" />
-              </svg>
+            <span className="hidden shrink-0 rounded-full p-[3px] sm:inline-flex" style={{ background: INSTAGRAM_GRADIENT }}>
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--card)]">
+                <InstagramGlyph className="h-7 w-7 text-[var(--foreground)]" />
+              </span>
             </span>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--blue-text)]">
@@ -314,11 +346,7 @@ export function CognilabsAICommentAutomationPage() {
           hint={tx('summary.enabled_hint', 'of {{total}}', { total: items.length })}
           accent="success"
         />
-        <SummaryTile
-          label={tx('summary.comments', 'Comments received')}
-          value={commentsCount}
-          accent="blue"
-        />
+        <SummaryTile label={tx('summary.comments', 'Comments received')} value={commentsCount} accent="blue" />
         <SummaryTile
           label={tx('summary.attention', 'Needs attention')}
           value={attentionCount}
@@ -345,7 +373,7 @@ export function CognilabsAICommentAutomationPage() {
         </div>
       )}
 
-      <details className="group rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-[12px] text-[var(--muted-strong)]">
+      <details className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-[12px] text-[var(--muted-strong)]">
         <summary className="flex cursor-pointer select-none items-center gap-2 text-[13px] font-semibold text-[var(--foreground)]">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-[var(--blue-text)]">
             <circle cx="12" cy="12" r="10" />
@@ -364,140 +392,172 @@ export function CognilabsAICommentAutomationPage() {
         </ul>
       </details>
 
-      <div ref={listRef} className="scroll-mt-4">
-        <Card variant="glass" className="space-y-4 p-4 sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <SectionTitle title={tx('list.title', 'Posts and reels')} />
-            <div className="relative w-full lg:max-w-xs">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--caption)]">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <Input
-                value={search}
-                onChange={(event) => handleSearchChange(event.target.value)}
-                placeholder={tx('list.search', 'Search by caption')}
-                className="h-9 pl-8 text-[13px]"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] p-1">
-            {MEDIA_FILTERS.map((item) => (
+      <div ref={gridRef} className="scroll-mt-4">
+        <Card variant="glass" noPadding className="overflow-hidden">
+          <div className="flex justify-center gap-6 border-b border-[var(--border)] px-4 sm:gap-14" role="tablist">
+            {MEDIA_TABS.map((item) => (
               <button
                 key={item}
                 type="button"
-                onClick={() => handleFilterChange(item)}
-                aria-pressed={filter === item}
+                role="tab"
+                aria-selected={tab === item}
+                onClick={() => handleTabChange(item)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all',
-                  filter === item
-                    ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-                    : 'text-[var(--muted)] hover:text-[var(--foreground)]',
+                  '-mb-px inline-flex items-center gap-2 border-b-2 px-1 py-3.5 text-[12px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                  tab === item
+                    ? 'border-[var(--foreground)] text-[var(--foreground)]'
+                    : 'border-transparent text-[var(--muted)] hover:text-[var(--foreground)]',
                 )}
               >
-                {getMediaFilterLabel(item, tx)}
-                <span
-                  data-ui-number="true"
-                  className={cn(
-                    'rounded-md px-1.5 text-[10px] font-bold',
-                    item === 'attention' && filterCounts[item] > 0
-                      ? 'bg-[var(--danger-dim)] text-[var(--danger-text)]'
-                      : 'bg-[var(--accent-soft)] text-[var(--muted)]',
-                  )}
-                >
-                  {filterCounts[item]}
-                </span>
+                <MediaTabIcon tab={item} className="h-4 w-4" />
+                {getMediaTabLabel(item, tx)}
+                <span data-ui-number="true" className="text-[11px] font-medium text-[var(--caption)]">{tabCounts[item]}</span>
               </button>
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-3">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--accent-soft)]">
-              <input
-                type="checkbox"
-                className="h-4 w-4 cursor-pointer accent-blue-500"
-                checked={isPageSelected}
-                onChange={handleTogglePage}
-                disabled={pageItems.length === 0}
+          <div className="space-y-3 p-3 sm:p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {STATUS_FILTERS.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => handleStatusFilterChange(item)}
+                    aria-pressed={statusFilter === item}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors',
+                      statusFilter === item
+                        ? 'border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]'
+                        : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--border-hover)] hover:text-[var(--foreground)]',
+                    )}
+                  >
+                    {getStatusFilterLabel(item, tx)}
+                    <span
+                      data-ui-number="true"
+                      className={cn(
+                        'text-[10px] font-bold',
+                        item === 'attention' && statusCounts[item] > 0 && statusFilter !== item ? 'text-[var(--danger-text)]' : 'opacity-70',
+                      )}
+                    >
+                      {statusCounts[item]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 lg:ml-auto">
+                <div className="relative w-full lg:w-64">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--caption)]">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <Input
+                    value={search}
+                    onChange={(event) => handleSearchChange(event.target.value)}
+                    placeholder={tx('list.search', 'Search by caption')}
+                    className="h-9 pl-8 text-[13px]"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant={isSelectionMode ? 'primary' : 'secondary'}
+                  className="h-9 shrink-0 rounded-lg"
+                  onClick={handleSelectionModeToggle}
+                  disabled={items.length === 0}
+                  leftIcon={isSelectionMode ? <CheckIcon className="h-3.5 w-3.5" /> : undefined}
+                >
+                  {isSelectionMode ? tx('selection.done', 'Done') : tx('selection.mode', 'Select')}
+                </Button>
+              </div>
+            </div>
+
+            {isSelectionMode && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--blue-border)] bg-[var(--blue-soft)] px-3 py-2">
+                <span className="text-[12px] font-medium text-[var(--blue-text)]">{tx('selection.hint', 'Tap posts to select them')}</span>
+                <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                  <Button size="sm" variant="ghost" onClick={handleTogglePage} disabled={pageItems.length === 0}>
+                    {isPageSelected
+                      ? tx('selection.page_clear', 'Deselect this page')
+                      : tx('selection.page', 'Select this page ({{count}})', { count: pageItems.length })}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleSelectAll}
+                    disabled={!isFullyLoaded || filteredItems.length === 0 || isAllFilteredSelected}
+                  >
+                    {isFullyLoaded
+                      ? tx('selection.all', 'Select all {{count}}', { count: filteredItems.length })
+                      : tx('selection.all_loading', 'Select all (loading...)')}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isInitialLoading ? (
+              <div className="grid grid-cols-3 gap-1 md:grid-cols-4 xl:grid-cols-6">
+                {Array.from({ length: 12 }, (_, index) => (
+                  <div key={index} className={cn('animate-pulse bg-[var(--muted-surface)]', tab === 'reel' ? 'aspect-[9/16]' : 'aspect-[3/4]')} />
+                ))}
+              </div>
+            ) : firstPageQuery.isError && items.length === 0 ? (
+              <ErrorStateBlock
+                eyebrow={tx('header.eyebrow', 'CognilabsAI')}
+                title={tx('states.error', 'Could not load posts and reels')}
+                actionLabel={tx('actions.retry', 'Retry')}
+                onAction={handleRefresh}
+              >
+                <p className="max-w-md text-[13px] text-[var(--danger-text)]">{getApiErrorMessage(firstPageQuery.error)}</p>
+              </ErrorStateBlock>
+            ) : items.length === 0 ? (
+              <EmptyStateBlock
+                eyebrow={tx('header.eyebrow', 'CognilabsAI')}
+                title={tx('states.empty', 'No posts or reels found')}
+                actionLabel={tx('actions.refresh', 'Refresh')}
+                onAction={handleRefresh}
+              >
+                <p className="max-w-md text-[13px] text-[var(--caption)]">
+                  {tx('states.empty_hint', 'Check that the Instagram account is connected in AI Integrations.')}
+                </p>
+              </EmptyStateBlock>
+            ) : filteredItems.length === 0 ? (
+              <EmptyStateBlock
+                eyebrow={tx('header.eyebrow', 'CognilabsAI')}
+                title={tx('states.no_match', 'Nothing matches the filter')}
+                actionLabel={tx('actions.reset_filters', 'Reset filters')}
+                onAction={() => {
+                  handleStatusFilterChange('all')
+                  handleSearchChange('')
+                }}
               />
-              {tx('selection.page', 'Select this page ({{count}})', { count: pageItems.length })}
-            </label>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleSelectAll}
-              disabled={!isFullyLoaded || filteredItems.length === 0 || isAllFilteredSelected}
-            >
-              {isFullyLoaded
-                ? tx('selection.all', 'Select all {{count}}', { count: filteredItems.length })
-                : tx('selection.all_loading', 'Select all (loading...)')}
-            </Button>
-            {selectedCount > 0 && (
-              <span className="ml-auto text-[12px] text-[var(--muted)]">
-                {tx('selection.count', '{{count}} selected', { count: selectedCount })}
-              </span>
+            ) : (
+              <div className="grid grid-cols-3 gap-1 md:grid-cols-4 xl:grid-cols-6">
+                {pageItems.map((media) => (
+                  <MediaGridTile
+                    key={media.media_id}
+                    media={media}
+                    shape={tab === 'reel' ? 'reel' : 'portrait'}
+                    selectionMode={isSelectionMode}
+                    isSelected={selectedIds.has(media.media_id)}
+                    onOpen={() => setViewerId(media.media_id)}
+                    onToggleSelect={() => handleToggleSelected(media.media_id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {filteredItems.length > 0 && (
+              <PaginationBar
+                page={currentPage}
+                pageSize={pageSize}
+                totalItems={filteredItems.length}
+                onPageChange={handlePageChange}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageSizeChange={handlePageSizeChange}
+                className="border-t border-[var(--border)] pt-3"
+              />
             )}
           </div>
-
-          {isInitialLoading ? (
-            <LoadingStateBlock eyebrow={tx('header.eyebrow', 'CognilabsAI')} title={tx('states.loading', 'Loading posts and reels')} />
-          ) : firstPageQuery.isError && items.length === 0 ? (
-            <ErrorStateBlock
-              eyebrow={tx('header.eyebrow', 'CognilabsAI')}
-              title={tx('states.error', 'Could not load posts and reels')}
-              actionLabel={tx('actions.retry', 'Retry')}
-              onAction={handleRefresh}
-            >
-              <p className="max-w-md text-[13px] text-[var(--danger-text)]">{getApiErrorMessage(firstPageQuery.error)}</p>
-            </ErrorStateBlock>
-          ) : items.length === 0 ? (
-            <EmptyStateBlock
-              eyebrow={tx('header.eyebrow', 'CognilabsAI')}
-              title={tx('states.empty', 'No posts or reels found')}
-              actionLabel={tx('actions.refresh', 'Refresh')}
-              onAction={handleRefresh}
-            >
-              <p className="max-w-md text-[13px] text-[var(--caption)]">
-                {tx('states.empty_hint', 'Check that the Instagram account is connected in AI Integrations.')}
-              </p>
-            </EmptyStateBlock>
-          ) : filteredItems.length === 0 ? (
-            <EmptyStateBlock
-              eyebrow={tx('header.eyebrow', 'CognilabsAI')}
-              title={tx('states.no_match', 'Nothing matches the filter')}
-              actionLabel={tx('actions.reset_filters', 'Reset filters')}
-              onAction={() => {
-                handleFilterChange('all')
-                handleSearchChange('')
-              }}
-            />
-          ) : (
-            <div className="space-y-3">
-              {pageItems.map((media) => (
-                <MediaRow
-                  key={`${media.media_id}:${getSettingsKey(media)}`}
-                  media={media}
-                  isSelected={selectedIds.has(media.media_id)}
-                  onSelectedChange={(selected) => handleSelectedChange(media.media_id, selected)}
-                  onSaved={handleMediaSaved}
-                  onOpenEvents={() => setEventsMedia(media)}
-                />
-              ))}
-            </div>
-          )}
-
-          {filteredItems.length > 0 && (
-            <PaginationBar
-              page={currentPage}
-              pageSize={pageSize}
-              totalItems={filteredItems.length}
-              onPageChange={handlePageChange}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onPageSizeChange={handlePageSizeChange}
-              className="border-t border-[var(--border)] pt-4"
-            />
-          )}
         </Card>
       </div>
 
@@ -533,7 +593,18 @@ export function CognilabsAICommentAutomationPage() {
         />
       )}
 
-      {eventsMedia && <EventsDialog media={eventsMedia} onClose={() => setEventsMedia(null)} />}
+      {viewerMedia && (
+        <MediaViewerModal
+          key={viewerMedia.media_id}
+          media={viewerMedia}
+          position={viewerIndex >= 0 ? viewerIndex + 1 : null}
+          total={filteredItems.length}
+          onPrev={viewerIndex > 0 ? () => showViewerAt(viewerIndex - 1) : null}
+          onNext={viewerIndex >= 0 && viewerIndex < filteredItems.length - 1 ? () => showViewerAt(viewerIndex + 1) : null}
+          onClose={() => setViewerId(null)}
+          onSaved={handleMediaSaved}
+        />
+      )}
     </section>
   )
 }
