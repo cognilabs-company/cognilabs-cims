@@ -14,9 +14,13 @@ API prefix: `/cognilabsai/integrations/instagram/comment-automation`
 
 `GET /media?refresh=true&limit=25`
 
-Keyingi sahifa: `GET /media?refresh=true&limit=25&after={next_cursor}`
+API pagination’ni qo‘llaydi. Har bir so‘rov faqat bitta sahifani qaytaradi; UI’da hozir masalan 5 ta media chiqishi qolganlari yo‘q degani emas, birinchi sahifa ko‘rsatilayotgan bo‘lishi mumkin. Javobda `has_more=true` bo‘lsa `next_cursor`ni olib keyingi so‘rovni yuboring:
 
-Cache’dan olish: `GET /media?refresh=false&limit=25`
+`GET /media?refresh=true&limit=25&after={next_cursor}`
+
+`has_more=false` bo‘lguncha sahifalarni davom ettiring. Pagination ishlatilmasa, faqat birinchi sahifadagi post/reel’lar chiqadi. `limit` — har bir sahifadagi media soni (1–50); jami media soni emas. Server tekshiruvida Meta 63 ta media’ni 25 + 25 + 13 ko‘rinishida qaytardi.
+
+Cache’dan olish: `GET /media?refresh=false&limit=25`. Diqqat: cache rejimi hozir `after` cursorni qo‘llamaydi va faqat so‘nggi `limit` ta media qaytaradi. Barcha media’ni ko‘rsatish uchun hozircha `refresh=true` pagination’dan foydalaning.
 
 Javob:
 
