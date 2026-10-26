@@ -1,0 +1,2687 @@
+Audit Logs
+
+
+GET
+/audit/logs
+Audit loglar ro'yxati
+
+
+Parameters
+Cancel
+Name	Description
+module
+string | (string | null)
+(query)
+module
+table_name
+string | (string | null)
+(query)
+table_name
+entity_type
+string | (string | null)
+(query)
+entity_type
+entity_id
+string | (string | null)
+(query)
+entity_id
+action
+string | (string | null)
+(query)
+action
+actor_user_id
+integer | (integer | null)
+(query)
+actor_user_id
+page
+integer
+(query)
+1
+minimum: 1
+page_size
+integer
+(query)
+50
+maximum: 200
+minimum: 1
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "items": [
+    {
+      "id": 0,
+      "created_at": "string",
+      "actor_user_id": 0,
+      "actor_email": "string",
+      "actor_name": "string",
+      "module": "string",
+      "table_name": "string",
+      "entity_type": "string",
+      "entity_id": "string",
+      "action": "string",
+      "summary": "string",
+      "before_data": {
+        "additionalProp1": {}
+      },
+      "after_data": {
+        "additionalProp1": {}
+      },
+      "changed_fields": [
+        "string"
+      ],
+      "request_id": "string",
+      "ip_address": "string",
+      "user_agent": "string",
+      "is_system_action": true
+    }
+  ],
+  "page": 0,
+  "page_size": 0,
+  "total_items": 0,
+  "total_pages": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/audit/logs/{log_id}
+Bitta audit log
+
+
+Parameters
+Cancel
+Name	Description
+log_id *
+integer
+(path)
+log_id
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "created_at": "string",
+  "actor_user_id": 0,
+  "actor_email": "string",
+  "actor_name": "string",
+  "module": "string",
+  "table_name": "string",
+  "entity_type": "string",
+  "entity_id": "string",
+  "action": "string",
+  "summary": "string",
+  "before_data": {
+    "additionalProp1": {}
+  },
+  "after_data": {
+    "additionalProp1": {}
+  },
+  "changed_fields": [
+    "string"
+  ],
+  "request_id": "string",
+  "ip_address": "string",
+  "user_agent": "string",
+  "is_system_action": true
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/audit/logs/entity/{entity_type}/{entity_id}
+Entity bo'yicha audit loglar
+
+
+Parameters
+Cancel
+Name	Description
+entity_type *
+string
+(path)
+entity_type
+entity_id *
+string
+(path)
+entity_id
+page
+integer
+(query)
+1
+minimum: 1
+page_size
+integer
+(query)
+50
+maximum: 200
+minimum: 1
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "items": [
+    {
+      "id": 0,
+      "created_at": "string",
+      "actor_user_id": 0,
+      "actor_email": "string",
+      "actor_name": "string",
+      "module": "string",
+      "table_name": "string",
+      "entity_type": "string",
+      "entity_id": "string",
+      "action": "string",
+      "summary": "string",
+      "before_data": {
+        "additionalProp1": {}
+      },
+      "after_data": {
+        "additionalProp1": {}
+      },
+      "changed_fields": [
+        "string"
+      ],
+      "request_id": "string",
+      "ip_address": "string",
+      "user_agent": "string",
+      "is_system_action": true
+    }
+  ],
+  "page": 0,
+  "page_size": 0,
+  "total_items": 0,
+  "total_pages": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/audit/logs/user/{user_id}
+User bo'yicha audit loglar
+
+
+Parameters
+Cancel
+Name	Description
+user_id *
+integer
+(path)
+user_id
+page
+integer
+(query)
+1
+minimum: 1
+page_size
+integer
+(query)
+50
+maximum: 200
+minimum: 1
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "items": [
+    {
+      "id": 0,
+      "created_at": "string",
+      "actor_user_id": 0,
+      "actor_email": "string",
+      "actor_name": "string",
+      "module": "string",
+      "table_name": "string",
+      "entity_type": "string",
+      "entity_id": "string",
+      "action": "string",
+      "summary": "string",
+      "before_data": {
+        "additionalProp1": {}
+      },
+      "after_data": {
+        "additionalProp1": {}
+      },
+      "changed_fields": [
+        "string"
+      ],
+      "request_id": "string",
+      "ip_address": "string",
+      "user_agent": "string",
+      "is_system_action": true
+    }
+  ],
+  "page": 0,
+  "page_size": 0,
+  "total_items": 0,
+  "total_pages": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+CognilabsAI
+
+
+GET
+/cognilabsai/chat/conversations
+Chat Conversations
+
+
+Parameters
+Cancel
+Name	Description
+channel
+string | (string | null)
+(query)
+channel
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "id": 0,
+    "channel": "string",
+    "chat_mode": "string",
+    "supports_ai": true,
+    "client_external_id": "string",
+    "client_username": "string",
+    "client_full_name": "string",
+    "client_avatar_url": "string",
+    "instagram_business_id": "string",
+    "ai_enabled": true,
+    "pause_reason": "string",
+    "paused_until": "2026-04-29T18:19:56.244Z",
+    "last_message_at": "2026-04-29T18:19:56.244Z",
+    "last_message_preview": "string",
+    "last_operator_user_id": 0,
+    "last_operator_name": "string",
+    "is_imported": true,
+    "created_at": "2026-04-29T18:19:56.244Z",
+    "updated_at": "2026-04-29T18:19:56.244Z"
+  }
+]
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/chat/conversations/{conversation_id}
+Chat Conversation Detail
+
+
+Parameters
+Cancel
+Name	Description
+conversation_id *
+integer
+(path)
+conversation_id
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "channel": "string",
+  "chat_mode": "string",
+  "supports_ai": true,
+  "client_external_id": "string",
+  "client_username": "string",
+  "client_full_name": "string",
+  "client_avatar_url": "string",
+  "instagram_business_id": "string",
+  "ai_enabled": true,
+  "pause_reason": "string",
+  "paused_until": "2026-04-29T18:19:56.247Z",
+  "last_message_at": "2026-04-29T18:19:56.247Z",
+  "last_message_preview": "string",
+  "last_operator_user_id": 0,
+  "last_operator_name": "string",
+  "is_imported": true,
+  "created_at": "2026-04-29T18:19:56.247Z",
+  "updated_at": "2026-04-29T18:19:56.247Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/chat/conversations/{conversation_id}/messages
+Chat Messages
+
+
+Parameters
+Cancel
+Name	Description
+conversation_id *
+integer
+(path)
+conversation_id
+limit
+integer
+(query)
+200
+maximum: 1000
+minimum: 1
+offset
+integer
+(query)
+0
+minimum: 0
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "id": 0,
+    "conversation_id": 0,
+    "channel": "string",
+    "sender_type": "string",
+    "operator_user_id": 0,
+    "operator_name_snapshot": "string",
+    "client_external_id": "string",
+    "instagram_message_id": "string",
+    "telegram_message_id": "string",
+    "text": "string",
+    "created_at": "2026-04-29T18:19:56.249Z"
+  }
+]
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/send-message
+Chat Send Message
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "conversation_id": 0,
+  "text": "string"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/pause
+Chat Pause
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "conversation_id": 0
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "channel": "string",
+  "chat_mode": "string",
+  "supports_ai": true,
+  "client_external_id": "string",
+  "client_username": "string",
+  "client_full_name": "string",
+  "client_avatar_url": "string",
+  "instagram_business_id": "string",
+  "ai_enabled": true,
+  "pause_reason": "string",
+  "paused_until": "2026-04-29T18:19:56.252Z",
+  "last_message_at": "2026-04-29T18:19:56.252Z",
+  "last_message_preview": "string",
+  "last_operator_user_id": 0,
+  "last_operator_name": "string",
+  "is_imported": true,
+  "created_at": "2026-04-29T18:19:56.252Z",
+  "updated_at": "2026-04-29T18:19:56.252Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/resume
+Chat Resume
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "conversation_id": 0
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "channel": "string",
+  "chat_mode": "string",
+  "supports_ai": true,
+  "client_external_id": "string",
+  "client_username": "string",
+  "client_full_name": "string",
+  "client_avatar_url": "string",
+  "instagram_business_id": "string",
+  "ai_enabled": true,
+  "pause_reason": "string",
+  "paused_until": "2026-04-29T18:19:56.254Z",
+  "last_message_at": "2026-04-29T18:19:56.254Z",
+  "last_message_preview": "string",
+  "last_operator_user_id": 0,
+  "last_operator_name": "string",
+  "is_imported": true,
+  "created_at": "2026-04-29T18:19:56.254Z",
+  "updated_at": "2026-04-29T18:19:56.254Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/pause-until
+Chat Pause Until
+
+
+Parameters
+Try it out
+Reset
+No parameters
+
+Request body
+
+application/json
+Example Value
+Schema
+{
+  "conversation_id": 0,
+  "paused_until": "2026-04-29T18:19:34.272Z"
+}
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "channel": "string",
+  "chat_mode": "string",
+  "supports_ai": true,
+  "client_external_id": "string",
+  "client_username": "string",
+  "client_full_name": "string",
+  "client_avatar_url": "string",
+  "instagram_business_id": "string",
+  "ai_enabled": true,
+  "pause_reason": "string",
+  "paused_until": "2026-04-29T18:19:56.257Z",
+  "last_message_at": "2026-04-29T18:19:56.257Z",
+  "last_message_preview": "string",
+  "last_operator_user_id": 0,
+  "last_operator_name": "string",
+  "is_imported": true,
+  "created_at": "2026-04-29T18:19:56.257Z",
+  "updated_at": "2026-04-29T18:19:56.257Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/import-instagram-conversations
+Chat Import Instagram Conversations
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "folder_path": "/home/akhmad/PyCharmMiscProject/project/conversations"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "imported_files": 0,
+  "skipped_files": 0,
+  "created_conversations": 0,
+  "created_messages": 0,
+  "source_type": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/import-instagram-conversations-upload
+Chat Import Instagram Conversations Upload
+
+
+Parameters
+Cancel
+Reset
+No parameters
+
+Request body
+
+multipart/form-data
+file *
+string($binary)
+No file chosen
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "imported_files": 0,
+  "skipped_files": 0,
+  "created_conversations": 0,
+  "created_messages": 0,
+  "source_type": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/telegram/start
+Chat Telegram Start
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "peer": "string",
+  "text": "string",
+  "client_full_name": "string"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/chat/telegram/search
+Chat Telegram Search
+
+
+Parameters
+Cancel
+Name	Description
+query *
+string
+(query)
+query
+minLength: 1
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "peer": "string",
+  "external_id": "string",
+  "username": "string",
+  "full_name": "string",
+  "avatar_url": "string",
+  "existing_conversation_id": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/chat/telegram/search-list
+Chat Telegram Search List
+
+
+Parameters
+Cancel
+Name	Description
+query *
+string
+(query)
+query
+minLength: 1
+limit
+integer
+(query)
+10
+maximum: 20
+minimum: 1
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "query": "string",
+  "items": [
+    {
+      "peer": "string",
+      "external_id": "string",
+      "username": "string",
+      "full_name": "string",
+      "avatar_url": "string",
+      "existing_conversation_id": 0
+    }
+  ]
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/conversations/{conversation_id}/retry-ai
+Chat Retry Ai
+
+
+Parameters
+Cancel
+Name	Description
+conversation_id *
+integer
+(path)
+conversation_id
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "message": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/integrations
+Integrations Get
+
+
+Parameters
+Cancel
+No parameters
+
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "openai_api_key": "string",
+  "openai_model": "string",
+  "openai_base_url": "string",
+  "system_prompt": "string",
+  "instagram_access_token": "string",
+  "instagram_business_id": "string",
+  "instagram_verify_token": "string",
+  "telegram_api_id": "string",
+  "telegram_api_hash": "string",
+  "telegram_session": "string",
+  "websocket_api_key": "string",
+  "id": 0,
+  "created_at": "2026-04-29T18:19:56.272Z",
+  "updated_at": "2026-04-29T18:19:56.272Z"
+}
+No links
+
+PUT
+/cognilabsai/integrations
+Integrations Update
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "openai_api_key": "string",
+  "openai_model": "string",
+  "openai_base_url": "string",
+  "system_prompt": "string",
+  "instagram_access_token": "string",
+  "instagram_business_id": "string",
+  "instagram_verify_token": "string",
+  "telegram_api_id": "string",
+  "telegram_api_hash": "string",
+  "telegram_session": "string",
+  "websocket_api_key": "string"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "openai_api_key": "string",
+  "openai_model": "string",
+  "openai_base_url": "string",
+  "system_prompt": "string",
+  "instagram_access_token": "string",
+  "instagram_business_id": "string",
+  "instagram_verify_token": "string",
+  "telegram_api_id": "string",
+  "telegram_api_hash": "string",
+  "telegram_session": "string",
+  "websocket_api_key": "string",
+  "id": 0,
+  "created_at": "2026-04-29T18:19:56.274Z",
+  "updated_at": "2026-04-29T18:19:56.274Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/webhooks/instagram
+Instagram Webhook Verify
+
+Parameters
+Cancel
+Name	Description
+hub.mode
+string | (string | null)
+(query)
+hub.mode
+hub.verify_token
+string | (string | null)
+(query)
+hub.verify_token
+hub.challenge
+string | (string | null)
+(query)
+hub.challenge
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/webhooks/instagram
+Instagram Webhook Receive
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "additionalProp1": {}
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "message": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+CognilabsAI Chat
+
+
+GET
+/cognilabsai/chat/conversations
+Chat Conversations
+
+
+Parameters
+Cancel
+Name	Description
+channel
+string | (string | null)
+(query)
+channel
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "id": 0,
+    "channel": "string",
+    "chat_mode": "string",
+    "supports_ai": true,
+    "client_external_id": "string",
+    "client_username": "string",
+    "client_full_name": "string",
+    "client_avatar_url": "string",
+    "instagram_business_id": "string",
+    "ai_enabled": true,
+    "pause_reason": "string",
+    "paused_until": "2026-04-29T18:19:56.279Z",
+    "last_message_at": "2026-04-29T18:19:56.279Z",
+    "last_message_preview": "string",
+    "last_operator_user_id": 0,
+    "last_operator_name": "string",
+    "is_imported": true,
+    "created_at": "2026-04-29T18:19:56.279Z",
+    "updated_at": "2026-04-29T18:19:56.279Z"
+  }
+]
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/chat/conversations/{conversation_id}
+Chat Conversation Detail
+
+
+Parameters
+Cancel
+Name	Description
+conversation_id *
+integer
+(path)
+conversation_id
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "channel": "string",
+  "chat_mode": "string",
+  "supports_ai": true,
+  "client_external_id": "string",
+  "client_username": "string",
+  "client_full_name": "string",
+  "client_avatar_url": "string",
+  "instagram_business_id": "string",
+  "ai_enabled": true,
+  "pause_reason": "string",
+  "paused_until": "2026-04-29T18:19:56.280Z",
+  "last_message_at": "2026-04-29T18:19:56.280Z",
+  "last_message_preview": "string",
+  "last_operator_user_id": 0,
+  "last_operator_name": "string",
+  "is_imported": true,
+  "created_at": "2026-04-29T18:19:56.280Z",
+  "updated_at": "2026-04-29T18:19:56.280Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/chat/conversations/{conversation_id}/messages
+Chat Messages
+
+
+Parameters
+Cancel
+Name	Description
+conversation_id *
+integer
+(path)
+conversation_id
+limit
+integer
+(query)
+200
+maximum: 1000
+minimum: 1
+offset
+integer
+(query)
+0
+minimum: 0
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "id": 0,
+    "conversation_id": 0,
+    "channel": "string",
+    "sender_type": "string",
+    "operator_user_id": 0,
+    "operator_name_snapshot": "string",
+    "client_external_id": "string",
+    "instagram_message_id": "string",
+    "telegram_message_id": "string",
+    "text": "string",
+    "created_at": "2026-04-29T18:19:56.283Z"
+  }
+]
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/send-message
+Chat Send Message
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "conversation_id": 0,
+  "text": "string"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/pause
+Chat Pause
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "conversation_id": 0
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "channel": "string",
+  "chat_mode": "string",
+  "supports_ai": true,
+  "client_external_id": "string",
+  "client_username": "string",
+  "client_full_name": "string",
+  "client_avatar_url": "string",
+  "instagram_business_id": "string",
+  "ai_enabled": true,
+  "pause_reason": "string",
+  "paused_until": "2026-04-29T18:19:56.286Z",
+  "last_message_at": "2026-04-29T18:19:56.286Z",
+  "last_message_preview": "string",
+  "last_operator_user_id": 0,
+  "last_operator_name": "string",
+  "is_imported": true,
+  "created_at": "2026-04-29T18:19:56.286Z",
+  "updated_at": "2026-04-29T18:19:56.286Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/resume
+Chat Resume
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "conversation_id": 0
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "channel": "string",
+  "chat_mode": "string",
+  "supports_ai": true,
+  "client_external_id": "string",
+  "client_username": "string",
+  "client_full_name": "string",
+  "client_avatar_url": "string",
+  "instagram_business_id": "string",
+  "ai_enabled": true,
+  "pause_reason": "string",
+  "paused_until": "2026-04-29T18:19:56.288Z",
+  "last_message_at": "2026-04-29T18:19:56.288Z",
+  "last_message_preview": "string",
+  "last_operator_user_id": 0,
+  "last_operator_name": "string",
+  "is_imported": true,
+  "created_at": "2026-04-29T18:19:56.288Z",
+  "updated_at": "2026-04-29T18:19:56.288Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/pause-until
+Chat Pause Until
+
+
+Parameters
+Cancel
+Reset
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "conversation_id": 0,
+  "paused_until": "2026-04-29T18:19:34.272Z"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "id": 0,
+  "channel": "string",
+  "chat_mode": "string",
+  "supports_ai": true,
+  "client_external_id": "string",
+  "client_username": "string",
+  "client_full_name": "string",
+  "client_avatar_url": "string",
+  "instagram_business_id": "string",
+  "ai_enabled": true,
+  "pause_reason": "string",
+  "paused_until": "2026-04-29T18:19:56.290Z",
+  "last_message_at": "2026-04-29T18:19:56.290Z",
+  "last_message_preview": "string",
+  "last_operator_user_id": 0,
+  "last_operator_name": "string",
+  "is_imported": true,
+  "created_at": "2026-04-29T18:19:56.290Z",
+  "updated_at": "2026-04-29T18:19:56.290Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/import-instagram-conversations
+Chat Import Instagram Conversations
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "folder_path": "/home/akhmad/PyCharmMiscProject/project/conversations"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "imported_files": 0,
+  "skipped_files": 0,
+  "created_conversations": 0,
+  "created_messages": 0,
+  "source_type": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/import-instagram-conversations-upload
+Chat Import Instagram Conversations Upload
+
+
+Parameters
+Cancel
+Reset
+No parameters
+
+Request body
+
+multipart/form-data
+file *
+string($binary)
+No file chosen
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "imported_files": 0,
+  "skipped_files": 0,
+  "created_conversations": 0,
+  "created_messages": 0,
+  "source_type": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/telegram/start
+Chat Telegram Start
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "peer": "string",
+  "text": "string",
+  "client_full_name": "string"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/chat/telegram/search
+Chat Telegram Search
+
+
+Parameters
+Cancel
+Name	Description
+query *
+string
+(query)
+query
+minLength: 1
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "peer": "string",
+  "external_id": "string",
+  "username": "string",
+  "full_name": "string",
+  "avatar_url": "string",
+  "existing_conversation_id": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/cognilabsai/chat/telegram/search-list
+Chat Telegram Search List
+
+
+Parameters
+Cancel
+Name	Description
+query *
+string
+(query)
+query
+minLength: 1
+limit
+integer
+(query)
+10
+maximum: 20
+minimum: 1
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "query": "string",
+  "items": [
+    {
+      "peer": "string",
+      "external_id": "string",
+      "username": "string",
+      "full_name": "string",
+      "avatar_url": "string",
+      "existing_conversation_id": 0
+    }
+  ]
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/chat/conversations/{conversation_id}/retry-ai
+Chat Retry Ai
+
+
+Parameters
+Cancel
+Name	Description
+conversation_id *
+integer
+(path)
+conversation_id
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "message": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+CognilabsAI Integrations
+
+
+GET
+/cognilabsai/integrations
+Integrations Get
+
+
+Parameters
+Cancel
+No parameters
+
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "openai_api_key": "string",
+  "openai_model": "string",
+  "openai_base_url": "string",
+  "system_prompt": "string",
+  "instagram_access_token": "string",
+  "instagram_business_id": "string",
+  "instagram_verify_token": "string",
+  "telegram_api_id": "string",
+  "telegram_api_hash": "string",
+  "telegram_session": "string",
+  "websocket_api_key": "string",
+  "id": 0,
+  "created_at": "2026-04-29T18:19:56.300Z",
+  "updated_at": "2026-04-29T18:19:56.300Z"
+}
+No links
+
+PUT
+/cognilabsai/integrations
+Integrations Update
+
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "openai_api_key": "string",
+  "openai_model": "string",
+  "openai_base_url": "string",
+  "system_prompt": "string",
+  "instagram_access_token": "string",
+  "instagram_business_id": "string",
+  "instagram_verify_token": "string",
+  "telegram_api_id": "string",
+  "telegram_api_hash": "string",
+  "telegram_session": "string",
+  "websocket_api_key": "string"
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "openai_api_key": "string",
+  "openai_model": "string",
+  "openai_base_url": "string",
+  "system_prompt": "string",
+  "instagram_access_token": "string",
+  "instagram_business_id": "string",
+  "instagram_verify_token": "string",
+  "telegram_api_id": "string",
+  "telegram_api_hash": "string",
+  "telegram_session": "string",
+  "websocket_api_key": "string",
+  "id": 0,
+  "created_at": "2026-04-29T18:19:56.302Z",
+  "updated_at": "2026-04-29T18:19:56.302Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+CognilabsAI Webhooks
+
+
+GET
+/cognilabsai/webhooks/instagram
+Instagram Webhook Verify
+
+Parameters
+Cancel
+Name	Description
+hub.mode
+string | (string | null)
+(query)
+hub.mode
+hub.verify_token
+string | (string | null)
+(query)
+hub.verify_token
+hub.challenge
+string | (string | null)
+(query)
+hub.challenge
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+POST
+/cognilabsai/webhooks/instagram
+Instagram Webhook Receive
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+Edit Value
+Schema
+{
+  "additionalProp1": {}
+}
+Execute
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "message": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+default
+
+
+GET
+/
+Root
+
+
+Schemas
+AllUsersPermissionsResponseExpand allobject
+AppPageCreateExpand allobject
+AppPageResponseExpand allobject
+AppPageUpdateExpand allobject
+AttendanceCreateRequestExpand allobject
+AttendanceUpdateRequestExpand allobject
+AuditLogListResponseExpand allobject
+AuditLogResponseExpand allobject
+BoardCardFileResponseExpand allobject
+BoardColumnResponseExpand allobject
+BoardCreateRequestExpand allobject
+BoardDetailResponseExpand allobject
+BoardListItemResponseExpand allobject
+BoardListResponseExpand allobject
+BoardUpdateRequestExpand allobject
+Body_chat_import_instagram_conversations_upload_cognilabsai_chat_import_instagram_conversations_upload_postExpand allobject
+Body_create_card_columns__column_id__cards_postExpand allobject
+Body_create_customer_crm_customers_postExpand allobject
+Body_create_project_projects_postExpand allobject
+Body_login_auth_login_postExpand allobject
+Body_patch_customer_crm_customers__customer_id__patchExpand allobject
+Body_update_card_cards__card_id__patchExpand allobject
+Body_update_customer_crm_customers__customer_id__putExpand allobject
+Body_update_my_profile_auth_me_profile_patchExpand allobject
+Body_update_project_projects__project_id__patchExpand allobject
+Body_upload_my_profile_image_auth_me_profile_image_postExpand allobject
+Body_upload_user_profile_image_ceo_users__user_id__profile_image_postExpand allobject
+CRMPeriodStatusStatsExpand allobject
+CRMPeriodicStatusSummaryResponseExpand allobject
+CardDetailResponseExpand allobject
+CardListItemResponseExpand allobject
+CardListResponseExpand allobject
+CardMoveRequestExpand allobject
+CardPriorityExpand allstring
+CardResponseExpand allobject
+CardTypeExpand allstring
+ChangeMyPasswordRequestExpand allobject
+CimsAiChatHistoryItemExpand allobject
+CimsAiChatRequestExpand allobject
+CimsAiChatResponseExpand allobject
+ColumnCreateRequestExpand allobject
+ColumnMoveRequestExpand allobject
+ColumnUpdateRequestExpand allobject
+CompanyRecurringPaymentCreateRequestExpand allobject
+CompanyRecurringPaymentUpdateRequestExpand allobject
+CompanyStatsExpand allobject
+CompensationBonusTypeExpand allstring
+CompensationMistakeCreateRequestExpand allobject
+CompensationMistakeUpdateRequestExpand allobject
+ConversationItemExpand allobject
+ConversationLanguageEnumExpand allstring
+ConversionRateResponseExpand allobject
+CreateResponseExpand allobject
+CurrencyTypeExpand allstring
+CustomerAPICreateRequestExpand allobject
+CustomerDeleteRequestExpand allobject
+CustomerListResponseExpand allobject
+CustomerNoteCreateRequestExpand allobject
+CustomerNoteListResponseExpand allobject
+CustomerNoteResponseExpand allobject
+CustomerNoteUpdateRequestExpand allobject
+CustomerPeriodReportResponseExpand allobject
+CustomerResponseExpand allobject
+CustomerStatsResponseExpand allobject
+CustomerStatusExpand allstring
+CustomerStatusCreateExpand allobject
+CustomerStatusResponseExpand allobject
+CustomerStatusUpdateExpand allobject
+DailyMetricsResponseExpand allobject
+DailySalesResponseExpand allobject
+DashboardChartsResponseExpand allobject
+DashboardDistributionItemExpand allobject
+DashboardPeriodResponseExpand allobject
+DashboardResponseExpand allobject
+DashboardStatisticsExpand allobject
+DashboardSummaryResponseExpand allobject
+DashboardTrendPointExpand allobject
+DeliveryBonusCreateRequestExpand allobject
+DeliveryBonusUpdateRequestExpand allobject
+DetailedSalesResponseExpand allobject
+EmailVerificationConfirmExpand allobject
+EmailVerificationRequestExpand allobject
+FinanceFilterRequestExpand allobject
+FinanceListResponseExpand allobject
+FinanceResponseExpand allobject
+FinanceStatsResponseExpand allobject
+FinanceStatusExpand allstring
+FinanceTypeExpand allstring
+GenericMessageResponseExpand allobject
+HTTPValidationErrorExpand allobject
+ImageBulkDeleteRequestExpand allobject
+ImageDeleteResponseExpand allobject
+ImageListItemResponseExpand allobject
+ImageListResponseExpand allobject
+ImportConversationsRequestExpand allobject
+ImportConversationsResponseExpand allobject
+IntegrationConfigPayloadExpand allobject
+IntegrationConfigResponseExpand allobject
+MessageItemExpand allobject
+MessageListResponseExpand allobject
+MessageResponseExpand allobject
+MessageToAllRequestExpand allobject
+MessageToUserRequestExpand allobject
+MistakeCategoryExpand allstring
+MistakeSeverityExpand allstring
+MonthlyFinanceReportExpand allobject
+MyMessageListResponseExpand allobject
+MyMessageResponseExpand allobject
+MyProfileUpdateRequestExpand allobject
+PasswordResetConfirmExpand allobject
+PasswordResetRequestExpand allobject
+PauseConversationRequestExpand allobject
+PauseUntilRequestExpand allobject
+PaymentCreateRequestExpand allobject
+PaymentListResponseExpand allobject
+PaymentResponseExpand allobject
+PaymentToggleResponseExpand allobject
+PaymentUpdateRequestExpand allobject
+ProjectBoardsDetailResponseExpand allobject
+ProjectDetailResponseExpand allobject
+ProjectListResponseExpand allobject
+ProjectSummaryResponseExpand allobject
+RedirectResponseExpand allobject
+RefreshTokenRequestExpand allobject
+SalesManagerAssignmentCreateExpand allobject
+SalesManagerAssignmentResponseExpand allobject
+SalesManagerInfoExpand allobject
+SalesStatsResponseExpand allobject
+SendMessageRequestExpand allobject
+SiteStatusResponseExpand allobject
+SiteToggleRequestExpand allobject
+StatusChoiceExpand allobject
+TelegramSearchListResponseExpand allobject
+TelegramSearchMatchExpand allobject
+TelegramSearchResultExpand allobject
+TelegramStartConversationRequestExpand allobject
+TodayCustomerInfoExpand allobject
+TokenExpand allobject
+TokenWithRefreshExpand allobject
+TransactionStatusExpand allstring
+UserCreateExpand allobject
+UserCreateRequestExpand allobject
+UserPermissionAddRequestExpand allobject
+UserPermissionResponseExpand allobject
+UserPermissionUpdateRequestExpand allobject
+UserPermissionsOverviewResponseExpand allobject
+UserResponseExpand allobject
+UserRoleExpand allstring
+UserRoleCreateExpand allobject
+UserRoleResponseExpand allobject
+UserRoleUpdateExpand allobject
+UserSummaryResponseExpand allobject
+UserToggleResponseExpand allobject
+UserUpdateRequestExpand allobject
+ValidationErrorExpand allobject
+WordPressDashboardResponseExpand allobject
+WordPressProjectCreateRequestExpand allobject
+WordPressProjectListResponseExpand allobject
+WordPressProjectResponseExpand allobject
+WordPressProjectUpdateRequestExpand allobject
+WorkdayOverrideBulkResponseExpand allobject
+WorkdayOverrideCreateRequestExpand allobject
+WorkdayOverrideMemberOptionExpand allobject
+WorkdayOverrideResponseExpand allobject
+WorkdayOverrideTargetTypeExpand allstring
+WorkdayOverrideTypeExpand allstring
+WorkdayOverrideUpdateRequestExpand allobject
+YearlyFinanceReportExpand allobject
+TelegramChatExpand allobject
+TelegramMessageExpand allobject
+TelegramUserExpand allobject
+TelegramWebhookPayloadExpand allobject
+TelegramChatExpand allobject
+TelegramMessageExpand allobject
+TelegramUserExpand allobject
+TelegramWebhookPayloadExpand allobject
+SuccessResponseExpand allobject
+SuccessResponseExpand allobject
+SuccessResponseExpand allobject
+SuccessResponseExpand allobject
+
+
