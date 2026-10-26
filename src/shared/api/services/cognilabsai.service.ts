@@ -177,6 +177,94 @@ export type WsEvent =
   | { type: 'message.created'; conversation_id: number; message: MessageItem }
   | { type: 'conversation.updated'; conversation_id: number; conversation: ConversationItem }
 
+export type CommentAutomationReplyMode = 'ai' | 'template'
+
+export type CommentAutomationStats = {
+  comments_received: number
+  public_replies_sent: number
+  private_replies_sent: number
+  needs_attention: number
+}
+
+export type CommentAutomationSettings = {
+  automation_enabled: boolean
+  public_reply_enabled: boolean
+  public_reply_mode: CommentAutomationReplyMode
+  public_reply_template: string | null
+  dm_enabled: boolean
+  dm_mode: CommentAutomationReplyMode
+  dm_template: string | null
+  ai_instructions: string | null
+}
+
+export type CommentAutomationMedia = CommentAutomationSettings & {
+  media_id: string
+  instagram_account_id: string | null
+  media_type: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM' | string
+  media_product_type: 'FEED' | 'REELS' | 'STORY' | 'AD' | string | null
+  caption: string | null
+  permalink: string | null
+  media_url: string | null
+  thumbnail_url: string | null
+  published_at: string | null
+  comments_count: number | null
+  automation_stats: CommentAutomationStats | null
+}
+
+export type CommentAutomationMediaListResponse = {
+  items: CommentAutomationMedia[]
+  next_cursor: string | null
+  has_more: boolean
+  synced_at: string | null
+}
+
+export type CommentAutomationSettingsPayload = Partial<CommentAutomationSettings>
+
+export type CommentAutomationBulkPayload = CommentAutomationSettingsPayload & {
+  media_ids: string[]
+}
+
+export type CommentAutomationBulkResponse = {
+  updated_count: number
+  items: CommentAutomationMedia[]
+}
+
+export type CommentAutomationEventStatus =
+  | 'received'
+  | 'processing'
+  | 'sent'
+  | 'partial'
+  | 'failed'
+  | 'unknown'
+  | 'skipped'
+
+export type CommentAutomationEvent = {
+  id?: number | string
+  media_id?: string | null
+  comment_id: string
+  sender_id: string | null
+  sender_username: string | null
+  comment_text: string | null
+  status?: CommentAutomationEventStatus | string | null
+  public_reply_status: string | null
+  public_reply_text: string | null
+  public_reply_message_id: string | null
+  public_reply_error: string | null
+  dm_status: string | null
+  dm_text: string | null
+  dm_message_id: string | null
+  dm_error: string | null
+  created_at: string | null
+  sent_at: string | null
+}
+
+export type CommentAutomationEventsResponse = {
+  items: CommentAutomationEvent[]
+  total: number | null
+}
+
+const COMMENT_AUTOMATION_PATH = '/cognilabsai/integrations/instagram/comment-automation'
+
 export const cognilabsaiService = {
   listConversations(channel?: string | null, limit = 50, offset = 0) {
     return request<PaginatedResponse<ConversationItem>>({
@@ -347,6 +435,56 @@ export const cognilabsaiService = {
     return request<Array<{ value: string; label: string; color?: string | null; order?: number | null }>>({
       path: '/cognilabsai/chat/ai-stages',
     })
+  },
+
+  listCommentAutomationMedia(params: { refresh: boolean; limit?: number; after?: string | null }) {
+    return request<CommentAutomationMediaListResponse>({
+      path: `${COMMENT_AUTOMATION_PATH}/media`,
+      query: {
+        refresh: params.refresh,
+        limit: params.limit ?? 25,
+        after: params.after,
+      },
+    })
+  },
+
+  updateCommentAutomationMedia(mediaId: string, payload: CommentAutomationSettingsPayload) {
+    return request<CommentAutomationMedia>({
+      path: `${COMMENT_AUTOMATION_PATH}/media/${encodeURIComponent(mediaId)}`,
+      method: 'PATCH',
+      body: payload,
+    })
+  },
+
+  bulkUpdateCommentAutomationMedia(payload: CommentAutomationBulkPayload) {
+    return request<CommentAutomationBulkResponse>({
+      path: `${COMMENT_AUTOMATION_PATH}/media/bulk`,
+      method: 'PATCH',
+      body: payload,
+    })
+  },
+
+  async listCommentAutomationEvents(params: {
+    mediaId?: string | null
+    status?: CommentAutomationEventStatus | null
+    limit?: number
+    offset?: number
+  }): Promise<CommentAutomationEventsResponse> {
+    const response = await request<CommentAutomationEvent[] | { items?: CommentAutomationEvent[]; total?: number }>({
+      path: `${COMMENT_AUTOMATION_PATH}/events`,
+      query: {
+        media_id: params.mediaId,
+        status: params.status,
+        limit: params.limit ?? 50,
+        offset: params.offset ?? 0,
+      },
+    })
+
+    if (Array.isArray(response)) {
+      return { items: response, total: null }
+    }
+
+    return { items: response?.items ?? [], total: response?.total ?? null }
   },
 }
 

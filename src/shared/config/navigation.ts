@@ -242,6 +242,15 @@ export const navigationItems: readonly NavigationItem[] = [
     defaultRedirect: false,
   },
   {
+    to: '/cognilabsai/comment-automation',
+    label: 'Instagram Comments',
+    description: 'Auto public replies and first DMs for Instagram post and reel comments.',
+    group: 'CognilabsAI',
+    permissionKey: 'cognilabsai_integrations',
+    sidebar: true,
+    defaultRedirect: false,
+  },
+  {
     to: '/audit/logs',
     label: 'Audit Logs',
     description: 'Track all create, update, delete and login events across the system.',
