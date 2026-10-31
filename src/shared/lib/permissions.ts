@@ -84,9 +84,17 @@ export function canAccessPath(user: CurrentUser | null, destination: string) {
   return item ? canAccessNavigationItem(user, item) : false
 }
 
+export function isSellerUser(user: CurrentUser | null) {
+  return String(user?.role ?? '').trim().toLowerCase() === 'seller'
+}
+
 export function getDefaultDashboardPath(user: CurrentUser | null) {
   if (!user) {
     return '/auth/login'
+  }
+
+  if (isSellerUser(user) && canAccessPath(user, '/crm')) {
+    return '/crm'
   }
 
   const candidate = navigationItems.find(

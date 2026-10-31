@@ -4,6 +4,7 @@ export const permissionCatalog = [
   { key: 'project_toggle', label: 'Project toggle', description: 'WordPress yoki loyiha toggle amallari.' },
   { key: 'projects', label: 'Projects', description: 'Projects, boards va kanban workflow bo‘limi.' },
   { key: 'crm', label: 'CRM', description: 'CRM customer dashboard va status boshqaruvi.' },
+  { key: 'crm_outbound', label: 'Outbound CRM', description: "Outbound CRM leadlari, statuslari va arxivi. Asosiy CRM ruxsatidan alohida beriladi." },
   { key: 'finance_list', label: 'Finance list', description: "Finance dashboard va transaction ro'yxati." },
   { key: 'update_list', label: 'Update tracking', description: "Update tracking va company stats bo'limi." },
 ] as const

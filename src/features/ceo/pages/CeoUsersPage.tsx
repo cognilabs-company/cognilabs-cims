@@ -174,6 +174,10 @@ function isCeoUser(user: CeoUserRecord) {
 }
 
 function getRoleTextClass(role?: string | null) {
+  if (String(role ?? '').trim().toLowerCase() === 'seller') {
+    return 'text-[var(--warning-text)]'
+  }
+
   switch (normalizeUserRole(role)) {
     case 'CEO':
       return 'text-[var(--violet-text)]'

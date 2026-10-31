@@ -21,7 +21,9 @@ import { SectionTitle } from '../../../shared/ui/section-title'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { useToast } from '../../../shared/toast/useToast'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
+import { isNotFoundError } from '../../../shared/lib/api-error'
 import { resolveCustomerAudioUrl } from '../lib/customerAudio'
+import { getCustomerActionErrorMessage, getCustomerUnavailableMessage, getCustomerUnavailableTitle } from '../lib/customerErrors'
 import { getRecallTimeTone, getRecallTimeToneClasses } from '../lib/recallTime'
 import { AudioPlayerCard } from './AudioPlayerCard'
 
@@ -145,7 +147,7 @@ export function CustomerDetailContent({
       void notesQuery.refetch()
       showToast({ title: t('common.added', 'Added'), tone: 'success' })
     } catch (error) {
-      showToast({ title: t('common.error', 'Error'), tone: 'error' })
+      showToast({ title: t('common.error', 'Error'), description: getCustomerActionErrorMessage(error, t), tone: 'error' })
     } finally {
       setIsAdding(false)
     }
@@ -159,7 +161,7 @@ export function CustomerDetailContent({
       void notesQuery.refetch()
       showToast({ title: t('common.updated', 'Updated'), tone: 'success' })
     } catch (error) {
-      showToast({ title: t('common.error', 'Error'), tone: 'error' })
+      showToast({ title: t('common.error', 'Error'), description: getCustomerActionErrorMessage(error, t), tone: 'error' })
     }
   }
 
@@ -175,7 +177,7 @@ export function CustomerDetailContent({
       void notesQuery.refetch()
       showToast({ title: t('common.deleted', 'Deleted'), tone: 'success' })
     } catch (error) {
-      showToast({ title: t('common.error', 'Error'), tone: 'error' })
+      showToast({ title: t('common.error', 'Error'), description: getCustomerActionErrorMessage(error, t), tone: 'error' })
     }
   }
 
@@ -550,7 +552,10 @@ export function CustomerDetailDrawer({
     }
   }, [onClose, open])
 
-  const customer = detailQuery.data?.id === customerId ? detailQuery.data : initialCustomer ?? null
+  const isCustomerUnavailable = detailQuery.isError && isNotFoundError(detailQuery.error)
+  const customer = isCustomerUnavailable
+    ? null
+    : detailQuery.data?.id === customerId ? detailQuery.data : initialCustomer ?? null
   const customerPhoneNumber = (customer?.phone_number ?? customer?.phone ?? '').trim()
   const audioSource = useMemo(
     () => resolveCustomerAudioUrl(customer?.audio_file_id, customer?.audio_url, apiBasePath),
@@ -642,7 +647,16 @@ export function CustomerDetailDrawer({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-            {detailQuery.isLoading && !customer ? (
+            {isCustomerUnavailable ? (
+              <ErrorStateBlock
+                eyebrow={t('customers.detail', 'Customer detail')}
+                title={getCustomerUnavailableTitle(t)}
+                actionLabel={t('common.close', 'Close')}
+                onAction={onClose}
+              >
+                <p className="max-w-md text-[13px] text-[var(--muted-strong)]">{getCustomerUnavailableMessage(t)}</p>
+              </ErrorStateBlock>
+            ) : detailQuery.isLoading && !customer ? (
               <LoadingStateBlock
                 eyebrow={t('customers.detail', 'Customer detail')}
                 title={t('customers.loading.detail.title', 'Customer detail loading')}

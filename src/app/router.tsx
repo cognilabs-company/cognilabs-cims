@@ -346,7 +346,7 @@ export const router = createBrowserRouter([
               {
                 path: 'outbound-crm',
                 element: (
-                  <ProtectedRoute permissionKey="crm">
+                  <ProtectedRoute permissionKey="crm_outbound">
                     {withPageLoader(<OutboundCrmDashboardPage />)}
                   </ProtectedRoute>
                 ),
@@ -354,7 +354,7 @@ export const router = createBrowserRouter([
               {
                 path: 'outbound-crm/customers/:customerId',
                 element: (
-                  <ProtectedRoute permissionKey="crm">
+                  <ProtectedRoute permissionKey="crm_outbound">
                     {withPageLoader(<OutboundCustomerDetailPage />)}
                   </ProtectedRoute>
                 ),
@@ -362,7 +362,7 @@ export const router = createBrowserRouter([
               {
                 path: 'outbound-crm/archived',
                 element: (
-                  <ProtectedRoute permissionKey="crm">
+                  <ProtectedRoute permissionKey="crm_outbound">
                     {withPageLoader(<OutboundCrmArchivedPage />)}
                   </ProtectedRoute>
                 ),
@@ -370,7 +370,7 @@ export const router = createBrowserRouter([
               {
                 path: 'outbound-crm/statuses',
                 element: (
-                  <ProtectedRoute permissionKey="crm">
+                  <ProtectedRoute permissionKey="crm_outbound">
                     {withPageLoader(<OutboundCrmStatusesPage />)}
                   </ProtectedRoute>
                 ),

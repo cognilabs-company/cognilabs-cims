@@ -358,6 +358,8 @@
   "customers.errors.not_found.description": "Could not retrieve details for this customer.",
   "customers.errors.detail_unavailable.title": "Customer detail unavailable",
   "customers.errors.detail_unavailable.description": "The CRM detail endpoint could not return this customer.",
+  "customers.errors.unavailable.title": "Customer not found or not assigned to you",
+  "customers.errors.unavailable.description": "This customer does not exist or is no longer assigned to you.",
   "customers.errors.required_fields.title": "Required fields missing",
   "customers.errors.required_fields.description": "Full name, platform, phone number, and status are required.",
   "customers.errors.save_failed": "Save failed",

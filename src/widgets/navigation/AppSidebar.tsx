@@ -8,7 +8,7 @@ import { authService } from '../../shared/api/services/auth.service'
 import { env } from '../../shared/config/env'
 import { useAsyncData } from '../../shared/hooks/useAsyncData'
 import { cn } from '../../shared/lib/cn'
-import { canReadManagedProjects, getAccessibleNavigation } from '../../shared/lib/permissions'
+import { canReadManagedProjects, getAccessibleNavigation, hasPermission } from '../../shared/lib/permissions'
 import { getApiErrorMessage } from '../../shared/lib/api-error'
 import { resolveMediaUrl } from '../../shared/lib/media-url'
 import { useToast } from '../../shared/toast/useToast'
@@ -328,16 +328,18 @@ export function AppSidebar() {
                 ))}
               </div>
 
-              <div className="mt-4 border-t border-(--sidebar-border) pt-3">
-                <NavLink
-                  to="/crm"
-                  aria-label={t('outbound_crm.header.back_to_crm', 'Main CRM')}
-                  className={cn(sidebarItemBase, sidebarItemInactive)}
-                >
-                  <NavGlyph name="exit" />
-                  <span className="truncate">{t('outbound_crm.header.back_to_crm', 'Main CRM')}</span>
-                </NavLink>
-              </div>
+              {hasPermission(user, 'crm') ? (
+                <div className="mt-4 border-t border-(--sidebar-border) pt-3">
+                  <NavLink
+                    to="/crm"
+                    aria-label={t('outbound_crm.header.back_to_crm', 'Main CRM')}
+                    className={cn(sidebarItemBase, sidebarItemInactive)}
+                  >
+                    <NavGlyph name="exit" />
+                    <span className="truncate">{t('outbound_crm.header.back_to_crm', 'Main CRM')}</span>
+                  </NavLink>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto px-2 py-3">

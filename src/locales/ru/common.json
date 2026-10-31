@@ -358,6 +358,8 @@
   "customers.errors.not_found.description": "Не удалось получить детали этого клиента.",
   "customers.errors.detail_unavailable.title": "Детали клиента недоступны",
   "customers.errors.detail_unavailable.description": "CRM detail endpoint не смог вернуть этого клиента.",
+  "customers.errors.unavailable.title": "Клиент не найден или не закреплён за вами",
+  "customers.errors.unavailable.description": "Этот клиент не существует или больше не закреплён за вами.",
   "customers.errors.required_fields.title": "Не заполнены обязательные поля",
   "customers.errors.required_fields.description": "Полное имя, платформа, номер телефона и статус обязательны.",
   "customers.errors.save_failed": "Не удалось сохранить",

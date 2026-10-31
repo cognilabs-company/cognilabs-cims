@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCrmScope } from '../lib/crmScope'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
+import { getApiErrorMessage, isNotFoundError } from '../../../shared/lib/api-error'
 import { Button } from '../../../shared/ui/button'
 import { ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { CustomerDetailContent } from '../components/CustomerDetailDrawer'
 import { resolveCustomerAudioUrl } from '../lib/customerAudio'
+import { getCustomerUnavailableMessage, getCustomerUnavailableTitle } from '../lib/customerErrors'
 
 export function CustomerDetailPage() {
   const { t } = useTranslation()
@@ -38,7 +40,7 @@ export function CustomerDetailPage() {
     )
   }
 
-  if (detailQuery.isLoading && !detailQuery.data) {
+  if ((detailQuery.isLoading || detailQuery.isIdle) && !detailQuery.data) {
     return (
       <LoadingStateBlock
         eyebrow={t('customers.detail', 'Customer detail')}
@@ -48,7 +50,35 @@ export function CustomerDetailPage() {
     )
   }
 
-  if (detailQuery.isError || !detailQuery.data) {
+  if (detailQuery.isError && isNotFoundError(detailQuery.error)) {
+    return (
+      <ErrorStateBlock
+        eyebrow={t('customers.detail', 'Customer detail')}
+        title={getCustomerUnavailableTitle(t)}
+        actionLabel={t('customers.detail.back_to', 'Back to {{title}}', { title })}
+        onAction={() => navigate(routeBasePath)}
+      >
+        <p className="max-w-md text-[13px] text-[var(--muted-strong)]">{getCustomerUnavailableMessage(t)}</p>
+      </ErrorStateBlock>
+    )
+  }
+
+  if (detailQuery.isError) {
+    return (
+      <ErrorStateBlock
+        eyebrow={t('customers.detail', 'Customer detail')}
+        title={t('customers.errors.detail_unavailable.title', 'Customer detail unavailable')}
+        actionLabel={t('common.retry', 'Retry')}
+        onAction={() => {
+          void detailQuery.refetch().catch(() => undefined)
+        }}
+      >
+        <p className="max-w-md text-[13px] text-[var(--danger-text)]">{getApiErrorMessage(detailQuery.error)}</p>
+      </ErrorStateBlock>
+    )
+  }
+
+  if (!detailQuery.data) {
     return (
       <ErrorStateBlock
         eyebrow={t('customers.detail', 'Customer detail')}

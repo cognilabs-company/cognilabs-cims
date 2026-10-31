@@ -358,6 +358,8 @@
   "customers.errors.not_found.description": "Bu mijoz bo'yicha tafsilotlarni olib bo'lmadi.",
   "customers.errors.detail_unavailable.title": "Mijoz tafsiloti mavjud emas",
   "customers.errors.detail_unavailable.description": "CRM detail endpoint bu mijozni qaytara olmadi.",
+  "customers.errors.unavailable.title": "Mijoz topilmadi yoki sizga biriktirilmagan",
+  "customers.errors.unavailable.description": "Bu mijoz mavjud emas yoki endi sizga biriktirilmagan.",
   "customers.errors.required_fields.title": "Majburiy maydonlar to'ldirilmagan",
   "customers.errors.required_fields.description": "To'liq ism, platforma, telefon raqami va holat majburiy.",
   "customers.errors.save_failed": "Saqlab bo'lmadi",

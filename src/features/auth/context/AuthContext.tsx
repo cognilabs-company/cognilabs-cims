@@ -14,6 +14,7 @@ import {
   getDefaultDashboardPath,
   hasPermission as canAccess,
   isKnownProtectedPath,
+  isSellerUser,
 } from '../../../shared/lib/permissions'
 import {
   clearSession,
@@ -179,7 +180,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const resolveDashboardPath = useCallback(async () => {
     const fallbackPath = getDefaultDashboardPath(user)
 
-    if (fallbackPath === '/updates' || fallbackPath === '/member/dashboard') {
+    if (fallbackPath === '/updates' || fallbackPath === '/member/dashboard' || (isSellerUser(user) && fallbackPath === '/crm')) {
       return fallbackPath
     }
 

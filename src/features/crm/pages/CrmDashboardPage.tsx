@@ -7,7 +7,7 @@ import { env } from '../../../shared/config/env'
 import type { CustomerSummary, DynamicStatusOption } from '../../../shared/api/types'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
-import { getApiErrorMessage } from '../../../shared/lib/api-error'
+import { isNotFoundError } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import {
   formatUsernameHandle,
@@ -30,6 +30,7 @@ import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
 import { useCrmScope } from '../lib/crmScope'
+import { getCustomerActionErrorMessage, getCustomerUnavailableTitle } from '../lib/customerErrors'
 const emptyCustomers: CustomerSummary[] = []
 const emptyStatuses: DynamicStatusOption[] = []
 function getCrmReturnStateKey(scopeKey: string) {
@@ -564,8 +565,13 @@ export function CrmDashboardPage() {
       .then((customer) => {
         setDetailCustomer(customer)
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         setDetailCustomer(null)
+        showToast({
+          title: getCustomerUnavailableTitle(t),
+          description: getCustomerActionErrorMessage(error, t),
+          tone: 'error',
+        })
       })
       .finally(() => {
         setSearchParams((prev) => {
@@ -575,7 +581,7 @@ export function CrmDashboardPage() {
         }, { replace: true })
       })
 
-  }, [crmService, searchParams, setSearchParams])
+  }, [crmService, searchParams, setSearchParams, showToast, t])
 
   useEffect(() => {
     const conversationIdParam = searchParams.get('conversation_id')
@@ -911,9 +917,12 @@ export function CrmDashboardPage() {
     } catch (error) {
       showToast({
         title: t('customers.errors.delete_failed', 'Delete failed'),
-        description: getApiErrorMessage(error),
+        description: getCustomerActionErrorMessage(error, t),
         tone: 'error',
       })
+      if (isNotFoundError(error)) {
+        void Promise.allSettled([dashboardQuery.refetch(), summaryQuery.refetch()])
+      }
     }
   }
 
@@ -977,9 +986,13 @@ export function CrmDashboardPage() {
     } catch (error) {
       showToast({
         title: t('customers.errors.save_failed', 'Save failed'),
-        description: getApiErrorMessage(error),
+        description: getCustomerActionErrorMessage(error, t),
         tone: 'error',
       })
+      if (isNotFoundError(error)) {
+        setIsFormOpen(false)
+        void Promise.allSettled([dashboardQuery.refetch(), summaryQuery.refetch()])
+      }
     } finally {
       setIsFormSubmitting(false)
     }

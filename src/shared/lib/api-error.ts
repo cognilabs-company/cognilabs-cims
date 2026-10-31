@@ -42,6 +42,15 @@ export function getApiErrorMessage(
   return fallback
 }
 
+export function getApiErrorStatus(error: unknown) {
+  const status = (error as Partial<ApiResponseError> | null | undefined)?.status
+  return typeof status === 'number' ? status : null
+}
+
+export function isNotFoundError(error: unknown) {
+  return getApiErrorStatus(error) === 404
+}
+
 export function stringifyApiData(payload: unknown) {
   if (typeof payload === 'string') {
     const trimmed = payload.trim()
