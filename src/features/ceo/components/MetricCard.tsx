@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
+import { Sparkline } from '../../../shared/ui/charts/sparkline'
 import { StatCard } from '../../../shared/ui/stat-card'
-import { toneDot, type Tone } from '../../../shared/ui/tone'
 
 type TrendDirection = 'up' | 'down' | 'flat'
 
@@ -24,6 +24,14 @@ const deltaToneByTrend: Record<TrendDirection, 'success' | 'danger' | 'neutral'>
   up: 'success',
   down: 'danger',
   flat: 'neutral',
+}
+
+const sparkColorByAccent: Record<MetricAccent, string> = {
+  blue: 'var(--blue-text)',
+  success: 'var(--success-text)',
+  warning: 'var(--warning-text)',
+  danger: 'var(--danger-text)',
+  violet: 'var(--violet-text)',
 }
 
 function TrendArrow({ trend }: { trend: TrendDirection }) {
@@ -48,30 +56,6 @@ function TrendArrow({ trend }: { trend: TrendDirection }) {
   )
 }
 
-function SparkBars({ values, tone }: { values: number[]; tone: Tone }) {
-  const max = Math.max(...values, 1)
-
-  return (
-    <div className="flex h-7 items-end gap-1" aria-hidden="true">
-      {values.map((val, i) => {
-        const pct = Math.max(0.08, val / max)
-        const isLast = i === values.length - 1
-
-        return (
-          <div
-            key={i}
-            className={cn(
-              'w-1.5 rounded-full transition-all duration-300',
-              isLast ? toneDot[tone] : 'bg-[var(--border-hover)]',
-            )}
-            style={{ height: `${pct * 100}%` }}
-          />
-        )
-      })}
-    </div>
-  )
-}
-
 export function MetricCard({
   label,
   value,
@@ -85,13 +69,14 @@ export function MetricCard({
 }: MetricCardProps) {
   const localizedLabel = translateCurrentLiteral(label)
   const localizedDeltaLabel = deltaLabel ? translateCurrentLiteral(deltaLabel) : null
-  const spark = sparkBars && sparkBars.length > 0 ? sparkBars : null
+  const spark = sparkBars && sparkBars.length > 1 ? sparkBars : null
+  const hasBleedFooter = Boolean(spark) && !children
 
   const footer = spark || children ? (
-    <div className="flex flex-col gap-3">
-      {spark ? <SparkBars values={spark} tone={accent} /> : null}
+    <>
       {children}
-    </div>
+      {spark ? <Sparkline points={spark} color={sparkColorByAccent[accent]} /> : null}
+    </>
   ) : null
 
   return (
@@ -110,7 +95,7 @@ export function MetricCard({
       deltaTone={deltaToneByTrend[trend]}
       iconTone={accent}
       footer={footer}
-      className={cn('min-h-[148px]', className)}
+      className={cn(hasBleedFooter && 'overflow-hidden pb-0', className)}
     />
   )
 }

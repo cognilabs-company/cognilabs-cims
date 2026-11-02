@@ -28,7 +28,9 @@ import { Label } from '../../../shared/ui/label'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { Tabs } from '../../../shared/ui/tabs'
+import { crmService as baseCrmService } from '../../../shared/api/services/crm.service'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
+import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
 import { useCrmScope } from '../lib/crmScope'
@@ -531,6 +533,11 @@ export function CrmDashboardPage() {
   const statusesQuery = useAsyncData(() => crmService.dynamicStatuses(), [])
   const summaryQuery = useAsyncData(() => crmService.summaryStats(), [])
   const statusSummaryQuery = useAsyncData(() => crmService.statusSummary(), [])
+  const conversionQuery = useAsyncData(
+    () => baseCrmService.conversionRate(),
+    [crmKind],
+    { enabled: crmKind !== 'outbound' },
+  )
   const periodReportPeriodKey = selectedPeriod === 'today' ? '1d' : selectedPeriod
   const periodReportQuery = useAsyncData(
     () => crmService.periodReport({
@@ -1054,6 +1061,37 @@ export function CrmDashboardPage() {
 
   return (
     <section className="flex min-h-[var(--page-h)] flex-col gap-[18px]">
+      <div className="flex flex-col gap-1">
+        <h1 className="ui-page-title text-[var(--foreground)]">
+          {crmKind === 'outbound'
+            ? t('outbound_crm.page.title', 'Outbound CRM')
+            : t('customers.page.title', 'CRM dashboard')}
+        </h1>
+        <p className="text-sm text-[var(--muted)]">
+          {t('customers.page.subtitle', 'Pipeline overview, callbacks and the full customer list.')}
+        </p>
+      </div>
+
+      <CrmDashboardOverview
+        customers={baseCustomers}
+        stats={summaryQuery.data ?? null}
+        conversion={conversionQuery.data ?? null}
+        period={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+        onOpenCustomer={(customerId) => {
+          const match = baseCustomers.find((customer) => customer.id === customerId)
+          if (match) {
+            setDetailCustomer(match)
+          }
+        }}
+        onFocusStatus={(statusKey) => {
+          const match = statusOptions.find(
+            (option) => normalizeStatusKey(option.value) === normalizeStatusKey(statusKey),
+          )
+          setStatusFilters(match ? [match.value] : [])
+        }}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-[18px]">
         <div className="flex flex-wrap items-center gap-2">
           <Tabs items={periodOptions} value={selectedPeriod} onChange={setSelectedPeriod} className="max-w-full flex-wrap" />

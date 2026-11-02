@@ -4,6 +4,7 @@ import { useToast } from '../../../shared/toast/useToast'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { toneSurface, toneText } from '../../../shared/ui/tone'
 import { cn } from '../../../shared/lib/cn'
 
@@ -50,6 +51,16 @@ const teamLinks = [
   },
 ] as const
 
+const telegramSurfaces = teamLinks.filter((link) => link.href.includes('t.me'))
+const automationBots = teamLinks.filter((link) => link.categoryKey === 'cims.category.bot')
+const socialPages = teamLinks.filter((link) => link.categoryKey === 'cims.category.official')
+const telegramChannel = teamLinks.find((link) => link.categoryKey === 'cims.category.channel')
+const primaryBot = automationBots[0]
+
+function openExternal(href: string) {
+  window.open(href, '_blank', 'noopener,noreferrer')
+}
+
 export function CimsTeamPage() {
   const { t } = useLocale()
   const { showToast } = useToast()
@@ -72,8 +83,64 @@ export function CimsTeamPage() {
   }
 
   return (
-    <section className="page-enter space-y-[18px]">
-      <div className="grid gap-[18px] xl:grid-cols-2">
+    <section className="page-enter flex flex-col gap-[18px]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="ui-page-title text-[var(--foreground)]">{t('cims.page.title', 'CIMS Team')}</h1>
+          <p className="text-sm text-[var(--muted)]">
+            {t('cims.page.subtitle', 'Official channels, community lines and automation bots in one board.')}
+          </p>
+        </div>
+
+        <Badge variant="blue" dot>{t('cims.overview.workspace', 'Workspace links')}</Badge>
+      </div>
+
+      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
+        <StatCard
+          solid
+          label={t('cims.metric.touchpoints', 'Team touchpoints')}
+          value={teamLinks.length}
+          hint={t('cims.metric.touchpoints_hint', 'Channels and bots kept in one board')}
+          icon={<Sparkles className="h-[18px] w-[18px]" />}
+        />
+        <StatCard
+          label={t('cims.metric.telegram', 'Telegram surfaces')}
+          value={telegramSurfaces.length}
+          hint={t('cims.metric.telegram_hint', 'Channel and bots on Telegram')}
+          icon={<Send className="h-[18px] w-[18px]" />}
+          iconTone="blue"
+          onOpen={telegramChannel ? () => openExternal(telegramChannel.href) : undefined}
+          openLabel={t('cims.open_link')}
+        />
+        <StatCard
+          label={t('cims.metric.bots', 'Automation bots')}
+          value={automationBots.length}
+          hint={t('cims.metric.bots_hint', 'Recall and update workflows')}
+          icon={<Bot className="h-[18px] w-[18px]" />}
+          iconTone="warning"
+          onOpen={primaryBot ? () => openExternal(primaryBot.href) : undefined}
+          openLabel={t('cims.open_link')}
+        />
+        <StatCard
+          label={t('cims.metric.social', 'Social pages')}
+          value={socialPages.length}
+          hint={t('cims.metric.social_hint', 'Public brand presence')}
+          icon={<Instagram className="h-[18px] w-[18px]" />}
+          iconTone="violet"
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="ui-section-title text-[var(--foreground)]">
+          {t('cims.overview.channels', 'Channels and bots')}
+        </h2>
+        <span className="text-[13px] text-[var(--muted)]">
+          {t('cims.overview.handles', 'Handles')}{' '}
+          <b className="font-semibold text-[var(--foreground)]" data-ui-number="true">{teamLinks.length}</b>
+        </span>
+      </div>
+
+      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
         {teamLinks.map((link) => {
           const Icon = link.icon
           const tone = link.accent
@@ -106,7 +173,7 @@ export function CimsTeamPage() {
 
               <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
                 <p className="text-xs font-medium text-[var(--muted)]">{t('cims.handle')}</p>
-                <p className="mt-1 font-mono text-sm break-all text-[var(--foreground)]">{link.handle}</p>
+                <p className="mt-1 font-mono text-sm break-all text-[var(--foreground)]" data-i18n-skip="true">{link.handle}</p>
               </div>
 
               <p className="text-sm leading-[1.55] text-[var(--muted-strong)]">{note}</p>

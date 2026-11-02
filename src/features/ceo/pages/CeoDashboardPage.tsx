@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ceoService, type CeoUserRecord, type CompanyPaymentRecord } from '../../../shared/api/services/ceo.service'
+import { ceoService, type CeoUserRecord, type CompanyPaymentRecord, type DashboardResponse } from '../../../shared/api/services/ceo.service'
 import { projectsService, type UserOpenCardRecord } from '../../../shared/api/services/projects.service'
 import type { PaymentItem } from '../../../shared/api/types'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
-import { formatCurrency, formatShortDate, formatShortDateTime } from '../../../shared/lib/format'
+import { formatCompactNumber, formatCurrency, formatShortDate, formatShortDateTime } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
 import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
@@ -17,7 +17,13 @@ import { Dialog } from '../../../shared/ui/dialog'
 import { IconButton } from '../../../shared/ui/icon-button'
 import { Skeleton } from '../../../shared/ui/skeleton'
 import { StatCard } from '../../../shared/ui/stat-card'
+import type { TabItem } from '../../../shared/ui/tabs'
 import type { Tone } from '../../../shared/ui/tone'
+import { BarChartCard, type BarDatum } from '../../../shared/ui/charts/bar-chart-card'
+import { FunnelStages, type FunnelStage } from '../../../shared/ui/charts/funnel-stages'
+import { GaugeDonut, type GaugeSegment } from '../../../shared/ui/charts/gauge-donut'
+import { Leaderboard, type LeaderboardEntry } from '../../../shared/ui/charts/leaderboard'
+import { TaskList, type TaskRow } from '../../../shared/ui/charts/task-list'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { CrmDashboardCharts } from '../../crm/components/CrmDashboardCharts'
 import { MessageComposerModal, type MessageComposerValues } from '../components/MessageComposerModal'
@@ -49,11 +55,22 @@ const initialCompanyPaymentForm: CompanyPaymentFormValues = {
   isActive: true,
 }
 
+type MediaPostRecord = NonNullable<DashboardResponse['statistics']['instagram_media_posts']>[number]
+
+type MediaMetric = 'sent' | 'lead' | 'contacted'
+
 const emptyPayments: PaymentItem[] = []
 const emptyCompanyPayments: CompanyPaymentRecord[] = []
 const emptyUsers: CeoUserRecord[] = []
 const emptyUserTasks: UserOpenCardRecord[] = []
+const emptyMediaPosts: MediaPostRecord[] = []
 const doneColumnNamePattern = /\b(done|complete|completed|closed|finished|resolved)\b/i
+
+const mediaMetricFields: Record<MediaMetric, keyof Pick<MediaPostRecord, 'sent_count' | 'lead_count' | 'contacted_count'>> = {
+  sent: 'sent_count',
+  lead: 'lead_count',
+  contacted: 'contacted_count',
+}
 
 function isDoneTask(task: Pick<UserOpenCardRecord, 'column_name'>) {
   return doneColumnNamePattern.test(task.column_name.trim())
@@ -65,6 +82,26 @@ function filterOpenTasks(tasks: UserOpenCardRecord[]) {
 
 function getTaskPath(task: UserOpenCardRecord) {
   return `/projects/${task.project_id}?board=${task.board_id}&card=${task.id}`
+}
+
+function shortLabel(value: string) {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return '—'
+  }
+
+  return trimmed.length > 14 ? `${trimmed.slice(0, 13)}…` : trimmed
+}
+
+function initialsOf(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || '—'
 }
 
 const statPanelClassName = 'min-h-0 gap-3 rounded-[18px] bg-[var(--accent-soft)] p-4'
@@ -79,11 +116,24 @@ const glyphPaths = {
   check: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.4 12.2l2.5 2.4 4.7-4.9',
   alert: 'M12 3.5l8.5 15H3.5l8.5-15zM12 9.5v4M12 16.5h.01',
   note: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5zM14 3v5h5M9 13h6M9 17h4',
+  users: 'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 4.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4M17 11.2a3 3 0 0 0 0-6M20 19v-1.2a3.4 3.4 0 0 0-2.4-3.2',
+  tasks: 'M9 11.5l2 2 4.2-4.4M5 3.5h14A1.5 1.5 0 0 1 20.5 5v14a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V5A1.5 1.5 0 0 1 5 3.5z',
+  wallet: 'M3.5 8.5h17v10a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5zM3.5 8.5 6 4.5h12l2.5 4M16 13.5h2',
+  repeat: 'M4 9a5 5 0 0 1 5-5h7M4 9l3-3M4 9l3 3M20 15a5 5 0 0 1-5 5H8M20 15l-3-3M20 15l-3 3',
+  plus: 'M12 5v14M5 12h14',
 }
 
 function Glyph({ d }: { d: string }) {
   return (
     <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  )
+}
+
+function GlyphSmall({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={d} />
     </svg>
   )
@@ -173,8 +223,8 @@ export function CeoDashboardPage() {
   const [isCompanyPaymentSubmitting, setIsCompanyPaymentSubmitting] = useState(false)
   const [companyPaymentMode, setCompanyPaymentMode] = useState<'create' | 'edit'>('create')
   const [isOverrideOpen, setIsOverrideOpen] = useState(false)
+  const [mediaMetric, setMediaMetric] = useState<MediaMetric>('sent')
 
-  // Task overview state
   const [userTaskCounts, setUserTaskCounts] = useState<Record<number, number>>({})
   const [isLoadingTaskCounts, setIsLoadingTaskCounts] = useState(false)
   const [selectedTaskUserId, setSelectedTaskUserId] = useState<number | null>(null)
@@ -188,7 +238,6 @@ export function CeoDashboardPage() {
   const users = dashboardQuery.data?.users ?? emptyUsers
   const selectedUser = users.find((u) => u.id === selectedTaskUserId)
 
-  // Load task counts for all users when dashboard data loads
   useEffect(() => {
     let cancelled = false
 
@@ -599,6 +648,168 @@ export function CeoDashboardPage() {
     }
   }
 
+  const statistics = dashboardQuery.data?.statistics
+  const mediaPosts = statistics?.instagram_media_posts ?? emptyMediaPosts
+  const hasMedia = statistics?.instagram_media_posts !== undefined
+  const mediaSent = statistics?.instagram_media_total_sent_count ?? 0
+  const mediaLead = statistics?.instagram_media_total_lead_count ?? 0
+  const mediaContacted = statistics?.instagram_media_total_contacted_count ?? 0
+  const mediaContinuing = statistics?.instagram_media_total_continuing_count ?? 0
+  const mediaUnknownSent = statistics?.instagram_media_unknown_sent_count ?? 0
+  const mediaUnknownLead = statistics?.instagram_media_unknown_lead_count ?? 0
+  const mediaConversion = mediaSent > 0 ? (mediaLead / mediaSent) * 100 : 0
+
+  const slaLimit = statistics?.lead_response_limit_minutes ?? 5
+  const slaTotal = statistics?.lead_response_total_count ?? 0
+  const slaOnTime = statistics?.lead_response_on_time_count ?? 0
+  const slaLate = statistics?.lead_response_late_count ?? 0
+  const slaNoChange = statistics?.lead_response_no_status_change_count ?? 0
+  const slaNoteWritten = statistics?.lead_response_note_written_count ?? 0
+  const slaNoteMissing = statistics?.lead_response_note_missing_count ?? 0
+  const slaNoNote = statistics?.lead_response_status_changed_without_note_count ?? 0
+  const slaAverage = statistics?.lead_response_average_human ?? '-'
+  const hasSla = slaTotal > 0
+
+  const totalUserCount = statistics?.user_count ?? users.length
+  const activeUserCount = statistics?.active_user_count ?? users.filter((user) => user.is_active).length
+  const inactiveUserCount = statistics?.inactive_user_count ?? 0
+  const totalOpenTasks = Object.values(userTaskCounts).reduce((sum, count) => sum + count, 0)
+  const paidPaymentsCount = payments.filter((row) => row.payment).length
+  const pendingPaymentsCount = payments.length - paidPaymentsCount
+
+  const mediaMetricField = mediaMetricFields[mediaMetric]
+  const mediaMetricTotal = mediaMetric === 'sent' ? mediaSent : mediaMetric === 'lead' ? mediaLead : mediaContacted
+
+  const mediaMetricTabs = useMemo<TabItem<MediaMetric>[]>(
+    () => [
+      { value: 'sent', label: t('ceo.overview.metric_sent', 'Sent') },
+      { value: 'lead', label: t('ceo.overview.metric_lead', 'Leads') },
+      { value: 'contacted', label: t('ceo.overview.metric_contacted', 'Reached') },
+    ],
+    [t],
+  )
+
+  const mediaBars = useMemo<BarDatum[]>(
+    () => mediaPosts
+      .filter((post) => post[mediaMetricField] > 0)
+      .sort((left, right) => right[mediaMetricField] - left[mediaMetricField])
+      .slice(0, 5)
+      .map((post) => ({
+        key: String(post.post_id),
+        label: shortLabel(post.title),
+        value: post[mediaMetricField],
+        amount: String(post[mediaMetricField]),
+        delta: post.sent_count > 0 ? `${Math.round((post.lead_count / post.sent_count) * 100)}%` : undefined,
+      })),
+    [mediaMetricField, mediaPosts],
+  )
+
+  const workloadRanking = useMemo(
+    () => users
+      .map((user) => ({ user, count: userTaskCounts[user.id] ?? 0 }))
+      .filter((row) => row.count > 0)
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 5),
+    [userTaskCounts, users],
+  )
+
+  const workloadBars = useMemo<BarDatum[]>(
+    () => workloadRanking.map(({ user, count }) => ({
+      key: String(user.id),
+      label: shortLabel(user.name),
+      value: count,
+      amount: String(count),
+    })),
+    [workloadRanking],
+  )
+
+  const workloadEntries = useMemo<LeaderboardEntry[]>(() => {
+    const max = workloadRanking.length > 0 ? workloadRanking[0].count : 1
+
+    return workloadRanking.map(({ user, count }) => {
+      const fullName = `${user.name} ${user.surname}`.trim()
+      const jobTitle = typeof user.job_title === 'string' ? user.job_title.trim() : ''
+
+      return {
+        key: String(user.id),
+        name: fullName,
+        initials: initialsOf(fullName),
+        caption: jobTitle || t('ceo.overview.open_tasks_caption', '{{count}} open tasks', { count }),
+        amount: count,
+        percent: Math.round((count / max) * 100),
+      }
+    })
+  }, [t, workloadRanking])
+
+  const slaSegments = useMemo<GaugeSegment[]>(
+    () => [
+      { key: 'on_time', label: "O'z vaqtida", value: slaOnTime, color: '#A6E83B' },
+      { key: 'late', label: 'Kech boglanildi', value: slaLate, color: '#C6D4FF' },
+      { key: 'no_status', label: "Status o'zgarmadi", value: slaNoChange, color: '#2B59FF' },
+    ],
+    [slaLate, slaNoChange, slaOnTime],
+  )
+
+  const teamSegments = useMemo<GaugeSegment[]>(
+    () => [
+      { key: 'active', label: t('status.active', 'Active'), value: activeUserCount, color: '#A6E83B' },
+      { key: 'inactive', label: t('status.inactive', 'Inactive'), value: inactiveUserCount, color: '#C6D4FF' },
+    ],
+    [activeUserCount, inactiveUserCount, t],
+  )
+
+  const funnelStages = useMemo<FunnelStage[]>(() => {
+    const mediaSteps = [
+      { key: 'sent', label: 'Jami yuborildi', count: mediaSent, glyph: glyphPaths.send, hero: false },
+      { key: 'lead', label: 'Jami lead', count: mediaLead, glyph: glyphPaths.lead, hero: false },
+      { key: 'contacted', label: 'Contacted', count: mediaContacted, glyph: glyphPaths.chat, hero: false },
+      { key: 'continuing', label: 'Continuing', count: mediaContinuing, glyph: glyphPaths.arrow, hero: true },
+    ]
+    const slaSteps = [
+      { key: 'total', label: 'Jami lead', count: slaTotal, glyph: glyphPaths.lead, hero: false },
+      { key: 'on_time', label: "O'z vaqtida", count: slaOnTime, glyph: glyphPaths.check, hero: false },
+      { key: 'note', label: 'Note yozilgan', count: slaNoteWritten, glyph: glyphPaths.note, hero: true },
+    ]
+    const steps = hasMedia ? mediaSteps : hasSla ? slaSteps : []
+    const max = steps.reduce((acc, step) => Math.max(acc, step.count), 0) || 1
+
+    return steps.map((step) => ({
+      key: step.key,
+      label: step.label,
+      count: step.count,
+      value: step.count,
+      percent: Math.round((step.count / max) * 100),
+      icon: <GlyphSmall d={step.glyph} />,
+      hero: step.hero,
+    }))
+  }, [hasMedia, hasSla, mediaContacted, mediaContinuing, mediaLead, mediaSent, slaNoteWritten, slaOnTime, slaTotal])
+
+  const funnelTotal = hasMedia ? mediaSent : slaTotal
+
+  const paymentTasks = useMemo<TaskRow[]>(
+    () => [...payments]
+      .sort((left, right) => (
+        Number(left.payment) - Number(right.payment)
+        || String(right.date ?? '').localeCompare(String(left.date ?? ''))
+      ))
+      .slice(0, 6)
+      .map((payment) => ({
+        key: String(payment.id),
+        title: payment.project,
+        meta: payment.date ? formatShortDate(payment.date) : '-',
+        tag: formatCompactNumber(Number(payment.summ ?? 0)),
+        tone: payment.payment ? ('success' as const) : ('warning' as const),
+        done: payment.payment,
+      })),
+    [payments],
+  )
+
+  const emptyHint = (
+    <p className="py-10 text-center text-[13px] text-[var(--muted)]">
+      {t('customers.overview.no_data', 'No data for this period yet.')}
+    </p>
+  )
+
   if (dashboardQuery.isLoading && !dashboardQuery.data) {
     return (
       <LoadingStateBlock
@@ -624,7 +835,273 @@ export function CeoDashboardPage() {
   }
 
   return (
-    <section className="space-y-[18px]">
+    <section className="flex flex-col gap-[18px]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="ui-page-title text-[var(--foreground)]">
+            {t('ceo.overview.title', 'CEO dashboard')}
+          </h1>
+          <p className="text-sm text-[var(--muted)]">
+            {t('ceo.overview.subtitle', 'Company metrics, lead response and team workload at a glance.')}
+          </p>
+        </div>
+
+        <ActionsMenu
+          label={t('common.actions')}
+          items={[
+            {
+              label: t('common.refresh'),
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                  <path d="M1.84998 7.46254C1.84998 4.3586 4.37103 1.83754 7.47498 1.83754C8.91301 1.83754 10.2222 2.37681 11.218 3.26444L10.375 4.10744C10.2773 4.20517 10.2773 4.36346 10.375 4.46119C10.4727 4.55892 10.631 4.55892 10.7287 4.46119L12.1287 3.06119C12.2264 2.96346 12.2264 2.80517 12.1287 2.70744L10.7287 1.30744C10.631 1.20971 10.4727 1.20971 10.375 1.30744C10.2773 1.40517 10.2773 1.56346 10.375 1.66119L11.0821 2.36831C10.1064 1.5034 8.8507 0.987539 7.47498 0.987539C3.90164 0.987539 1 3.88918 1 7.46254C1 11.0359 3.90164 13.9375 7.47498 13.9375C11.0483 13.9375 13.95 11.0359 13.95 7.46254H13.1C13.1 10.5665 10.579 13.0875 7.47498 13.0875C4.37103 13.0875 1.84998 10.5665 1.84998 7.46254Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                </svg>
+              ),
+              onSelect: () => void refreshAll(),
+            },
+            {
+              label: t('ceo.dashboard.actions.send_broadcast'),
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                  <path d="M1.20308 1.04312C1.17743 1.0114 1.14304 0.998483 1.10954 1.0003C1.07604 1.00212 1.0428 1.01861 1.02217 1.04482C1.00147 1.07112 0.993416 1.10425 0.99966 1.13524C1.0059 1.16623 1.02613 1.1942 1.05562 1.21175L13.8056 8.71175C13.8407 8.73238 13.8824 8.7332 13.918 8.71392C13.9536 8.69464 13.9774 8.65851 13.982 8.61802C13.9867 8.57753 13.9714 8.53924 13.9416 8.51478L1.20308 1.04312ZM1.00391 13.9961L1.00391 13.9961C1.00366 13.9961 1.00341 13.9961 1.00316 13.9961C0.96346 13.9959 0.925828 13.9782 0.90151 13.9482C0.877192 13.9182 0.868725 13.8791 0.878413 13.8423L2.24357 8.61833L8.00004 7.5L2.24357 6.38167L0.878413 1.15774C0.868725 1.1209 0.877192 1.08179 0.90151 1.05182C0.925828 1.02185 0.96346 1.00407 1.00316 1.00388C1.00341 1.00388 1.00366 1.00388 1.00391 1.00388C1.03664 1.00388 1.06913 1.01639 1.09241 1.03967L13.9124 13.8597C13.9405 13.8878 13.9536 13.9261 13.9479 13.9649C13.9422 14.0037 13.9184 14.0372 13.8839 14.0551C13.8493 14.0729 13.8087 14.0726 13.7744 14.0543L1.00391 13.9961Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                </svg>
+              ),
+              onSelect: () => setIsBroadcastOpen(true),
+            },
+            {
+              label: t('ceo.dashboard.actions.create_payment'),
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                  <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                </svg>
+              ),
+              onSelect: openCreatePaymentModal,
+            },
+            {
+              label: t('ceo.dashboard.recurring.create'),
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                  <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                </svg>
+              ),
+              onSelect: openCreateCompanyPaymentModal,
+            },
+            {
+              label: t('ceo.workday.dialog.create_action', { defaultValue: 'Create Override' }),
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                  <path d="M4.5 1C4.22386 1 4 1.22386 4 1.5C4 1.77614 4.22386 2 4.5 2H7V7H2V4.5C2 4.22386 1.77614 4 1.5 4C1.22386 4 1 4.22386 1 4.5V7.5C1 7.63807 1.05268 7.76321 1.14645 7.85355C1.23679 7.94732 1.36193 8 1.5 8H7V13.5C7 13.7761 7.22386 14 7.5 14C7.77614 14 8 13.7761 8 13.5V8H13.5C13.7761 8 14 7.77614 14 7.5C14 7.22386 13.7761 7 13.5 7H8V2H10.5C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                </svg>
+              ),
+              onSelect: () => setIsOverrideOpen(true),
+            },
+          ]}
+        />
+      </div>
+
+      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
+        {hasMedia ? (
+          <>
+            <StatCard
+              solid
+              label="Jami yuborildi"
+              value={mediaSent}
+              icon={<Glyph d={glyphPaths.send} />}
+              hint={t('ceo.overview.media_count', '{{count}} media tracked', { count: mediaPosts.length })}
+              delta={mediaSent > 0 ? `${mediaConversion.toFixed(1)}%` : undefined}
+            />
+            <StatCard
+              label="Jami lead"
+              value={mediaLead}
+              icon={<Glyph d={glyphPaths.lead} />}
+              iconTone="success"
+              hint={t('ceo.overview.contacted_hint', 'Contacted: {{count}}', { count: mediaContacted })}
+              delta={mediaContinuing > 0 ? String(mediaContinuing) : undefined}
+              deltaTone="neutral"
+              onOpen={() => navigate('/crm')}
+              openLabel={t('ceo.overview.open_crm', 'Open CRM')}
+            />
+            <StatCard
+              label="Noaniq yuborildi"
+              value={mediaUnknownSent}
+              icon={<Glyph d={glyphPaths.help} />}
+              iconTone="warning"
+              hint={t('ceo.overview.unknown_lead_hint', 'Unlinked leads: {{count}}', { count: mediaUnknownLead })}
+              delta={mediaSent > 0 ? `${Math.round((mediaUnknownSent / mediaSent) * 100)}%` : undefined}
+              deltaTone="danger"
+              onOpen={() => navigate('/cognilabsai/media-contexts')}
+              openLabel={t('ceo.overview.open_media_contexts', 'Open media contexts')}
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              solid
+              label={t('ceo.overview.active_users', 'Active users')}
+              value={activeUserCount}
+              icon={<Glyph d={glyphPaths.users} />}
+              hint={t('ceo.overview.total_users_hint', 'Total users: {{count}}', { count: totalUserCount })}
+              delta={inactiveUserCount > 0 ? String(inactiveUserCount) : undefined}
+            />
+            <StatCard
+              label={t('ceo.overview.open_tasks', 'Open tasks')}
+              value={totalOpenTasks}
+              icon={<Glyph d={glyphPaths.tasks} />}
+              iconTone="violet"
+              hint={t('ceo.overview.task_users_hint', 'Across {{count}} teammates', { count: workloadRanking.length })}
+              onOpen={() => navigate('/projects')}
+              openLabel={t('ceo.overview.open_projects', 'Open projects')}
+            />
+            <StatCard
+              label={t('ceo.overview.pending_payments', 'Pending payments')}
+              value={pendingPaymentsCount}
+              icon={<Glyph d={glyphPaths.wallet} />}
+              iconTone="warning"
+              hint={t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount })}
+              delta={pendingPaymentsCount > 0 ? String(pendingPaymentsCount) : undefined}
+              deltaTone="danger"
+            />
+          </>
+        )}
+
+        {hasSla ? (
+          <StatCard
+            label="O'rtacha vaqt"
+            value={slaAverage}
+            icon={<Glyph d={glyphPaths.clock} />}
+            iconTone="violet"
+            hint={t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit })}
+            delta={`${Math.round((slaOnTime / slaTotal) * 100)}%`}
+          />
+        ) : (
+          <StatCard
+            label={t('ceo.overview.recurring_total', 'Recurring monthly')}
+            value={formatCurrency(companyPaymentsQuery.data?.totalAmount ?? 0)}
+            icon={<Glyph d={glyphPaths.repeat} />}
+            iconTone="blue"
+            hint={t('ceo.overview.recurring_hint', '{{count}} reminders', { count: companyPayments.length })}
+          />
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-[18px]">
+        {hasMedia && mediaPosts.length > 0 ? (
+          <BarChartCard
+            className="min-w-0 flex-[1.5_1_520px]"
+            title={t('ceo.overview.media_performance', 'Media performance')}
+            deltaBadge={`${mediaConversion.toFixed(1)}%`}
+            deltaCaption={t('ceo.overview.media_conversion_caption', 'sent to lead conversion')}
+            periods={mediaMetricTabs}
+            period={mediaMetric}
+            onPeriodChange={setMediaMetric}
+            data={mediaBars}
+            highlightKey={mediaBars[0]?.key}
+            summaryTitle={t('ceo.overview.media_summary', 'Top performing media in the tracked window.')}
+            total={mediaMetricTotal}
+            totalCaption={t('ceo.overview.media_total_caption', 'across tracked media')}
+            emptyState={emptyHint}
+          />
+        ) : (
+          <BarChartCard
+            className="min-w-0 flex-[1.5_1_520px]"
+            title={t('ceo.overview.workload_chart', 'Workload by teammate')}
+            deltaCaption={t('ceo.overview.workload_caption', 'open tasks per teammate')}
+            data={workloadBars}
+            highlightKey={workloadBars[0]?.key}
+            summaryTitle={t('ceo.overview.workload_summary', 'Who carries the most open cards right now.')}
+            total={totalOpenTasks}
+            totalCaption={t('ceo.overview.open_tasks_total', 'open tasks')}
+            emptyState={emptyHint}
+          />
+        )}
+
+        {hasSla ? (
+          <GaugeDonut
+            className="min-w-0 flex-[1_1_360px]"
+            title="Lead Javob Vaqti"
+            action={
+              <span className="rounded-full bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--blue-text)]">
+                SLA: {slaLimit} min
+              </span>
+            }
+            segments={slaSegments}
+            centerValue={slaTotal}
+            centerCaption={t('ceo.overview.sla_center_caption', 'measured leads')}
+            emptyState={emptyHint}
+          />
+        ) : (
+          <GaugeDonut
+            className="min-w-0 flex-[1_1_360px]"
+            title={t('ceo.overview.team_state', 'Team status')}
+            segments={teamSegments}
+            centerValue={totalUserCount}
+            centerCaption={t('ceo.overview.team_caption', 'team members')}
+            emptyState={emptyHint}
+          />
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-[18px]">
+        {funnelStages.length > 0 ? (
+          <div className="flex min-w-0 flex-[1.3_1_440px] flex-col gap-4 rounded-[24px] bg-[var(--card)] p-[22px]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
+                {t('ceo.overview.funnel', 'Lead funnel')}
+              </span>
+              <span className="text-[13px] text-[var(--muted)]">
+                {t('ceo.overview.funnel_total', 'total')}{' '}
+                <b className="font-semibold tabular-nums text-[var(--foreground)]">{funnelTotal}</b>
+              </span>
+            </div>
+            <FunnelStages stages={funnelStages} />
+          </div>
+        ) : null}
+
+        <TaskList
+          className="min-w-0 flex-[1_1_300px]"
+          title={t('ceo.overview.payments_tasks', 'Payment checklist')}
+          tasks={paymentTasks}
+          onToggle={(key) => {
+            const match = payments.find((row) => String(row.id) === key)
+            if (match) {
+              void handleTogglePayment(match)
+            }
+          }}
+          onSelect={(key) => {
+            const match = payments.find((row) => String(row.id) === key)
+            if (match) {
+              openEditPaymentModal(match)
+            }
+          }}
+          action={
+            <button
+              type="button"
+              onClick={openCreatePaymentModal}
+              aria-label={t('ceo.dashboard.actions.create_payment')}
+              className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
+            >
+              <Glyph d={glyphPaths.plus} />
+            </button>
+          }
+          emptyState={
+            <p className="py-8 text-center text-[13px] text-[var(--muted)]">
+              {t('ceo.dashboard.payments.empty_title')}
+            </p>
+          }
+        />
+
+        <Leaderboard
+          className="min-w-0 flex-[1_1_300px]"
+          title={t('ceo.overview.top_workload', 'Busiest teammates')}
+          badge={t('ceo.overview.workload_badge', 'Open tasks')}
+          entries={workloadEntries}
+          emptyState={
+            <p className="py-8 text-center text-[13px] text-[var(--on-inverse-muted)]">
+              {t('ceo.dashboard.tasks.no_tasks', 'No open tasks')}
+            </p>
+          }
+        />
+      </div>
+
       <CrmDashboardCharts
         weekly={chartsQuery.data?.weekly}
         monthly={chartsQuery.data?.monthly}
@@ -635,62 +1112,9 @@ export function CeoDashboardPage() {
         onRetry={() => {
           void chartsQuery.refetch()
         }}
-        headerActions={
-          <ActionsMenu
-            label={t('common.actions')}
-            items={[
-              {
-                label: t('common.refresh'),
-                icon: (
-                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                    <path d="M1.84998 7.46254C1.84998 4.3586 4.37103 1.83754 7.47498 1.83754C8.91301 1.83754 10.2222 2.37681 11.218 3.26444L10.375 4.10744C10.2773 4.20517 10.2773 4.36346 10.375 4.46119C10.4727 4.55892 10.631 4.55892 10.7287 4.46119L12.1287 3.06119C12.2264 2.96346 12.2264 2.80517 12.1287 2.70744L10.7287 1.30744C10.631 1.20971 10.4727 1.20971 10.375 1.30744C10.2773 1.40517 10.2773 1.56346 10.375 1.66119L11.0821 2.36831C10.1064 1.5034 8.8507 0.987539 7.47498 0.987539C3.90164 0.987539 1 3.88918 1 7.46254C1 11.0359 3.90164 13.9375 7.47498 13.9375C11.0483 13.9375 13.95 11.0359 13.95 7.46254H13.1C13.1 10.5665 10.579 13.0875 7.47498 13.0875C4.37103 13.0875 1.84998 10.5665 1.84998 7.46254Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                  </svg>
-                ),
-                onSelect: () => void refreshAll(),
-              },
-              {
-                label: t('ceo.dashboard.actions.send_broadcast'),
-                icon: (
-                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                    <path d="M1.20308 1.04312C1.17743 1.0114 1.14304 0.998483 1.10954 1.0003C1.07604 1.00212 1.0428 1.01861 1.02217 1.04482C1.00147 1.07112 0.993416 1.10425 0.99966 1.13524C1.0059 1.16623 1.02613 1.1942 1.05562 1.21175L13.8056 8.71175C13.8407 8.73238 13.8824 8.7332 13.918 8.71392C13.9536 8.69464 13.9774 8.65851 13.982 8.61802C13.9867 8.57753 13.9714 8.53924 13.9416 8.51478L1.20308 1.04312ZM1.00391 13.9961L1.00391 13.9961C1.00366 13.9961 1.00341 13.9961 1.00316 13.9961C0.96346 13.9959 0.925828 13.9782 0.90151 13.9482C0.877192 13.9182 0.868725 13.8791 0.878413 13.8423L2.24357 8.61833L8.00004 7.5L2.24357 6.38167L0.878413 1.15774C0.868725 1.1209 0.877192 1.08179 0.90151 1.05182C0.925828 1.02185 0.96346 1.00407 1.00316 1.00388C1.00341 1.00388 1.00366 1.00388 1.00391 1.00388C1.03664 1.00388 1.06913 1.01639 1.09241 1.03967L13.9124 13.8597C13.9405 13.8878 13.9536 13.9261 13.9479 13.9649C13.9422 14.0037 13.9184 14.0372 13.8839 14.0551C13.8493 14.0729 13.8087 14.0726 13.7744 14.0543L1.00391 13.9961Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                  </svg>
-                ),
-                onSelect: () => setIsBroadcastOpen(true),
-              },
-              {
-                label: t('ceo.dashboard.actions.create_payment'),
-                icon: (
-                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                    <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                  </svg>
-                ),
-                onSelect: openCreatePaymentModal,
-              },
-              {
-                label: t('ceo.dashboard.recurring.create'),
-                icon: (
-                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                    <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                  </svg>
-                ),
-                onSelect: openCreateCompanyPaymentModal,
-              },
-              {
-                label: t('ceo.workday.dialog.create_action', { defaultValue: 'Create Override' }),
-                icon: (
-                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                    <path d="M4.5 1C4.22386 1 4 1.22386 4 1.5C4 1.77614 4.22386 2 4.5 2H7V7H2V4.5C2 4.22386 1.77614 4 1.5 4C1.22386 4 1 4.22386 1 4.5V7.5C1 7.63807 1.05268 7.76321 1.14645 7.85355C1.23679 7.94732 1.36193 8 1.5 8H7V13.5C7 13.7761 7.22386 14 7.5 14C7.77614 14 8 13.7761 8 13.5V8H13.5C13.7761 8 14 7.77614 14 7.5C14 7.22386 13.7761 7 13.5 7H8V2H10.5C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                  </svg>
-                ),
-                onSelect: () => setIsOverrideOpen(true),
-              },
-            ]}
-          />
-        }
       />
 
       <div className="grid gap-[18px] xl:grid-cols-2">
-        {/* Task Overview */}
         <Card noPadding>
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>{t('ceo.dashboard.tasks.title', 'Task Overview')}</CardTitle>
@@ -747,7 +1171,6 @@ export function CeoDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Right column: Company Payment Reminders + CEO Payment List */}
         <div className="flex flex-col gap-[18px]">
           <Card noPadding>
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
@@ -832,10 +1255,10 @@ export function CeoDashboardPage() {
               <CardTitle>{t('ceo.dashboard.payments.title')}</CardTitle>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="success" dot>
-                  {t('ceo.dashboard.payments.paid_count', { count: payments.filter((row) => row.payment).length })}
+                  {t('ceo.dashboard.payments.paid_count', { count: paidPaymentsCount })}
                 </Badge>
-                <Badge variant="warning" dot pulse={payments.some((row) => !row.payment)}>
-                  {t('ceo.dashboard.payments.pending_count', { count: payments.filter((row) => !row.payment).length })}
+                <Badge variant="warning" dot pulse={pendingPaymentsCount > 0}>
+                  {t('ceo.dashboard.payments.pending_count', { count: pendingPaymentsCount })}
                 </Badge>
               </div>
             </CardHeader>
@@ -906,47 +1329,27 @@ export function CeoDashboardPage() {
         </div>
       </div>
 
-      {/* Instagram Media Funnel */}
-      {dashboardQuery.data?.statistics?.instagram_media_posts !== undefined && (
+      {hasMedia && (
         <Card noPadding>
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>Instagram Media Funnel</CardTitle>
             <Badge variant="blue" dot>
-              {dashboardQuery.data.statistics.instagram_media_posts.length} media
+              {mediaPosts.length} media
             </Badge>
           </CardHeader>
           <CardContent className="space-y-[18px]">
-            <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-              {([
-                { label: 'Jami yuborildi', value: dashboardQuery.data.statistics.instagram_media_total_sent_count ?? 0, tone: 'blue', glyph: glyphPaths.send },
-                { label: 'Jami lead', value: dashboardQuery.data.statistics.instagram_media_total_lead_count ?? 0, tone: 'success', glyph: glyphPaths.lead },
-                { label: 'Contacted', value: dashboardQuery.data.statistics.instagram_media_total_contacted_count ?? 0, tone: 'blue', glyph: glyphPaths.chat },
-                { label: 'Continuing', value: dashboardQuery.data.statistics.instagram_media_total_continuing_count ?? 0, tone: 'violet', glyph: glyphPaths.arrow },
-                { label: 'Noaniq yuborildi', value: dashboardQuery.data.statistics.instagram_media_unknown_sent_count ?? 0, tone: 'warning', glyph: glyphPaths.help },
-                { label: 'Noaniq lead', value: dashboardQuery.data.statistics.instagram_media_unknown_lead_count ?? 0, tone: 'warning', glyph: glyphPaths.help },
-              ] as ReadonlyArray<{ label: string; value: number; tone: Tone; glyph: string }>).map((item) => (
-                <StatCard
-                  key={item.label}
-                  label={item.label}
-                  value={item.value}
-                  icon={<Glyph d={item.glyph} />}
-                  iconTone={item.tone}
-                  className={statPanelClassName}
-                />
-              ))}
-            </div>
-            {dashboardQuery.data.statistics.instagram_media_posts.length === 0 ? (
+            {mediaPosts.length === 0 ? (
               <p className="rounded-[18px] bg-[var(--muted-surface)] py-6 text-center text-sm text-[var(--muted)]">Hali media context qo'shilmagan.</p>
             ) : (
               <>
-                {(dashboardQuery.data.statistics.instagram_media_unknown_sent_count ?? 0) > 0 && (
+                {mediaUnknownSent > 0 && (
                   <Alert tone="warning">
                     Ba'zi Instagram media xabarlari contextga bog'lanmagan. Media Contexts sahifasidan post/reel/story link qo'shing.
                   </Alert>
                 )}
                 <DataTable
                   caption="Instagram media posts"
-                  rows={dashboardQuery.data.statistics.instagram_media_posts}
+                  rows={mediaPosts}
                   getRowKey={(row) => String(row.post_id)}
                   emptyState={<EmptyStateBlock eyebrow="CEO Workspace" title="No media" />}
                   columns={[
@@ -996,35 +1399,29 @@ export function CeoDashboardPage() {
         </Card>
       )}
 
-      {/* Lead Response Metrics */}
-      {(dashboardQuery.data?.statistics?.lead_response_total_count ?? 0) > 0 && (
+      {hasSla && (
         <Card noPadding>
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>Lead Javob Vaqti</CardTitle>
+            <CardTitle>{t('ceo.overview.note_discipline', 'Note discipline')}</CardTitle>
             <Badge variant="blue" dot>
-              SLA: {dashboardQuery.data?.statistics?.lead_response_limit_minutes ?? 5} min
+              {t('ceo.overview.measured_leads', '{{count}} leads measured', { count: slaTotal })}
             </Badge>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {([
-                { label: 'Jami lead', value: dashboardQuery.data?.statistics?.lead_response_total_count ?? 0, tone: 'blue', glyph: glyphPaths.lead },
-                { label: "O'z vaqtida", value: dashboardQuery.data?.statistics?.lead_response_on_time_count ?? 0, tone: 'success', glyph: glyphPaths.check },
-                { label: 'Kech boglanildi', value: dashboardQuery.data?.statistics?.lead_response_late_count ?? 0, tone: 'danger', glyph: glyphPaths.clock },
-                { label: "Status o'zgarmadi", value: dashboardQuery.data?.statistics?.lead_response_no_status_change_count ?? 0, tone: 'warning', glyph: glyphPaths.alert },
-                { label: 'Note yozilgan', value: dashboardQuery.data?.statistics?.lead_response_note_written_count ?? 0, tone: 'blue', glyph: glyphPaths.note },
-                { label: 'Note yozilmagan', value: dashboardQuery.data?.statistics?.lead_response_note_missing_count ?? 0, tone: 'warning', glyph: glyphPaths.note },
-                { label: 'Note yoqsiz status', value: dashboardQuery.data?.statistics?.lead_response_status_changed_without_note_count ?? 0, tone: 'violet', glyph: glyphPaths.alert },
-                { label: "O'rtacha vaqt", value: dashboardQuery.data?.statistics?.lead_response_average_human ?? '-', tone: 'violet', glyph: glyphPaths.clock, solid: true },
-              ] as ReadonlyArray<{ label: string; value: string | number; tone: Tone; glyph: string; solid?: boolean }>).map((item) => (
+                { label: 'Jami lead', value: slaTotal, tone: 'blue', glyph: glyphPaths.lead },
+                { label: 'Note yozilgan', value: slaNoteWritten, tone: 'success', glyph: glyphPaths.note },
+                { label: 'Note yozilmagan', value: slaNoteMissing, tone: 'warning', glyph: glyphPaths.note },
+                { label: 'Note yoqsiz status', value: slaNoNote, tone: 'violet', glyph: glyphPaths.alert },
+              ] as ReadonlyArray<{ label: string; value: number; tone: Tone; glyph: string }>).map((item) => (
                 <StatCard
                   key={item.label}
                   label={item.label}
                   value={item.value}
                   icon={<Glyph d={item.glyph} />}
                   iconTone={item.tone}
-                  solid={item.solid}
-                  className={item.solid ? 'min-h-0 gap-3 rounded-[18px] p-4' : statPanelClassName}
+                  className={statPanelClassName}
                 />
               ))}
             </div>
@@ -1032,7 +1429,6 @@ export function CeoDashboardPage() {
         </Card>
       )}
 
-      {/* Task list dialog */}
       <Dialog
         open={isTaskDialogOpen}
         onClose={handleCloseTaskDialog}

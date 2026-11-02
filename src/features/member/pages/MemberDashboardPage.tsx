@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { developerKpiService, type SalaryEstimate } from '../../../shared/api/services/developer-kpi.service'
 import { useSearchParams } from 'react-router-dom'
 import type { CurrentUser } from '../../../shared/api/types'
 import type { CeoUserRecord } from '../../../shared/api/services/ceo.service'
 import { membersService } from '../../../shared/api/services/members.service'
 import { updateTrackingService } from '../../../shared/api/services/updateTracking.service'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -13,9 +14,14 @@ import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
+import { BarChartCard, type BarDatum } from '../../../shared/ui/charts/bar-chart-card'
+import { FunnelStages, type FunnelStage } from '../../../shared/ui/charts/funnel-stages'
+import { GaugeDonut, type GaugeSegment } from '../../../shared/ui/charts/gauge-donut'
+import { Leaderboard, type LeaderboardEntry } from '../../../shared/ui/charts/leaderboard'
+import { Sparkline } from '../../../shared/ui/charts/sparkline'
+import { TaskList, type TaskRow } from '../../../shared/ui/charts/task-list'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
-import { PageHeader } from '../../../shared/ui/page-header'
 import { Progress } from '../../../shared/ui/progress'
 import { SelectField } from '../../../shared/ui/select-field'
 import { SectionTitle } from '../../../shared/ui/section-title'
@@ -42,6 +48,8 @@ import {
   getMonthName,
 } from '../../faults/lib/salaryEstimates'
 
+type ChartMode = 'count' | 'rate'
+
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
@@ -58,6 +66,18 @@ function parsePeriodNumber(value: string | null, fallback: number, min: number, 
   }
 
   return clampNumber(parsed, min, max)
+}
+
+function safeNumber(value?: number | null) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+function scrollToSection(sectionId: string) {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function createMemberUser(user: CurrentUser): CeoUserRecord {
@@ -206,6 +226,51 @@ function TargetIcon() {
   )
 }
 
+function WalletIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 16.5z" />
+      <path d="M3 8.5V7a2 2 0 0 1 2-2h11M16.5 12.5h.01" />
+    </svg>
+  )
+}
+
+function BaseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="7" width="18" height="12" rx="3" />
+      <path d="M8 7V5h8v2M3 12h18" />
+    </svg>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </svg>
+  )
+}
+
+function MinusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M8.5 12h7" />
+    </svg>
+  )
+}
+
+function TrophyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" />
+      <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
+    </svg>
+  )
+}
+
 export function MemberDashboardPage() {
   const monthOptions = useMemo(() => getMonthOptions(), [])
   const lt = translateCurrentLiteral
@@ -227,9 +292,11 @@ export function MemberDashboardPage() {
 
     return uzFallback
   }
+  const { t } = useLocale()
   const { user } = useAuth()
   const { showToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [chartMode, setChartMode] = useState<ChartMode>('count')
   const year = parsePeriodNumber(searchParams.get('year'), defaultYear, 2020, 2035)
   const month = parsePeriodNumber(searchParams.get('month'), defaultMonth, 1, 12)
   const memberUser = user ? createMemberUser(user) : null
@@ -283,6 +350,186 @@ export function MemberDashboardPage() {
     )
   }, [data?.detail.updateCalendar?.days])
 
+  const weeklyBuckets = useMemo(() => {
+    const days = data?.detail.updateCalendar?.days ?? []
+    const buckets = new Map<number, { submitted: number; elapsed: number }>()
+
+    for (const day of days) {
+      if (day.status === 'future' || day.status === 'sunday') {
+        continue
+      }
+
+      const index = Math.max(1, Math.ceil(day.day / 7))
+      const bucket = buckets.get(index) ?? { submitted: 0, elapsed: 0 }
+
+      bucket.elapsed += 1
+
+      if (day.status === 'submitted') {
+        bucket.submitted += 1
+      }
+
+      buckets.set(index, bucket)
+    }
+
+    return [...buckets.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(([index, bucket]) => ({
+        index,
+        submitted: bucket.submitted,
+        elapsed: bucket.elapsed,
+        percent: bucket.elapsed > 0 ? Math.round((bucket.submitted / bucket.elapsed) * 100) : 0,
+      }))
+  }, [data?.detail.updateCalendar?.days])
+
+  const weeklyBars = useMemo<BarDatum[]>(
+    () =>
+      weeklyBuckets.map((bucket) => ({
+        key: `week-${bucket.index}`,
+        label: t('member.overview.week', 'Week {{index}}', { index: bucket.index }),
+        value: chartMode === 'rate' ? bucket.percent : bucket.submitted,
+        amount: chartMode === 'rate' ? `${bucket.percent}%` : `${bucket.submitted}/${bucket.elapsed}`,
+        delta: chartMode === 'rate' ? formatCount(bucket.submitted) : `${bucket.percent}%`,
+      })),
+    [chartMode, t, weeklyBuckets],
+  )
+
+  const updatesTrend = useMemo(() => {
+    const days = data?.detail.updateCalendar?.days ?? []
+    const points: number[] = []
+    let running = 0
+
+    for (const day of days) {
+      if (day.status === 'future' || day.status === 'sunday') {
+        continue
+      }
+
+      if (day.status === 'submitted') {
+        running += 1
+      }
+
+      points.push(running)
+    }
+
+    return points
+  }, [data?.detail.updateCalendar?.days])
+
+  const gaugeSegments = useMemo<GaugeSegment[]>(
+    () =>
+      [
+        { key: 'submitted', label: t('member.overview.submitted', 'Submitted'), value: calendarCounts.submitted, color: '#A6E83B' },
+        { key: 'missing', label: t('member.overview.missing', 'Missing'), value: calendarCounts.missing, color: '#FFB86B' },
+        { key: 'open', label: t('member.overview.open', 'Still open'), value: calendarCounts.open, color: '#C6D4FF' },
+        { key: 'off', label: t('member.overview.days_off', 'Days off'), value: calendarCounts.off, color: '#B7D3C6' },
+      ].filter((segment) => segment.value > 0),
+    [calendarCounts.missing, calendarCounts.off, calendarCounts.open, calendarCounts.submitted, t],
+  )
+
+  const salaryStages = useMemo<FunnelStage[]>(() => {
+    const report = data?.detail.report
+
+    if (!report) {
+      return []
+    }
+
+    const base = safeNumber(report.baseSalary)
+    const bonus = safeNumber(report.bonusAmount)
+    const deduction = safeNumber(report.deductionAmount)
+    const final = safeNumber(report.finalSalary)
+    const share = (value: number) => (base > 0 ? clampNumber(Math.round((value / base) * 100), 0, 100) : 0)
+
+    return [
+      {
+        key: 'base',
+        label: translateCurrentLiteral('Base salary'),
+        count: 100,
+        value: formatAmount(report.baseSalary),
+        percent: 100,
+        icon: <BaseIcon />,
+      },
+      {
+        key: 'bonus',
+        label: translateCurrentLiteral('Bonus amount'),
+        count: Math.round(safeNumber(report.totalBonusPercent)),
+        value: formatAmount(report.bonusAmount),
+        percent: share(bonus),
+        icon: <PlusIcon />,
+      },
+      {
+        key: 'deduction',
+        label: translateCurrentLiteral('Deduction amount'),
+        count: Math.round(safeNumber(report.penaltyPercentage)),
+        value: formatAmount(report.deductionAmount),
+        percent: share(deduction),
+        icon: <MinusIcon />,
+      },
+      {
+        key: 'final',
+        label: translateCurrentLiteral('Final salary'),
+        count: share(final),
+        value: formatAmount(report.finalSalary),
+        percent: share(final),
+        icon: <TrophyIcon />,
+        hero: true,
+      },
+    ]
+  }, [data?.detail.report])
+
+  const checklistTasks = useMemo<TaskRow[]>(() => {
+    const days = data?.detail.updateCalendar?.days ?? []
+
+    return days
+      .filter((day) => day.status === 'submitted' || day.status === 'missing' || day.status === 'neutral')
+      .sort((left, right) => right.day - left.day)
+      .slice(0, 6)
+      .map((day) => {
+        const isSubmitted = day.status === 'submitted'
+        const isMissing = day.status === 'missing'
+
+        return {
+          key: day.date,
+          title: formatDetailDate(day.date),
+          meta: day.weekdayLabel,
+          tag: isSubmitted
+            ? t('member.overview.tag_logged', 'logged')
+            : isMissing
+              ? t('member.overview.tag_missing', 'missing')
+              : t('member.overview.tag_open', 'open'),
+          tone: isSubmitted ? 'success' : isMissing ? 'danger' : 'warning',
+          done: isSubmitted,
+        }
+      })
+  }, [data?.detail.updateCalendar?.days, t])
+
+  const kpiDimensions = useMemo(
+    () => [
+      { key: 'delivery' as const, label: t('member.kpi.delivery', 'Delivery'), tone: 'blue' as const },
+      { key: 'deadline' as const, label: t('member.kpi.deadline', 'Deadline'), tone: 'violet' as const },
+      { key: 'quality' as const, label: t('member.kpi.quality', 'Quality'), tone: 'success' as const },
+      { key: 'team' as const, label: t('member.kpi.team', 'Team'), tone: 'warning' as const },
+      { key: 'discipline' as const, label: t('member.kpi.discipline', 'Discipline'), tone: 'lime' as const },
+    ],
+    [t],
+  )
+
+  const kpiRanking = useMemo<LeaderboardEntry[]>(() => {
+    const scores = kpiQuery.data?.scores
+
+    if (!scores) {
+      return []
+    }
+
+    return kpiDimensions
+      .map((dimension) => ({ dimension, score: safeNumber(scores[dimension.key]) }))
+      .sort((left, right) => right.score - left.score)
+      .map(({ dimension, score }) => ({
+        key: dimension.key,
+        name: dimension.label,
+        initials: dimension.label.slice(0, 2).toUpperCase(),
+        amount: `${score.toFixed(1)}%`,
+        percent: score,
+      }))
+  }, [kpiDimensions, kpiQuery.data?.scores])
+
   const elapsedWorkingDays = calendarCounts.submitted + calendarCounts.missing + calendarCounts.open
   const stats = data?.stats
   const expectedWeeklyUpdates = typeof stats?.expected_updates_per_week === 'number' ? stats.expected_updates_per_week : undefined
@@ -301,6 +548,8 @@ export function MemberDashboardPage() {
   const targetReached =
     (typeof weeklyCompletion === 'number' && weeklyCompletion >= 100) ||
     (typeof expectedWeeklyUpdates === 'number' && expectedWeeklyUpdates > 0 && typeof updatesThisWeek === 'number' && updatesThisWeek >= expectedWeeklyUpdates)
+  const submittedRate = elapsedWorkingDays > 0 ? (calendarCounts.submitted / elapsedWorkingDays) * 100 : 0
+  const highlightWeekKey = weeklyBars.length > 0 ? weeklyBars[weeklyBars.length - 1].key : undefined
 
   function updatePeriod(next: { year?: number; month?: number }) {
     const nextYear = next.year ?? year
@@ -397,55 +646,53 @@ export function MemberDashboardPage() {
     )
   const salaryEstimateLabel = `${lt('Salary estimate for')} ${month}/${year}`
   const userBadgeLabel = tr(`User #${detail.report.id}`, `Xodim #${detail.report.id}`, `Сотрудник #${detail.report.id}`)
-  const penaltiesSummary = detail.penalties.length > 0
-    ? tr(`${detail.penalties.length} entries`, `${detail.penalties.length} ta yozuv`, `${detail.penalties.length} записей`)
-    : tr('No deductions were recorded for this period.', 'Bu davr uchun ayirma qayd etilmadi.', 'За этот период удержания не зафиксированы.')
-  const bonusesSummary = detail.bonuses.length > 0
-    ? tr(`${detail.bonuses.length} entries`, `${detail.bonuses.length} ta yozuv`, `${detail.bonuses.length} записей`)
-    : tr('No bonus records returned.', 'Bonus yozuvlari qaytmadi.', 'Записи бонусов не вернулись.')
+  const emptyHint = (
+    <p className="py-10 text-center text-[13px] text-[var(--muted)]">
+      {t('member.overview.no_data', 'No data for this period yet.')}
+    </p>
+  )
 
   return (
-    <section className="page-enter space-y-[18px]">
-      {void penaltiesSummary}
-      {void bonusesSummary}
+    <section className="page-enter flex flex-col gap-[18px]">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="ui-page-title text-[var(--foreground)]">{detail.report.fullName}</h1>
+          <p className="text-sm text-[var(--muted)]">
+            {t('member.overview.subtitle', 'Weekly updates, salary snapshot and KPI for the selected month.')}
+          </p>
+        </div>
 
-      <PageHeader
-        eyebrow={lt('Member Dashboard')}
-        title={detail.report.fullName}
-        description={detail.report.roleLabel}
-        actions={
-          <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:w-auto xl:min-w-[430px]">
-            <div className="min-w-0">
-              <Label className="mb-1.5 block">{lt('Year')}</Label>
-              <Input
-                type="number"
-                min="2020"
-                max="2035"
-                value={year}
-                onChange={(event) => updatePeriod({ year: clampNumber(Number(event.target.value) || defaultYear, 2020, 2035) })}
-              />
-            </div>
-            <div className="min-w-0">
-              <Label className="mb-1.5 block">{lt('Month')}</Label>
-              <SelectField
-                value={String(month)}
-                options={monthOptions}
-                onValueChange={(value) => updatePeriod({ month: clampNumber(Number(value), 1, 12) })}
-              />
-            </div>
-            <div className="flex items-end">
-              <Button
-                variant="secondary"
-                leftIcon={<RefreshIcon />}
-                onClick={() => void handleRefresh()}
-                loading={dashboardQuery.isLoading}
-              >
-                {lt('Refresh')}
-              </Button>
-            </div>
+        <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:w-auto xl:min-w-[430px]">
+          <div className="min-w-0">
+            <Label className="mb-1.5 block">{lt('Year')}</Label>
+            <Input
+              type="number"
+              min="2020"
+              max="2035"
+              value={year}
+              onChange={(event) => updatePeriod({ year: clampNumber(Number(event.target.value) || defaultYear, 2020, 2035) })}
+            />
           </div>
-        }
-      />
+          <div className="min-w-0">
+            <Label className="mb-1.5 block">{lt('Month')}</Label>
+            <SelectField
+              value={String(month)}
+              options={monthOptions}
+              onValueChange={(value) => updatePeriod({ month: clampNumber(Number(value), 1, 12) })}
+            />
+          </div>
+          <div className="flex items-end">
+            <Button
+              variant="secondary"
+              leftIcon={<RefreshIcon />}
+              onClick={() => void handleRefresh()}
+              loading={dashboardQuery.isLoading}
+            >
+              {lt('Refresh')}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="secondary">{userBadgeLabel}</Badge>
@@ -455,21 +702,7 @@ export function MemberDashboardPage() {
         </Badge>
       </div>
 
-      <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-3">
-        <StatCard
-          label={lt('Expected updates (to date)')}
-          value={elapsedWorkingDays}
-          hint={expectedUpdatesHint}
-          icon={<CalendarIcon />}
-          iconTone="blue"
-        />
-        <StatCard
-          label={lt('This week progress')}
-          value={formatCount(updatesThisWeek)}
-          hint={weeklyProgressHint}
-          icon={<PulseIcon />}
-          iconTone="violet"
-        />
+      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
         <StatCard
           solid
           label={lt('Weekly completion')}
@@ -483,6 +716,139 @@ export function MemberDashboardPage() {
               tone={targetReached || (weeklyCompletion ?? 0) >= 60 ? 'lime' : 'warning'}
               onInverse
             />
+          }
+        />
+        <StatCard
+          label={lt('This week progress')}
+          value={formatCount(updatesThisWeek)}
+          hint={weeklyProgressHint}
+          icon={<PulseIcon />}
+          iconTone="violet"
+          delta={typeof weeklyRemaining === 'number' && weeklyRemaining > 0 ? formatCount(weeklyRemaining) : undefined}
+          deltaTone="neutral"
+          onOpen={() => scrollToSection('member-update-checklist')}
+        />
+        <StatCard
+          label={lt('Expected updates (to date)')}
+          value={elapsedWorkingDays}
+          hint={expectedUpdatesHint}
+          icon={<CalendarIcon />}
+          iconTone="blue"
+          footer={updatesTrend.length > 1 ? <Sparkline points={updatesTrend} /> : undefined}
+          className={updatesTrend.length > 1 ? 'overflow-hidden pb-0' : undefined}
+        />
+        <StatCard
+          label={lt('Final salary')}
+          value={formatAmount(detail.report.finalSalary)}
+          hint={salaryEstimateLabel}
+          icon={<WalletIcon />}
+          iconTone="lime"
+          delta={Number.isFinite(detail.report.totalBonusPercent) ? formatPercent(detail.report.totalBonusPercent) : undefined}
+          deltaTone={detail.report.hasPenalty ? 'danger' : 'success'}
+          onOpen={() => scrollToSection('member-salary-snapshot')}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-[18px]">
+        <BarChartCard
+          className="min-w-0 flex-[1.5_1_520px]"
+          title={t('member.overview.rhythm', 'Update rhythm')}
+          deltaBadge={typeof monthlyCompletion === 'number' ? formatPercent(monthlyCompletion) : undefined}
+          deltaCaption={t('member.overview.rhythm_caption', 'Submitted updates per week of the selected month')}
+          periods={[
+            { value: 'count' as ChartMode, label: t('member.overview.mode_updates', 'Updates') },
+            { value: 'rate' as ChartMode, label: t('member.overview.mode_completion', 'Completion') },
+          ]}
+          period={chartMode}
+          onPeriodChange={setChartMode}
+          data={weeklyBars}
+          highlightKey={highlightWeekKey}
+          summaryTitle={t('member.overview.rhythm_summary', 'Each bar counts only the working days that already passed.')}
+          total={chartMode === 'rate' ? formatPercent(submittedRate) : formatCount(calendarCounts.submitted)}
+          totalCaption={
+            chartMode === 'rate'
+              ? t('member.overview.completion_caption', 'average completion')
+              : t('member.overview.updates_caption', 'updates logged')
+          }
+          emptyState={emptyHint}
+        />
+
+        <GaugeDonut
+          className="min-w-0 flex-[1_1_360px]"
+          title={t('member.overview.calendar', 'Update calendar')}
+          action={
+            <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--muted-strong)]">
+              {getMonthName(month)}
+            </span>
+          }
+          segments={gaugeSegments}
+          centerValue={formatPercent(monthlyCompletion)}
+          centerCaption={lt('monthly completion')}
+          emptyState={emptyHint}
+        />
+      </div>
+
+      <div id="member-update-checklist" className="flex flex-wrap gap-[18px]">
+        <div className="flex min-w-0 flex-[1.3_1_440px] flex-col gap-4 rounded-[24px] bg-[var(--card)] p-[22px]">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
+              {t('member.overview.salary_flow', 'Salary flow')}
+            </span>
+            <span className="text-[13px] text-[var(--muted)]">
+              {t('member.overview.salary_flow_final', 'final')}{' '}
+              <b className="font-semibold tabular-nums text-[var(--foreground)]" data-ui-number="true">
+                {formatAmount(detail.report.finalSalary)}
+              </b>
+            </span>
+          </div>
+
+          <FunnelStages stages={salaryStages} />
+
+          <div className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-[13px] font-semibold text-[var(--foreground)]">{lt('Productivity')}</span>
+              <span className="text-[13px] font-semibold tabular-nums text-[var(--muted-strong)]" data-ui-number="true">
+                {formatCount(detail.report.updateDays)}/{formatCount(detail.report.workingDays)} · {formatPercent(detail.report.productivityPercentage)}
+              </span>
+            </div>
+            <Progress
+              className="mt-3"
+              value={Number.isFinite(detail.report.productivityPercentage) ? detail.report.productivityPercentage : 0}
+              tone={detail.report.qualifiesProductivityBonus ? 'lime' : 'blue'}
+            />
+          </div>
+        </div>
+
+        <TaskList
+          className="min-w-0 flex-[1_1_300px]"
+          title={t('member.overview.checklist', 'Update checklist')}
+          tasks={checklistTasks}
+          action={
+            calendarCounts.missing > 0 ? (
+              <span
+                className="rounded-full bg-[var(--warning-dim)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--warning-text)]"
+                data-ui-number="true"
+              >
+                {calendarCounts.missing}
+              </span>
+            ) : undefined
+          }
+          emptyState={
+            <p className="py-8 text-center text-[13px] text-[var(--muted)]">
+              {t('member.overview.no_days', 'No working days returned for this month.')}
+            </p>
+          }
+        />
+
+        <Leaderboard
+          className="min-w-0 flex-[1_1_300px]"
+          title={t('member.overview.kpi_ranking', 'KPI score ranking')}
+          badge={kpiEstimate ? `${kpiEstimate.scores.final_kpi.toFixed(1)}%` : undefined}
+          entries={kpiRanking}
+          emptyState={
+            <p className="py-8 text-center text-[13px] text-[var(--on-inverse-muted)]">
+              {lt('No KPI data available for this period.')}
+            </p>
           }
         />
       </div>
@@ -505,7 +871,7 @@ export function MemberDashboardPage() {
         </Alert>
       ) : null}
 
-      <Card>
+      <Card id="member-salary-snapshot">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <SectionTitle title={lt('My Salary Snapshot')} description={salaryEstimateLabel} />
 
@@ -558,7 +924,6 @@ export function MemberDashboardPage() {
           </div>
         </div>
 
-        {/* Salary Calculation Formula and Breakdown */}
         {(detail.report.formulaText || detail.report.calculationBreakdown) && (
           <div className="mt-[22px] space-y-[18px]">
             <SectionTitle
@@ -693,7 +1058,6 @@ export function MemberDashboardPage() {
         <DeliveryBonusSection items={detail.deliveryBonuses} />
       </Card>
 
-      {/* Developer KPI Section */}
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SectionTitle eyebrow={lt('Developer KPI')} title={lt('KPI Score Breakdown')} />
@@ -716,13 +1080,7 @@ export function MemberDashboardPage() {
         ) : kpiEstimate ? (
           <>
             <div className="mt-[18px] space-y-3.5">
-              {([
-                { key: 'delivery', label: lt('Delivery'), tone: 'blue' },
-                { key: 'deadline', label: lt('Deadline'), tone: 'violet' },
-                { key: 'quality', label: lt('Quality'), tone: 'success' },
-                { key: 'team', label: lt('Team'), tone: 'warning' },
-                { key: 'discipline', label: lt('Discipline'), tone: 'lime' },
-              ] as const).map(({ key, label, tone }) => {
+              {kpiDimensions.map(({ key, label, tone }) => {
                 const score = kpiEstimate.scores[key]
                 return (
                   <div key={key}>
