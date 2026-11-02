@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAppShell } from '../../app/hooks/useAppShell'
@@ -295,8 +296,8 @@ export function AppSidebar() {
             aria-label={t('shell.toggle_navigation')}
             className="flex items-center gap-2.5 px-2 text-left"
           >
-            <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-xl bg-[var(--primary)] text-[15px] font-bold tracking-[-0.02em] text-white">
-              {getInitials(user?.name, user?.surname)}
+            <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-xl bg-[var(--primary)] text-[17px] font-bold tracking-[-0.02em] text-white">
+              {env.appName.trim().charAt(0).toUpperCase() || 'C'}
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="truncate text-[18px] font-bold tracking-[-0.02em] text-[var(--shell-app-name-color)]">
@@ -390,15 +391,11 @@ export function AppSidebar() {
                                 : 'text-[var(--muted)] hover:bg-[var(--shell-nav-hover-bg)] hover:text-[var(--foreground)]',
                             )}
                           >
-                            <svg
-                              viewBox="0 0 16 16"
+                            <ChevronDown
+                              strokeWidth={1.8}
+                              aria-hidden="true"
                               className={cn('h-3.5 w-3.5 transition-transform duration-200', isProjectsExpanded && 'rotate-180')}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                            >
-                              <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            />
                           </button>
                         </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Camera } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Button } from '../../../shared/ui/button'
@@ -225,10 +226,7 @@ export function ProjectFormModal({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <svg viewBox="0 0 24 24" className="h-6 w-6 text-[var(--muted)]" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M3 9a2 2 0 0 1 2-2h.93a2 2 0 0 0 1.664-.89l.812-1.22A2 2 0 0 1 10.07 4h3.86a2 2 0 0 1 1.664.89l.812 1.22A2 2 0 0 0 18.07 7H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" strokeLinecap="round" strokeLinejoin="round" />
-                  <circle cx="12" cy="13" r="3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <Camera strokeWidth={1.8} className="h-6 w-6 text-[var(--muted)]" />
               )}
             </div>
 

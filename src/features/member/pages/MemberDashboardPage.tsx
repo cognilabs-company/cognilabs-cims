@@ -1,4 +1,14 @@
 import { useMemo, useState } from 'react'
+import {
+  Activity,
+  BriefcaseBusiness,
+  Calendar,
+  CircleMinus,
+  CirclePlus,
+  Target,
+  Trophy,
+  Wallet,
+} from 'lucide-react'
 import { developerKpiService, type SalaryEstimate } from '../../../shared/api/services/developer-kpi.service'
 import { useSearchParams } from 'react-router-dom'
 import type { CurrentUser } from '../../../shared/api/types'
@@ -199,78 +209,6 @@ async function loadMemberDashboardData(memberUser: CeoUserRecord, year: number, 
   return result
 }
 
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="16" rx="3.5" />
-      <path d="M8 3v4M16 3v4M3 10h18" />
-    </svg>
-  )
-}
-
-function PulseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 12h4l2.5-6 4 12 2.5-6h5" />
-    </svg>
-  )
-}
-
-function TargetIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="8.5" />
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 12h.01" />
-    </svg>
-  )
-}
-
-function WalletIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 16.5z" />
-      <path d="M3 8.5V7a2 2 0 0 1 2-2h11M16.5 12.5h.01" />
-    </svg>
-  )
-}
-
-function BaseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="7" width="18" height="12" rx="3" />
-      <path d="M8 7V5h8v2M3 12h18" />
-    </svg>
-  )
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 8.5v7M8.5 12h7" />
-    </svg>
-  )
-}
-
-function MinusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M8.5 12h7" />
-    </svg>
-  )
-}
-
-function TrophyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" />
-      <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
-    </svg>
-  )
-}
-
 export function MemberDashboardPage() {
   const monthOptions = useMemo(() => getMonthOptions(), [])
   const lt = translateCurrentLiteral
@@ -444,7 +382,7 @@ export function MemberDashboardPage() {
         count: 100,
         value: formatAmount(report.baseSalary),
         percent: 100,
-        icon: <BaseIcon />,
+        icon: <BriefcaseBusiness className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />,
       },
       {
         key: 'bonus',
@@ -452,7 +390,7 @@ export function MemberDashboardPage() {
         count: Math.round(safeNumber(report.totalBonusPercent)),
         value: formatAmount(report.bonusAmount),
         percent: share(bonus),
-        icon: <PlusIcon />,
+        icon: <CirclePlus className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />,
       },
       {
         key: 'deduction',
@@ -460,7 +398,7 @@ export function MemberDashboardPage() {
         count: Math.round(safeNumber(report.penaltyPercentage)),
         value: formatAmount(report.deductionAmount),
         percent: share(deduction),
-        icon: <MinusIcon />,
+        icon: <CircleMinus className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />,
       },
       {
         key: 'final',
@@ -468,7 +406,7 @@ export function MemberDashboardPage() {
         count: share(final),
         value: formatAmount(report.finalSalary),
         percent: share(final),
-        icon: <TrophyIcon />,
+        icon: <Trophy className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />,
         hero: true,
       },
     ]
@@ -708,7 +646,7 @@ export function MemberDashboardPage() {
           label={lt('Weekly completion')}
           value={formatPercent(weeklyCompletion)}
           hint={weeklyCompletionHint}
-          icon={<TargetIcon />}
+          icon={<Target className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />}
           footer={
             <Progress
               className="mt-1"
@@ -722,7 +660,7 @@ export function MemberDashboardPage() {
           label={lt('This week progress')}
           value={formatCount(updatesThisWeek)}
           hint={weeklyProgressHint}
-          icon={<PulseIcon />}
+          icon={<Activity className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="violet"
           delta={typeof weeklyRemaining === 'number' && weeklyRemaining > 0 ? formatCount(weeklyRemaining) : undefined}
           deltaTone="neutral"
@@ -732,7 +670,7 @@ export function MemberDashboardPage() {
           label={lt('Expected updates (to date)')}
           value={elapsedWorkingDays}
           hint={expectedUpdatesHint}
-          icon={<CalendarIcon />}
+          icon={<Calendar className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="blue"
           footer={updatesTrend.length > 1 ? <Sparkline points={updatesTrend} /> : undefined}
           className={updatesTrend.length > 1 ? 'overflow-hidden pb-0' : undefined}
@@ -741,7 +679,7 @@ export function MemberDashboardPage() {
           label={lt('Final salary')}
           value={formatAmount(detail.report.finalSalary)}
           hint={salaryEstimateLabel}
-          icon={<WalletIcon />}
+          icon={<Wallet className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="lime"
           delta={Number.isFinite(detail.report.totalBonusPercent) ? formatPercent(detail.report.totalBonusPercent) : undefined}
           deltaTone={detail.report.hasPenalty ? 'danger' : 'success'}

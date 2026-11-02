@@ -1,4 +1,17 @@
 import { useCallback, useState } from 'react'
+import {
+  Activity,
+  ArrowUpRight,
+  CircleDashed,
+  Image,
+  Layers,
+  Pencil,
+  Plus,
+  Search,
+  Send,
+  SquarePlay,
+  Trash2,
+} from 'lucide-react'
 import { useToast } from '../../../shared/toast/useToast'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
@@ -40,95 +53,11 @@ function getMediaConfig(mediaType: string) {
   return MEDIA_TYPE_CONFIG[mediaType as MediaType] ?? MEDIA_TYPE_CONFIG.post
 }
 
-function StoryIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="3.5"/>
-      <path d="M12 2a10 10 0 1 0 10 10"/>
-      <path d="M12 6V2M6 12H2"/>
-    </svg>
-  )
-}
-
-function PostIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <path d="m3 9 4-4 4 4 4-5 4 5"/>
-      <circle cx="8.5" cy="8.5" r="1.5"/>
-    </svg>
-  )
-}
-
-function ReelIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M15 2H9a7 7 0 0 0-7 7v6a7 7 0 0 0 7 7h6a7 7 0 0 0 7-7V9a7 7 0 0 0-7-7z"/>
-      <path d="m10 9 5 3-5 3V9z"/>
-    </svg>
-  )
-}
-
-function AdIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M3 11l19-9-9 19-2-8-8-2z"/>
-    </svg>
-  )
-}
-
 function MediaTypeIcon({ type, className }: { type: string; className?: string }) {
-  if (type === 'story') return <StoryIcon className={className} />
-  if (type === 'reel') return <ReelIcon className={className} />
-  if (type === 'ad') return <AdIcon className={className} />
-  return <PostIcon className={className} />
-}
-
-function LibraryIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 3 3 7.5 12 12l9-4.5L12 3z"/>
-      <path d="m3 12.5 9 4.5 9-4.5"/>
-      <path d="m3 17 9 4.5 9-4.5"/>
-    </svg>
-  )
-}
-
-function PulseIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M3 12h3l2.5-6 3.5 12 3-9 2 3h4"/>
-    </svg>
-  )
-}
-
-function EditGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-    </svg>
-  )
-}
-
-function TrashGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="3 6 5 6 21 6"/>
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-    </svg>
-  )
-}
-
-function ExternalGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-      <polyline points="15 3 21 3 21 9"/>
-      <line x1="10" y1="14" x2="21" y2="3"/>
-    </svg>
-  )
+  if (type === 'story') return <CircleDashed strokeWidth={1.8} className={className} />
+  if (type === 'reel') return <SquarePlay strokeWidth={1.8} className={className} />
+  if (type === 'ad') return <Send strokeWidth={1.8} className={className} />
+  return <Image strokeWidth={1.8} className={className} />
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -168,7 +97,7 @@ function StoryCircleCard({ ctx, onView, onEdit, onDelete }: {
             onClick={onEdit}
             className="h-6 w-6 rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
           >
-            <EditGlyph className="h-3 w-3" />
+            <Pencil strokeWidth={1.8} className="h-3 w-3" />
           </IconButton>
           <IconButton
             label="Delete"
@@ -177,7 +106,7 @@ function StoryCircleCard({ ctx, onView, onEdit, onDelete }: {
             onClick={onDelete}
             className="h-6 w-6 rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
           >
-            <TrashGlyph className="h-3 w-3" />
+            <Trash2 strokeWidth={1.8} className="h-3 w-3" />
           </IconButton>
         </div>
       </div>
@@ -232,7 +161,7 @@ function MediaCard({ ctx, onView, onEdit, onDelete }: {
           )}
           title={displayUrl}
         >
-          <ExternalGlyph className="h-3 w-3 shrink-0" />
+          <ArrowUpRight strokeWidth={1.8} className="h-3 w-3 shrink-0" />
           <span className="truncate">{displayUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
         </a>
 
@@ -242,10 +171,10 @@ function MediaCard({ ctx, onView, onEdit, onDelete }: {
           <span className="text-[11.5px] text-[var(--caption)]">{formatRelativeTime(ctx.created_at)}</span>
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <IconButton label="Edit" size="sm" onClick={onEdit}>
-              <EditGlyph className="h-3.5 w-3.5" />
+              <Pencil strokeWidth={1.8} className="h-3.5 w-3.5" />
             </IconButton>
             <IconButton label="Delete" tone="danger" size="sm" onClick={onDelete}>
-              <TrashGlyph className="h-3.5 w-3.5" />
+              <Trash2 strokeWidth={1.8} className="h-3.5 w-3.5" />
             </IconButton>
           </div>
         </div>
@@ -307,7 +236,7 @@ function ViewModal({ ctx, onClose, onEdit }: {
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Close</Button>
-          <Button onClick={onEdit} leftIcon={<EditGlyph className="h-4 w-4" />}>Edit</Button>
+          <Button onClick={onEdit} leftIcon={<Pencil strokeWidth={1.8} className="h-4 w-4" />}>Edit</Button>
         </>
       }
     >
@@ -336,7 +265,7 @@ function ViewModal({ ctx, onClose, onEdit }: {
               toneText[cfg.tone],
             )}
           >
-            <ExternalGlyph className="h-3.5 w-3.5 shrink-0" />
+            <ArrowUpRight strokeWidth={1.8} className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{displayUrl}</span>
           </a>
         </div>
@@ -573,8 +502,8 @@ export function CognilabsAIMediaContextsPage() {
   const showStoryRow = (activeFilter === 'all' || activeFilter === 'story') && stories.length > 0
 
   const statTiles: { label: string; value: number; tone: Tone; icon: React.ReactNode; solid?: boolean }[] = [
-    { label: 'Jami', value: total, tone: 'blue', icon: <LibraryIcon className="h-[18px] w-[18px]" />, solid: true },
-    { label: 'Faol', value: activeCount, tone: 'success', icon: <PulseIcon className="h-[18px] w-[18px]" /> },
+    { label: 'Jami', value: total, tone: 'blue', icon: <Layers strokeWidth={1.8} className="h-[18px] w-[18px]" />, solid: true },
+    { label: 'Faol', value: activeCount, tone: 'success', icon: <Activity strokeWidth={1.8} className="h-[18px] w-[18px]" /> },
     { label: 'Stories', value: statsByType.story, tone: 'danger', icon: <MediaTypeIcon type="story" className="h-[18px] w-[18px]" /> },
     { label: 'Posts', value: statsByType.post, tone: 'blue', icon: <MediaTypeIcon type="post" className="h-[18px] w-[18px]" /> },
     { label: 'Reels', value: statsByType.reel, tone: 'violet', icon: <MediaTypeIcon type="reel" className="h-[18px] w-[18px]" /> },
@@ -588,11 +517,7 @@ export function CognilabsAIMediaContextsPage() {
         actions={
           <Button
             onClick={() => setIsCreating(true)}
-            leftIcon={
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            }
+            leftIcon={<Plus strokeWidth={1.8} className="h-4 w-4" />}
           >
             Yangi Context
           </Button>
@@ -616,9 +541,7 @@ export function CognilabsAIMediaContextsPage() {
         <Tabs items={FILTER_TABS} value={activeFilter} onChange={setActiveFilter} />
 
         <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-          </svg>
+          <Search strokeWidth={1.8} className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
           <Input
             placeholder="Qidirish..."
             value={searchQuery}

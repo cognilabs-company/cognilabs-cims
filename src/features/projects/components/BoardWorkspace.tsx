@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ChevronLeft, Plus } from 'lucide-react'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
@@ -470,9 +471,7 @@ export function BoardWorkspace({
             to={`/projects/${board.project_id}`}
             className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
           >
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M10 4L6 8l4 4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ChevronLeft strokeWidth={1.8} className="h-3.5 w-3.5" />
             {lt('Back to project')}
           </Link>
         ) : null}
@@ -500,9 +499,7 @@ export function BoardWorkspace({
             size="sm"
             onClick={() => setIsAddColumnOpen(true)}
             leftIcon={(
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-              </svg>
+              <Plus strokeWidth={1.8} className="h-3.5 w-3.5" />
             )}
           >
             {lt('Add column')}

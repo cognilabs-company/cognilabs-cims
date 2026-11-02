@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Download, FileText, Trash2 } from 'lucide-react'
 import {
   projectsService,
   type AttachmentType,
@@ -43,10 +44,7 @@ function FileRow({ attachment, onDelete }: FileRowProps) {
   return (
     <div className="flex items-center gap-3 rounded-[18px] bg-[var(--accent-soft)] p-3.5 transition-colors hover:bg-[var(--input-surface-hover)]">
       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points="14 2 14 8 20 8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <FileText strokeWidth={1.8} className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-[var(--foreground)]">{attachment.file_name}</p>
@@ -67,11 +65,7 @@ function FileRow({ attachment, onDelete }: FileRowProps) {
           title="Download"
           onClick={(e) => e.stopPropagation()}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
-            <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" />
-          </svg>
+          <Download strokeWidth={1.8} className="h-4 w-4" />
         </a>
         <IconButton
           tone="neutral"
@@ -80,10 +74,7 @@ function FileRow({ attachment, onDelete }: FileRowProps) {
           onClick={() => onDelete(attachment.id)}
           className="bg-[var(--surface)] hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-            <polyline points="3 6 5 6 21 6" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Trash2 strokeWidth={1.8} className="h-4 w-4" />
         </IconButton>
       </div>
     </div>
@@ -225,10 +216,7 @@ export function ProjectAttachmentsModal({ open, onClose, projectId }: Props) {
             </div>
           ) : tabAttachments.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 rounded-[18px] bg-[var(--muted-surface)] py-10 text-[var(--muted)]">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10 text-[#D3D7E0]">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round" />
-                <polyline points="14 2 14 8 20 8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <FileText strokeWidth={1.8} className="h-10 w-10 text-[#D3D7E0]" />
               <p className="text-sm font-semibold">No {TABS.find((t) => t.key === activeTab)?.label} files yet</p>
             </div>
           ) : (

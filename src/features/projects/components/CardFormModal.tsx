@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Eye, Plus, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { Dialog } from '../../../shared/ui/dialog'
@@ -357,10 +358,7 @@ export function CardFormModal({
                     className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:bg-[var(--surface-inverse)]/45 group-hover:opacity-100"
                     aria-label={t('projects.preview_image', 'Preview image')}
                   >
-                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-white" fill="none" stroke="currentColor" strokeWidth="1.8">
-                      <path d="M2.25 12c1.9-4.82 6.07-8 9.75-8s7.85 3.18 9.75 8c-1.9 4.82-6.07 8-9.75 8s-7.85-3.18-9.75-8Z" />
-                      <circle cx="12" cy="12" r="3.5" />
-                    </svg>
+                    <Eye className="h-5 w-5 text-white" strokeWidth={1.8} />
                   </button>
                   <IconButton
                     label={t('projects.remove', 'Remove')}
@@ -369,9 +367,7 @@ export function CardFormModal({
                     onClick={() => removeImage(index)}
                     className="absolute top-1 right-1 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100"
                   >
-                    <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-                    </svg>
+                    <X className="h-3 w-3" strokeWidth={1.8} />
                   </IconButton>
                 </div>
               ))}
@@ -384,11 +380,7 @@ export function CardFormModal({
               variant="secondary"
               size="sm"
               onClick={() => fileRef.current?.click()}
-              leftIcon={(
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                </svg>
-              )}
+              leftIcon={<Plus className="h-3.5 w-3.5" strokeWidth={1.8} />}
             >
               {t('projects.add_images', 'Add images')}
             </Button>
@@ -436,9 +428,7 @@ export function CardFormModal({
                   onClick={closeImagePreview}
                   className="absolute top-3 right-3 rounded-full"
                 >
-                  <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-                  </svg>
+                  <X className="h-4 w-4" strokeWidth={1.8} />
                 </IconButton>
                 <img
                   src={previewImageUrl}

@@ -1,3 +1,4 @@
+import { RefreshCw } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn'
 import { StatCard } from '../../../shared/ui/stat-card'
 import { toneSurface, toneText, type Tone } from '../../../shared/ui/tone'
@@ -61,12 +62,5 @@ export function DetailStatTile({
 }
 
 export function RefreshIcon() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M14 3v4h-4" />
-      <path d="M2 13v-4h4" />
-      <path d="M3.7 6.1A5 5 0 0 1 12 4.5L14 7" />
-      <path d="M12.3 9.9A5 5 0 0 1 4 11.5L2 9" />
-    </svg>
-  )
+  return <RefreshCw strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true" />
 }

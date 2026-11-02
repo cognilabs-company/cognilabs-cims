@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { ChevronLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCrmScope } from '../lib/crmScope'
@@ -99,9 +100,7 @@ export function CustomerDetailPage() {
           size="sm"
           onClick={() => navigate(routeBasePath)}
           leftIcon={
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M10 3.5 5.5 8 10 12.5" />
-            </svg>
+            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
           }
         >
           {t('customers.detail.back_to', 'Back to {{title}}', { title })}

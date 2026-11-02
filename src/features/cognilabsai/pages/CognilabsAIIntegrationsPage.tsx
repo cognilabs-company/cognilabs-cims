@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Check, Clock, Eye, EyeOff, Info, Save, Zap } from 'lucide-react'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useToast } from '../../../shared/toast/useToast'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -102,11 +103,7 @@ const sections: Section[] = [
     id: 'websocket',
     title: 'WebSocket',
     description: 'Real-time chat stream API key',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
+    icon: <Zap strokeWidth={1.8} className="h-5 w-5" />,
     fields: [
       { key: 'websocket_api_key', label: 'WebSocket API Key', type: 'password', hint: 'Used by the frontend to authenticate the real-time WebSocket connection' },
     ],
@@ -115,12 +112,7 @@ const sections: Section[] = [
     id: 'follow-up',
     title: 'Follow-up',
     description: 'Automatic messages after user delay',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
-    ),
+    icon: <Clock strokeWidth={1.8} className="h-5 w-5" />,
     fields: [],
   },
 ]
@@ -182,15 +174,9 @@ function RevealButton({ revealed, onClick }: { revealed: boolean; onClick: () =>
       className="bg-[var(--input-surface)] hover:bg-[var(--input-surface-hover)]"
     >
       {revealed ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeLinecap="round" strokeLinejoin="round" />
-          <line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round" />
-        </svg>
+        <EyeOff strokeWidth={1.8} className="h-4 w-4" />
       ) : (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
+        <Eye strokeWidth={1.8} className="h-4 w-4" />
       )}
     </IconButton>
   )
@@ -199,9 +185,7 @@ function RevealButton({ revealed, onClick }: { revealed: boolean; onClick: () =>
 function FieldHint({ hint }: { hint: string }) {
   return (
     <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-[var(--muted)]">
-      <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--caption)]">
-        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-      </svg>
+      <Info strokeWidth={1.8} className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--caption)]" />
       {hint}
     </p>
   )
@@ -433,15 +417,9 @@ export function CognilabsAIIntegrationsPage() {
             variant={saveSuccess ? 'success' : 'primary'}
             leftIcon={
               saveSuccess ? (
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
+                <Check strokeWidth={1.8} className="h-4 w-4" />
               ) : (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                  <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
+                <Save strokeWidth={1.8} className="h-4 w-4" />
               )
             }
           >

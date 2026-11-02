@@ -1,4 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { translateCurrent, translateCurrentLiteral } from '../i18n/translations'
 import { cn } from '../lib/cn'
@@ -61,22 +62,6 @@ function getVisiblePageItems(totalPages: number, currentPage: number) {
   items.push(totalPages)
 
   return items
-}
-
-function ChevronLeft() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M10 4L6 8l4 4" />
-    </svg>
-  )
-}
-
-function ChevronRight() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M6 4l4 4-4 4" />
-    </svg>
-  )
 }
 
 const pagerButton =
@@ -226,7 +211,7 @@ export function DataTable<T>({
               onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
               className={cn(pagerButton, 'text-[var(--muted-strong)] hover:bg-[var(--input-surface)]')}
             >
-              <ChevronLeft />
+              <ChevronLeft strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true" />
               {translateCurrent('common.prev', 'Prev')}
             </button>
 
@@ -262,7 +247,7 @@ export function DataTable<T>({
               className={cn(pagerButton, 'text-[var(--muted-strong)] hover:bg-[var(--input-surface)]')}
             >
               {translateCurrent('common.next', 'Next')}
-              <ChevronRight />
+              <ChevronRight strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
         </div>

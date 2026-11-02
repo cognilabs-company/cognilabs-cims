@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { LayoutDashboard } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { Badge } from '../../../shared/ui/badge'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
@@ -23,12 +24,7 @@ export function BoardCard({ board, onEdit, onArchive, canManage = true }: BoardC
         {/* Board icon + info */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
-            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <rect x="3" y="3" width="7" height="9" rx="2" />
-              <rect x="14" y="3" width="7" height="5" rx="2" />
-              <rect x="14" y="12" width="7" height="9" rx="2" />
-              <rect x="3" y="16" width="7" height="5" rx="2" />
-            </svg>
+            <LayoutDashboard strokeWidth={1.8} className="h-[18px] w-[18px]" />
           </div>
           <div className="min-w-0">
             {board.is_archived ? (

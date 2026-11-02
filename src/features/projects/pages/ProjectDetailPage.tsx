@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  Calendar,
+  ChartLine,
+  CircleAlert,
+  Clock,
+  Paperclip,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { Card } from '../../../shared/ui/card'
 import { Button } from '../../../shared/ui/button'
@@ -544,48 +555,28 @@ export function ProjectDetailPage() {
                     items={[
                       {
                         label: lt('History'),
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.5 1.5C4.18629 1.5 1.5 4.18629 1.5 7.5C1.5 10.8137 4.18629 13.5 7.5 13.5C10.8137 13.5 13.5 10.8137 13.5 7.5C13.5 4.18629 10.8137 1.5 7.5 1.5ZM0.5 7.5C0.5 3.63401 3.63401 0.5 7.5 0.5C11.366 0.5 14.5 3.63401 14.5 7.5C14.5 11.366 11.366 14.5 7.5 14.5C3.63401 14.5 0.5 11.366 0.5 7.5ZM8 4C8 3.44772 7.55228 3 7 3C6.44772 3 6 3.44772 6 4V7.5C6 7.76522 6.10536 8.01957 6.29289 8.20711L8.29289 10.2071C8.68342 10.5976 9.31658 10.5976 9.70711 10.2071C10.0976 9.81658 10.0976 9.18342 9.70711 8.79289L8 6.88582V4Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                          </svg>
-                        ),
+                        icon: <Clock size={15} strokeWidth={1.8} />,
                         onSelect: () => navigate(`/audit/logs?entity_type=Project&entity_id=${project.id}`),
                       },
                       {
                         label: lt('Attachments'),
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.81825 1.18196C8.61335 0.38687 9.69661 0 10.7 0C11.7034 0 12.7867 0.38687 13.5818 1.18196C14.3769 1.97706 14.7638 3.06033 14.7638 4.06373C14.7638 5.06714 14.3769 6.1504 13.5818 6.9455L7.67539 12.8519C7.06985 13.4575 6.2363 13.7606 5.40274 13.7606C4.56918 13.7606 3.73563 13.4575 3.13009 12.8519C2.52455 12.2464 2.22146 11.4128 2.22146 10.5793C2.22146 9.74571 2.52455 8.91216 3.13009 8.30662L8.99252 2.4442C9.30591 2.13082 9.74923 1.9519 10.2025 1.9519C10.6558 1.9519 11.0991 2.13082 11.4125 2.4442C11.7259 2.75759 11.9048 3.20091 11.9048 3.65423C11.9048 4.10754 11.7259 4.55086 11.4125 4.86425L5.88966 10.3871C5.74635 10.5304 5.55108 10.6119 5.34745 10.6119C5.14382 10.6119 4.94855 10.5304 4.80524 10.3871C4.66193 10.2438 4.58038 10.0485 4.58038 9.84487C4.58038 9.64124 4.66193 9.44597 4.80524 9.30266L10.0312 4.07663C10.1888 3.91908 10.1888 3.66102 10.0312 3.50347C9.87367 3.34592 9.61561 3.34592 9.45806 3.50347L4.23203 8.72949C3.93829 9.02323 3.77198 9.42532 3.77198 9.84487C3.77198 10.2644 3.93829 10.6665 4.23203 10.9602C4.52577 11.254 4.92787 11.4203 5.34745 11.4203C5.76703 11.4203 6.16912 11.254 6.46286 10.9602L11.9857 5.4374C12.4765 4.94659 12.7132 4.30054 12.7132 3.65423C12.7132 3.00791 12.4765 2.36186 11.9857 1.87105C11.4949 1.38023 10.8488 1.14352 10.2025 1.14352C9.55622 1.14352 8.91017 1.38023 8.41936 1.87105L2.55693 7.73347C1.79451 8.4959 1.41309 9.53756 1.41309 10.5793C1.41309 11.621 1.79451 12.6626 2.55693 13.4251C3.31935 14.1875 4.36101 14.569 5.40274 14.569C6.44447 14.569 7.48613 14.1875 8.24855 13.4251L14.1553 7.51845C14.3128 7.3609 14.3128 7.10284 14.1553 6.94529C13.9977 6.78774 13.7397 6.78774 13.5821 6.94529L7.67547 12.852C7.06993 13.4575 6.23638 13.7606 5.40282 13.7606C4.56926 13.7606 3.7357 13.4575 3.13016 12.852C2.52463 12.2464 2.22154 11.4129 2.22154 10.5793C2.22154 9.74571 2.52463 8.91216 3.13016 8.30663L8.99259 2.4442C9.30598 2.13082 9.7493 1.9519 10.2026 1.9519C10.6559 1.9519 11.0992 2.13082 11.4126 2.4442C11.726 2.75759 11.9049 3.20091 11.9049 3.65423C11.9049 4.10754 11.726 4.55086 11.4126 4.86425L5.88974 10.3871C5.74643 10.5304 5.55116 10.6119 5.34753 10.6119C5.1439 10.6119 4.94863 10.5304 4.80532 10.3871C4.66201 10.2438 4.58046 10.0485 4.58046 9.84487C4.58046 9.64124 4.66201 9.44597 4.80532 9.30266L10.0313 4.07663C10.1889 3.91908 10.1889 3.66102 10.0313 3.50347C9.87378 3.34592 9.61572 3.34592 9.45817 3.50347L4.23211 8.72949C3.93837 9.02323 3.77206 9.42532 3.77206 9.84487C3.77206 10.2644 3.93837 10.6665 4.23211 10.9602C4.52585 11.254 4.92795 11.4203 5.34753 11.4203C5.76711 11.4203 6.1692 11.254 6.46294 10.9602L11.9858 5.4374C12.4766 4.94659 12.7133 4.30054 12.7133 3.65423C12.7133 3.00791 12.4766 2.36186 11.9858 1.87105C11.495 1.38023 10.8489 1.14352 10.2026 1.14352C9.5563 1.14352 8.91025 1.38023 8.41944 1.87105L2.55701 7.73347C1.79459 8.4959 1.41317 9.53756 1.41317 10.5793C1.41317 11.621 1.79459 12.6626 2.55701 13.4251C3.31943 14.1875 4.36109 14.569 5.40282 14.569C6.44455 14.569 7.48621 14.1875 8.24863 13.4251L14.1554 7.51845C14.3129 7.3609 14.3129 7.10284 14.1554 6.94529L14.1553 6.94529Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                          </svg>
-                        ),
+                        icon: <Paperclip size={15} strokeWidth={1.8} />,
                         onSelect: () => setIsAttachmentsOpen(true),
                       },
                       {
                         label: 'Project KPI',
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M1 11L4.5 7L7 9L10.5 4L14 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        ),
+                        icon: <ChartLine size={15} strokeWidth={1.8} />,
                         onSelect: () => setIsKpiOpen(true),
                       },
                       {
                         label: lt('Edit'),
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11.8536 1.14645C11.6583 0.951184 11.3417 0.951184 11.1464 1.14645L3.71457 8.57836C3.62459 8.66834 3.55263 8.77461 3.50251 8.89155L2.04044 12.303C1.9599 12.491 2.00189 12.709 2.14645 12.8536C2.29101 12.9981 2.50905 13.0401 2.69697 12.9596L6.10845 11.4975C6.22539 11.4474 6.33166 11.3754 6.42164 11.2854L13.8536 3.85355C14.0488 3.65829 14.0488 3.34171 13.8536 3.14645L11.8536 1.14645ZM4.42168 9.28547L10.5 3.20711L11.7929 4.5L5.71453 10.5784L4.21921 11.2192L4.42168 9.28547Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                          </svg>
-                        ),
+                        icon: <Pencil size={15} strokeWidth={1.8} />,
                         onSelect: () => setIsEditProjectOpen(true),
                       },
                       {
                         label: lt('Delete'),
                         tone: 'danger',
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5.5 1C5.22386 1 5 1.22386 5 1.5C5 1.77614 5.22386 2 5.5 2H9.5C9.77614 2 10 1.77614 10 1.5C10 1.22386 9.77614 1 -9.5 1H5.5ZM3 3.5C3 3.22386 3.22386 3 3.5 3H11.5C11.7761 3 12 3.22386 12 3.5C12 3.77614 11.7761 4 11.5 4H11V12C11 12.5523 10.5523 13 10 13H5C9.44772 13 9 12.5523 9 12V4L3.5 4C3.22386 4 3 3.77614 3 3.5ZM5 4V12H10V4H5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                          </svg>
-                        ),
+                        icon: <Trash2 size={15} strokeWidth={1.8} />,
                         onSelect: handleDeleteProject,
                       },
                     ]}
@@ -680,9 +671,7 @@ export function ProjectDetailPage() {
                                onClick={() => setIsCreateBoardOpen(true)}
                                className="hover:bg-[var(--surface)]"
                             >
-                               <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                               </svg>
+                               <Plus className="h-4 w-4" strokeWidth={1.8} />
                             </IconButton>
                          )}
                        </div>
@@ -743,7 +732,7 @@ export function ProjectDetailPage() {
                              onClick={() => setIsCreateBoardOpen(true)}
                              className="bg-[var(--primary)] text-white shadow-[var(--elev-primary)] hover:bg-[var(--primary-hover)] hover:text-white"
                           >
-                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" strokeLinecap="round"/></svg>
+                             <Plus className="h-4 w-4" strokeWidth={1.8} />
                           </IconButton>
                        )}
                     </div>
@@ -822,7 +811,7 @@ export function ProjectDetailPage() {
                        </div>
                     </div>
                     <IconButton size="lg" label={lt('Close Dashboard')} onClick={() => setExpandedMemberId(null)}>
-                       <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/></svg>
+                       <X className="h-4 w-4" strokeWidth={1.8} />
                     </IconButton>
                  </div>
 
@@ -838,7 +827,7 @@ export function ProjectDetailPage() {
                        </div>
                     ) : expandedMemberTasks.length === 0 ? (
                        <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] py-16">
-                          <svg viewBox="0 0 24 24" className="mb-5 h-14 w-14 text-[#D3D7E0]" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M12 22c5.523 0 9-4.477 9-10S17.523 2 12 2 3 6.477 3 12s3.477 10 9 10z"/><path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round"/></svg>
+                          <CircleAlert className="mb-5 h-14 w-14 text-[#D3D7E0]" strokeWidth={1.8} />
                           <p className="text-sm font-medium text-[var(--muted)]">{lt('No active tasks')}</p>
                        </div>
                     ) : (
@@ -865,20 +854,12 @@ export function ProjectDetailPage() {
                                    <div className="flex flex-col items-end gap-1 text-[11.5px] font-medium text-[var(--muted)]">
                                       {task.due_date ? (
                                         <div className="flex items-center gap-1.5 text-[var(--muted-strong)]">
-                                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                            <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                                            <path d="M16 2v4" />
-                                            <path d="M8 2v4" />
-                                            <path d="M3 10h18" />
-                                          </svg>
+                                          <Calendar className="h-3.5 w-3.5" strokeWidth={1.8} />
                                           {formatProjectDateTime(task.due_date)}
                                         </div>
                                       ) : null}
                                       <div className="flex items-center gap-1.5">
-                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                          <circle cx="12" cy="12" r="10" />
-                                          <polyline points="12 6 12 12 16 14" />
-                                        </svg>
+                                        <Clock className="h-3.5 w-3.5" strokeWidth={1.8} />
                                         {formatProjectDate(task.updated_at)}
                                       </div>
                                    </div>
@@ -913,7 +894,7 @@ export function ProjectDetailPage() {
                 <p className="mt-1.5 text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">{project.project_name}</p>
               </div>
               <IconButton size="lg" label="Close" onClick={() => setIsKpiOpen(false)}>
-                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/></svg>
+                <X className="h-4 w-4" strokeWidth={1.8} />
               </IconButton>
             </div>
 
@@ -929,7 +910,7 @@ export function ProjectDetailPage() {
                         variant="secondary"
                         size="sm"
                         onClick={() => setShowAddFeature((v) => !v)}
-                        leftIcon={<svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>}
+                        leftIcon={<Plus className="h-3.5 w-3.5" strokeWidth={1.8} />}
                       >
                         Add
                       </Button>
@@ -1074,7 +1055,7 @@ export function ProjectDetailPage() {
                         variant="danger"
                         size="sm"
                         onClick={() => setShowAddQuality((v) => !v)}
-                        leftIcon={<svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>}
+                        leftIcon={<Plus className="h-3.5 w-3.5" strokeWidth={1.8} />}
                       >
                         Add
                       </Button>
@@ -1181,7 +1162,7 @@ export function ProjectDetailPage() {
                         variant="secondary"
                         size="sm"
                         onClick={() => setShowAddBlocked((v) => !v)}
-                        leftIcon={<svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>}
+                        leftIcon={<Plus className="h-3.5 w-3.5" strokeWidth={1.8} />}
                       >
                         Add
                       </Button>

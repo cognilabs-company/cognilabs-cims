@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { DayStatus } from '../../../shared/api/types'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
@@ -561,9 +562,7 @@ export function MemberMonthlyUpdateCalendarBoard({
                 label={lt('Close focus day panel')}
                 onClick={() => setIsFocusPanelOpen(false)}
               >
-                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                  <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
-                </svg>
+                <X strokeWidth={1.8} className="h-4 w-4" aria-hidden="true" />
               </IconButton>
             </div>
 
@@ -741,9 +740,7 @@ export function MemberMonthlyUpdateCalendarBoard({
                       disabled={!onMonthShift}
                       className="bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]"
                     >
-                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M10 3.5 5.5 8 10 12.5" />
-                      </svg>
+                      <ChevronLeft strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true" />
                     </IconButton>
                     <Button
                       variant="secondary"
@@ -763,9 +760,7 @@ export function MemberMonthlyUpdateCalendarBoard({
                       disabled={!onMonthShift}
                       className="bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]"
                     >
-                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M6 3.5 10.5 8 6 12.5" />
-                      </svg>
+                      <ChevronRight strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true" />
                     </IconButton>
                   </div>
                 </div>

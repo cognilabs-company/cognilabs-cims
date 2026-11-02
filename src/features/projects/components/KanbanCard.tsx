@@ -1,5 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, SyntheticEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
+import { Calendar, Paperclip } from 'lucide-react'
 import { CSS } from '@dnd-kit/utilities'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
@@ -176,9 +177,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
             <MetaChip
               tone={dueTone}
               icon={(
-                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                   <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>
-                </svg>
+                <Calendar strokeWidth={1.8} className="h-3 w-3" aria-hidden="true" />
               )}
             >
               {formatProjectDateTime(card.due_date)}
@@ -189,9 +188,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
             <MetaChip
               className="tabular-nums"
               icon={(
-                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                   <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                </svg>
+                <Paperclip strokeWidth={1.8} className="h-3 w-3" aria-hidden="true" />
               )}
             >
               {images.length}

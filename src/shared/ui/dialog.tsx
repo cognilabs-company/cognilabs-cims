@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { translateCurrentLiteral } from '../i18n/translations'
@@ -110,9 +111,7 @@ export function Dialog({
             )}
             aria-label={translateCurrentLiteral('Close dialog panel')}
           >
-            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-              <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
-            </svg>
+            <X strokeWidth={1.8} className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 

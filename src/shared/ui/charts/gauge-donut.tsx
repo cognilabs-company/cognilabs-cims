@@ -35,20 +35,21 @@ export function GaugeDonut({
 }: GaugeDonutProps) {
   const total = segments.reduce((acc, segment) => acc + segment.value, 0)
   const hasData = total > 0
-  const usable = ARC_LENGTH + STROKE - GAP * Math.max(0, segments.length - 1)
+  const drawn = segments.filter((segment) => segment.value > 0)
+  const usable = ARC_LENGTH + STROKE - GAP * Math.max(0, drawn.length - 1)
 
-  const arcs = segments.reduce<Array<GaugeSegment & { color: string; dash: string; offset: number }>>(
-    (acc, segment, index) => {
+  const arcs = drawn.reduce<Array<GaugeSegment & { color: string; dash: string; offset: number }>>(
+    (acc, segment) => {
       const ratio = total > 0 ? segment.value / total : 0
       const length = Math.max(0.1, ratio * usable - STROKE)
       const offset = acc.reduce((sum, _, i) => {
-        const prior = total > 0 ? segments[i].value / total : 0
+        const prior = total > 0 ? drawn[i].value / total : 0
         return sum + prior * usable + GAP
       }, 0)
 
       acc.push({
         ...segment,
-        color: segment.color ?? arcColorAt(index),
+        color: segment.color ?? arcColorAt(segments.indexOf(segment)),
         dash: `${length} ${ARC_LENGTH * 3}`,
         offset: -offset,
       })
@@ -99,14 +100,17 @@ export function GaugeDonut({
           </div>
 
           <div className="flex flex-col gap-4">
-            {arcs.map((arc) => (
-              <div key={arc.key} className="flex flex-col gap-0.5">
+            {segments.map((segment, index) => (
+              <div key={segment.key} className="flex flex-col gap-0.5">
                 <span className="text-2xl font-bold tracking-[-0.02em] tabular-nums" data-ui-number="true">
-                  {arc.value}
+                  {segment.value}
                 </span>
                 <div className="flex items-center gap-[7px] text-[12.5px] text-[var(--muted-strong)]">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: arc.color }} />
-                  {arc.label}
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: segment.color ?? arcColorAt(index) }}
+                  />
+                  {segment.label}
                 </div>
               </div>
             ))}

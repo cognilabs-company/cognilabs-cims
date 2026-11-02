@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useCrmScope } from '../lib/crmScope'
@@ -250,10 +251,10 @@ export function CrmArchivedPage() {
                   render: (row) => (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <IconButton label="Tiklash" size="sm" className={restoreButtonClass} onClick={() => void handleRestore(row)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 7v6h6"/><path d="M3 13C3 8.029 7.029 4 12 4a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9.003 9.003 0 0 1-8.1-5.1"/></svg>
+                        <RotateCcw className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                       </IconButton>
                       <IconButton label="Butunlay o'chirish" size="sm" className={deleteButtonClass} onClick={() => void handleHardDelete(row)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        <Trash2 className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                       </IconButton>
                     </div>
                   ),

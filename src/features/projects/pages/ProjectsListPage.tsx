@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Plus, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { projectsService, type ProjectRecord, type UserSummary } from '../../../shared/api/services/projects.service'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -351,9 +352,7 @@ export function ProjectsListPage() {
                       size="md"
                       onClick={() => setIsCreateOpen(true)}
                       leftIcon={(
-                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                          <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                        </svg>
+                        <Plus strokeWidth={1.8} className="h-3.5 w-3.5" />
                       )}
                     >
                       {lt('New project')}
@@ -579,16 +578,7 @@ export function ProjectsListPage() {
 
         <div className="flex items-center gap-3">
           <div className="relative max-w-sm flex-1">
-            <svg
-              viewBox="0 0 16 16"
-              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <circle cx="6.5" cy="6.5" r="3.5" />
-              <path d="M9.5 9.5l3 3" strokeLinecap="round" />
-            </svg>
+            <Search strokeWidth={1.8} className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}

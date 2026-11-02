@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { MessageSquare, Send } from 'lucide-react'
 import type { CommentAutomationReplyMode } from '../../../../shared/api/services/cognilabsai.service'
 import { cn } from '../../../../shared/lib/cn'
 import { Label } from '../../../../shared/ui/label'
@@ -6,23 +7,6 @@ import { Switch } from '../../../../shared/ui/switch'
 import { Tabs } from '../../../../shared/ui/tabs'
 import { Textarea } from '../../../../shared/ui/textarea'
 import { TEMPLATE_PLACEHOLDERS, useCommentAutomationT, type SettingsDraft } from './shared'
-
-function PublicReplyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
-
-function DirectMessageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-      <path d="m22 2-7 20-4-9-9-4Z" />
-      <path d="M22 2 11 13" />
-    </svg>
-  )
-}
 
 export function AutomationToggle({
   enabled,
@@ -186,7 +170,7 @@ export function SettingsForm({
       <div className={cn('grid gap-[18px]', layout === 'columns' && 'md:grid-cols-2')}>
         <ChannelSettings
           id={`${idPrefix}-public`}
-          icon={<PublicReplyIcon />}
+          icon={<MessageSquare strokeWidth={1.8} className="h-4 w-4" />}
           title={tx('settings.public_title', 'Public reply')}
           description={tx('settings.public_description', 'Visible reply under the comment')}
           enabled={draft.public_reply_enabled}
@@ -199,7 +183,7 @@ export function SettingsForm({
         />
         <ChannelSettings
           id={`${idPrefix}-dm`}
-          icon={<DirectMessageIcon />}
+          icon={<Send strokeWidth={1.8} className="h-4 w-4" />}
           title={tx('settings.dm_title', 'Direct message')}
           description={tx('settings.dm_description', 'First private message to the comment author')}
           enabled={draft.dm_enabled}

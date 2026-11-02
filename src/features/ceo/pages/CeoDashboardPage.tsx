@@ -1,6 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  CalendarPlus,
+  Check,
+  CircleCheck,
+  CircleHelp,
+  CirclePlus,
+  ClipboardCheck,
+  Clock,
+  FileText,
+  MessageSquare,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Repeat,
+  Send,
+  Trash2,
+  TriangleAlert,
+  UserPlus,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { ceoService, type CeoUserRecord, type CompanyPaymentRecord, type DashboardResponse } from '../../../shared/api/services/ceo.service'
 import { projectsService, type UserOpenCardRecord } from '../../../shared/api/services/projects.service'
 import type { PaymentItem } from '../../../shared/api/types'
@@ -106,75 +130,29 @@ function initialsOf(value: string) {
 
 const statPanelClassName = 'min-h-0 gap-3 rounded-[18px] bg-[var(--accent-soft)] p-4'
 
-const glyphPaths = {
-  send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
-  lead: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 1 0 8 4 4 0 0 1 0-8M19 8v6M22 11h-6',
-  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  arrow: 'M5 12h14M13 6l6 6-6 6',
-  help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9.5 9.2a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1 1-1.1 1.8M12 17h.01',
-  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7.5v5l3 2',
-  check: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.4 12.2l2.5 2.4 4.7-4.9',
-  alert: 'M12 3.5l8.5 15H3.5l8.5-15zM12 9.5v4M12 16.5h.01',
-  note: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5zM14 3v5h5M9 13h6M9 17h4',
-  users: 'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 4.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4M17 11.2a3 3 0 0 0 0-6M20 19v-1.2a3.4 3.4 0 0 0-2.4-3.2',
-  tasks: 'M9 11.5l2 2 4.2-4.4M5 3.5h14A1.5 1.5 0 0 1 20.5 5v14a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V5A1.5 1.5 0 0 1 5 3.5z',
-  wallet: 'M3.5 8.5h17v10a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5zM3.5 8.5 6 4.5h12l2.5 4M16 13.5h2',
-  repeat: 'M4 9a5 5 0 0 1 5-5h7M4 9l3-3M4 9l3 3M20 15a5 5 0 0 1-5 5H8M20 15l-3-3M20 15l-3 3',
-  plus: 'M12 5v14M5 12h14',
+const glyphIcons = {
+  send: Send,
+  lead: UserPlus,
+  chat: MessageSquare,
+  arrow: ArrowRight,
+  help: CircleHelp,
+  clock: Clock,
+  check: CircleCheck,
+  alert: TriangleAlert,
+  note: FileText,
+  users: Users,
+  tasks: ClipboardCheck,
+  wallet: Wallet,
+  repeat: Repeat,
+  plus: Plus,
 }
 
-function Glyph({ d }: { d: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={d} />
-    </svg>
-  )
+function Glyph({ icon: Icon }: { icon: LucideIcon }) {
+  return <Icon strokeWidth={1.8} className="h-[18px] w-[18px]" aria-hidden="true" />
 }
 
-function GlyphSmall({ d }: { d: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={d} />
-    </svg>
-  )
-}
-
-function PencilIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-    </svg>
-  )
-}
-
-function SwapIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <path d="M1 4v6h6" />
-      <path d="M23 20v-6h-6" />
-      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" />
-    </svg>
-  )
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true">
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
-  )
+function GlyphSmall({ icon: Icon }: { icon: LucideIcon }) {
+  return <Icon strokeWidth={1.8} className="h-4 w-4" aria-hidden="true" />
 }
 
 export function CeoDashboardPage() {
@@ -760,15 +738,15 @@ export function CeoDashboardPage() {
 
   const funnelStages = useMemo<FunnelStage[]>(() => {
     const mediaSteps = [
-      { key: 'sent', label: 'Jami yuborildi', count: mediaSent, glyph: glyphPaths.send, hero: false },
-      { key: 'lead', label: 'Jami lead', count: mediaLead, glyph: glyphPaths.lead, hero: false },
-      { key: 'contacted', label: 'Contacted', count: mediaContacted, glyph: glyphPaths.chat, hero: false },
-      { key: 'continuing', label: 'Continuing', count: mediaContinuing, glyph: glyphPaths.arrow, hero: true },
+      { key: 'sent', label: 'Jami yuborildi', count: mediaSent, glyph: glyphIcons.send, hero: false },
+      { key: 'lead', label: 'Jami lead', count: mediaLead, glyph: glyphIcons.lead, hero: false },
+      { key: 'contacted', label: 'Contacted', count: mediaContacted, glyph: glyphIcons.chat, hero: false },
+      { key: 'continuing', label: 'Continuing', count: mediaContinuing, glyph: glyphIcons.arrow, hero: true },
     ]
     const slaSteps = [
-      { key: 'total', label: 'Jami lead', count: slaTotal, glyph: glyphPaths.lead, hero: false },
-      { key: 'on_time', label: "O'z vaqtida", count: slaOnTime, glyph: glyphPaths.check, hero: false },
-      { key: 'note', label: 'Note yozilgan', count: slaNoteWritten, glyph: glyphPaths.note, hero: true },
+      { key: 'total', label: 'Jami lead', count: slaTotal, glyph: glyphIcons.lead, hero: false },
+      { key: 'on_time', label: "O'z vaqtida", count: slaOnTime, glyph: glyphIcons.check, hero: false },
+      { key: 'note', label: 'Note yozilgan', count: slaNoteWritten, glyph: glyphIcons.note, hero: true },
     ]
     const steps = hasMedia ? mediaSteps : hasSla ? slaSteps : []
     const max = steps.reduce((acc, step) => Math.max(acc, step.count), 0) || 1
@@ -779,7 +757,7 @@ export function CeoDashboardPage() {
       count: step.count,
       value: step.count,
       percent: Math.round((step.count / max) * 100),
-      icon: <GlyphSmall d={step.glyph} />,
+      icon: <GlyphSmall icon={step.glyph} />,
       hero: step.hero,
     }))
   }, [hasMedia, hasSla, mediaContacted, mediaContinuing, mediaLead, mediaSent, slaNoteWritten, slaOnTime, slaTotal])
@@ -851,47 +829,27 @@ export function CeoDashboardPage() {
           items={[
             {
               label: t('common.refresh'),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M1.84998 7.46254C1.84998 4.3586 4.37103 1.83754 7.47498 1.83754C8.91301 1.83754 10.2222 2.37681 11.218 3.26444L10.375 4.10744C10.2773 4.20517 10.2773 4.36346 10.375 4.46119C10.4727 4.55892 10.631 4.55892 10.7287 4.46119L12.1287 3.06119C12.2264 2.96346 12.2264 2.80517 12.1287 2.70744L10.7287 1.30744C10.631 1.20971 10.4727 1.20971 10.375 1.30744C10.2773 1.40517 10.2773 1.56346 10.375 1.66119L11.0821 2.36831C10.1064 1.5034 8.8507 0.987539 7.47498 0.987539C3.90164 0.987539 1 3.88918 1 7.46254C1 11.0359 3.90164 13.9375 7.47498 13.9375C11.0483 13.9375 13.95 11.0359 13.95 7.46254H13.1C13.1 10.5665 10.579 13.0875 7.47498 13.0875C4.37103 13.0875 1.84998 10.5665 1.84998 7.46254Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
+              icon: <RefreshCw strokeWidth={1.8} className="h-3.5 w-3.5" />,
               onSelect: () => void refreshAll(),
             },
             {
               label: t('ceo.dashboard.actions.send_broadcast'),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M1.20308 1.04312C1.17743 1.0114 1.14304 0.998483 1.10954 1.0003C1.07604 1.00212 1.0428 1.01861 1.02217 1.04482C1.00147 1.07112 0.993416 1.10425 0.99966 1.13524C1.0059 1.16623 1.02613 1.1942 1.05562 1.21175L13.8056 8.71175C13.8407 8.73238 13.8824 8.7332 13.918 8.71392C13.9536 8.69464 13.9774 8.65851 13.982 8.61802C13.9867 8.57753 13.9714 8.53924 13.9416 8.51478L1.20308 1.04312ZM1.00391 13.9961L1.00391 13.9961C1.00366 13.9961 1.00341 13.9961 1.00316 13.9961C0.96346 13.9959 0.925828 13.9782 0.90151 13.9482C0.877192 13.9182 0.868725 13.8791 0.878413 13.8423L2.24357 8.61833L8.00004 7.5L2.24357 6.38167L0.878413 1.15774C0.868725 1.1209 0.877192 1.08179 0.90151 1.05182C0.925828 1.02185 0.96346 1.00407 1.00316 1.00388C1.00341 1.00388 1.00366 1.00388 1.00391 1.00388C1.03664 1.00388 1.06913 1.01639 1.09241 1.03967L13.9124 13.8597C13.9405 13.8878 13.9536 13.9261 13.9479 13.9649C13.9422 14.0037 13.9184 14.0372 13.8839 14.0551C13.8493 14.0729 13.8087 14.0726 13.7744 14.0543L1.00391 13.9961Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
+              icon: <Send strokeWidth={1.8} className="h-3.5 w-3.5" />,
               onSelect: () => setIsBroadcastOpen(true),
             },
             {
               label: t('ceo.dashboard.actions.create_payment'),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
+              icon: <CirclePlus strokeWidth={1.8} className="h-3.5 w-3.5" />,
               onSelect: openCreatePaymentModal,
             },
             {
               label: t('ceo.dashboard.recurring.create'),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
+              icon: <CirclePlus strokeWidth={1.8} className="h-3.5 w-3.5" />,
               onSelect: openCreateCompanyPaymentModal,
             },
             {
               label: t('ceo.workday.dialog.create_action', { defaultValue: 'Create Override' }),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M4.5 1C4.22386 1 4 1.22386 4 1.5C4 1.77614 4.22386 2 4.5 2H7V7H2V4.5C2 4.22386 1.77614 4 1.5 4C1.22386 4 1 4.22386 1 4.5V7.5C1 7.63807 1.05268 7.76321 1.14645 7.85355C1.23679 7.94732 1.36193 8 1.5 8H7V13.5C7 13.7761 7.22386 14 7.5 14C7.77614 14 8 13.7761 8 13.5V8H13.5C13.7761 8 14 7.77614 14 7.5C14 7.22386 13.7761 7 13.5 7H8V2H10.5C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
+              icon: <CalendarPlus strokeWidth={1.8} className="h-3.5 w-3.5" />,
               onSelect: () => setIsOverrideOpen(true),
             },
           ]}
@@ -905,14 +863,14 @@ export function CeoDashboardPage() {
               solid
               label="Jami yuborildi"
               value={mediaSent}
-              icon={<Glyph d={glyphPaths.send} />}
+              icon={<Glyph icon={glyphIcons.send} />}
               hint={t('ceo.overview.media_count', '{{count}} media tracked', { count: mediaPosts.length })}
               delta={mediaSent > 0 ? `${mediaConversion.toFixed(1)}%` : undefined}
             />
             <StatCard
               label="Jami lead"
               value={mediaLead}
-              icon={<Glyph d={glyphPaths.lead} />}
+              icon={<Glyph icon={glyphIcons.lead} />}
               iconTone="success"
               hint={t('ceo.overview.contacted_hint', 'Contacted: {{count}}', { count: mediaContacted })}
               delta={mediaContinuing > 0 ? String(mediaContinuing) : undefined}
@@ -923,7 +881,7 @@ export function CeoDashboardPage() {
             <StatCard
               label="Noaniq yuborildi"
               value={mediaUnknownSent}
-              icon={<Glyph d={glyphPaths.help} />}
+              icon={<Glyph icon={glyphIcons.help} />}
               iconTone="warning"
               hint={t('ceo.overview.unknown_lead_hint', 'Unlinked leads: {{count}}', { count: mediaUnknownLead })}
               delta={mediaSent > 0 ? `${Math.round((mediaUnknownSent / mediaSent) * 100)}%` : undefined}
@@ -938,14 +896,14 @@ export function CeoDashboardPage() {
               solid
               label={t('ceo.overview.active_users', 'Active users')}
               value={activeUserCount}
-              icon={<Glyph d={glyphPaths.users} />}
+              icon={<Glyph icon={glyphIcons.users} />}
               hint={t('ceo.overview.total_users_hint', 'Total users: {{count}}', { count: totalUserCount })}
               delta={inactiveUserCount > 0 ? String(inactiveUserCount) : undefined}
             />
             <StatCard
               label={t('ceo.overview.open_tasks', 'Open tasks')}
               value={totalOpenTasks}
-              icon={<Glyph d={glyphPaths.tasks} />}
+              icon={<Glyph icon={glyphIcons.tasks} />}
               iconTone="violet"
               hint={t('ceo.overview.task_users_hint', 'Across {{count}} teammates', { count: workloadRanking.length })}
               onOpen={() => navigate('/projects')}
@@ -954,7 +912,7 @@ export function CeoDashboardPage() {
             <StatCard
               label={t('ceo.overview.pending_payments', 'Pending payments')}
               value={pendingPaymentsCount}
-              icon={<Glyph d={glyphPaths.wallet} />}
+              icon={<Glyph icon={glyphIcons.wallet} />}
               iconTone="warning"
               hint={t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount })}
               delta={pendingPaymentsCount > 0 ? String(pendingPaymentsCount) : undefined}
@@ -967,7 +925,7 @@ export function CeoDashboardPage() {
           <StatCard
             label="O'rtacha vaqt"
             value={slaAverage}
-            icon={<Glyph d={glyphPaths.clock} />}
+            icon={<Glyph icon={glyphIcons.clock} />}
             iconTone="violet"
             hint={t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit })}
             delta={`${Math.round((slaOnTime / slaTotal) * 100)}%`}
@@ -976,7 +934,7 @@ export function CeoDashboardPage() {
           <StatCard
             label={t('ceo.overview.recurring_total', 'Recurring monthly')}
             value={formatCurrency(companyPaymentsQuery.data?.totalAmount ?? 0)}
-            icon={<Glyph d={glyphPaths.repeat} />}
+            icon={<Glyph icon={glyphIcons.repeat} />}
             iconTone="blue"
             hint={t('ceo.overview.recurring_hint', '{{count}} reminders', { count: companyPayments.length })}
           />
@@ -1079,7 +1037,7 @@ export function CeoDashboardPage() {
               aria-label={t('ceo.dashboard.actions.create_payment')}
               className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
             >
-              <Glyph d={glyphPaths.plus} />
+              <Glyph icon={glyphIcons.plus} />
             </button>
           }
           emptyState={
@@ -1237,10 +1195,10 @@ export function CeoDashboardPage() {
                     render: (row) => (
                       <div className="flex items-center gap-1">
                         <IconButton size="sm" label={t('common.edit')} onClick={() => openEditCompanyPaymentModal(row)}>
-                          <PencilIcon />
+                          <Pencil strokeWidth={1.8} className="h-4 w-4" />
                         </IconButton>
                         <IconButton size="sm" tone="danger" label={t('customers.actions.delete')} onClick={() => void handleDeleteCompanyPayment(row)}>
-                          <TrashIcon />
+                          <Trash2 strokeWidth={1.8} className="h-4 w-4" />
                         </IconButton>
                       </div>
                     ),
@@ -1311,13 +1269,13 @@ export function CeoDashboardPage() {
                     render: (row) => (
                       <div className="flex items-center gap-1">
                         <IconButton size="sm" label={t('common.edit')} onClick={() => openEditPaymentModal(row)}>
-                          <PencilIcon />
+                          <Pencil strokeWidth={1.8} className="h-4 w-4" />
                         </IconButton>
                         <IconButton size="sm" tone="primary" label={t('ceo.dashboard.actions.toggle')} onClick={() => void handleTogglePayment(row)}>
-                          <SwapIcon />
+                          <ArrowLeftRight strokeWidth={1.8} className="h-4 w-4" />
                         </IconButton>
                         <IconButton size="sm" tone="danger" label={t('customers.actions.delete')} onClick={() => void handleDeletePayment(row)}>
-                          <TrashIcon />
+                          <Trash2 strokeWidth={1.8} className="h-4 w-4" />
                         </IconButton>
                       </div>
                     ),
@@ -1410,16 +1368,16 @@ export function CeoDashboardPage() {
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {([
-                { label: 'Jami lead', value: slaTotal, tone: 'blue', glyph: glyphPaths.lead },
-                { label: 'Note yozilgan', value: slaNoteWritten, tone: 'success', glyph: glyphPaths.note },
-                { label: 'Note yozilmagan', value: slaNoteMissing, tone: 'warning', glyph: glyphPaths.note },
-                { label: 'Note yoqsiz status', value: slaNoNote, tone: 'violet', glyph: glyphPaths.alert },
-              ] as ReadonlyArray<{ label: string; value: number; tone: Tone; glyph: string }>).map((item) => (
+                { label: 'Jami lead', value: slaTotal, tone: 'blue', glyph: glyphIcons.lead },
+                { label: 'Note yozilgan', value: slaNoteWritten, tone: 'success', glyph: glyphIcons.note },
+                { label: 'Note yozilmagan', value: slaNoteMissing, tone: 'warning', glyph: glyphIcons.note },
+                { label: 'Note yoqsiz status', value: slaNoNote, tone: 'violet', glyph: glyphIcons.alert },
+              ] as ReadonlyArray<{ label: string; value: number; tone: Tone; glyph: LucideIcon }>).map((item) => (
                 <StatCard
                   key={item.label}
                   label={item.label}
                   value={item.value}
-                  icon={<Glyph d={item.glyph} />}
+                  icon={<Glyph icon={item.glyph} />}
                   iconTone={item.tone}
                   className={statPanelClassName}
                 />
@@ -1480,7 +1438,7 @@ export function CeoDashboardPage() {
                     aria-label={t('ceo.dashboard.tasks.mark_done', 'Mark task as done')}
                     title={t('ceo.dashboard.tasks.mark_done', 'Mark task as done')}
                   >
-                    <CheckIcon />
+                    <Check strokeWidth={1.8} className="h-3 w-3" />
                   </button>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold leading-snug text-[var(--foreground)]">{task.title}</p>

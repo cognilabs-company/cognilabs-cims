@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { attendanceService } from '../../../shared/api/services/attendance.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { Card } from '../../../shared/ui/card'
@@ -35,22 +36,15 @@ const headCellClass = 'bg-[var(--muted-surface)] px-3 py-2.5 text-left align-mid
 const bodyCellClass = 'border-b border-[var(--border-subtle)] px-3 py-3.5 align-middle'
 
 const totalHoursIcon = (
-  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v5.3l3.4 2" />
-  </svg>
+  <Clock strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />
 )
 
 const chevronLeftIcon = (
-  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M14.5 5.5 8 12l6.5 6.5" />
-  </svg>
+  <ChevronLeft strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />
 )
 
 const chevronRightIcon = (
-  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M9.5 5.5 16 12l-6.5 6.5" />
-  </svg>
+  <ChevronRight strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />
 )
 
 function resolveHours(

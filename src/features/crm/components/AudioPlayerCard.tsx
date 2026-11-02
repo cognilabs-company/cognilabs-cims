@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowClockwiseIcon, ArrowCounterClockwiseIcon, MusicNotesIcon } from '@phosphor-icons/react'
+import { Music, RotateCcw, RotateCw } from 'lucide-react'
 import {
   AudioPlayer,
   AudioPlayerControlBar,
@@ -92,7 +92,7 @@ export function AudioPlayerCard({ src, name }: AudioPlayerCardProps) {
       {/* Header */}
       <div className="flex items-center gap-3 pb-[14px]">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[var(--blue-dim)]">
-          <MusicNotesIcon className="h-4 w-4 text-[var(--blue-text)]" weight="fill" />
+          <Music className="h-4 w-4 text-[var(--blue-text)]" strokeWidth={1.8} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm leading-snug font-semibold text-[var(--foreground)]" title={name}>
@@ -131,7 +131,7 @@ export function AudioPlayerCard({ src, name }: AudioPlayerCardProps) {
                 onClick={() => seek(-10)}
               >
                 <span className="relative flex items-center justify-center">
-                  <ArrowCounterClockwiseIcon className="h-5 w-5" weight="bold" />
+                  <RotateCcw className="h-5 w-5" strokeWidth={1.8} />
                   <span className="absolute text-[8px] font-bold leading-none" style={{ marginTop: 1 }}>10</span>
                 </span>
               </IconButton>
@@ -143,7 +143,7 @@ export function AudioPlayerCard({ src, name }: AudioPlayerCardProps) {
                 onClick={() => seek(10)}
               >
                 <span className="relative flex items-center justify-center">
-                  <ArrowClockwiseIcon className="h-5 w-5" weight="bold" />
+                  <RotateCw className="h-5 w-5" strokeWidth={1.8} />
                   <span className="absolute text-[8px] font-bold leading-none" style={{ marginTop: 1 }}>10</span>
                 </span>
               </IconButton>

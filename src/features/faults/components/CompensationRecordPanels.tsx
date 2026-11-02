@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from 'lucide-react'
 import type {
   MemberDeliveryBonusRecord,
   MemberMistakeRecord,
@@ -34,26 +35,6 @@ const tr = (key: string, uzFallback: string, ruFallback: string) => {
 }
 
 const emptyStateClassName = 'rounded-[18px] bg-[var(--muted-surface)] px-4 py-5 text-sm text-[var(--muted)]'
-
-function EditIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-    </svg>
-  )
-}
 
 function renderProjectLabel(projectName?: string | null, projectId?: number | null) {
   if (projectName?.trim()) {
@@ -166,10 +147,10 @@ export function MistakeIncidentSection({
               render: (row) => editable && onEdit && onDelete ? (
                 <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
                   <IconButton size="sm" label={lt('Edit mistake')} onClick={() => onEdit(row)}>
-                    <EditIcon />
+                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                   <IconButton size="sm" tone="danger" label={lt('Delete mistake')} onClick={() => onDelete(row)}>
-                    <TrashIcon />
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                 </div>
               ) : '-',
@@ -257,10 +238,10 @@ export function DeliveryBonusSection({
               render: (row) => editable && onEdit && onDelete ? (
                 <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
                   <IconButton size="sm" label={lt('Edit delivery bonus')} onClick={() => onEdit(row)}>
-                    <EditIcon />
+                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                   <IconButton size="sm" tone="danger" label={lt('Delete delivery bonus')} onClick={() => onDelete(row)}>
-                    <TrashIcon />
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                 </div>
               ) : '-',
@@ -337,7 +318,7 @@ export function SimpleBonusSection({
               render: (row) => editable && onDelete ? (
                 <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
                   <IconButton size="sm" tone="danger" label={lt('Delete bonus')} onClick={() => onDelete(row)}>
-                    <TrashIcon />
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                 </div>
               ) : '-',
@@ -414,7 +395,7 @@ export function SimplePenaltySection({
               render: (row) => editable && onDelete ? (
                 <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
                   <IconButton size="sm" tone="danger" label={lt('Delete penalty')} onClick={() => onDelete(row)}>
-                    <TrashIcon />
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                 </div>
               ) : '-',

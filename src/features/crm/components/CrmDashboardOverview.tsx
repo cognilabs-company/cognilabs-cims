@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { FileText, Flag, Phone, Plus, Target, Trophy, UserPlus, Users } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import type { ConversionRateResponse, CustomerStatsResponse, CustomerSummary } from '../../../shared/api/types'
 import { BarChartCard, type BarDatum } from '../../../shared/ui/charts/bar-chart-card'
@@ -14,85 +15,28 @@ import { getCustomerDisplayName } from '../../../shared/lib/customer-display'
 
 type PeriodKey = '' | 'today' | '3d' | '7d' | '30d' | '90d'
 
+type StatusLabelOption = {
+  value: string
+  label: string
+}
+
 type CrmDashboardOverviewProps = {
   customers: CustomerSummary[]
   stats: CustomerStatsResponse | null
   conversion: ConversionRateResponse | null
+  statusOptions: StatusLabelOption[]
   period: PeriodKey
   onPeriodChange: (period: PeriodKey) => void
   onOpenCustomer: (customerId: number) => void
   onFocusStatus: (status: string) => void
 }
 
-function IconFlag() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
-    </svg>
-  )
-}
-
-function IconPhone() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />
-    </svg>
-  )
-}
-
-function IconDoc() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-      <path d="M14 3v6h6M8 13h8M8 17h5" />
-    </svg>
-  )
-}
-
-function IconTrophy() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" />
-      <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
-    </svg>
-  )
-}
-
-function IconUsers() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
-      <path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6" />
-    </svg>
-  )
-}
-
-function IconUserPlus() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M2.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6" />
-    </svg>
-  )
-}
-
-function IconTarget() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="1" />
-    </svg>
-  )
-}
-
-function IconAdd() {
-  return (
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  )
+function humanizeStatusKey(value: string) {
+  return value
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/^./, (char) => char.toUpperCase())
 }
 
 function initialsOf(value: string) {
@@ -113,12 +57,21 @@ export function CrmDashboardOverview({
   customers,
   stats,
   conversion,
+  statusOptions,
   period,
   onPeriodChange,
   onOpenCustomer,
   onFocusStatus,
 }: CrmDashboardOverviewProps) {
   const { t } = useLocale()
+
+  const statusLabelOf = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const option of statusOptions) {
+      map.set(option.value.toLowerCase().replace(/[^a-z0-9]/g, ''), option.label)
+    }
+    return (raw: string) => map.get(raw.toLowerCase().replace(/[^a-z0-9]/g, '')) ?? humanizeStatusKey(raw)
+  }, [statusOptions])
 
   const total = stats?.total_customers ?? customers.length
   const needToCall = stats?.need_to_call ?? 0
@@ -151,14 +104,14 @@ export function CrmDashboardOverview({
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
 
-    return entries.map(([label, count]) => ({
-      key: label,
-      label,
+    return entries.map(([rawKey, count]) => ({
+      key: rawKey,
+      label: statusLabelOf(rawKey),
       value: count,
       amount: String(count),
-      delta: percentages[label] != null ? `${Math.round(percentages[label])}%` : undefined,
+      delta: percentages[rawKey] != null ? `${Math.round(percentages[rawKey])}%` : undefined,
     }))
-  }, [stats?.status_dict, stats?.status_percentages])
+  }, [stats?.status_dict, stats?.status_percentages, statusLabelOf])
 
   const topStatusKey = statusBars.length > 0 ? statusBars[0].key : undefined
 
@@ -173,10 +126,10 @@ export function CrmDashboardOverview({
 
   const funnelStages = useMemo<FunnelStage[]>(() => {
     const steps = [
-      { key: 'need_to_call', label: t('customers.stats.need_to_call', 'Need to call'), count: needToCall, icon: <IconFlag /> },
-      { key: 'contacted', label: t('customers.stats.contacted', 'Contacted'), count: contacted, icon: <IconPhone /> },
-      { key: 'project_started', label: t('customers.stats.project_started', 'Project started'), count: projectStarted, icon: <IconDoc /> },
-      { key: 'finished', label: t('customers.stats.finished', 'Finished'), count: finished, icon: <IconTrophy />, hero: true },
+      { key: 'need_to_call', label: t('customers.stats.need_to_call', 'Need to call'), count: needToCall, icon: <Flag className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" /> },
+      { key: 'contacted', label: t('customers.stats.contacted', 'Contacted'), count: contacted, icon: <Phone className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" /> },
+      { key: 'project_started', label: t('customers.stats.project_started', 'Project started'), count: projectStarted, icon: <FileText className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" /> },
+      { key: 'finished', label: t('customers.stats.finished', 'Finished'), count: finished, icon: <Trophy className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />, hero: true },
     ]
     const max = steps.reduce((acc, step) => Math.max(acc, step.count), 0) || 1
 
@@ -210,12 +163,12 @@ export function CrmDashboardOverview({
         return {
           key: String(customer.id),
           title: getCustomerDisplayName(customer),
-          meta: customer.status,
+          meta: statusLabelOf(customer.status),
           tag: `${hours}:${minutes}`,
-          tone: 'blue' as const,
+          tone: resolveTone(customer.status, 'blue'),
         }
       })
-  }, [customers])
+  }, [customers, statusLabelOf])
 
   const leaderboard = useMemo<LeaderboardEntry[]>(() => {
     const buckets = new Map<string, number>()
@@ -258,13 +211,13 @@ export function CrmDashboardOverview({
           name,
           initial: name.charAt(0).toUpperCase() || '—',
           owner: customer.assistant_name?.trim() || '—',
-          status: customer.status,
+          status: statusLabelOf(customer.status),
           statusTone: resolveTone(customer.status, toneByIndex(index)),
           tone: logoTones[index % logoTones.length],
           date: created && !Number.isNaN(created.getTime()) ? created.toLocaleDateString() : '',
         }
       })
-  }, [customers])
+  }, [customers, statusLabelOf])
 
   const periodTabs = useMemo(
     () => [
@@ -290,14 +243,14 @@ export function CrmDashboardOverview({
           solid
           label={t('customers.stats.total', 'Total customers')}
           value={total}
-          icon={<IconUsers />}
+          icon={<Users className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />}
           hint={t('customers.stats.active_now', 'Active in the pipeline')}
           delta={continuing > 0 ? `${continuing}` : undefined}
         />
         <StatCard
           label={t('customers.stats.need_to_call', 'Need to call')}
           value={needToCall}
-          icon={<IconUserPlus />}
+          icon={<UserPlus className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="blue"
           hint={t('customers.stats.contacted_hint', 'Contacted: {{count}}', { count: contacted })}
           delta={needToCall > 0 ? `${Math.round((needToCall / (total || 1)) * 100)}%` : undefined}
@@ -307,20 +260,20 @@ export function CrmDashboardOverview({
         <StatCard
           label={t('customers.stats.project_started', 'Project started')}
           value={projectStarted}
-          icon={<IconTrophy />}
+          icon={<Trophy className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="warning"
           hint={t('customers.stats.finished_hint', 'Finished: {{count}}', { count: finished })}
-          delta={rejected > 0 ? `${rejected}` : undefined}
-          deltaTone="danger"
+          delta={total > 0 ? `${Math.round((projectStarted / total) * 100)}%` : undefined}
+          deltaTone="neutral"
           onOpen={() => onFocusStatus('project_started')}
         />
         <StatCard
           label={t('customers.stats.conversion', 'Conversion')}
           value={`${conversionRate.toFixed(1)}%`}
-          icon={<IconTarget />}
+          icon={<Target className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="lime"
+          hint={t('customers.stats.conversion_hint', 'Started: {{count}}', { count: conversion?.project_started_count ?? projectStarted })}
           footer={createdTrend.length > 1 ? <Sparkline points={createdTrend} /> : undefined}
-          className={createdTrend.length > 1 ? 'overflow-hidden pb-0' : undefined}
         />
       </div>
 
@@ -404,7 +357,7 @@ export function CrmDashboardOverview({
           onSelect={(key) => onOpenCustomer(Number(key))}
           action={
             <span className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white">
-              <IconAdd />
+              <Plus className="h-[15px] w-[15px]" strokeWidth={1.8} aria-hidden="true" />
             </span>
           }
           emptyState={

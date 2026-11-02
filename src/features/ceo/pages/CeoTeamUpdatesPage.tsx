@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import { membersService } from '../../../shared/api/services/members.service'
 import {
   updateTrackingService,
@@ -1895,10 +1896,7 @@ export function CeoTeamUpdatesPage() {
                 {translateCurrentLiteral('Search employee')}
               </Label>
               <div className="relative">
-                <svg className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="7" cy="7" r="4.5" />
-                  <path d="M10.5 10.5l3 3" />
-                </svg>
+                <Search strokeWidth={1.8} className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
                 <Input
                   placeholder={translateCurrentLiteral('Search by name')}
                   value={search}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Plus } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -252,9 +253,7 @@ export function KanbanBoard({
               onClick={onAddColumn}
               className="flex min-h-11 w-[280px] shrink-0 items-center gap-2 self-start rounded-[18px] border border-dashed border-[var(--border-hover)] bg-[var(--muted-surface)] px-4 text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]"
             >
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-              </svg>
+              <Plus strokeWidth={1.8} className="h-3.5 w-3.5" />
               Add another list
             </button>
           ) : null}

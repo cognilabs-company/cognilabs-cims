@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, ReactNode } from 'react'
 import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { IconButton } from '../../../shared/ui/icon-button'
@@ -39,20 +40,11 @@ export function PasswordField({ label, error, hint, id, className, leadingIcon, 
           aria-pressed={visible}
           className="absolute top-1/2 right-2 -translate-y-1/2 hover:bg-[var(--border-hover)]"
         >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4.5 w-4.5"
-          >
-            <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" />
-            <circle cx="12" cy="12" r="2.75" />
-            {visible ? <path d="m3.5 3.5 17 17" /> : null}
-          </svg>
+          {visible ? (
+            <EyeOff aria-hidden="true" strokeWidth={1.8} className="h-4.5 w-4.5" />
+          ) : (
+            <Eye aria-hidden="true" strokeWidth={1.8} className="h-4.5 w-4.5" />
+          )}
         </IconButton>
       </div>
       {error ? <span className="text-[12.5px] font-medium text-[var(--danger-text)]">{error}</span> : null}

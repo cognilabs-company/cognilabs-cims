@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Info, Search } from 'lucide-react'
 import {
   cognilabsaiService,
   type CommentAutomationMedia,
@@ -385,11 +386,7 @@ export function CognilabsAICommentAutomationPage() {
         <details className="px-[22px] py-[18px] text-[13px] text-[var(--muted-strong)]">
           <summary className="flex cursor-pointer select-none items-center gap-2.5 text-[15px] font-semibold text-[var(--foreground)]">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 16v-4" />
-                <path d="M12 8h.01" />
-              </svg>
+              <Info strokeWidth={1.8} className="h-[18px] w-[18px]" />
             </span>
             {tx('rules.title', 'Meta rules')}
           </summary>
@@ -458,10 +455,7 @@ export function CognilabsAICommentAutomationPage() {
               </div>
               <div className="flex items-center gap-2 lg:ml-auto">
                 <div className="relative w-full lg:w-64">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.3-4.3" />
-                  </svg>
+                  <Search strokeWidth={1.8} className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
                   <Input
                     value={search}
                     onChange={(event) => handleSearchChange(event.target.value)}

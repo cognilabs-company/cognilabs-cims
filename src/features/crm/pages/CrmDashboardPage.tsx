@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Pencil, Play, Trash2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAppShell } from '../../../app/hooks/useAppShell'
@@ -459,9 +460,7 @@ function TableAudioControl({
         aria-label={t('common.play', 'Play')}
       >
         <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--blue-dim)] text-[var(--blue-text)]">
-          <svg viewBox="0 0 16 16" className="ml-0.5 h-3 w-3 fill-current" aria-hidden="true">
-            <path d="M5 3.8v8.4a.6.6 0 0 0 .93.5l6.2-4.2a.6.6 0 0 0 0-1L5.93 3.3A.6.6 0 0 0 5 3.8Z" />
-          </svg>
+          <Play className="ml-0.5 h-3 w-3 fill-current" strokeWidth={1.8} aria-hidden="true" />
         </span>
         {t('common.play', 'Play')}
       </button>
@@ -1076,6 +1075,7 @@ export function CrmDashboardPage() {
         customers={baseCustomers}
         stats={summaryQuery.data ?? null}
         conversion={conversionQuery.data ?? null}
+        statusOptions={statusOptions}
         period={selectedPeriod}
         onPeriodChange={setSelectedPeriod}
         onOpenCustomer={(customerId) => {
@@ -1374,10 +1374,10 @@ export function CrmDashboardPage() {
                 render: (row) => (
                   <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
                     <IconButton size="sm" label={t('customers.actions.edit', 'Edit')} onClick={() => openEditModal(row)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      <Pencil className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                     </IconButton>
                     <IconButton size="sm" tone="danger" label={t('customers.actions.delete', 'Delete')} onClick={() => void handleDeleteCustomer(row)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      <Trash2 className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                     </IconButton>
                   </div>
                 ),

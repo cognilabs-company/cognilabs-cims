@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { LoaderCircle } from 'lucide-react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { translateCurrent } from '../../../shared/i18n/translations'
 import { useAuth } from '../hooks/useAuth'
@@ -16,10 +17,7 @@ function LoadingState() {
     <div className="grid min-h-[50vh] place-items-center p-[18px]">
       <div className="w-full max-w-md rounded-[24px] bg-[var(--surface)] p-[22px] text-center">
         <span className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-[14px] bg-[var(--blue-dim)]">
-          <svg className="h-5 w-5 animate-spin text-[var(--primary)]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-            <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
+          <LoaderCircle strokeWidth={1.8} className="h-5 w-5 animate-spin text-[var(--primary)]" aria-hidden="true" />
         </span>
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--caption)]">{translateCurrent('auth.protected.session', 'Session')}</p>
         <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[var(--foreground)]">{translateCurrent('auth.protected.verifying', 'Verifying credentials')}</h2>

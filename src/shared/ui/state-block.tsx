@@ -1,3 +1,4 @@
+import { CircleAlert, FileSearch } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { translateCurrentLiteral } from '../i18n/translations'
 import { cn } from '../lib/cn'
@@ -28,44 +29,6 @@ function LoadingDots() {
   )
 }
 
-function EmptyIllustration() {
-  return (
-    <svg
-      className="h-12 w-12 text-[#D3D7E0]"
-      viewBox="0 0 48 48"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="8" y="10" width="32" height="28" rx="4" />
-      <path d="M16 20h16M16 26h10" />
-      <path d="M34 34l6 6" strokeWidth="2" />
-      <circle cx="34" cy="34" r="5" />
-    </svg>
-  )
-}
-
-function ErrorIllustration() {
-  return (
-    <svg
-      className="h-12 w-12 text-[var(--danger-text)]"
-      viewBox="0 0 48 48"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="24" cy="24" r="16" />
-      <path d="M24 16v9M24 30v2" strokeWidth="2" />
-    </svg>
-  )
-}
-
 export function StateBlock({
   eyebrow,
   title,
@@ -91,9 +54,13 @@ export function StateBlock({
         {isLoading ? (
           <LoadingDots />
         ) : isError ? (
-          <ErrorIllustration />
+          <CircleAlert
+            strokeWidth={1.8}
+            className="h-12 w-12 text-[var(--danger-text)]"
+            aria-hidden="true"
+          />
         ) : (
-          <EmptyIllustration />
+          <FileSearch strokeWidth={1.8} className="h-12 w-12 text-[#D3D7E0]" aria-hidden="true" />
         )}
       </div>
 

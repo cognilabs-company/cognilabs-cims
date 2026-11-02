@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Calendar, Clock, Sun, Users } from 'lucide-react'
 import {
   updateTrackingService,
   type WorkdayOverrideRecord,
@@ -60,29 +61,16 @@ const summaryIconTone: Record<SummaryAccent, Tone> = {
 
 const summaryIcons: Record<SummaryAccent, ReactNode> = {
   default: (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="16" rx="3.5" />
-      <path d="M8 3v4M16 3v4M3 11h18" />
-    </svg>
+    <Calendar strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />
   ),
   warning: (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6" />
-    </svg>
+    <Sun strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />
   ),
   blue: (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5.3l3.4 2" />
-    </svg>
+    <Clock strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />
   ),
   success: (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="9.2" cy="8.4" r="3.4" />
-      <path d="M3 19.4c0-3.1 2.8-4.7 6.2-4.7s6.2 1.6 6.2 4.7" />
-      <path d="M16.4 6.1a3.2 3.2 0 0 1 0 5.9M21 19.4c0-2-1.2-3.3-3.3-3.9" />
-    </svg>
+    <Users strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />
   ),
 }
 

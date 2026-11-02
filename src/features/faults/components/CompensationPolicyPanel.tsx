@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Badge } from '../../../shared/ui/badge'
 import { Card } from '../../../shared/ui/card'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
@@ -85,16 +86,11 @@ export function CompensationPolicyPanel({
       {collapsible ? (
         <div className="flex shrink-0 items-center gap-3">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] bg-[var(--input-surface)] text-[var(--muted-strong)]">
-            <svg
-              viewBox="0 0 16 16"
+            <ChevronDown
               className={cn('h-4 w-4 transition-transform duration-200', isExpanded ? 'rotate-180' : '')}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
+              strokeWidth={1.8}
               aria-hidden="true"
-            >
-              <path d="M4 6.5 8 10.5 12 6.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            />
           </span>
         </div>
       ) : null}

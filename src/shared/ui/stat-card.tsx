@@ -1,3 +1,4 @@
+import { ArrowUpRight } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
 import { cn } from '../lib/cn'
 import { toneSurface, toneText, type Tone } from './tone'
@@ -26,9 +27,7 @@ const deltaClasses: Record<NonNullable<StatCardProps['deltaTone']>, string> = {
 
 function ArrowOut() {
   return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M7 17L17 7M8 7h9v9" />
-    </svg>
+    <ArrowUpRight strokeWidth={2.2} className="h-[18px] w-[18px]" aria-hidden="true" />
   )
 }
 
@@ -57,6 +56,7 @@ export function StatCard({
       className={cn(
         'relative flex min-h-[168px] flex-col justify-between rounded-[24px] p-[22px]',
         solid ? 'text-white' : 'bg-[var(--card)] text-[var(--foreground)]',
+        footer && 'overflow-hidden pb-0',
         className,
       )}
       style={solid ? { background: 'var(--primary-gradient)' } : undefined}

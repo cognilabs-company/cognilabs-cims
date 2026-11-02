@@ -1,4 +1,5 @@
 import { useMemo, useState, type KeyboardEvent } from 'react'
+import { Activity, CalendarDays, ChevronLeft, ChevronRight, CircleCheck, Gauge, RefreshCw } from 'lucide-react'
 import { updateTrackingService, type WorkdayOverrideRecord } from '../../../shared/api/services/updateTracking.service'
 import type { DayStatus, UpdateTrackingStats } from '../../../shared/api/types'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
@@ -1386,10 +1387,7 @@ export function UpdateTrackingPage() {
               variant="secondary"
               onClick={() => void handleRefresh()}
               leftIcon={(
-                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M1.5 8a6.5 6.5 0 1 1 1.2 3.8" />
-                  <path d="M1.5 12.5V8.5h4" />
-                </svg>
+                <RefreshCw strokeWidth={1.8} className="h-4 w-4" aria-hidden="true" />
               )}
             >
               {tr('Refresh', 'Yangilash', 'Obnovit')}
@@ -1416,11 +1414,7 @@ export function UpdateTrackingPage() {
           value={`${monthlyPct.toFixed(1)}%`}
           footer={<Progress value={monthlyPct} tone="lime" size="xs" onInverse className="mt-1" />}
           icon={(
-            <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 10a8 8 0 1 1 16 0" />
-              <path d="M10 10V4" />
-              <path d="M10 10l4 2.5" />
-            </svg>
+            <Gauge strokeWidth={1.8} className="h-[18px] w-[18px]" />
           )}
         />
         <StatCard
@@ -1429,10 +1423,7 @@ export function UpdateTrackingPage() {
           value={`${weeklyPct.toFixed(1)}%`}
           footer={<Progress value={weeklyPct} tone={getCompletionTone(weeklyPct)} size="xs" className="mt-1" />}
           icon={(
-            <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="3" width="16" height="14" rx="2" />
-              <path d="M7 3v14M13 3v14M2 9h16M2 13h16" />
-            </svg>
+            <CalendarDays strokeWidth={1.8} className="h-[18px] w-[18px]" />
           )}
         />
         <StatCard
@@ -1440,10 +1431,7 @@ export function UpdateTrackingPage() {
           label={tr('Updates This Month', 'Bu oydagi update lar', 'Obnovleniya za etot mesyats')}
           value={stats?.updates_this_month ?? 0}
           icon={(
-            <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="10" cy="10" r="8" />
-              <path d="m6.5 10 2.5 2.5 4.5-4.5" />
-            </svg>
+            <CircleCheck strokeWidth={1.8} className="h-[18px] w-[18px]" />
           )}
         />
         <StatCard
@@ -1451,9 +1439,7 @@ export function UpdateTrackingPage() {
           label={tr('Updates This Week', 'Bu haftadagi update lar', 'Obnovleniya za etu nedelyu')}
           value={stats?.updates_this_week ?? 0}
           icon={(
-            <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="2 15 7 8 11 12 15 6 18 9" />
-            </svg>
+            <Activity strokeWidth={1.8} className="h-[18px] w-[18px]" />
           )}
         />
       </div>
@@ -1500,9 +1486,7 @@ export function UpdateTrackingPage() {
               onClick={() => handleMonthShift(-1)}
               className="w-11 rounded-[14px] px-0 hover:bg-[var(--card)]"
             >
-              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M10 3.5 5.5 8 10 12.5" />
-              </svg>
+              <ChevronLeft strokeWidth={1.8} className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button
               variant="ghost"
@@ -1516,9 +1500,7 @@ export function UpdateTrackingPage() {
               onClick={() => handleMonthShift(1)}
               className="w-11 rounded-[14px] px-0 hover:bg-[var(--card)]"
             >
-              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 3.5 10.5 8 6 12.5" />
-              </svg>
+              <ChevronRight strokeWidth={1.8} className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import React, { useEffect, useMemo, useState } from 'react'
+import { MessageSquare, Pencil, Search, Trash2, X } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn'
 import { useTranslation } from 'react-i18next'
 import { useCrmScope } from '../lib/crmScope'
@@ -235,9 +236,7 @@ export function CustomerDetailContent({
                   size="sm"
                   onClick={onOpenChat}
                   leftIcon={
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                      <path d="M14 10a1.33 1.33 0 0 1-1.33 1.33H4.67L2 14V3.33A1.33 1.33 0 0 1 3.33 2h9.34A1.33 1.33 0 0 1 14 3.33z" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   }
                 >
                   {t('customers.detail.go_to_chat', "Suhbatga o'tish")}
@@ -472,10 +471,7 @@ export function CustomerDetailContent({
                                 label={t('common.edit', 'Edit')}
                                 onClick={() => { setEditingNoteId(note.id); setEditingContent(note.note) }}
                               >
-                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeLinecap="round" strokeLinejoin="round" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
+                                <Pencil className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                               </IconButton>
                               <IconButton
                                 tone="danger"
@@ -483,9 +479,7 @@ export function CustomerDetailContent({
                                 label={t('common.delete', 'Delete')}
                                 onClick={() => handleDeleteNote(note.id as number)}
                               >
-                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
+                                <Trash2 className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                               </IconButton>
                             </>
                           )}
@@ -607,10 +601,7 @@ export function CustomerDetailDrawer({
                   title={t('customers.detail.search_telegram', 'Search Telegram')}
                   onClick={() => onSearchTelegram(customerPhoneNumber, customer.id)}
                   leftIcon={
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                      <circle cx="7" cy="7" r="4.25" />
-                      <path d="M10.25 10.25 13 13" strokeLinecap="round" />
-                    </svg>
+                    <Search className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   }
                 >
                   {t('customers.detail.search_telegram', 'Search Telegram')}
@@ -624,9 +615,7 @@ export function CustomerDetailDrawer({
                   title={t('customers.detail.edit', 'Edit customer')}
                   onClick={() => onEdit(customer)}
                   leftIcon={
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                      <path d="M11.33 2.67L13.33 4.67M2 14h3.33l8-8V3.67A1.33 1.33 0 0 0 12 2.33H3.33A1.33 1.33 0 0 0 2 3.67z" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                   }
                 >
                   {t('customers.detail.edit', 'Edit')}
@@ -643,9 +632,7 @@ export function CustomerDetailDrawer({
                     title={t('customers.detail.view_chat', "Suhbatni ko'rish")}
                     onClick={() => onOpenChat(convId)}
                     leftIcon={
-                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                        <path d="M14 10a1.33 1.33 0 0 1-1.33 1.33H4.67L2 14V3.33A1.33 1.33 0 0 1 3.33 2h9.34A1.33 1.33 0 0 1 14 3.33z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                     }
                   >
                     {t('customers.detail.view_chat', "Suhbat")}
@@ -658,9 +645,7 @@ export function CustomerDetailDrawer({
                 label={t('customers.detail.close', 'Close detail drawer')}
                 onClick={onClose}
               >
-                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                  <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
-                </svg>
+                <X className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
               </IconButton>
             </div>
           </div>

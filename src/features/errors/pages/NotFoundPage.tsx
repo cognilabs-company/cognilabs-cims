@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Compass } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
@@ -10,19 +11,7 @@ export function NotFoundPage() {
     <div className="grid min-h-screen place-items-center bg-[var(--app-canvas)] px-4 py-10">
       <div className="w-full max-w-lg rounded-[24px] bg-[var(--card)] p-[22px] text-center sm:p-10">
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-7 w-7"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="9" />
-            <path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1 5.1-2.1Z" />
-          </svg>
+          <Compass strokeWidth={1.8} className="h-7 w-7" aria-hidden="true" />
         </span>
 
         <div className="mt-5 flex justify-center">

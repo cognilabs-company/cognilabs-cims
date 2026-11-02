@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { MessageSquare, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn'
 import {
   ceoService,
@@ -1005,18 +1006,7 @@ export function CeoUsersPage() {
                       }}
                       className="inline-flex h-9 items-center gap-2 rounded-[11px] bg-[var(--accent-soft)] px-3 text-left transition-colors hover:bg-[var(--blue-dim)]"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 shrink-0 text-[var(--primary)]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
+                      <MessageSquare strokeWidth={1.8} className="h-4 w-4 shrink-0 text-[var(--primary)]" />
                       {conversation.totalCount > 0 ? (
                         <span className="text-xs font-semibold tabular-nums text-[var(--foreground)]" data-ui-number="true">
                           {conversation.totalCount}
@@ -1043,10 +1033,10 @@ export function CeoUsersPage() {
                 render: (row) => (
                   <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
                     <IconButton label={lt('Edit')} size="sm" onClick={() => openEditUserModal(row)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      <Pencil strokeWidth={1.8} className="h-4 w-4" />
                     </IconButton>
                     <IconButton label={lt('Delete')} size="sm" tone="danger" onClick={() => void handleDeleteUser(row)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      <Trash2 strokeWidth={1.8} className="h-4 w-4" />
                     </IconButton>
                     <ActionsMenu
                       label={`${lt('Open actions for')} ${row.email}`}

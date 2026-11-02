@@ -1,3 +1,4 @@
+import { Check, ChevronDown } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../lib/cn'
@@ -169,16 +170,14 @@ export function SelectField({
                 : placeholder)
             : (selectedOption?.label ?? placeholder)}
         </span>
-        <svg
-          viewBox="0 0 16 16"
+        <ChevronDown
+          strokeWidth={1.8}
           className={cn(
-            'h-4 w-4 shrink-0 fill-current text-[var(--muted)] transition-transform duration-200',
+            'h-4 w-4 shrink-0 text-[var(--muted)] transition-transform duration-200',
             isOpen && 'rotate-180 text-[var(--foreground)]',
           )}
           aria-hidden="true"
-        >
-          <path d="M4.22 5.97a.75.75 0 0 1 1.06 0L8 8.69l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.03a.75.75 0 0 1 0-1.06Z" />
-        </svg>
+        />
       </button>
 
       {isOpen && typeof document !== 'undefined'
@@ -259,13 +258,11 @@ export function SelectField({
                         <span className="truncate">{option.label}</span>
                       </span>
                       {isSelected ? (
-                        <svg
-                          viewBox="0 0 16 16"
-                          className="h-4 w-4 shrink-0 fill-current text-[var(--blue-text)]"
+                        <Check
+                          strokeWidth={1.8}
+                          className="h-4 w-4 shrink-0 text-[var(--blue-text)]"
                           aria-hidden="true"
-                        >
-                          <path d="M6.6 11.2 3.4 8a.75.75 0 1 0-1.06 1.06l3.73 3.73a.75.75 0 0 0 1.06 0l6.53-6.53A.75.75 0 1 0 12.64 5.2L6.6 11.2Z" />
-                        </svg>
+                        />
                       ) : null}
                     </button>
                   )

@@ -1,4 +1,5 @@
 import { useId, useMemo, type ReactNode } from 'react'
+import { Calendar, Crosshair, Users, Zap } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type {
   SalesDashboardChartsResponse,
@@ -38,34 +39,13 @@ const tonePalette = {
 
 type AccentTone = keyof typeof tonePalette
 
-const iconTotalLeads = (
-  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19" />
-    <circle cx="10" cy="8" r="3.2" />
-    <path d="M17 11.2a3 3 0 0 0 0-6M20 19v-1.2a3.4 3.4 0 0 0-2.4-3.2" />
-  </svg>
-)
+const iconTotalLeads = <Users className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
 
-const iconThisWeek = (
-  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="3.5" y="5" width="17" height="15" rx="3" />
-    <path d="M8 3.5v3M16 3.5v3M3.5 10h17" />
-  </svg>
-)
+const iconThisWeek = <Calendar className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
 
-const iconStarted = (
-  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M13.5 3.5 5 13.8h5l-1.5 6.7 8.5-10.3h-5z" />
-  </svg>
-)
+const iconStarted = <Zap className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
 
-const iconConversion = (
-  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="8.5" />
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" />
-  </svg>
-)
+const iconConversion = <Crosshair className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
 
 type CrmDashboardChartsProps = {
   weekly?: SalesDashboardChartsResponse

@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { Plus } from 'lucide-react'
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
@@ -141,9 +142,7 @@ export function KanbanColumn({
             onClick={() => onOpenAddCardModal(column.id)}
             className="flex min-h-11 w-full items-center gap-2 rounded-[14px] bg-transparent px-3 py-2 text-[13px] font-semibold text-[var(--muted-strong)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-            </svg>
+            <Plus strokeWidth={1.8} className="h-4 w-4 shrink-0" />
             {tr('Task qo\'shish', 'Task qo\'shish', 'Добавить задачу')}
           </button>
         </div>

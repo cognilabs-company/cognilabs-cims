@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { ArrowUpRight } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { Badge } from '../../../shared/ui/badge'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
@@ -83,9 +84,7 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
             className="inline-flex items-center gap-1 truncate text-[11.5px] font-medium text-[var(--blue-text)] transition-colors hover:text-[var(--primary-hover)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M5 8h6M8 5l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ArrowUpRight strokeWidth={1.8} className="h-3 w-3 shrink-0" />
             <span className="truncate">{project.project_url.replace(/^https?:\/\//, '')}</span>
           </a>
         )}

@@ -6,6 +6,27 @@ import {
   useState,
 } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  ArrowLeft,
+  ArrowUp,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Globe,
+  IdCard,
+  LayoutGrid,
+  MessageCircle,
+  MessageSquare,
+  Pause,
+  Phone,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Send,
+  X,
+} from 'lucide-react'
 import { cn } from '../../../shared/lib/cn'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useToast } from '../../../shared/toast/useToast'
@@ -212,11 +233,7 @@ function AvatarOrInitials({
 
 function ChannelIcon({ channel }: { channel: string }) {
   if (channel === 'all') {
-    return (
-      <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="currentColor" aria-hidden="true">
-        <path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z" />
-      </svg>
-    )
+    return <LayoutGrid strokeWidth={1.8} className="h-3 w-3 shrink-0" aria-hidden="true" />
   }
 
   if (channel === 'instagram') {
@@ -234,13 +251,7 @@ function ChannelIcon({ channel }: { channel: string }) {
     )
   }
   if (channel === 'website' || channel === 'website_ai') {
-    return (
-      <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M3 12h18" strokeLinecap="round" />
-        <path d="M12 3a14.5 14.5 0 0 1 0 18M12 3a14.5 14.5 0 0 0 0 18" strokeLinecap="round" />
-      </svg>
-    )
+    return <Globe strokeWidth={1.8} className="h-3 w-3 shrink-0" aria-hidden="true" />
   }
   return (
     <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="currentColor" aria-hidden="true">
@@ -275,7 +286,7 @@ function AiFollowUpBadge({ dueAt, sentAt }: { dueAt: string | null; sentAt: stri
   if (sentAt) {
     return (
       <Badge variant="blue" size="sm">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <Check strokeWidth={1.8} className="h-2.5 w-2.5" />
         AI Follow-up ✓
       </Badge>
     )
@@ -283,7 +294,7 @@ function AiFollowUpBadge({ dueAt, sentAt }: { dueAt: string | null; sentAt: stri
   if (dueAt) {
     return (
       <Badge variant="violet" size="sm">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l3 3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <Clock strokeWidth={1.8} className="h-2.5 w-2.5" />
         AI Follow-up
       </Badge>
     )
@@ -377,11 +388,19 @@ function ConversationListItem({
     : null
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect()
+        }
+      }}
       className={cn(
-        'group relative flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors duration-150',
+        'group relative flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors duration-150',
+        'focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 focus-visible:outline-none',
         isActive
           ? 'bg-[var(--blue-dim)]'
           : 'hover:bg-[var(--accent-soft)]',
@@ -429,10 +448,7 @@ function ConversationListItem({
                 className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--success-dim)] px-2.5 text-[11.5px] font-semibold text-[var(--success-text)] transition-colors hover:bg-[var(--success-strong)]"
                 title="CRM"
               >
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                  <path d="M2.5 5.25A1.75 1.75 0 0 1 4.25 3.5h7.5A1.75 1.75 0 0 1 13.5 5.25v5.5a1.75 1.75 0 0 1-1.75 1.75h-7.5A1.75 1.75 0 0 1 2.5 10.75z" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M5 6.25h6M5 8h3.25" strokeLinecap="round" />
-                </svg>
+                <IdCard strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true" />
                 CRM
               </button>
             ) : null}
@@ -474,7 +490,7 @@ function ConversationListItem({
           ) : null}
         </div>
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -585,9 +601,7 @@ function MessageBubble({ msg, isNextSameSender }: { msg: MessageItem; isNextSame
         )}>
           <span className={cn('text-[11px] font-medium tabular-nums', isClient ? 'text-[var(--caption)]' : 'text-white/70')}>{timeStr}</span>
           {!isClient && (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5 text-white/70">
-              <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Check strokeWidth={1.8} className="h-2.5 w-2.5 text-white/70" />
           )}
         </div>
       </div>
@@ -692,9 +706,7 @@ function TelegramSearchModal({
               onClick={onBackToCrm}
               disabled={isSending}
               leftIcon={
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
-                  <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ArrowLeft strokeWidth={1.8} className="h-4 w-4" />
               }
             >
               CRM ga qaytish
@@ -727,10 +739,7 @@ function TelegramSearchModal({
       <div className="space-y-[18px]">
         {/* Search */}
         <div className="relative">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
+          <Search strokeWidth={1.8} className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
           <Input
             placeholder="dev949, @username, t.me/link..."
             value={query}
@@ -795,9 +804,7 @@ function TelegramSearchModal({
                   </div>
                   {selectedPeer?.peer === item.peer && (
                     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--primary)]">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-2.5 w-2.5 text-white">
-                        <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
+                      <Check strokeWidth={1.8} className="h-2.5 w-2.5 text-white" />
                     </div>
                   )}
                 </button>
@@ -806,9 +813,7 @@ function TelegramSearchModal({
           ) : query.trim() && !isSearching ? (
             <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] px-6 py-8 text-center">
               <div className="mb-2.5 flex h-11 w-11 items-center justify-center rounded-[14px] bg-[var(--surface)]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-[var(--muted)]">
-                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-                </svg>
+                <Search strokeWidth={1.8} className="h-5 w-5 text-[var(--muted)]" />
               </div>
               <p className="text-[13px] font-semibold text-[var(--foreground)]">Natija topilmadi</p>
               <p className="mt-1 text-[12.5px] text-[var(--muted)]">Boshqa username yoki link kiriting</p>
@@ -1341,9 +1346,7 @@ export function CognilabsAIChatPage() {
                   setShowNewTelegramModal(true)
                 }}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
-                  <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <Plus strokeWidth={1.8} className="h-4 w-4" />
               </IconButton>
             </div>
 
@@ -1368,9 +1371,7 @@ export function CognilabsAIChatPage() {
                     onClick={() => setConversationsPage((p) => Math.max(0, p - 1))}
                     disabled={conversationsPage === 0 || conversationsQuery.isLoading}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
-                      <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <ChevronLeft strokeWidth={1.8} className="h-3.5 w-3.5" />
                   </IconButton>
                   <IconButton
                     size="sm"
@@ -1378,9 +1379,7 @@ export function CognilabsAIChatPage() {
                     onClick={() => setConversationsPage((p) => p + 1)}
                     disabled={(conversationsPage + 1) * 50 >= conversationsTotal || conversationsQuery.isLoading}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
-                      <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <ChevronRight strokeWidth={1.8} className="h-3.5 w-3.5" />
                   </IconButton>
                 </div>
               </div>
@@ -1388,10 +1387,7 @@ export function CognilabsAIChatPage() {
 
             {/* Search */}
             <div className="relative">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
+              <Search strokeWidth={1.8} className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
               <Input
                 placeholder="Qidiruv..."
                 value={searchQuery}
@@ -1417,9 +1413,7 @@ export function CognilabsAIChatPage() {
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="mx-2 mt-2 flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] px-6 py-14 text-center">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 h-10 w-10 text-[var(--caption)]">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <MessageSquare strokeWidth={1.8} className="mb-3 h-10 w-10 text-[var(--caption)]" />
                 <p className="text-[13px] font-semibold text-[var(--muted-strong)]">Chatlar topilmadi</p>
               </div>
             ) : (
@@ -1455,9 +1449,7 @@ export function CognilabsAIChatPage() {
           {!selectedConversation ? (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[18px] bg-[var(--muted-surface)]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-8 w-8 text-[var(--muted)]">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <MessageCircle strokeWidth={1.8} className="h-8 w-8 text-[var(--muted)]" />
               </div>
               <h3 className="mb-1 text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">Chat tanlang</h3>
               <p className="max-w-xs text-[13px] text-[var(--muted)]">Chap tomondagi ro'yxatdan suhbatni tanlang</p>
@@ -1473,9 +1465,7 @@ export function CognilabsAIChatPage() {
                       label="Orqaga"
                       onClick={() => setSelectedConversationId(null)}
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
-                        <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <ArrowLeft strokeWidth={1.8} className="h-5 w-5" />
                     </IconButton>
                   ) : null}
                   <div className="relative shrink-0">
@@ -1495,9 +1485,7 @@ export function CognilabsAIChatPage() {
                       className="shrink-0 px-2.5 text-[12px]"
                       title="Back to CRM"
                       leftIcon={
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4" aria-hidden="true">
-                          <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <ArrowLeft strokeWidth={1.8} className="h-4 w-4" aria-hidden="true" />
                       }
                     >
                       CRM
@@ -1550,7 +1538,7 @@ export function CognilabsAIChatPage() {
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {selectedConversation.lead_phone_number && (
                           <Badge variant="success" size="sm" className="tabular-nums">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-2.5 w-2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            <Phone strokeWidth={1.8} className="h-2.5 w-2.5" />
                             {selectedConversation.lead_phone_number}
                           </Badge>
                         )}
@@ -1578,9 +1566,7 @@ export function CognilabsAIChatPage() {
                       className="text-[12px]"
                       title="Kanbanga qaytish"
                       leftIcon={
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5" aria-hidden="true">
-                          <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <ArrowLeft strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true" />
                       }
                     >
                       Kanban
@@ -1594,10 +1580,7 @@ export function CognilabsAIChatPage() {
                       className="text-[12px]"
                       title="CRM da ko'rish"
                       leftIcon={
-                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                          <path d="M2.5 5.25A1.75 1.75 0 0 1 4.25 3.5h7.5A1.75 1.75 0 0 1 13.5 5.25v5.5a1.75 1.75 0 0 1-1.75 1.75h-7.5A1.75 1.75 0 0 1 2.5 10.75z" strokeLinecap="round" strokeLinejoin="round" />
-                          <path d="M5 6.25h6M5 8h3.25" strokeLinecap="round" />
-                        </svg>
+                        <IdCard strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true" />
                       }
                     >
                       CRM
@@ -1754,13 +1737,9 @@ export function CognilabsAIChatPage() {
                     )}
                   >
                     {aiPaused ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                        <path d="M5 3l14 9-14 9V3z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <Play strokeWidth={1.8} className="h-3 w-3" />
                     ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                        <path d="M10 4H6v16h4V4zM18 4h-4v16h4V4z" strokeLinecap="round" />
-                      </svg>
+                      <Pause strokeWidth={1.8} className="h-3 w-3" />
                     )}
                     {aiPaused ? 'AI yoqish' : "AI to'xtatish"}
                   </button>
@@ -1771,10 +1750,7 @@ export function CognilabsAIChatPage() {
                     disabled={isTogglingAi}
                     className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--blue-dim)] px-2.5 text-[12px] font-semibold text-[var(--blue-text)] transition-colors hover:bg-[var(--blue-soft)] disabled:pointer-events-none disabled:opacity-40"
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                      <path d="M1 4v6h6M23 20v-6h-6" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <RefreshCw strokeWidth={1.8} className="h-3 w-3" />
                     Qayta urinish
                   </button>
 
@@ -1800,9 +1776,7 @@ export function CognilabsAIChatPage() {
                         label="Bekor qilish"
                         onClick={() => { setShowPauseUntil(false); setPauseUntilDate('') }}
                       >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-                        </svg>
+                        <X strokeWidth={1.8} className="h-3 w-3" />
                       </IconButton>
                     </div>
                   ) : (
@@ -1812,10 +1786,7 @@ export function CognilabsAIChatPage() {
                       disabled={isTogglingAi}
                       className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--input-surface)] px-2.5 text-[12px] font-semibold text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface-hover)] disabled:pointer-events-none disabled:opacity-40"
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <Clock strokeWidth={1.8} className="h-3 w-3" />
                       Muddat belgilash
                     </button>
                   )}
@@ -1850,13 +1821,11 @@ export function CognilabsAIChatPage() {
                         : "cursor-not-allowed bg-[var(--surface)] text-[var(--caption)]"
                     )}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cn("h-4 w-4", messageText.trim() && "ml-0.5")}>
-                      {messageText.trim() ? (
-                        <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
-                      ) : (
-                        <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                      )}
-                    </svg>
+                    {messageText.trim() ? (
+                      <Send strokeWidth={1.8} className="h-4 w-4 ml-0.5" />
+                    ) : (
+                      <ArrowUp strokeWidth={1.8} className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>

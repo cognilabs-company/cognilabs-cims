@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Check, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { Input } from '../../../shared/ui/input'
@@ -63,9 +64,7 @@ export function MemberSelector({ allUsers, selectedIds, onChange, disabled }: Me
                   onClick={() => remove(user.id)}
                   className="h-5 w-5 rounded-full"
                 >
-                  <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-                  </svg>
+                  <X strokeWidth={1.8} className="h-3 w-3" />
                 </IconButton>
               )}
             </span>
@@ -109,9 +108,7 @@ export function MemberSelector({ allUsers, selectedIds, onChange, disabled }: Me
                   <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
                 </div>
                 {selected && (
-                  <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 fill-current text-[var(--primary)]" aria-hidden="true">
-                    <path d="M6.6 11.2 3.4 8a.75.75 0 1 0-1.06 1.06l3.73 3.73a.75.75 0 0 0 1.06 0l6.53-6.53A.75.75 0 1 0 12.64 5.2L6.6 11.2Z" />
-                  </svg>
+                  <Check strokeWidth={1.8} className="h-4 w-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
                 )}
               </button>
             )

@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArchiveIcon, ListChecksIcon, TrendUpIcon, UsersThreeIcon } from '@phosphor-icons/react'
+import { Archive, ListChecks, TrendingUp, Users } from 'lucide-react'
 import { crmService, type SalesManagerLead, type SalesManagerStatusStat } from '../../../shared/api/services/crm.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -128,25 +128,25 @@ export function MyLeadsPage() {
             solid
             label="Total Assigned"
             value={summary.total_assigned}
-            icon={<UsersThreeIcon className="h-[18px] w-[18px]" weight="bold" />}
+            icon={<Users className="h-[18px] w-[18px]" strokeWidth={1.8} />}
           />
           <StatCard
             label="Active Leads"
             value={summary.active_leads}
             iconTone="success"
-            icon={<TrendUpIcon className="h-[18px] w-[18px]" weight="bold" />}
+            icon={<TrendingUp className="h-[18px] w-[18px]" strokeWidth={1.8} />}
           />
           <StatCard
             label="Archived"
             value={summary.archived_leads}
             iconTone="neutral"
-            icon={<ArchiveIcon className="h-[18px] w-[18px]" weight="bold" />}
+            icon={<Archive className="h-[18px] w-[18px]" strokeWidth={1.8} />}
           />
           <StatCard
             label="Counted"
             value={summary.counted_leads}
             iconTone="violet"
-            icon={<ListChecksIcon className="h-[18px] w-[18px]" weight="bold" />}
+            icon={<ListChecks className="h-[18px] w-[18px]" strokeWidth={1.8} />}
           />
         </div>
       ) : null}

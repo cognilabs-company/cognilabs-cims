@@ -1,4 +1,4 @@
-import { XIcon } from '@phosphor-icons/react'
+import { X } from 'lucide-react'
 import { IconButton } from '@/shared/ui/icon-button'
 import { AudioPlayerCard } from './AudioPlayerCard'
 
@@ -30,7 +30,7 @@ export function AudioPlayerModal({ src, name, onClose }: AudioPlayerModalProps) 
             className="rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
             onClick={onClose}
           >
-            <XIcon className="h-4 w-4" weight="bold" />
+            <X className="h-4 w-4" strokeWidth={1.8} />
           </IconButton>
         </div>
 

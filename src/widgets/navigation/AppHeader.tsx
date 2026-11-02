@@ -1,3 +1,4 @@
+import { ExternalLink, LogOut } from 'lucide-react'
 import { startTransition, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAppShell } from '../../app/hooks/useAppShell'
@@ -11,25 +12,6 @@ import { cn } from '../../shared/lib/cn'
 import { hasPermission } from '../../shared/lib/permissions'
 import { NavGlyph } from './NavGlyph'
 import { getNavigationGlyphName } from './navGlyphMap'
-
-function OutboundIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <path d="M8 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16h9a1.5 1.5 0 0 0 1.5-1.5V12" />
-      <path d="M11 4h5v5M16 4l-7 7" />
-    </svg>
-  )
-}
-
-function LogoutIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="M16 17l5-5-5-5" />
-      <path d="M21 12H9" />
-    </svg>
-  )
-}
 
 function getInitials(name?: string | null, surname?: string | null) {
   const first = name?.trim()?.[0] ?? ''
@@ -153,7 +135,7 @@ export function AppHeader() {
               : 'border border-[var(--border-hover)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]',
           )}
         >
-          <OutboundIcon />
+          <ExternalLink strokeWidth={1.8} className="h-4 w-4" aria-hidden="true" />
           {isOutboundCrmRoute ? t('outbound_crm.header.back_to_crm', 'Main CRM') : 'Outbound CRM'}
         </button>
       ) : null}
@@ -200,7 +182,7 @@ export function AppHeader() {
         disabled={isSubmitting}
         onClick={() => void handleLogout()}
       >
-        <LogoutIcon />
+        <LogOut strokeWidth={1.8} className="h-[18px] w-[18px]" aria-hidden="true" />
       </button>
     </header>
   )

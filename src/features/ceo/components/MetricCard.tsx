@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Minus, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
 import { Sparkline } from '../../../shared/ui/charts/sparkline'
@@ -34,26 +35,16 @@ const sparkColorByAccent: Record<MetricAccent, string> = {
   violet: 'var(--violet-text)',
 }
 
+const trendIcons: Record<TrendDirection, LucideIcon> = {
+  up: TrendingUp,
+  down: TrendingDown,
+  flat: Minus,
+}
+
 function TrendArrow({ trend }: { trend: TrendDirection }) {
-  if (trend === 'up') {
-    return (
-      <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M2 9 6 3l4 6" />
-      </svg>
-    )
-  }
-  if (trend === 'down') {
-    return (
-      <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M2 3l4 6 4-6" />
-      </svg>
-    )
-  }
-  return (
-    <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-      <path d="M2 6h8" />
-    </svg>
-  )
+  const Icon = trendIcons[trend]
+
+  return <Icon strokeWidth={1.8} className="h-3 w-3 shrink-0" aria-hidden="true" />
 }
 
 export function MetricCard({

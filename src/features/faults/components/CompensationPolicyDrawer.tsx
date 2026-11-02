@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { X } from 'lucide-react'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { Badge } from '../../../shared/ui/badge'
 import { Card } from '../../../shared/ui/card'
@@ -100,9 +101,7 @@ export function CompensationPolicyDrawer({
             </div>
 
             <IconButton size="lg" label={lt('Close compensation policy drawer')} onClick={onClose}>
-              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
-              </svg>
+              <X className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
             </IconButton>
           </div>
 

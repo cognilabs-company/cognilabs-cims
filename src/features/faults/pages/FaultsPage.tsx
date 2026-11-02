@@ -1,5 +1,16 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  Calculator,
+  CircleAlert,
+  CircleDollarSign,
+  CirclePlus,
+  Eye,
+  Gift,
+  TrendingDown,
+  Users,
+  Wallet,
+} from 'lucide-react'
 import type { MemberDeliveryBonusPayload, MemberMistakePayload } from '../../../shared/api/types'
 import type { CeoUserRecord } from '../../../shared/api/services/ceo.service'
 import { membersService } from '../../../shared/api/services/members.service'
@@ -83,95 +94,6 @@ const numberPillClassName = 'inline-flex items-center rounded-full px-2.5 py-1 t
 const successPillClassName = cn(numberPillClassName, tonePill('success'))
 
 const neutralPillClassName = cn(numberPillClassName, tonePill('neutral'))
-
-function TeamIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M15.5 19.5V18a3.8 3.8 0 0 0-3.8-3.8H6.3A3.8 3.8 0 0 0 2.5 18v1.5" />
-      <circle cx="9" cy="7.2" r="3.3" />
-      <path d="M21.5 19.5V18a3.8 3.8 0 0 0-2.9-3.7" />
-      <path d="M16.2 4.3a3.3 3.3 0 0 1 0 5.8" />
-    </svg>
-  )
-}
-
-function WalletIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2.5" y="5.5" width="19" height="13" rx="3.2" />
-      <path d="M2.5 10.5h19" />
-      <path d="M16.5 14.8h2" />
-    </svg>
-  )
-}
-
-function DeductionIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.5 7.5 12 16l-4-4-4.5 4.5" />
-      <path d="M14.5 7.5h6v6" />
-    </svg>
-  )
-}
-
-function BonusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="9" width="18" height="11.5" rx="2.4" />
-      <path d="M3 13.2h18M12 9v11.5" />
-      <path d="M8.6 9a2.6 2.6 0 1 1 1.9-4.4L12 6.1l1.5-1.5A2.6 2.6 0 1 1 15.4 9" />
-    </svg>
-  )
-}
-
-function EstimateIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="4.5" y="2.8" width="15" height="18.4" rx="3" />
-      <path d="M8.5 7.2h7" />
-      <path d="M8.8 11.8h.01M12 11.8h.01M15.2 11.8h.01M8.8 16.2h.01M12 16.2h.01M15.2 16.2h.01" strokeWidth="2.4" />
-    </svg>
-  )
-}
-
-function PayoutIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9.2" />
-      <path d="M14.6 9.1a2.9 2.9 0 0 0-2.6-1.4c-1.6 0-2.7.9-2.7 2.1 0 1.3 1.1 1.8 2.7 2.1 1.6.3 2.8.8 2.8 2.2 0 1.3-1.2 2.2-2.8 2.2a3 3 0 0 1-2.7-1.5" />
-      <path d="M12 6v12" />
-    </svg>
-  )
-}
-
-function EyeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-function AlertIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  )
-}
-
-function PlusCircleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="16" />
-      <line x1="8" y1="12" x2="16" y2="12" />
-    </svg>
-  )
-}
 
 function parsePeriodNumber(value: string | null, fallback: number, min: number, max: number) {
   if (!value?.trim()) {
@@ -809,38 +731,38 @@ export function FaultsPage() {
         <StatCard
           label={tr('Employees', 'Xodimlar', 'Сотрудники')}
           value={formatCount(apiSummary.totalEmployees)}
-          icon={<TeamIcon />}
+          icon={<Users className="h-4.5 w-4.5" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="blue"
         />
         <StatCard
           label={tr('Base salary total', 'Jami asosiy maosh', 'Сумма базовой зарплаты')}
           value={formatAmount(apiSummary.totalBaseSalary ?? 0)}
-          icon={<WalletIcon />}
+          icon={<Wallet className="h-4.5 w-4.5" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="neutral"
         />
         <StatCard
           label={tr('Applied deductions', "Qo'llangan ayirmalar", 'Примененные удержания')}
           value={formatAmount(apiSummary.totalDeductionAmount ?? 0)}
-          icon={<DeductionIcon />}
+          icon={<TrendingDown className="h-4.5 w-4.5" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="danger"
         />
         <StatCard
           label={tr('Bonus total', 'Jami bonus', 'Сумма бонусов')}
           value={formatAmount(apiSummary.totalBonusAmount ?? 0)}
-          icon={<BonusIcon />}
+          icon={<Gift className="h-4.5 w-4.5" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="success"
         />
         <StatCard
           label={tr('Estimated total', 'Jami taxminiy maosh', 'Сумма оценки')}
           value={formatAmount(apiSummary.totalEstimatedSalary ?? 0)}
-          icon={<EstimateIcon />}
+          icon={<Calculator className="h-4.5 w-4.5" strokeWidth={1.8} aria-hidden="true" />}
           iconTone="violet"
         />
         <StatCard
           solid
           label={tr('Final salary total', 'Jami yakuniy maosh', 'Итоговая сумма зарплаты')}
           value={formatAmount(apiSummary.totalFinalSalary ?? apiSummary.totalSalaryAmount ?? 0)}
-          icon={<PayoutIcon />}
+          icon={<CircleDollarSign className="h-4.5 w-4.5" strokeWidth={1.8} aria-hidden="true" />}
         />
       </div>
 
@@ -960,7 +882,7 @@ export function FaultsPage() {
               render: (row) => (
                 <div className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
                   <IconButton size="sm" label={lt('View details')} onClick={() => openDetailPage(row)}>
-                    <EyeIcon />
+                    <Eye className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                   <IconButton
                     size="sm"
@@ -968,7 +890,7 @@ export function FaultsPage() {
                     label={tr('Add mistake', "Xato qo'shish", 'Добавить ошибку')}
                     onClick={() => openMistakeDialog(row)}
                   >
-                    <AlertIcon />
+                    <CircleAlert className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                   <IconButton
                     size="sm"
@@ -976,7 +898,7 @@ export function FaultsPage() {
                     onClick={() => openDeliveryBonusDialog(row)}
                     className="text-[var(--success-text)] hover:bg-[var(--success-dim)] hover:text-[var(--success-text)]"
                   >
-                    <PlusCircleIcon />
+                    <CirclePlus className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                   </IconButton>
                 </div>
               ),

@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useState } from 'react'
+import { ArrowUpRight, Calendar, Check, Clock, FileText, RefreshCw, UserPlus, X } from 'lucide-react'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { IconButton } from '../../../shared/ui/icon-button'
@@ -166,9 +167,7 @@ export function CardDetailModal({
                 </div>
               )}
               <IconButton label={lt('Close')} size="lg" onClick={onClose}>
-                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-                </svg>
+                <X className="h-4 w-4" strokeWidth={1.8} />
               </IconButton>
             </div>
           </div>
@@ -184,9 +183,7 @@ export function CardDetailModal({
 
             {card.due_date && (
               <span className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold', tonePill(dueTone))}>
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>
-                </svg>
+                <Calendar className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
                 <span>
                   {lt('Due')} {formatProjectDateTime(card.due_date)}
                 </span>
@@ -215,7 +212,7 @@ export function CardDetailModal({
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-[var(--foreground)]">{selectedImage.filename}</p>
                         <a href={getCardImageUrl(selectedImage)} target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--primary)] transition-colors hover:text-[var(--primary-hover)]">
-                          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                          <ArrowUpRight className="h-3 w-3" strokeWidth={1.8} />
                           {lt('View original')}
                         </a>
                       </div>
@@ -257,7 +254,7 @@ export function CardDetailModal({
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-3 rounded-[18px] bg-[var(--muted-surface)] px-6 py-10 text-[var(--muted)]">
-                    <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                    <FileText className="h-8 w-8" strokeWidth={1.8} />
                     <p className="text-[13px] font-medium">{lt('Task description is empty')}</p>
                   </div>
                 )}
@@ -300,7 +297,7 @@ export function CardDetailModal({
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-2.5 rounded-[18px] bg-[var(--surface)] p-5">
                       <span className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] bg-[var(--muted-surface)] text-[var(--muted)]">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                        <UserPlus className="h-4 w-4" strokeWidth={1.8} />
                       </span>
                       <p className="text-[12.5px] font-medium text-[var(--muted)]">{lt('Unassigned')}</p>
                     </div>
@@ -330,14 +327,14 @@ export function CardDetailModal({
                 <div className="grid gap-3.5 rounded-[18px] bg-[var(--surface)] p-4">
                   <DetailInfoBlock
                     label={lt('Created')}
-                    icon={<svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+                    icon={<Calendar className="h-3 w-3" strokeWidth={1.8} />}
                   >
                     <span className="font-medium text-[var(--muted-strong)]">{formatProjectDate(card.created_at)}</span>
                   </DetailInfoBlock>
 
                   <DetailInfoBlock
                     label={lt('Last update')}
-                    icon={<svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>}
+                    icon={<RefreshCw className="h-3 w-3" strokeWidth={1.8} />}
                   >
                     <span className="font-medium text-[var(--muted-strong)]">{formatProjectDate(card.updated_at)}</span>
                   </DetailInfoBlock>
@@ -345,7 +342,7 @@ export function CardDetailModal({
                   {card.due_date && (
                     <DetailInfoBlock
                       label={lt('Deadline')}
-                      icon={<svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                      icon={<Clock className="h-3 w-3" strokeWidth={1.8} />}
                     >
                       <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', tonePill(dueTone))}>
                         {formatProjectDateTime(card.due_date)}
@@ -356,7 +353,7 @@ export function CardDetailModal({
                   {card.completed_at ? (
                     <DetailInfoBlock
                       label={lt('Completed')}
-                      icon={<svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3"><path d="m5 12 4 4L19 6" /></svg>}
+                      icon={<Check className="h-3 w-3" strokeWidth={1.8} />}
                     >
                       <span className="text-[var(--success-text)]">{formatProjectDateTime(card.completed_at)}</span>
                     </DetailInfoBlock>

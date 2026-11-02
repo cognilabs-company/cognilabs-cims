@@ -1,3 +1,4 @@
+import { Check, Info, TriangleAlert } from 'lucide-react'
 import { useCallback, useMemo, useState, type PropsWithChildren, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { translateCurrentLiteral } from '../i18n/translations'
@@ -13,22 +14,9 @@ type ToastItem = ToastInput & {
 type ToastTone = 'success' | 'error' | 'info'
 
 const toneIcons: Record<ToastTone, ReactNode> = {
-  success: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-4.5 w-4.5" aria-hidden="true">
-      <path d="m5 10 3 3 7-7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  error: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-4.5 w-4.5" aria-hidden="true">
-      <path d="M10 6v4m0 4h.01M10 2.5l7 12.5H3l7-12.5Z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  info: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-4.5 w-4.5" aria-hidden="true">
-      <path d="M10 6.75h.01M9.25 9.5h.75v3h.75" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="10" cy="10" r="7" />
-    </svg>
-  ),
+  success: <Check strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />,
+  error: <TriangleAlert strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />,
+  info: <Info strokeWidth={1.8} className="h-4.5 w-4.5" aria-hidden="true" />,
 }
 
 const toastTones: Record<ToastTone, Tone> = {
