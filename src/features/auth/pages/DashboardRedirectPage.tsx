@@ -42,10 +42,10 @@ export function DashboardRedirectPage() {
 
   return (
     <div className="grid min-h-[55vh] place-items-center">
-      <Card className="max-w-xl p-10 text-center border-none bg-transparent">
-        <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-blue-500">{t('auth.redirect.eyebrow', 'Redirecting')}</p>
-        <h1 className="ui-page-title mt-6 text-white">{t('auth.redirect.title', 'Accessing Dashboard')}</h1>
-        <p className="mt-6 text-sm font-medium leading-relaxed text-zinc-500">
+      <Card className="max-w-xl bg-transparent p-10 text-center">
+        <p className="ui-eyebrow">{t('auth.redirect.eyebrow', 'Redirecting')}</p>
+        <h1 className="ui-page-title mt-6 text-[var(--foreground)]">{t('auth.redirect.title', 'Accessing Dashboard')}</h1>
+        <p className="mt-6 text-sm leading-relaxed font-medium text-[var(--muted)]">
           {t('auth.redirect.description', 'We are determining the best entry point for your account role. One moment...')}
         </p>
       </Card>

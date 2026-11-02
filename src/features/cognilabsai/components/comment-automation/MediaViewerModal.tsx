@@ -9,8 +9,11 @@ import { getApiErrorMessage } from '../../../../shared/lib/api-error'
 import { cn } from '../../../../shared/lib/cn'
 import { formatShortDateTime } from '../../../../shared/lib/format'
 import { useToast } from '../../../../shared/toast/useToast'
+import { Alert } from '../../../../shared/ui/alert'
 import { Badge } from '../../../../shared/ui/badge'
 import { Button } from '../../../../shared/ui/button'
+import { IconButton } from '../../../../shared/ui/icon-button'
+import { Tabs } from '../../../../shared/ui/tabs'
 import {
   AlertIcon,
   ChevronIcon,
@@ -26,7 +29,6 @@ import { MediaImage } from './MediaImage'
 import { ReplyHistoryPanel } from './ReplyHistoryPanel'
 import { AutomationToggle, SettingsForm } from './SettingsForm'
 import {
-  INSTAGRAM_GRADIENT,
   draftFromSettings,
   getMediaKind,
   getMediaKindLabel,
@@ -51,7 +53,7 @@ function MediaStage({ media }: { media: CommentAutomationMedia }) {
   return (
     <div
       className={cn(
-        'relative flex h-[42dvh] w-full shrink-0 items-center justify-center bg-black md:h-full md:w-auto md:min-w-0 md:shrink',
+        'relative flex h-[42dvh] w-full shrink-0 items-center justify-center bg-[var(--surface-inverse)] md:h-full md:w-auto md:min-w-0 md:shrink',
         isReel ? 'md:aspect-[9/16]' : 'md:aspect-[4/5]',
       )}
     >
@@ -174,10 +176,10 @@ export function MediaViewerModal({
     }
   }
 
-  const navButtonClass =
-    'absolute top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow-lg transition hover:bg-white md:flex'
-  const headerIconButtonClass =
-    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)] disabled:opacity-30'
+  const floatingButtonClass =
+    'z-20 hidden h-11 w-11 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--elev-lg)] transition-colors hover:bg-[var(--input-surface)] md:flex'
+  const headerLinkClass =
+    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-[var(--muted)] transition-colors hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]'
 
   return createPortal(
     <div
@@ -190,49 +192,56 @@ export function MediaViewerModal({
         type="button"
         tabIndex={-1}
         aria-label={tx('viewer.close', 'Close')}
-        className="absolute inset-0 cursor-default bg-black/80 backdrop-blur-[2px]"
+        className="absolute inset-0 cursor-default bg-[var(--surface-inverse)]/80"
         onClick={() => void guard(onClose)}
       />
 
       <button
         type="button"
         aria-label={tx('viewer.close', 'Close')}
-        data-keep-color="true"
         onClick={() => void guard(onClose)}
-        className="absolute right-4 top-4 z-20 hidden h-10 w-10 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 hover:text-white md:flex"
+        className={cn(floatingButtonClass, 'absolute right-4 top-4')}
       >
-        <CloseIcon className="h-7 w-7" />
+        <CloseIcon className="h-5 w-5" />
       </button>
 
       {onPrev && (
-        <button type="button" aria-label={tx('viewer.prev', 'Previous')} onClick={() => void guard(onPrev)} className={cn(navButtonClass, 'left-4')}>
+        <button
+          type="button"
+          aria-label={tx('viewer.prev', 'Previous')}
+          onClick={() => void guard(onPrev)}
+          className={cn(floatingButtonClass, 'absolute left-4 top-1/2 -translate-y-1/2')}
+        >
           <ChevronIcon direction="left" className="h-5 w-5" />
         </button>
       )}
       {onNext && (
-        <button type="button" aria-label={tx('viewer.next', 'Next')} onClick={() => void guard(onNext)} className={cn(navButtonClass, 'right-4')}>
+        <button
+          type="button"
+          aria-label={tx('viewer.next', 'Next')}
+          onClick={() => void guard(onNext)}
+          className={cn(floatingButtonClass, 'absolute right-4 top-1/2 -translate-y-1/2')}
+        >
           <ChevronIcon direction="right" className="h-5 w-5" />
         </button>
       )}
 
-      <div className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--card)] md:h-[min(90vh,880px)] md:w-auto md:max-w-[calc(100vw-9rem)] md:flex-row md:rounded-md md:shadow-2xl">
+      <div className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--card)] md:h-[min(90vh,880px)] md:w-auto md:max-w-[calc(100vw-9rem)] md:flex-row md:rounded-[24px] md:shadow-[var(--elev-xl)]">
         <MediaStage key={media.media_id} media={media} />
 
         <aside className="flex min-h-0 w-full flex-1 flex-col md:w-[420px] md:flex-none md:border-l md:border-[var(--border)]">
-          <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-3">
-            <span className="shrink-0 rounded-full p-[2px]" style={{ background: INSTAGRAM_GRADIENT }}>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--card)]">
-                <InstagramGlyph className="h-4 w-4 text-[var(--foreground)]" />
-              </span>
+          <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] px-[18px] py-3.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
+              <InstagramGlyph className="h-[18px] w-[18px]" />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <p className="truncate text-[13px] font-semibold text-[var(--foreground)]">{kindLabel}</p>
+                <p className="truncate text-sm font-semibold text-[var(--foreground)]">{kindLabel}</p>
                 <Badge variant={media.automation_enabled ? 'success' : 'secondary'} size="sm" dot>
                   {media.automation_enabled ? tx('badge.on', 'On') : tx('badge.off', 'Off')}
                 </Badge>
               </div>
-              <p className="truncate text-[11px] text-[var(--caption)]">
+              <p className="truncate text-[11.5px] text-[var(--caption)]">
                 {formatShortDateTime(media.published_at)}
                 {position !== null ? ` · ${position} / ${total}` : ''}
               </p>
@@ -244,25 +253,25 @@ export function MediaViewerModal({
                 rel="noopener noreferrer"
                 title={tx('media.open_instagram', 'Open on Instagram')}
                 aria-label={tx('media.open_instagram', 'Open on Instagram')}
-                className={headerIconButtonClass}
+                className={headerLinkClass}
               >
                 <ExternalIcon className="h-4 w-4" />
               </a>
             )}
             <div className="flex items-center gap-0.5 md:hidden">
-              <button type="button" aria-label={tx('viewer.prev', 'Previous')} disabled={!onPrev} onClick={() => onPrev && void guard(onPrev)} className={headerIconButtonClass}>
+              <IconButton label={tx('viewer.prev', 'Previous')} disabled={!onPrev} onClick={() => onPrev && void guard(onPrev)}>
                 <ChevronIcon direction="left" className="h-4 w-4" />
-              </button>
-              <button type="button" aria-label={tx('viewer.next', 'Next')} disabled={!onNext} onClick={() => onNext && void guard(onNext)} className={headerIconButtonClass}>
+              </IconButton>
+              <IconButton label={tx('viewer.next', 'Next')} disabled={!onNext} onClick={() => onNext && void guard(onNext)}>
                 <ChevronIcon direction="right" className="h-4 w-4" />
-              </button>
-              <button type="button" aria-label={tx('viewer.close', 'Close')} onClick={() => void guard(onClose)} className={headerIconButtonClass}>
+              </IconButton>
+              <IconButton label={tx('viewer.close', 'Close')} onClick={() => void guard(onClose)}>
                 <CloseIcon className="h-4 w-4" />
-              </button>
+              </IconButton>
             </div>
           </div>
 
-          <div className="border-b border-[var(--border)] px-4 py-3">
+          <div className="border-b border-[var(--border-subtle)] px-[18px] py-3.5">
             {caption ? (
               <>
                 <p
@@ -275,27 +284,27 @@ export function MediaViewerModal({
                   <button
                     type="button"
                     onClick={() => setIsCaptionExpanded((value) => !value)}
-                    className="mt-0.5 text-[12px] font-medium text-[var(--caption)] hover:text-[var(--foreground)]"
+                    className="mt-1 text-[12.5px] font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
                   >
                     {isCaptionExpanded ? tx('viewer.less', 'less') : tx('viewer.more', 'more')}
                   </button>
                 )}
               </>
             ) : (
-              <p className="text-[13px] italic text-[var(--caption)]">{tx('media.no_caption', 'No caption')}</p>
+              <p className="text-[13px] italic text-[var(--muted)]">{tx('media.no_caption', 'No caption')}</p>
             )}
 
-            <div data-ui-number="true" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-[var(--muted-strong)]">
+            <div data-ui-number="true" className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-[var(--muted-strong)]">
               <span className="inline-flex items-center gap-1.5" title={tx('stats.comments', 'Comments')}>
-                <CommentIcon className="h-4 w-4" />
+                <CommentIcon className="h-4 w-4 text-[var(--muted)]" />
                 <b className="font-semibold text-[var(--foreground)]">{stats?.comments_received ?? media.comments_count ?? 0}</b>
               </span>
               <span className="inline-flex items-center gap-1.5" title={tx('stats.public', 'Replies')}>
-                <ReplyIcon className="h-4 w-4" />
+                <ReplyIcon className="h-4 w-4 text-[var(--muted)]" />
                 <b className="font-semibold text-[var(--foreground)]">{stats?.public_replies_sent ?? 0}</b>
               </span>
               <span className="inline-flex items-center gap-1.5" title={tx('stats.dm', 'DMs')}>
-                <SendIcon className="h-4 w-4" />
+                <SendIcon className="h-4 w-4 text-[var(--muted)]" />
                 <b className="font-semibold text-[var(--foreground)]">{stats?.private_replies_sent ?? 0}</b>
               </span>
               {needsAttention > 0 && (
@@ -307,36 +316,40 @@ export function MediaViewerModal({
             </div>
           </div>
 
-          <div className="flex border-b border-[var(--border)]" role="tablist">
-            {(['settings', 'history'] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                role="tab"
-                aria-selected={tab === item}
-                onClick={() => setTab(item)}
-                className={cn(
-                  '-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors',
-                  tab === item
-                    ? 'border-[var(--foreground)] text-[var(--foreground)]'
-                    : 'border-transparent text-[var(--muted)] hover:text-[var(--foreground)]',
-                )}
-              >
-                {item === 'settings' ? <SettingsIcon className="h-3.5 w-3.5" /> : <CommentIcon className="h-3.5 w-3.5" />}
-                {item === 'settings' ? tx('viewer.settings_tab', 'Reply settings') : tx('viewer.history_tab', 'Comments & replies')}
-              </button>
-            ))}
-          </div>
+          <Tabs<ViewerTab>
+            value={tab}
+            onChange={setTab}
+            variant="underline"
+            className="gap-6 border-[var(--border-subtle)] px-[18px] pt-3.5"
+            items={[
+              {
+                value: 'settings',
+                label: (
+                  <>
+                    <SettingsIcon className="h-4 w-4" />
+                    {tx('viewer.settings_tab', 'Reply settings')}
+                  </>
+                ),
+              },
+              {
+                value: 'history',
+                label: (
+                  <>
+                    <CommentIcon className="h-4 w-4" />
+                    {tx('viewer.history_tab', 'Comments & replies')}
+                  </>
+                ),
+              },
+            ]}
+          />
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-[18px] py-[18px]">
             {tab === 'settings' ? (
-              <div className="space-y-3">
+              <div className="space-y-[18px]">
                 <AutomationToggle enabled={draft.automation_enabled} onChange={(value) => setDraft({ ...draft, automation_enabled: value })} />
                 <SettingsForm idPrefix={`viewer-${media.media_id}`} draft={draft} onChange={setDraft} layout="stacked" />
                 {isDirty && validationMessage && (
-                  <p className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-dim)] px-3 py-2 text-[12px] text-[var(--danger-text)]">
-                    {validationMessage}
-                  </p>
+                  <Alert tone="danger">{validationMessage}</Alert>
                 )}
               </div>
             ) : (
@@ -345,8 +358,8 @@ export function MediaViewerModal({
           </div>
 
           {tab === 'settings' && (
-            <div className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-3">
-              <span className={cn('text-[11px] font-medium', isDirty ? 'text-[var(--warning-text)]' : 'text-[var(--caption)]')}>
+            <div className="flex items-center gap-2 border-t border-[var(--border)] px-[18px] py-3.5">
+              <span className={cn('text-[12.5px] font-medium', isDirty ? 'text-[var(--warning-text)]' : 'text-[var(--caption)]')}>
                 {isDirty ? tx('media.unsaved', 'Unsaved changes') : tx('viewer.saved_state', 'All changes saved')}
               </span>
               <div className="ml-auto flex items-center gap-2">

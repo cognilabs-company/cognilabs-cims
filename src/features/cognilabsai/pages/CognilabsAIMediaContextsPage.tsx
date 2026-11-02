@@ -4,12 +4,22 @@ import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
+import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
-import { Input } from '../../../shared/ui/input'
-import { Textarea } from '../../../shared/ui/textarea'
-import { Switch } from '../../../shared/ui/switch'
+import { Card } from '../../../shared/ui/card'
 import { Dialog } from '../../../shared/ui/dialog'
+import { IconButton } from '../../../shared/ui/icon-button'
+import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
+import { PageHeader } from '../../../shared/ui/page-header'
+import { SectionTitle } from '../../../shared/ui/section-title'
+import { Skeleton, SkeletonText } from '../../../shared/ui/skeleton'
+import { StatCard } from '../../../shared/ui/stat-card'
+import { EmptyStateBlock, ErrorStateBlock } from '../../../shared/ui/state-block'
+import { Switch } from '../../../shared/ui/switch'
+import { Tabs, type TabItem } from '../../../shared/ui/tabs'
+import { Textarea } from '../../../shared/ui/textarea'
+import { toneDot, toneSolid, toneSurface, toneText, type Tone } from '../../../shared/ui/tone'
 import {
   cognilabsaiService,
   type MediaContextItem,
@@ -19,43 +29,11 @@ import {
 type MediaType = 'story' | 'post' | 'reel' | 'ad'
 type FilterTab = 'all' | MediaType
 
-const MEDIA_TYPE_CONFIG: Record<MediaType, { label: string; gradient: string; gradientFrom: string; gradientTo: string; textColor: string; bgColor: string; borderColor: string }> = {
-  story: {
-    label: 'Story',
-    gradient: 'linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
-    gradientFrom: '#f09433',
-    gradientTo: '#bc1888',
-    textColor: 'text-pink-400',
-    bgColor: 'bg-pink-500/10',
-    borderColor: 'border-pink-500/30',
-  },
-  post: {
-    label: 'Post',
-    gradient: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
-    gradientFrom: '#3b82f6',
-    gradientTo: '#6366f1',
-    textColor: 'text-blue-400',
-    bgColor: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/30',
-  },
-  reel: {
-    label: 'Reel',
-    gradient: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)',
-    gradientFrom: '#7c3aed',
-    gradientTo: '#db2777',
-    textColor: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/30',
-  },
-  ad: {
-    label: 'Ad',
-    gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    gradientFrom: '#10b981',
-    gradientTo: '#059669',
-    textColor: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-500/30',
-  },
+const MEDIA_TYPE_CONFIG: Record<MediaType, { label: string; tone: Tone }> = {
+  story: { label: 'Story', tone: 'danger' },
+  post: { label: 'Post', tone: 'blue' },
+  reel: { label: 'Reel', tone: 'violet' },
+  ad: { label: 'Ad', tone: 'success' },
 }
 
 function getMediaConfig(mediaType: string) {
@@ -106,6 +84,53 @@ function MediaTypeIcon({ type, className }: { type: string; className?: string }
   return <PostIcon className={className} />
 }
 
+function LibraryIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 3 3 7.5 12 12l9-4.5L12 3z"/>
+      <path d="m3 12.5 9 4.5 9-4.5"/>
+      <path d="m3 17 9 4.5 9-4.5"/>
+    </svg>
+  )
+}
+
+function PulseIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M3 12h3l2.5-6 3.5 12 3-9 2 3h4"/>
+    </svg>
+  )
+}
+
+function EditGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  )
+}
+
+function TrashGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="3 6 5 6 21 6"/>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    </svg>
+  )
+}
+
+function ExternalGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/>
+      <line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>
+  )
+}
+
 function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString)
   const now = new Date()
@@ -126,29 +151,37 @@ function StoryCircleCard({ ctx, onView, onEdit, onDelete }: {
 }) {
   const cfg = getMediaConfig(ctx.media_type)
   return (
-    <div className="flex flex-col items-center gap-2 group cursor-pointer select-none" onClick={onView}>
+    <div className="group flex cursor-pointer flex-col items-center gap-2 select-none" onClick={onView}>
       <div className="relative">
-        <div
-          className="h-16 w-16 rounded-full p-[2px]"
-          style={{ background: ctx.is_active ? cfg.gradient : 'var(--border)' }}
-        >
-          <div className="h-full w-full rounded-full bg-[var(--surface)] flex items-center justify-center">
-            <MediaTypeIcon type={ctx.media_type} className={cn('h-7 w-7', cfg.textColor)} />
+        <div className={cn('h-16 w-16 rounded-full p-[2px]', ctx.is_active ? toneDot[cfg.tone] : 'bg-[var(--border-hover)]')}>
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-[var(--muted-surface)]">
+            <MediaTypeIcon type={ctx.media_type} className={cn('h-7 w-7', toneText[cfg.tone])} />
           </div>
         </div>
         {ctx.is_active && (
-          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-[var(--background)]" />
+          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--surface)] bg-[var(--success-text)]" />
         )}
-        <div className="absolute -bottom-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={onEdit} title="Edit" className="h-5 w-5 flex items-center justify-center rounded-full bg-[var(--surface-elevated)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] transition-colors shadow-sm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button type="button" onClick={onDelete} title="Delete" className="h-5 w-5 flex items-center justify-center rounded-full bg-[var(--surface-elevated)] border border-[var(--border)] text-[var(--muted)] hover:text-red-500 transition-colors shadow-sm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>
+        <div className="absolute -right-1 -bottom-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+          <IconButton
+            label="Edit"
+            size="sm"
+            onClick={onEdit}
+            className="h-6 w-6 rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
+          >
+            <EditGlyph className="h-3 w-3" />
+          </IconButton>
+          <IconButton
+            label="Delete"
+            tone="danger"
+            size="sm"
+            onClick={onDelete}
+            className="h-6 w-6 rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
+          >
+            <TrashGlyph className="h-3 w-3" />
+          </IconButton>
         </div>
       </div>
-      <p className="text-[11px] text-center text-[var(--foreground)] font-medium max-w-[64px] truncate">{ctx.title}</p>
+      <p className="max-w-[64px] truncate text-center text-[11.5px] font-medium text-[var(--foreground)]">{ctx.title}</p>
     </div>
   )
 }
@@ -160,78 +193,60 @@ function MediaCard({ ctx, onView, onEdit, onDelete }: {
   onDelete: () => void
 }) {
   const cfg = getMediaConfig(ctx.media_type)
-  const isReel = ctx.media_type === 'reel'
+  const displayUrl = ctx.normalized_url || ctx.url
 
   return (
     <div
-      className={cn(
-        'group relative rounded-2xl border bg-[var(--surface)] overflow-hidden transition-all duration-200 hover:border-[var(--border-hover)] hover:shadow-lg cursor-pointer',
-        cfg.borderColor,
-        isReel ? 'flex flex-col' : '',
-      )}
+      className="group flex cursor-pointer flex-col gap-3 rounded-[24px] bg-[var(--card)] p-[18px] transition-colors hover:bg-[var(--card-hover)]"
       onClick={onView}
     >
-      {/* Gradient accent top */}
-      <div className="h-1 w-full" style={{ background: cfg.gradient }} />
-
-      {/* Media preview area */}
-      <div className={cn(
-        'relative flex items-center justify-center overflow-hidden',
-        isReel ? 'h-32' : 'h-28',
-        cfg.bgColor,
-      )}>
+      <div className={cn('relative flex h-[112px] items-center justify-center rounded-[18px]', toneSurface[cfg.tone])}>
         <div className="flex flex-col items-center gap-2">
-          <div
-            className="h-12 w-12 rounded-xl flex items-center justify-center"
-            style={{ background: cfg.gradient }}
-          >
-            <MediaTypeIcon type={ctx.media_type} className="h-6 w-6 text-white" />
-          </div>
-          <span className={cn('text-[10px] font-bold uppercase tracking-widest', cfg.textColor)}>{cfg.label}</span>
+          <span className={cn('grid h-11 w-11 place-items-center rounded-[14px] bg-[var(--surface)]', toneText[cfg.tone])}>
+            <MediaTypeIcon type={ctx.media_type} className="h-5 w-5" />
+          </span>
+          <span className={cn('text-[11.5px] font-semibold', toneText[cfg.tone])}>{cfg.label}</span>
         </div>
-        {/* Status dot */}
-        <div className={cn(
-          'absolute top-2.5 right-2.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold',
-          ctx.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[var(--muted-surface)] text-[var(--muted)]',
-        )}>
-          <span className={cn('h-1.5 w-1.5 rounded-full', ctx.is_active ? 'bg-emerald-400' : 'bg-[var(--muted)]')} />
+        <Badge
+          variant={ctx.is_active ? 'success' : 'secondary'}
+          size="sm"
+          dot
+          className="absolute top-2.5 right-2.5"
+        >
           {ctx.is_active ? 'Active' : 'Inactive'}
-        </div>
+        </Badge>
       </div>
 
-      {/* Card body */}
-      <div className="p-3 flex flex-col gap-2 flex-1">
-        <h3 className="font-semibold text-[13px] text-[var(--foreground)] leading-snug line-clamp-1">{ctx.title}</h3>
+      <div className="flex flex-1 flex-col gap-2">
+        <h3 className="line-clamp-1 text-sm leading-snug font-semibold tracking-[-0.01em] text-[var(--foreground)]">{ctx.title}</h3>
 
         <a
-          href={ctx.normalized_url || ctx.url}
+          href={displayUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'inline-flex items-center gap-1 text-[11px] rounded-lg px-2 py-1 font-medium transition-colors truncate max-w-full',
-            cfg.textColor, cfg.bgColor, 'hover:opacity-80',
+            'inline-flex max-w-full items-center gap-1.5 truncate rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-opacity hover:opacity-80',
+            toneSurface[cfg.tone],
+            toneText[cfg.tone],
           )}
-          title={ctx.normalized_url || ctx.url}
+          title={displayUrl}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
-          <span className="truncate">{(ctx.normalized_url || ctx.url).replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+          <ExternalGlyph className="h-3 w-3 shrink-0" />
+          <span className="truncate">{displayUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
         </a>
 
-        <p className="text-[12px] text-[var(--muted)] leading-relaxed line-clamp-2">{ctx.ai_description}</p>
+        <p className="line-clamp-2 text-[12.5px] leading-relaxed text-[var(--muted)]">{ctx.ai_description}</p>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-1 mt-auto border-t border-[var(--border)]">
-          <span className="text-[10px] text-[var(--caption)]">{formatRelativeTime(ctx.created_at)}</span>
-          <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-            <button type="button" title="Edit" onClick={onEdit} className="h-6 w-6 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            <button type="button" title="Delete" onClick={onDelete} className="h-6 w-6 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            </button>
+        <div className="mt-auto flex items-center justify-between border-t border-[var(--border-subtle)] pt-2">
+          <span className="text-[11.5px] text-[var(--caption)]">{formatRelativeTime(ctx.created_at)}</span>
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <IconButton label="Edit" size="sm" onClick={onEdit}>
+              <EditGlyph className="h-3.5 w-3.5" />
+            </IconButton>
+            <IconButton label="Delete" tone="danger" size="sm" onClick={onDelete}>
+              <TrashGlyph className="h-3.5 w-3.5" />
+            </IconButton>
           </div>
         </div>
       </div>
@@ -268,12 +283,12 @@ const MEDIA_TYPE_OPTIONS = [
   { value: 'ad', label: 'Ad' },
 ]
 
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'story', label: 'Stories' },
-  { key: 'post', label: 'Posts' },
-  { key: 'reel', label: 'Reels' },
-  { key: 'ad', label: 'Ads' },
+const FILTER_TABS: TabItem<FilterTab>[] = [
+  { value: 'all', label: 'All' },
+  { value: 'story', label: 'Stories' },
+  { value: 'post', label: 'Posts' },
+  { value: 'reel', label: 'Reels' },
+  { value: 'ad', label: 'Ads' },
 ]
 
 function ViewModal({ ctx, onClose, onEdit }: {
@@ -282,56 +297,55 @@ function ViewModal({ ctx, onClose, onEdit }: {
   onEdit: () => void
 }) {
   const cfg = getMediaConfig(ctx.media_type)
+  const displayUrl = ctx.normalized_url || ctx.url
+
   return (
-    <Dialog open onClose={onClose} title={ctx.title}>
-      <div className="space-y-4">
-        {/* Media type banner */}
-        <div className="relative h-24 rounded-xl overflow-hidden flex items-center justify-center" style={{ background: cfg.gradient }}>
-          <MediaTypeIcon type={ctx.media_type} className="h-12 w-12 text-white opacity-30" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-            <MediaTypeIcon type={ctx.media_type} className="h-8 w-8 text-white" />
-            <span className="text-white text-xs font-bold uppercase tracking-widest">{cfg.label}</span>
+    <Dialog
+      open
+      onClose={onClose}
+      title={ctx.title}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button onClick={onEdit} leftIcon={<EditGlyph className="h-4 w-4" />}>Edit</Button>
+        </>
+      }
+    >
+      <div className="space-y-[18px]">
+        <div className={cn('flex items-center justify-between gap-3 rounded-[18px] p-[18px]', toneSurface[cfg.tone])}>
+          <div className="flex items-center gap-3">
+            <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[var(--surface)]', toneText[cfg.tone])}>
+              <MediaTypeIcon type={ctx.media_type} className="h-5 w-5" />
+            </span>
+            <span className={cn('text-[15px] font-semibold', toneText[cfg.tone])}>{cfg.label}</span>
           </div>
-          <div className={cn(
-            'absolute top-2 right-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold',
-            ctx.is_active ? 'bg-emerald-500/30 text-emerald-100' : 'bg-black/30 text-white/60',
-          )}>
-            <span className={cn('h-1.5 w-1.5 rounded-full', ctx.is_active ? 'bg-emerald-400' : 'bg-white/40')} />
+          <Badge variant={ctx.is_active ? 'success' : 'secondary'} dot>
             {ctx.is_active ? 'Active' : 'Inactive'}
-          </div>
+          </Badge>
         </div>
 
-        {/* URL */}
         <div>
-          <p className="text-[11px] text-[var(--caption)] uppercase tracking-wide mb-1">Instagram Link</p>
+          <p className="text-[12.5px] font-medium text-[var(--muted)]">Instagram Link</p>
           <a
-            href={ctx.normalized_url || ctx.url}
+            href={displayUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn('inline-flex items-center gap-1.5 text-[12px] font-medium rounded-lg px-3 py-2 w-full', cfg.textColor, cfg.bgColor, 'hover:opacity-80 transition-opacity')}
+            className={cn(
+              'mt-2 flex w-full items-center gap-2 rounded-[14px] px-3.5 py-2.5 text-[13px] font-medium transition-opacity hover:opacity-80',
+              toneSurface[cfg.tone],
+              toneText[cfg.tone],
+            )}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-            </svg>
-            <span className="truncate">{ctx.normalized_url || ctx.url}</span>
+            <ExternalGlyph className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{displayUrl}</span>
           </a>
         </div>
 
-        {/* AI Description */}
         <div>
-          <p className="text-[11px] text-[var(--caption)] uppercase tracking-wide mb-1">AI Description</p>
-          <div className="rounded-xl bg-[var(--accent-soft)] p-3 text-[13px] text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
+          <p className="text-[12.5px] font-medium text-[var(--muted)]">AI Description</p>
+          <div className="mt-2 rounded-[18px] bg-[var(--accent-soft)] p-[18px] text-sm leading-relaxed whitespace-pre-wrap text-[var(--foreground)]">
             {ctx.ai_description}
           </div>
-        </div>
-
-
-        <div className="flex gap-2 pt-2">
-          <Button className="flex-1" onClick={onEdit}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 mr-1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit
-          </Button>
-          <Button variant="ghost" onClick={onClose} className="flex-1">Close</Button>
         </div>
       </div>
     </Dialog>
@@ -387,17 +401,14 @@ function CreateEditModal({ mode, initial, onClose, onSaved }: {
     }
   }
 
-  const cfg = getMediaConfig(draft.media_type)
-
   return (
     <Dialog
       open
       onClose={onClose}
       title={mode === 'create' ? "Yangi Media Context qo'shish" : 'Media Contextni tahrirlash'}
     >
-      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-        {/* Media type selector */}
-        <div className="grid grid-cols-4 gap-2">
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-[18px]">
+        <div className="grid grid-cols-4 gap-2.5">
           {MEDIA_TYPE_OPTIONS.map((opt) => {
             const c = getMediaConfig(opt.value)
             const isSelected = draft.media_type === opt.value
@@ -408,13 +419,12 @@ function CreateEditModal({ mode, initial, onClose, onSaved }: {
                 onClick={() => set('media_type', opt.value as MediaType)}
                 disabled={mode === 'edit'}
                 className={cn(
-                  'flex flex-col items-center gap-1.5 rounded-xl border py-3 px-2 transition-all text-[11px] font-semibold',
+                  'flex flex-col items-center gap-1.5 rounded-[14px] px-2 py-3 text-[12px] font-semibold transition-colors',
                   isSelected
-                    ? cn('border-transparent text-white', c.bgColor)
-                    : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--border-hover)] hover:text-[var(--foreground)]',
-                  mode === 'edit' && 'opacity-50 cursor-not-allowed',
+                    ? toneSolid[c.tone]
+                    : 'bg-[var(--input-surface)] text-[var(--muted)] hover:bg-[var(--input-surface-hover)] hover:text-[var(--foreground)]',
+                  mode === 'edit' && 'cursor-not-allowed opacity-50',
                 )}
-                style={isSelected ? { background: c.gradient } : undefined}
               >
                 <MediaTypeIcon type={opt.value} className="h-4 w-4" />
                 {opt.label}
@@ -431,9 +441,9 @@ function CreateEditModal({ mode, initial, onClose, onSaved }: {
               placeholder="https://www.instagram.com/reel/ABC/"
               value={draft.url}
               onChange={(e) => set('url', e.target.value)}
-              className="mt-1"
+              className="mt-2"
             />
-            <p className="text-[11px] text-[var(--caption)] mt-1">Backend avtomatik normalize qiladi</p>
+            <p className="mt-2 text-[12px] text-[var(--muted)]">Backend avtomatik normalize qiladi</p>
           </div>
         )}
 
@@ -444,7 +454,7 @@ function CreateEditModal({ mode, initial, onClose, onSaved }: {
             placeholder="CRM haqida reel"
             value={draft.title}
             onChange={(e) => set('title', e.target.value)}
-            className="mt-1"
+            className="mt-2"
           />
         </div>
 
@@ -455,13 +465,12 @@ function CreateEditModal({ mode, initial, onClose, onSaved }: {
             placeholder="Bu reel CRM tizimi haqida. AI mijozga CRM foydasini tushuntirsin va telefon raqam so'rasin."
             value={draft.ai_description}
             onChange={(e) => set('ai_description', e.target.value)}
-            className="mt-1 min-h-[100px]"
+            className="mt-2 min-h-[112px]"
           />
-          <p className="text-[11px] text-[var(--caption)] mt-1">AI shu contextni bilib mijozga javob beradi</p>
+          <p className="mt-2 text-[12px] text-[var(--muted)]">AI shu contextni bilib mijozga javob beradi</p>
         </div>
 
-        {/* Active toggle */}
-        <div className="flex items-center gap-3 rounded-xl bg-[var(--accent-soft)] px-4 py-3">
+        <div className="flex items-center gap-3 rounded-[18px] bg-[var(--accent-soft)] px-[18px] py-3.5">
           <Switch
             checked={draft.is_active}
             onChange={(v) => set('is_active', v)}
@@ -470,17 +479,15 @@ function CreateEditModal({ mode, initial, onClose, onSaved }: {
           />
           <div>
             <p className="text-[13px] font-medium text-[var(--foreground)]">Active</p>
-            <p className="text-[11px] text-[var(--caption)]">AI bu context bo'yicha javob beradi</p>
+            <p className="text-[12px] text-[var(--muted)]">AI bu context bo'yicha javob beradi</p>
           </div>
         </div>
 
-        <div className="flex gap-2 pt-1">
-          <Button type="submit" className="flex-1" disabled={isSubmitting}
-            style={{ background: isSubmitting ? undefined : cfg.gradient, border: 'none' }}
-          >
+        <div className="flex gap-2.5 pt-1">
+          <Button type="submit" className="flex-1" loading={isSubmitting} disabled={isSubmitting}>
             {isSubmitting ? 'Saqlanmoqda...' : mode === 'create' ? "Qo'shish" : 'Saqlash'}
           </Button>
-          <Button type="button" variant="ghost" onClick={onClose} className="flex-1">Bekor qilish</Button>
+          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Bekor qilish</Button>
         </div>
       </form>
     </Dialog>
@@ -565,71 +572,58 @@ export function CognilabsAIMediaContextsPage() {
 
   const showStoryRow = (activeFilter === 'all' || activeFilter === 'story') && stories.length > 0
 
-  return (
-    <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--foreground)] tracking-tight">Instagram Media Contexts</h1>
-          <p className="text-sm text-[var(--muted)] mt-0.5">AI uchun story, post va reel kontekstlarini boshqaring</p>
-        </div>
-        <Button
-          onClick={() => setIsCreating(true)}
-          style={{ background: 'linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', border: 'none' }}
-          className="text-white font-semibold"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Yangi Context
-        </Button>
-      </div>
+  const statTiles: { label: string; value: number; tone: Tone; icon: React.ReactNode; solid?: boolean }[] = [
+    { label: 'Jami', value: total, tone: 'blue', icon: <LibraryIcon className="h-[18px] w-[18px]" />, solid: true },
+    { label: 'Faol', value: activeCount, tone: 'success', icon: <PulseIcon className="h-[18px] w-[18px]" /> },
+    { label: 'Stories', value: statsByType.story, tone: 'danger', icon: <MediaTypeIcon type="story" className="h-[18px] w-[18px]" /> },
+    { label: 'Posts', value: statsByType.post, tone: 'blue', icon: <MediaTypeIcon type="post" className="h-[18px] w-[18px]" /> },
+    { label: 'Reels', value: statsByType.reel, tone: 'violet', icon: <MediaTypeIcon type="reel" className="h-[18px] w-[18px]" /> },
+  ]
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {[
-          { label: 'Jami', value: total, color: 'text-[var(--foreground)]', bg: 'bg-[var(--surface)]', border: 'border-[var(--border)]' },
-          { label: 'Faol', value: activeCount, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
-          { label: 'Stories', value: statsByType.story, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/30' },
-          { label: 'Posts', value: statsByType.post, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' },
-          { label: 'Reels', value: statsByType.reel, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30' },
-        ].map((s) => (
-          <div key={s.label} className={cn('rounded-xl border px-4 py-3 flex flex-col gap-1', s.bg, s.border)}>
-            <span className={cn('text-2xl font-bold', s.color)}>{s.value}</span>
-            <span className="text-[11px] text-[var(--caption)] uppercase tracking-wide">{s.label}</span>
-          </div>
+  return (
+    <div className="space-y-[18px]">
+      <PageHeader
+        title="Instagram Media Contexts"
+        description="AI uchun story, post va reel kontekstlarini boshqaring"
+        actions={
+          <Button
+            onClick={() => setIsCreating(true)}
+            leftIcon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            }
+          >
+            Yangi Context
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 xl:grid-cols-5">
+        {statTiles.map((tile) => (
+          <StatCard
+            key={tile.label}
+            label={tile.label}
+            value={tile.value}
+            icon={tile.icon}
+            iconTone={tile.tone}
+            solid={tile.solid}
+          />
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1 rounded-xl bg-[var(--surface)] border border-[var(--border)] p-1">
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveFilter(tab.key)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all',
-                activeFilter === tab.key
-                  ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
-                  : 'text-[var(--muted)] hover:text-[var(--foreground)]',
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      <Card className="flex flex-wrap items-center gap-3 p-[18px]">
+        <Tabs items={FILTER_TABS} value={activeFilter} onChange={setActiveFilter} />
 
-        <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--caption)]">
+        <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
           </svg>
           <Input
             placeholder="Qidirish..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-9 text-[13px]"
+            className="h-9 min-h-9 rounded-[11px] pl-9 text-[13px]"
           />
         </div>
 
@@ -637,61 +631,51 @@ export function CognilabsAIMediaContextsPage() {
           type="button"
           onClick={() => setShowActiveOnly((v) => !v)}
           className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[12px] font-semibold transition-all',
+            'inline-flex h-9 items-center gap-2 rounded-[11px] px-3.5 text-[12.5px] font-semibold transition-colors',
             showActiveOnly
-              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
-              : 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]',
+              ? 'bg-[var(--success-dim)] text-[var(--success-text)]'
+              : 'bg-[var(--input-surface)] text-[var(--muted)] hover:bg-[var(--input-surface-hover)] hover:text-[var(--foreground)]',
           )}
         >
-          <span className={cn('h-2 w-2 rounded-full', showActiveOnly ? 'bg-emerald-400' : 'bg-[var(--muted)]')} />
+          <span className={cn('h-2 w-2 rounded-full', showActiveOnly ? 'bg-[var(--success-text)]' : 'bg-[var(--muted)]')} />
           Faol
         </button>
-      </div>
+      </Card>
 
-      {/* Content */}
       {query.isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4">
           {[1,2,3,4,5,6].map((i) => (
-            <div key={i} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden animate-pulse">
-              <div className="h-1 bg-[var(--accent-soft)]" />
-              <div className="h-28 bg-[var(--accent-soft)]" />
-              <div className="p-3 space-y-2">
-                <div className="h-3 bg-[var(--accent-soft)] rounded w-3/4" />
-                <div className="h-3 bg-[var(--accent-soft)] rounded w-full" />
-                <div className="h-3 bg-[var(--accent-soft)] rounded w-2/3" />
-              </div>
+            <div key={i} className="rounded-[24px] bg-[var(--card)] p-[18px]">
+              <Skeleton rounded="xl" className="h-[112px] w-full" />
+              <SkeletonText lines={3} className="mt-3.5" />
             </div>
           ))}
         </div>
       ) : query.isError ? (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
-          <p className="text-sm text-red-400">Ma'lumotlarni yuklashda xatolik</p>
-          <Button variant="ghost" className="mt-3" onClick={() => void query.refetch()}>Qayta urinish</Button>
-        </div>
+        <ErrorStateBlock
+          eyebrow="Xatolik"
+          title="Ma'lumotlarni yuklashda xatolik"
+          actionLabel="Qayta urinish"
+          onAction={() => void query.refetch()}
+        />
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="h-16 w-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'linear-gradient(135deg, #f09433, #bc1888)' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
-              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 9 4-4 4 4 4-5 4 5"/>
-            </svg>
-          </div>
-          <h3 className="text-[15px] font-semibold text-[var(--foreground)] mb-1">Kontekst topilmadi</h3>
-          <p className="text-[13px] text-[var(--caption)] mb-4 max-w-xs">
-            {contexts.length === 0 ? "Birinchi media contextni qo'shing" : 'Filter shartlariga mos kontekst yo\'q'}
-          </p>
-          {contexts.length === 0 && (
-            <Button onClick={() => setIsCreating(true)} style={{ background: 'linear-gradient(135deg, #f09433 0%, #bc1888 100%)', border: 'none' }} className="text-white">
+        <EmptyStateBlock
+          eyebrow="Instagram Media Contexts"
+          title="Kontekst topilmadi"
+          description={contexts.length === 0 ? "Birinchi media contextni qo'shing" : 'Filter shartlariga mos kontekst yo\'q'}
+        >
+          {contexts.length === 0 ? (
+            <Button onClick={() => setIsCreating(true)}>
               Birinchi contextni qo'shish
             </Button>
-          )}
-        </div>
+          ) : null}
+        </EmptyStateBlock>
       ) : (
-        <div className="space-y-6">
-          {/* Stories horizontal row */}
+        <div className="space-y-[18px]">
           {showStoryRow && (
-            <div>
-              <p className="text-[11px] font-semibold text-[var(--caption)] uppercase tracking-widest mb-3">Stories</p>
-              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
+            <Card className="space-y-4">
+              <SectionTitle title="Stories" />
+              <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-1">
                 {stories.map((ctx) => (
                   <div key={ctx.id} className="shrink-0">
                     <StoryCircleCard
@@ -703,16 +687,15 @@ export function CognilabsAIMediaContextsPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
-          {/* Posts / Reels / Ads grid */}
           {nonStories.length > 0 && (
-            <div>
+            <div className="space-y-[18px]">
               {showStoryRow && nonStories.length > 0 && (
-                <p className="text-[11px] font-semibold text-[var(--caption)] uppercase tracking-widest mb-3">Posts & Reels & Ads</p>
+                <SectionTitle title="Posts & Reels & Ads" />
               )}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4">
                 {nonStories.map((ctx) => (
                   <MediaCard
                     key={ctx.id}
@@ -728,7 +711,6 @@ export function CognilabsAIMediaContextsPage() {
         </div>
       )}
 
-      {/* Modals */}
       {viewCtx && !editCtx && (
         <ViewModal
           ctx={viewCtx}

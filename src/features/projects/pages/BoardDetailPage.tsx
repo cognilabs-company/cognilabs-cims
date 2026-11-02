@@ -26,6 +26,7 @@ export function BoardDetailPage() {
         eyebrow="Error"
         title="Invalid board"
         description="The requested board could not be opened."
+        className="page-enter"
       />
     )
   }

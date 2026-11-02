@@ -8,7 +8,7 @@ export function RouteErrorBoundary() {
   const message = error instanceof Error ? error.message : 'Unexpected application error'
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center p-6">
+    <div className="flex min-h-[60vh] items-center justify-center p-[22px]">
       <div className="w-full max-w-2xl">
         <StateBlock
           tone="error"

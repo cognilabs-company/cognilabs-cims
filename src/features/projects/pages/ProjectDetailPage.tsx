@@ -8,6 +8,9 @@ import { Input } from '../../../shared/ui/input'
 import { SelectField } from '../../../shared/ui/select-field'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
 import { StateBlock } from '../../../shared/ui/state-block'
+import { Skeleton } from '../../../shared/ui/skeleton'
+import { IconButton } from '../../../shared/ui/icon-button'
+import { Checkbox } from '../../../shared/ui/checkbox'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useToast } from '../../../shared/toast/useToast'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -469,14 +472,11 @@ export function ProjectDetailPage() {
 
   if (projectQuery.isLoading) {
     return (
-      <div className="flex flex-col gap-4 page-enter">
-        <div className="h-48 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex flex-col gap-[18px] page-enter">
+        <Skeleton rounded="xl" className="h-48 rounded-[24px]" />
+        <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]"
-            />
+            <Skeleton key={index} rounded="xl" className="h-28 rounded-[24px]" />
           ))}
         </div>
       </div>
@@ -498,26 +498,24 @@ export function ProjectDetailPage() {
 
   return (
     <>
-      <div className="relative flex flex-col gap-4 sm:gap-4 page-enter h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] overflow-hidden">
+      <div className="relative flex flex-col gap-[18px] page-enter h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] overflow-hidden">
         {/* Background Project Header (Jira Style) - More compact on mobile */}
-        <div className="relative shrink-0 overflow-hidden rounded-xl sm:rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-4 sm:p-6 shadow-sm">
-          <div className="page-header-decor pointer-events-none absolute inset-x-0 top-0 h-32 sm:h-40 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.18),transparent_72%)]" />
-
-          <div className="relative z-10 flex flex-col gap-4 sm:gap-4">
+        <div className="relative shrink-0 overflow-hidden rounded-[24px] bg-[var(--card)] p-[18px] sm:p-[22px]">
+          <div className="flex flex-col gap-[18px]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 items-start gap-3 sm:gap-4">
                 {projectImage ? (
                   <img
                     src={projectImage}
                     alt={project.project_name}
-                    className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl border border-[var(--border)] object-cover shadow-md"
+                    className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-[14px] object-cover"
                   />
                 ) : (
                   <div
-                    className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-lg sm:text-xl font-black"
+                    className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-[14px] text-lg sm:text-xl font-bold"
                     style={{
-                      background: `hsl(${project.project_name.charCodeAt(0) * 7 % 360}, 45%, 18%)`,
-                      color: `hsl(${project.project_name.charCodeAt(0) * 7 % 360}, 65%, 65%)`,
+                      background: `hsl(${project.project_name.charCodeAt(0) * 7 % 360}, 78%, 94%)`,
+                      color: `hsl(${project.project_name.charCodeAt(0) * 7 % 360}, 58%, 30%)`,
                     }}
                   >
                     {project.project_name.charAt(0).toUpperCase()}
@@ -525,7 +523,7 @@ export function ProjectDetailPage() {
                 )}
 
                 <div className="min-w-0">
-                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--foreground)] truncate">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.03em] text-[var(--foreground)] truncate">
                     {project.project_name}
                   </h1>
                   {project.team || project.deadline || project.telegram_group_id ? (
@@ -597,39 +595,38 @@ export function ProjectDetailPage() {
             </div>
 
             {/* Stats row - Hidden/compact on mobile */}
-            <div className="flex flex-wrap items-center gap-4 sm:gap-4 border-t border-[var(--border)]/30 pt-3 sm:pt-2 sm:border-t-0 sm:mt-0">
+            <div className="flex flex-wrap items-center gap-3 rounded-[18px] bg-[var(--muted-surface)] px-4 py-3 sm:gap-4">
               <div className="flex items-center gap-2 sm:gap-3">
                 <Avatar
                   name={project.created_by.name}
                   surname={project.created_by.surname}
                   imageUrl={project.created_by.profile_image}
-                  size="xs"
-                  className="ring-2 ring-[var(--border)]"
+                  size="sm"
                 />
                 <div className="hidden sm:block">
-                  <p className="text-xs font-bold text-[var(--foreground)]">
+                  <p className="text-[12.5px] font-semibold text-[var(--foreground)]">
                     {project.created_by.name} {project.created_by.surname}
                   </p>
                 </div>
                 <div className="sm:hidden">
-                  <span className="text-[10px] font-bold text-[var(--foreground)] truncate max-w-[100px] block">
+                  <span className="block max-w-[100px] truncate text-xs font-semibold text-[var(--foreground)]">
                     {project.created_by.name}
                   </span>
                 </div>
               </div>
 
-              <div className="h-4 sm:h-4 w-px bg-[var(--border)] opacity-60" />
+              <div className="h-4 w-px bg-[var(--border-hover)]" />
 
               <div>
-                <p className="text-[10px] sm:text-xs font-bold text-[var(--foreground)]">
+                <p className="text-xs font-medium text-[var(--muted-strong)] sm:text-[12.5px]">
                   {formatProjectDate(project.created_at)}
                 </p>
               </div>
 
-              <div className="h-4 sm:h-4 w-px bg-[var(--border)] opacity-60" />
+              <div className="h-4 w-px bg-[var(--border-hover)]" />
 
               <div>
-                <p className="text-[10px] sm:text-xs font-bold text-[var(--foreground)]">
+                <p className="text-xs font-medium text-[var(--muted-strong)] sm:text-[12.5px]">
                   {project.boards_count} <span className="hidden sm:inline">{lt('boards')}</span>
                 </p>
               </div>
@@ -638,14 +635,14 @@ export function ProjectDetailPage() {
         </div>
 
         {/* Boards Content Overlay Container - Scroll internally */}
-        <div className="relative z-20 flex-1 -mt-2 sm:-mt-4 bg-[var(--background)] rounded-t-[28px] sm:rounded-t-[40px] px-0 sm:px-2 pt-1 sm:pt-2 min-h-0 flex flex-col">
-           <Card noPadding className="flex-1 flex flex-col overflow-hidden rounded-t-[24px] sm:rounded-t-[32px] border-x border-t sm:border border-[var(--border)] shadow-xl bg-[var(--surface)] backdrop-blur-xl">
+        <div className="relative z-20 flex min-h-0 flex-1 flex-col">
+           <Card noPadding className="flex flex-1 flex-col overflow-hidden rounded-[24px] bg-[var(--card)]">
               {/* Board Header & Filters Area - Highly scrollable on mobile */}
-              <div className="flex flex-col border-b border-[var(--border)] bg-[var(--blue-dim)]/30 px-4 sm:px-8 py-3 sm:py-4 backdrop-blur-md">
+              <div className="flex flex-col border-b border-[var(--border-subtle)] px-[18px] py-4 sm:px-[22px]">
                  <div className="flex items-center justify-between gap-4 mb-3 sm:mb-0">
                     <div className="flex items-center gap-3 sm:gap-4 overflow-hidden flex-1">
                        {/* Board Tabs - Horizontal Scroll on mobile */}
-                       <div className="flex items-center gap-2.5 p-1 rounded-xl bg-black/20 dark:bg-white/5 border border-[var(--border)] overflow-x-auto custom-scrollbar-none scroll-smooth">
+                       <div className="flex items-center gap-1 overflow-x-auto rounded-[14px] bg-[var(--input-surface)] p-1 custom-scrollbar-none scroll-smooth">
                          {activeBoards.map((board) => {
                            const isSelected = selectedBoard?.id === board.id
                            return (
@@ -654,18 +651,19 @@ export function ProjectDetailPage() {
                                type="button"
                                onClick={() => selectBoard(board.id)}
                                className={cn(
-                                 "whitespace-nowrap pl-5 sm:pl-6 py-2 sm:py-2.5 rounded-xl text-[9px] sm:text-[11px] font-black uppercase tracking-widest transition-all",
-                                 canManageProjects ? "pr-14" : "pr-5 sm:pr-6",
+                                 "h-9 whitespace-nowrap rounded-[11px] pl-3.5 text-[12.5px] transition-colors",
+                                 canManageProjects ? "pr-10" : "pr-3.5",
                                  isSelected
-                                   ? "bg-blue-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.3)] scale-105"
-                                   : "text-[var(--muted-strong)] hover:text-[var(--foreground)] hover:bg-white/5"
+                                   ? "bg-[var(--surface)] font-semibold text-[var(--foreground)] shadow-[var(--elev-seg)]"
+                                   : "font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
                                )}
-                               >                                 {board.name}
+                               >{board.name}
                                </button>
                                {canManageProjects && (
-                                 <div className="absolute right-1">
+                                 <div className="absolute right-0.5">
                                     <ActionsMenu
                                       label={lt('Board actions')}
+                                      className="h-8 w-8 hover:bg-[var(--border-hover)]"
                                       items={[
                                         { label: lt('Edit'), onSelect: () => {/* Add edit handler logic */} },
                                         { label: lt('Delete'), tone: 'danger', onSelect: () => void handleDeleteBoard(board.id, board.name) },
@@ -677,24 +675,23 @@ export function ProjectDetailPage() {
                            )
                          })}
                          {canManageProjects && (
-                            <button
-                               type="button"
+                            <IconButton
+                               label={lt('Add board')}
                                onClick={() => setIsCreateBoardOpen(true)}
-                               className="w-9 h-9 flex items-center justify-center rounded-xl text-[var(--muted-strong)] hover:bg-white/10 hover:text-[var(--foreground)] transition-all shrink-0"
-                               title={lt('Add board')}
+                               className="hover:bg-[var(--surface)]"
                             >
-                               <svg viewBox="0 0 16 16" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+                               <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M8 3v10M3 8h10" strokeLinecap="round" />
                                </svg>
-                            </button>
+                            </IconButton>
                          )}
                        </div>
 
-                       <div className="hidden sm:block h-8 w-px bg-[var(--border)] shrink-0" />
+                       <div className="hidden sm:block h-8 w-px bg-[var(--border-hover)] shrink-0" />
 
                        {/* Members Selector (Desktop) */}
                        <div className="hidden sm:flex items-center gap-3 shrink-0">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">{lt('Members')}:</p>
+                          <p className="text-[12.5px] font-medium text-[var(--muted)]">{lt('Members')}:</p>
                           <div className="flex items-center -space-x-2">
                              {projectMembers.map((member) => {
                                const isExpanded = member.id === expandedMemberId
@@ -714,8 +711,8 @@ export function ProjectDetailPage() {
                                      imageUrl={member.profile_image}
                                      size="sm"
                                      className={cn(
-                                        "ring-2 ring-[var(--surface)] transition-all",
-                                        isExpanded ? "ring-blue-500 shadow-glow-blue" : "ring-[var(--border)]"
+                                        "ring-2 transition-all",
+                                        isExpanded ? "ring-[var(--primary)]" : "ring-[var(--surface)]"
                                      )}
                                    />
                                  </button>
@@ -731,7 +728,6 @@ export function ProjectDetailPage() {
                           <Button
                              variant="secondary"
                              size="sm"
-                             className="h-9 rounded-xl font-black uppercase tracking-widest bg-[var(--accent-soft)]"
                              onClick={() => setIsCreateBoardOpen(true)}
                           >
                             {tr('New list', 'Yangi list', 'Novyi spisok')}
@@ -742,19 +738,20 @@ export function ProjectDetailPage() {
                     {/* Mobile Create Button */}
                     <div className="sm:hidden flex items-center shrink-0">
                        {canManageProjects && (
-                          <button
+                          <IconButton
+                             label={tr('New list', 'Yangi list', 'Novyi spisok')}
                              onClick={() => setIsCreateBoardOpen(true)}
-                             className="h-9 w-9 rounded-xl bg-blue-500 flex items-center justify-center text-white shadow-lg"
+                             className="bg-[var(--primary)] text-white shadow-[var(--elev-primary)] hover:bg-[var(--primary-hover)] hover:text-white"
                           >
-                             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14" strokeLinecap="round"/></svg>
-                          </button>
+                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" strokeLinecap="round"/></svg>
+                          </IconButton>
                        )}
                     </div>
                  </div>
 
                  {/* Mobile Members Row */}
                  <div className="sm:hidden flex items-center gap-3 overflow-hidden">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-[var(--muted)] shrink-0">{lt('Team')}:</p>
+                    <p className="shrink-0 text-xs font-medium text-[var(--muted)]">{lt('Team')}:</p>
                     <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar-none pb-1">
                        {projectMembers.map((member) => {
                          const isExpanded = member.id === expandedMemberId
@@ -772,7 +769,7 @@ export function ProjectDetailPage() {
                                size="sm"
                                className={cn(
                                   "h-7 w-7 ring-2 transition-all",
-                                  isExpanded ? "ring-blue-500 shadow-glow-blue scale-110" : "ring-[var(--border)]"
+                                  isExpanded ? "ring-[var(--primary)] scale-110" : "ring-[var(--surface)]"
                                )}
                              />
                            </button>
@@ -809,69 +806,66 @@ export function ProjectDetailPage() {
         {expandedMember && expandedMemberId !== null && (
            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
               {/* Backdrop */}
-              <button 
-                 className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default" 
+              <button
+                 className="dialog-backdrop absolute inset-0 cursor-default"
                  onClick={() => setExpandedMemberId(null)}
               />
-              
+
               {/* Center Modal */}
-              <Card variant="glass" className="relative z-10 w-full max-w-5xl rounded-xl shadow-2xl border-[var(--blue-border)] overflow-hidden page-enter">
-                 <div className="flex items-center justify-between p-6 sm:p-8 border-b border-[var(--border)] bg-[var(--blue-dim)]/20 backdrop-blur-md">
+              <Card noPadding className="relative z-10 w-full max-w-5xl overflow-hidden rounded-[24px] shadow-[var(--elev-xl)] page-enter">
+                 <div className="flex items-center justify-between border-b border-[var(--border)] p-[22px]">
                     <div className="flex items-center gap-4">
-                       <Avatar name={expandedMember.name} surname={expandedMember.surname} imageUrl={expandedMember.profile_image} size="lg" className="ring-4 ring-blue-500/20" />
+                       <Avatar name={expandedMember.name} surname={expandedMember.surname} imageUrl={expandedMember.profile_image} size="lg" className="ring-2 ring-[var(--blue-dim)]" />
                        <div>
-                          <p className="text-xl font-black text-[var(--foreground)] tracking-tight">{expandedMember.name} {expandedMember.surname}</p>
-                          <p className="text-xs font-bold text-blue-400 uppercase tracking-[0.2em] mt-1">{expandedMember.job_title || lt('Member')}</p>
+                          <p className="text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">{expandedMember.name} {expandedMember.surname}</p>
+                          <p className="mt-1 text-[12.5px] font-medium text-[var(--muted)]">{expandedMember.job_title || lt('Member')}</p>
                        </div>
                     </div>
-                    <button onClick={() => setExpandedMemberId(null)} className="h-12 w-12 rounded-xl flex items-center justify-center bg-black/10 hover:bg-red-500/20 hover:text-red-400 transition-all text-[var(--muted-strong)]">
-                       <svg viewBox="0 0 16 16" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/></svg>
-                    </button>
+                    <IconButton size="lg" label={lt('Close Dashboard')} onClick={() => setExpandedMemberId(null)}>
+                       <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/></svg>
+                    </IconButton>
                  </div>
-                 
-                 <div className="max-h-[70vh] overflow-y-auto p-6 sm:p-10 custom-scrollbar-visible bg-[var(--surface-elevated)] boards-section">
-                    <div className="flex items-center justify-between mb-8">
-                       <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">{lt('Active Tasks Assignment')}</h4>
-                       <Badge variant="blue" className="px-3 py-1 rounded-full font-black">{expandedMemberTasks.length} {lt('Items')}</Badge>
+
+                 <div className="max-h-[70vh] overflow-y-auto p-[22px] custom-scrollbar-visible boards-section">
+                    <div className="mb-[18px] flex items-center justify-between">
+                       <h4 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{lt('Active Tasks Assignment')}</h4>
+                       <Badge variant="blue">{expandedMemberTasks.length} {lt('Items')}</Badge>
                     </div>
 
                     {isExpandedMemberTasksLoading ? (
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {[1,2,3,4].map(i => <div key={i} className="h-32 animate-pulse rounded-3xl bg-white/5 border border-white/5" />)}
+                       <div className="grid grid-cols-1 gap-[18px] md:grid-cols-2">
+                          {[1,2,3,4].map(i => <Skeleton key={i} rounded="xl" className="h-32" />)}
                        </div>
                     ) : expandedMemberTasks.length === 0 ? (
-                       <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                          <svg viewBox="0 0 24 24" className="h-16 w-16 mb-6" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M12 22c5.523 0 9-4.477 9-10S17.523 2 12 2 3 6.477 3 12s3.477 10 9 10z"/><path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round"/></svg>
-                          <p className="text-base font-black tracking-widest text-[var(--muted)] uppercase">{lt('No active tasks')}</p>
+                       <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] py-16">
+                          <svg viewBox="0 0 24 24" className="mb-5 h-14 w-14 text-[#D3D7E0]" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M12 22c5.523 0 9-4.477 9-10S17.523 2 12 2 3 6.477 3 12s3.477 10 9 10z"/><path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round"/></svg>
+                          <p className="text-sm font-medium text-[var(--muted)]">{lt('No active tasks')}</p>
                        </div>
                     ) : (
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="grid grid-cols-1 gap-[18px] md:grid-cols-2">
                           {expandedMemberTasks.map(task => (
-                             <Link 
-                                key={task.id} 
-                                to={`/projects/${project.id}?board=${task.board_id}`} 
+                             <Link
+                                key={task.id}
+                                to={`/projects/${project.id}?board=${task.board_id}`}
                                 onClick={() => setExpandedMemberId(null)}
-                                className="group flex flex-col justify-between p-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] hover:border-blue-500/50 hover:bg-[var(--accent-soft)] transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1"
+                                className="group flex flex-col justify-between rounded-[18px] bg-[var(--accent-soft)] p-[18px] transition-colors hover:bg-[var(--blue-dim)]"
                              >
-                                <div className="mb-5">
-                                   <div className="flex items-center gap-2 mb-2 opacity-60">
-                                      <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{task.board_name}</span>
-                                      <span className="text-[var(--border)]">•</span>
-                                      <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">{task.column_name}</span>
+                                <div className="mb-4">
+                                   <div className="mb-2 flex items-center gap-2">
+                                      <span className="text-[12.5px] font-medium text-[var(--blue-text)]">{task.board_name}</span>
+                                      <span className="text-[var(--border-hover)]">•</span>
+                                      <span className="text-[12.5px] font-medium text-[var(--muted)]">{task.column_name}</span>
                                    </div>
-                                   <p className="text-[17px] font-black leading-snug text-[var(--foreground)] group-hover:text-blue-400 transition-colors line-clamp-2">
+                                   <p className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-[-0.01em] text-[var(--foreground)]">
                                       {task.title}
                                    </p>
                                 </div>
-                                <div className="flex items-center justify-between gap-3 pt-4 border-t border-[var(--border)]/50">
-                                   <div className="flex items-center gap-2">
-                                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_var(--blue-glow)]" />
-                                      <span className="text-[10px] font-black text-[var(--muted-strong)] uppercase tracking-tighter">{lt('Priority High')}</span>
-                                   </div>
-                                   <div className="flex flex-col items-end gap-1 text-[10px] font-bold text-[var(--muted)]">
+                                <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+                                   <Badge variant="blue" size="sm" dot>{lt('Priority High')}</Badge>
+                                   <div className="flex flex-col items-end gap-1 text-[11.5px] font-medium text-[var(--muted)]">
                                       {task.due_date ? (
-                                        <div className="flex items-center gap-1.5 text-[var(--foreground)]">
-                                          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <div className="flex items-center gap-1.5 text-[var(--muted-strong)]">
+                                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
                                             <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
                                             <path d="M16 2v4" />
                                             <path d="M8 2v4" />
@@ -881,7 +875,7 @@ export function ProjectDetailPage() {
                                         </div>
                                       ) : null}
                                       <div className="flex items-center gap-1.5">
-                                        <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
                                           <circle cx="12" cy="12" r="10" />
                                           <polyline points="12 6 12 12 16 14" />
                                         </svg>
@@ -895,8 +889,8 @@ export function ProjectDetailPage() {
                     )}
                  </div>
                  
-                 <div className="p-6 border-t border-[var(--border)] bg-[var(--accent-soft)]/10 flex justify-end">
-                    <Button variant="ghost" className="rounded-xl font-black uppercase tracking-widest text-[var(--muted-strong)]" onClick={() => setExpandedMemberId(null)}>
+                 <div className="flex justify-end border-t border-[var(--border)] p-[22px]">
+                    <Button variant="secondary" onClick={() => setExpandedMemberId(null)}>
                        {lt('Close Dashboard')}
                     </Button>
                  </div>
@@ -909,43 +903,43 @@ export function ProjectDetailPage() {
       {isKpiOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
           <button
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
+            className="dialog-backdrop absolute inset-0 cursor-default"
             onClick={() => setIsKpiOpen(false)}
           />
-          <Card variant="glass" className="relative z-10 w-full max-w-5xl rounded-xl shadow-2xl border-[var(--blue-border)] overflow-hidden page-enter">
-            <div className="flex items-center justify-between p-6 sm:p-8 border-b border-[var(--border)] bg-[var(--blue-dim)]/20 backdrop-blur-md">
+          <Card noPadding className="relative z-10 w-full max-w-5xl overflow-hidden rounded-[24px] shadow-[var(--elev-xl)] page-enter">
+            <div className="flex items-center justify-between border-b border-[var(--border)] p-[22px]">
               <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Developer KPI</p>
-                <p className="mt-1 text-xl font-black text-[var(--foreground)] tracking-tight">{project.project_name}</p>
+                <p className="ui-eyebrow">Developer KPI</p>
+                <p className="mt-1.5 text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">{project.project_name}</p>
               </div>
-              <button onClick={() => setIsKpiOpen(false)} className="h-12 w-12 rounded-xl flex items-center justify-center bg-black/10 hover:bg-red-500/20 hover:text-red-400 transition-all text-[var(--muted-strong)]">
-                <svg viewBox="0 0 16 16" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/></svg>
-              </button>
+              <IconButton size="lg" label="Close" onClick={() => setIsKpiOpen(false)}>
+                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/></svg>
+              </IconButton>
             </div>
 
-            <div className="max-h-[75vh] overflow-y-auto p-6 sm:p-8 space-y-6 bg-[var(--surface-elevated)]">
+            <div className="max-h-[75vh] overflow-y-auto p-[22px] space-y-[18px]">
               {/* Features */}
               <div>
                 <div className="mb-3 flex items-center justify-between">
-                  <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Features</h4>
+                  <h4 className="ui-section-title text-[var(--foreground)]">Features</h4>
                   <div className="flex items-center gap-2">
                     <Badge variant="blue">{kpiFeatures.length}</Badge>
                     {canManageKpi && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => setShowAddFeature((v) => !v)}
-                        className="flex items-center gap-1 rounded-lg border border-[var(--blue-border)] bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-bold text-[var(--blue-text)] transition hover:bg-[var(--blue-soft)]"
+                        leftIcon={<svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>}
                       >
-                        <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>
                         Add
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
 
                 {showAddFeature && canManageKpi && (
-                  <div className="mb-4 rounded-xl border border-[var(--blue-border)] bg-[var(--blue-dim)]/30 p-4 space-y-3">
-                    <p className="text-[11px] font-black uppercase tracking-[0.25em] text-[var(--muted)]">New Feature</p>
+                  <div className="mb-[18px] rounded-[18px] bg-[var(--accent-soft)] p-[18px] space-y-3">
+                    <p className="ui-eyebrow">New Feature</p>
                     <Input
                       placeholder="Title *"
                       value={featureForm.title}
@@ -953,7 +947,7 @@ export function ProjectDetailPage() {
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Owner *</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Owner *</p>
                         <SelectField
                           value={featureForm.ownerId}
                           options={projectMembers.map((m) => ({ value: String(m.id), label: `${m.name} ${m.surname}` }))}
@@ -963,7 +957,7 @@ export function ProjectDetailPage() {
                         />
                       </div>
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Points</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Points</p>
                         <SelectField
                           value={featureForm.points}
                           options={FEATURE_POINTS.map((p) => ({ value: String(p), label: String(p) }))}
@@ -974,7 +968,7 @@ export function ProjectDetailPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Status</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Status</p>
                         <SelectField
                           value={featureForm.status}
                           options={[
@@ -987,7 +981,7 @@ export function ProjectDetailPage() {
                         />
                       </div>
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Due Date</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Due Date</p>
                         <Input
                           type="date"
                           value={featureForm.dueDate}
@@ -997,7 +991,7 @@ export function ProjectDetailPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">FE %</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">FE %</p>
                         <Input
                           type="number"
                           min="0" max="100"
@@ -1006,7 +1000,7 @@ export function ProjectDetailPage() {
                         />
                       </div>
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">BE %</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">BE %</p>
                         <Input
                           type="number"
                           min="0" max="100"
@@ -1016,21 +1010,19 @@ export function ProjectDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm text-[var(--foreground)] cursor-pointer">
-                        <input
-                          type="checkbox"
+                      <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+                        <Checkbox
+                          size="sm"
                           checked={featureForm.isMandatory}
                           onChange={(e) => setFeatureForm((f) => ({ ...f, isMandatory: e.target.checked }))}
-                          className="h-4 w-4 rounded border-[var(--border)] accent-[var(--blue-text)]"
                         />
                         Mandatory
                       </label>
-                      <label className="flex items-center gap-2 text-sm text-[var(--foreground)] cursor-pointer">
-                        <input
-                          type="checkbox"
+                      <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+                        <Checkbox
+                          size="sm"
                           checked={featureForm.lockNow}
                           onChange={(e) => setFeatureForm((f) => ({ ...f, lockNow: e.target.checked }))}
-                          className="h-4 w-4 rounded border-[var(--border)] accent-[var(--blue-text)]"
                         />
                         Lock now
                       </label>
@@ -1050,16 +1042,16 @@ export function ProjectDetailPage() {
                 )}
 
                 {kpiFeaturesQuery.isLoading || kpiFeaturesQuery.status === 'idle' ? (
-                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-xl bg-white/5" />)}</div>
+                  <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} rounded="lg" className="h-12" />)}</div>
                 ) : kpiFeatures.length === 0 ? (
-                  <p className="text-sm text-[var(--muted-strong)]">No features for this project.</p>
+                  <p className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-3 text-sm text-[var(--muted)]">No features for this project.</p>
                 ) : (
                   <div className="space-y-2">
                     {kpiFeatures.map(f => (
-                      <div key={f.id} className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+                      <div key={f.id} className="flex items-center justify-between rounded-[14px] bg-[var(--muted-surface)] px-4 py-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-[var(--foreground)]">{f.title}</p>
-                          <p className="text-xs text-[var(--muted-strong)]">{f.status}{f.due_date ? ` · due ${f.due_date.slice(0,10)}` : ''}</p>
+                          <p className="text-[12.5px] text-[var(--muted)]">{f.status}{f.due_date ? ` · due ${f.due_date.slice(0,10)}` : ''}</p>
                         </div>
                         <div className="ml-4 flex shrink-0 items-center gap-2">
                           <Badge variant={f.status === 'accepted' ? 'success' : f.status === 'completed' ? 'blue' : 'outline'}>{f.points}pts</Badge>
@@ -1074,28 +1066,28 @@ export function ProjectDetailPage() {
               {/* Quality Events */}
               <div>
                 <div className="mb-3 flex items-center justify-between">
-                  <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Quality Events</h4>
+                  <h4 className="ui-section-title text-[var(--foreground)]">Quality Events</h4>
                   <div className="flex items-center gap-2">
                     <Badge variant={kpiQualityEvents.length > 0 ? 'danger' : 'outline'}>{kpiQualityEvents.length}</Badge>
                     {canManageKpi && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={() => setShowAddQuality((v) => !v)}
-                        className="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-400 transition hover:bg-rose-500/20"
+                        leftIcon={<svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>}
                       >
-                        <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>
                         Add
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
 
                 {showAddQuality && canManageKpi && (
-                  <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 space-y-3">
-                    <p className="text-[11px] font-black uppercase tracking-[0.25em] text-[var(--muted)]">New Quality Event</p>
+                  <div className="mb-[18px] rounded-[18px] bg-[var(--danger-dim)] p-[18px] space-y-3">
+                    <p className="ui-eyebrow">New Quality Event</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Employee *</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Employee *</p>
                         <SelectField
                           value={qualityForm.employeeId}
                           options={projectMembers.map((m) => ({ value: String(m.id), label: `${m.name} ${m.surname}` }))}
@@ -1105,7 +1097,7 @@ export function ProjectDetailPage() {
                         />
                       </div>
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Severity</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Severity</p>
                         <SelectField
                           value={qualityForm.severity}
                           options={QUALITY_SEVERITY_OPTIONS}
@@ -1120,7 +1112,7 @@ export function ProjectDetailPage() {
                       onChange={(e) => setQualityForm((f) => ({ ...f, title: e.target.value }))}
                     />
                     <div>
-                      <p className="mb-1 text-xs text-[var(--muted-strong)]">Event Date *</p>
+                      <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Event Date *</p>
                       <Input
                         type="date"
                         value={qualityForm.eventDate}
@@ -1128,21 +1120,19 @@ export function ProjectDetailPage() {
                       />
                     </div>
                     <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm text-[var(--foreground)] cursor-pointer">
-                        <input
-                          type="checkbox"
+                      <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+                        <Checkbox
+                          size="sm"
                           checked={qualityForm.confirmed}
                           onChange={(e) => setQualityForm((f) => ({ ...f, confirmed: e.target.checked }))}
-                          className="h-4 w-4 rounded border-[var(--border)] accent-rose-500"
                         />
                         Confirmed
                       </label>
-                      <label className="flex items-center gap-2 text-sm text-[var(--foreground)] cursor-pointer">
-                        <input
-                          type="checkbox"
+                      <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+                        <Checkbox
+                          size="sm"
                           checked={qualityForm.externalCause}
                           onChange={(e) => setQualityForm((f) => ({ ...f, externalCause: e.target.checked }))}
-                          className="h-4 w-4 rounded border-[var(--border)] accent-rose-500"
                         />
                         External cause
                       </label>
@@ -1162,16 +1152,16 @@ export function ProjectDetailPage() {
                 )}
 
                 {kpiQualityQuery.isLoading || kpiQualityQuery.status === 'idle' ? (
-                  <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-12 animate-pulse rounded-xl bg-white/5" />)}</div>
+                  <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} rounded="lg" className="h-12" />)}</div>
                 ) : kpiQualityEvents.length === 0 ? (
-                  <p className="text-sm text-[var(--muted-strong)]">No quality events for this project.</p>
+                  <p className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-3 text-sm text-[var(--muted)]">No quality events for this project.</p>
                 ) : (
                   <div className="space-y-2">
                     {kpiQualityEvents.map(e => (
-                      <div key={e.id} className="flex items-center justify-between rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3">
+                      <div key={e.id} className="flex items-center justify-between rounded-[14px] bg-[var(--danger-dim)] px-4 py-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-[var(--foreground)]">{e.title}</p>
-                          <p className="text-xs text-[var(--muted-strong)]">{e.severity} · {e.event_date.slice(0,10)}</p>
+                          <p className="text-[12.5px] text-[var(--muted)]">{e.severity} · {e.event_date.slice(0,10)}</p>
                         </div>
                         <Badge variant={e.confirmed ? 'danger' : 'outline'}>{e.confirmed ? 'confirmed' : 'pending'}</Badge>
                       </div>
@@ -1183,28 +1173,28 @@ export function ProjectDetailPage() {
               {/* Blocked Periods */}
               <div>
                 <div className="mb-3 flex items-center justify-between">
-                  <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Blocked Periods</h4>
+                  <h4 className="ui-section-title text-[var(--foreground)]">Blocked Periods</h4>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{kpiBlockedPeriods.length}</Badge>
                     {canManageKpi && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => setShowAddBlocked((v) => !v)}
-                        className="flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-400 transition hover:bg-amber-500/20"
+                        leftIcon={<svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>}
                       >
-                        <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>
                         Add
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
 
                 {showAddBlocked && canManageKpi && (
-                  <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
-                    <p className="text-[11px] font-black uppercase tracking-[0.25em] text-[var(--muted)]">New Blocked Period</p>
+                  <div className="mb-[18px] rounded-[18px] bg-[var(--warning-dim)] p-[18px] space-y-3">
+                    <p className="ui-eyebrow">New Blocked Period</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Employee *</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Employee *</p>
                         <SelectField
                           value={blockedForm.employeeId}
                           options={projectMembers.map((m) => ({ value: String(m.id), label: `${m.name} ${m.surname}` }))}
@@ -1214,7 +1204,7 @@ export function ProjectDetailPage() {
                         />
                       </div>
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Feature (optional)</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Feature (optional)</p>
                         <SelectField
                           value={blockedForm.featureId}
                           options={[{ value: '', label: 'None' }, ...kpiFeatures.map((feat) => ({ value: String(feat.id), label: feat.title }))]}
@@ -1231,7 +1221,7 @@ export function ProjectDetailPage() {
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Started At *</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Started At *</p>
                         <Input
                           type="datetime-local"
                           value={blockedForm.startedAt}
@@ -1239,7 +1229,7 @@ export function ProjectDetailPage() {
                         />
                       </div>
                       <div>
-                        <p className="mb-1 text-xs text-[var(--muted-strong)]">Ended At</p>
+                        <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Ended At</p>
                         <Input
                           type="datetime-local"
                           value={blockedForm.endedAt}
@@ -1252,12 +1242,11 @@ export function ProjectDetailPage() {
                       value={blockedForm.dependency}
                       onChange={(e) => setBlockedForm((f) => ({ ...f, dependency: e.target.value }))}
                     />
-                    <label className="flex items-center gap-2 text-sm text-[var(--foreground)] cursor-pointer">
-                      <input
-                        type="checkbox"
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+                      <Checkbox
+                        size="sm"
                         checked={blockedForm.isExternal}
                         onChange={(e) => setBlockedForm((f) => ({ ...f, isExternal: e.target.checked }))}
-                        className="h-4 w-4 rounded border-[var(--border)] accent-amber-500"
                       />
                       External blocker
                     </label>
@@ -1276,16 +1265,16 @@ export function ProjectDetailPage() {
                 )}
 
                 {kpiBlockedQuery.isLoading || kpiBlockedQuery.status === 'idle' ? (
-                  <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-12 animate-pulse rounded-xl bg-white/5" />)}</div>
+                  <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} rounded="lg" className="h-12" />)}</div>
                 ) : kpiBlockedPeriods.length === 0 ? (
-                  <p className="text-sm text-[var(--muted-strong)]">No blocked periods for this project.</p>
+                  <p className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-3 text-sm text-[var(--muted)]">No blocked periods for this project.</p>
                 ) : (
                   <div className="space-y-2">
                     {kpiBlockedPeriods.map(b => (
-                      <div key={b.id} className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                      <div key={b.id} className="flex items-center justify-between rounded-[14px] bg-[var(--warning-dim)] px-4 py-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-[var(--foreground)]">{b.reason}</p>
-                          <p className="text-xs text-[var(--muted-strong)]">{b.started_at.slice(0,10)}{b.ended_at ? ` → ${b.ended_at.slice(0,10)}` : ' (ongoing)'}</p>
+                          <p className="text-[12.5px] text-[var(--muted)]">{b.started_at.slice(0,10)}{b.ended_at ? ` → ${b.ended_at.slice(0,10)}` : ' (ongoing)'}</p>
                         </div>
                         <Badge variant={b.approval_status === 'approved' ? 'success' : b.approval_status === 'rejected' ? 'danger' : 'warning'}>{b.approval_status}</Badge>
                       </div>
@@ -1295,8 +1284,8 @@ export function ProjectDetailPage() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-[var(--border)] bg-[var(--accent-soft)]/10 flex justify-end">
-              <Button variant="ghost" className="rounded-xl font-black uppercase tracking-widest text-[var(--muted-strong)]" onClick={() => setIsKpiOpen(false)}>
+            <div className="flex justify-end border-t border-[var(--border)] p-[22px]">
+              <Button variant="secondary" onClick={() => setIsKpiOpen(false)}>
                 Close
               </Button>
             </div>

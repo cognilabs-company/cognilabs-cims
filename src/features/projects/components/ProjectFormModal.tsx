@@ -3,6 +3,7 @@ import { useLocale } from '../../../app/hooks/useLocale'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
 import { Textarea } from '../../../shared/ui/textarea'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
@@ -207,14 +208,14 @@ export function ProjectFormModal({
         </>
       )}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+        <div className="flex flex-col gap-2.5">
+          <Label>
             {t('projects.project_image', 'Project Image')}
-          </label>
+          </Label>
           <div className="flex items-center gap-4">
             <div
-              className="relative flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--input-surface)] transition hover:border-[var(--border-hover)]"
+              className="relative flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[18px] bg-[var(--input-surface)] transition-colors hover:bg-[var(--input-surface-hover)]"
               onClick={() => fileRef.current?.click()}
             >
               {previewUrl ? (
@@ -231,7 +232,7 @@ export function ProjectFormModal({
               )}
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col items-start gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
                 {previewUrl
                   ? t('projects.change_image', 'Change image')
@@ -257,7 +258,7 @@ export function ProjectFormModal({
                 </Button>
               ) : null}
 
-              <p className="text-[10px] text-[var(--muted)]">
+              <p className="text-[11.5px] text-[var(--muted)]">
                 {t('projects.image_hint', 'PNG, JPG up to 5 MB')}
               </p>
             </div>
@@ -272,24 +273,24 @@ export function ProjectFormModal({
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
-            {t('projects.project_name', 'Project Name')} <span className="text-red-400">*</span>
-          </label>
+        <div className="flex flex-col gap-2">
+          <Label>
+            {t('projects.project_name', 'Project Name')} <span className="text-[var(--danger-text)]">*</span>
+          </Label>
           <Input
             value={values.project_name}
             onChange={(event) => set('project_name', event.target.value)}
             placeholder={t('projects.project_name_placeholder', 'My awesome project')}
           />
           {errors.project_name ? (
-            <p className="text-xs text-[var(--danger-text)]">{errors.project_name}</p>
+            <p className="text-[12.5px] text-[var(--danger-text)]">{errors.project_name}</p>
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="flex flex-col gap-2">
+          <Label>
             {t('projects.description', 'Description')}
-          </label>
+          </Label>
           <Textarea
             value={values.project_description}
             onChange={(event) => set('project_description', event.target.value)}
@@ -298,10 +299,10 @@ export function ProjectFormModal({
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="flex flex-col gap-2">
+          <Label>
             {t('projects.project_url', 'Project URL')}
-          </label>
+          </Label>
           <Input
             type="url"
             value={values.project_url}
@@ -310,11 +311,11 @@ export function ProjectFormModal({
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="grid gap-[18px] sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label>
               {t('projects.team', 'Team')}
-            </label>
+            </Label>
             <SelectField
               value={values.team_id}
               options={teamOptions}
@@ -322,13 +323,13 @@ export function ProjectFormModal({
               placeholder={t('projects.select_team', 'Select a team')}
               disabled={teamsQuery.isLoading}
             />
-            {errors.team_id ? <p className="text-xs text-[var(--danger-text)]">{errors.team_id}</p> : null}
+            {errors.team_id ? <p className="text-[12.5px] text-[var(--danger-text)]">{errors.team_id}</p> : null}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+          <div className="flex flex-col gap-2">
+            <Label>
               {t('projects.deadline', 'Project deadline')}
-            </label>
+            </Label>
             <Input
               type="datetime-local"
               value={values.deadline}
@@ -338,16 +339,16 @@ export function ProjectFormModal({
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="flex flex-col gap-2">
+          <Label>
             {t('projects.telegram_group_id', 'Telegram group ID')}
-          </label>
+          </Label>
           <Input
             value={values.telegram_group_id}
             onChange={(event) => set('telegram_group_id', event.target.value)}
             placeholder="-1001234567890"
           />
-          <p className="text-[11px] text-[var(--muted)]">
+          <p className="text-[11.5px] text-[var(--muted)]">
             {t('projects.telegram_group_hint', 'Tasks created from this group are added to the matching board.')}
           </p>
         </div>

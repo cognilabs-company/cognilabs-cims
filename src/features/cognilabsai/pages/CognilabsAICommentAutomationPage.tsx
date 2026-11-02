@@ -10,13 +10,25 @@ import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import { formatShortDateTime } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
+import { PageHeader } from '../../../shared/ui/page-header'
+import { Skeleton } from '../../../shared/ui/skeleton'
 import { EmptyStateBlock, ErrorStateBlock } from '../../../shared/ui/state-block'
+import { Tabs } from '../../../shared/ui/tabs'
 import { BulkSettingsDialog } from '../components/comment-automation/BulkSettingsDialog'
-import { CheckIcon, GridIcon, InstagramGlyph, PostIcon, ReelsIcon } from '../components/comment-automation/icons'
+import {
+  AlertIcon,
+  CheckIcon,
+  CommentIcon,
+  GridIcon,
+  InstagramGlyph,
+  PostIcon,
+  ReelsIcon,
+} from '../components/comment-automation/icons'
 import { MediaGridTile } from '../components/comment-automation/MediaGridTile'
 import { MediaViewerModal } from '../components/comment-automation/MediaViewerModal'
 import { PaginationBar } from '../components/comment-automation/PaginationBar'
@@ -24,7 +36,6 @@ import { SummaryTile } from '../components/comment-automation/SummaryTile'
 import {
   BULK_CHUNK_SIZE,
   DEFAULT_PAGE_SIZE,
-  INSTAGRAM_GRADIENT,
   MEDIA_PAGE_LIMIT,
   MEDIA_TABS,
   PAGE_SIZE_OPTIONS,
@@ -293,32 +304,16 @@ export function CognilabsAICommentAutomationPage() {
   }
 
   return (
-    <section className="space-y-4 page-enter">
-      <Card variant="glass" noPadding className="overflow-hidden rounded-xl border-[var(--border)]">
-        <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-7">
-          <div className="flex items-start gap-4">
-            <span className="hidden shrink-0 rounded-full p-[3px] sm:inline-flex" style={{ background: INSTAGRAM_GRADIENT }}>
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--card)]">
-                <InstagramGlyph className="h-7 w-7 text-[var(--foreground)]" />
-              </span>
-            </span>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--blue-text)]">
-                {tx('header.eyebrow', 'CognilabsAI')}
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-[1.75rem]">
-                {tx('header.title', 'Instagram comments')}
-              </h1>
-              <p className="mt-1.5 max-w-2xl text-[13px] text-(--muted-strong)">
-                {tx('header.description', 'Manage public replies and the first DM for comments on each post and reel.')}
-              </p>
-            </div>
-          </div>
+    <section className="space-y-[18px] page-enter">
+      <PageHeader
+        eyebrow={tx('header.eyebrow', 'CognilabsAI')}
+        title={tx('header.title', 'Instagram comments')}
+        description={tx('header.description', 'Manage public replies and the first DM for comments on each post and reel.')}
+        actions={
           <div className="flex flex-col items-start gap-1.5 sm:items-end">
             <Button
               variant="secondary"
               size="sm"
-              className="min-h-9 rounded-xl"
               onClick={handleRefresh}
               loading={firstPageQuery.isLoading && items.length > 0}
               disabled={isBulkSaving || isInitialLoading}
@@ -326,97 +321,113 @@ export function CognilabsAICommentAutomationPage() {
               {tx('actions.refresh', 'Refresh')}
             </Button>
             {syncedAt && (
-              <span className="text-[11px] text-[var(--caption)]">
+              <span className="text-[11.5px] text-[var(--caption)]">
                 {tx('header.synced', 'Synced {{date}}', { date: formatShortDateTime(syncedAt) })}
               </span>
             )}
           </div>
-        </div>
-      </Card>
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
         <SummaryTile
           label={tx('summary.total', 'Posts and reels')}
           value={items.length}
           hint={isFullyLoaded ? tx('summary.all_loaded', 'All pages loaded') : tx('summary.loading', 'Loading...')}
+          icon={<InstagramGlyph className="h-[18px] w-[18px]" />}
+          solid
         />
         <SummaryTile
           label={tx('summary.enabled', 'Auto reply on')}
           value={enabledCount}
           hint={tx('summary.enabled_hint', 'of {{total}}', { total: items.length })}
           accent="success"
+          icon={<CheckIcon className="h-4 w-4" />}
         />
-        <SummaryTile label={tx('summary.comments', 'Comments received')} value={commentsCount} accent="blue" />
+        <SummaryTile
+          label={tx('summary.comments', 'Comments received')}
+          value={commentsCount}
+          accent="blue"
+          icon={<CommentIcon className="h-[18px] w-[18px]" />}
+        />
         <SummaryTile
           label={tx('summary.attention', 'Needs attention')}
           value={attentionCount}
           hint={attentionCount > 0 ? tx('summary.attention_hint', 'Check the reply history') : undefined}
           accent={attentionCount > 0 ? 'danger' : 'default'}
+          icon={<AlertIcon className="h-[18px] w-[18px]" />}
         />
       </div>
 
       {isLoadingRest && (
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--blue-border)] bg-[var(--blue-soft)] px-4 py-2.5 text-[12px] font-medium text-[var(--blue-text)]">
-          <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <Alert
+          tone="blue"
+          icon={<span className="block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+        >
           {tx('loading.progress', 'Loading all posts and reels... {{count}} loaded', { count: items.length })}
-        </div>
+        </Alert>
       )}
 
       {Boolean(restError) && !isLoadingRest && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-dim)] px-4 py-2.5 text-[12px] text-[var(--danger-text)]">
-          <span>
-            {tx('loading.partial_error', 'Only {{count}} items were loaded: {{error}}', { count: items.length, error: getApiErrorMessage(restError) })}
-          </span>
-          <Button size="sm" variant="secondary" className="ml-auto" onClick={handleContinueLoading}>
-            {tx('actions.continue_loading', 'Continue loading')}
-          </Button>
-        </div>
+        <Alert
+          tone="danger"
+          action={
+            <Button size="sm" variant="secondary" onClick={handleContinueLoading}>
+              {tx('actions.continue_loading', 'Continue loading')}
+            </Button>
+          }
+        >
+          {tx('loading.partial_error', 'Only {{count}} items were loaded: {{error}}', { count: items.length, error: getApiErrorMessage(restError) })}
+        </Alert>
       )}
 
-      <details className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-[12px] text-[var(--muted-strong)]">
-        <summary className="flex cursor-pointer select-none items-center gap-2 text-[13px] font-semibold text-[var(--foreground)]">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-[var(--blue-text)]">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 16v-4" />
-            <path d="M12 8h.01" />
-          </svg>
-          {tx('rules.title', 'Meta rules')}
-        </summary>
-        <ul className="mt-3 list-disc space-y-1.5 pl-5 leading-relaxed">
-          <li>{tx('rules.private_reply', 'The DM is sent by comment ID, so no previous chat is required.')}</li>
-          <li>{tx('rules.one_reply', 'Each comment can get only one private reply, within 7 days of the comment (Live comments are an exception).')}</li>
-          <li>{tx('rules.message_requests', 'If the user does not follow the account, the DM may land in Message Requests. No further DM is sent until the user replies.')}</li>
-          <li>{tx('rules.independent', 'Public reply and DM are sent separately: a failure in one does not stop the other.')}</li>
-          <li>{tx('rules.new_media', 'Auto reply is not turned on automatically for new posts and reels.')}</li>
-          <li>{tx('rules.permissions', 'The connected Meta app needs the comments webhook field and comment/message permissions.')}</li>
-        </ul>
-      </details>
+      <Card noPadding>
+        <details className="px-[22px] py-[18px] text-[13px] text-[var(--muted-strong)]">
+          <summary className="flex cursor-pointer select-none items-center gap-2.5 text-[15px] font-semibold text-[var(--foreground)]">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+              </svg>
+            </span>
+            {tx('rules.title', 'Meta rules')}
+          </summary>
+          <ul className="mt-4 list-disc space-y-2 pl-5 leading-relaxed">
+            <li>{tx('rules.private_reply', 'The DM is sent by comment ID, so no previous chat is required.')}</li>
+            <li>{tx('rules.one_reply', 'Each comment can get only one private reply, within 7 days of the comment (Live comments are an exception).')}</li>
+            <li>{tx('rules.message_requests', 'If the user does not follow the account, the DM may land in Message Requests. No further DM is sent until the user replies.')}</li>
+            <li>{tx('rules.independent', 'Public reply and DM are sent separately: a failure in one does not stop the other.')}</li>
+            <li>{tx('rules.new_media', 'Auto reply is not turned on automatically for new posts and reels.')}</li>
+            <li>{tx('rules.permissions', 'The connected Meta app needs the comments webhook field and comment/message permissions.')}</li>
+          </ul>
+        </details>
+      </Card>
 
       <div ref={gridRef} className="scroll-mt-4">
-        <Card variant="glass" noPadding className="overflow-hidden">
-          <div className="flex justify-center gap-6 border-b border-[var(--border)] px-4 sm:gap-14" role="tablist">
-            {MEDIA_TABS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                role="tab"
-                aria-selected={tab === item}
-                onClick={() => handleTabChange(item)}
-                className={cn(
-                  '-mb-px inline-flex items-center gap-2 border-b-2 px-1 py-3.5 text-[12px] font-semibold uppercase tracking-[0.12em] transition-colors',
-                  tab === item
-                    ? 'border-[var(--foreground)] text-[var(--foreground)]'
-                    : 'border-transparent text-[var(--muted)] hover:text-[var(--foreground)]',
-                )}
-              >
-                <MediaTabIcon tab={item} className="h-4 w-4" />
-                {getMediaTabLabel(item, tx)}
-                <span data-ui-number="true" className="text-[11px] font-medium text-[var(--caption)]">{tabCounts[item]}</span>
-              </button>
-            ))}
-          </div>
+        <Card noPadding className="overflow-hidden">
+          <Tabs<MediaTab>
+            value={tab}
+            onChange={handleTabChange}
+            variant="underline"
+            className="justify-center gap-8 border-[var(--border-subtle)] px-[22px] pt-[18px] sm:gap-14"
+            items={MEDIA_TABS.map((item) => ({
+              value: item,
+              label: (
+                <>
+                  <MediaTabIcon tab={item} className="h-4 w-4" />
+                  {getMediaTabLabel(item, tx)}
+                </>
+              ),
+              badge: (
+                <span data-ui-number="true" className="text-[11.5px] font-medium text-[var(--caption)]">
+                  {tabCounts[item]}
+                </span>
+              ),
+            }))}
+          />
 
-          <div className="space-y-3 p-3 sm:p-4">
+          <div className="space-y-[18px] p-[22px]">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="flex flex-wrap items-center gap-1.5">
                 {STATUS_FILTERS.map((item) => (
@@ -426,18 +437,18 @@ export function CognilabsAICommentAutomationPage() {
                     onClick={() => handleStatusFilterChange(item)}
                     aria-pressed={statusFilter === item}
                     className={cn(
-                      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors',
+                      'inline-flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold transition-colors',
                       statusFilter === item
-                        ? 'border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]'
-                        : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--border-hover)] hover:text-[var(--foreground)]',
+                        ? 'bg-[var(--surface-inverse)] text-white'
+                        : 'bg-[var(--muted-surface)] text-[var(--muted-strong)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]',
                     )}
                   >
                     {getStatusFilterLabel(item, tx)}
                     <span
                       data-ui-number="true"
                       className={cn(
-                        'text-[10px] font-bold',
-                        item === 'attention' && statusCounts[item] > 0 && statusFilter !== item ? 'text-[var(--danger-text)]' : 'opacity-70',
+                        'text-[11px] font-bold',
+                        item === 'attention' && statusCounts[item] > 0 && statusFilter !== item ? 'text-[var(--danger-text)]' : 'opacity-60',
                       )}
                     >
                       {statusCounts[item]}
@@ -447,7 +458,7 @@ export function CognilabsAICommentAutomationPage() {
               </div>
               <div className="flex items-center gap-2 lg:ml-auto">
                 <div className="relative w-full lg:w-64">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--caption)]">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
                     <circle cx="11" cy="11" r="8" />
                     <path d="m21 21-4.3-4.3" />
                   </svg>
@@ -455,13 +466,13 @@ export function CognilabsAICommentAutomationPage() {
                     value={search}
                     onChange={(event) => handleSearchChange(event.target.value)}
                     placeholder={tx('list.search', 'Search by caption')}
-                    className="h-9 pl-8 text-[13px]"
+                    className="min-h-9 rounded-[11px] pl-10 text-[13px]"
                   />
                 </div>
                 <Button
                   size="sm"
                   variant={isSelectionMode ? 'primary' : 'secondary'}
-                  className="h-9 shrink-0 rounded-lg"
+                  className="shrink-0"
                   onClick={handleSelectionModeToggle}
                   disabled={items.length === 0}
                   leftIcon={isSelectionMode ? <CheckIcon className="h-3.5 w-3.5" /> : undefined}
@@ -472,54 +483,55 @@ export function CognilabsAICommentAutomationPage() {
             </div>
 
             {isSelectionMode && (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--blue-border)] bg-[var(--blue-soft)] px-3 py-2">
-                <span className="text-[12px] font-medium text-[var(--blue-text)]">{tx('selection.hint', 'Tap posts to select them')}</span>
-                <div className="ml-auto flex flex-wrap items-center gap-1.5">
-                  <Button size="sm" variant="ghost" onClick={handleTogglePage} disabled={pageItems.length === 0}>
-                    {isPageSelected
-                      ? tx('selection.page_clear', 'Deselect this page')
-                      : tx('selection.page', 'Select this page ({{count}})', { count: pageItems.length })}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleSelectAll}
-                    disabled={!isFullyLoaded || filteredItems.length === 0 || isAllFilteredSelected}
-                  >
-                    {isFullyLoaded
-                      ? tx('selection.all', 'Select all {{count}}', { count: filteredItems.length })
-                      : tx('selection.all_loading', 'Select all (loading...)')}
-                  </Button>
-                </div>
-              </div>
+              <Alert
+                tone="blue"
+                className="items-center gap-2 p-3"
+                action={
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Button size="sm" variant="ghost" onClick={handleTogglePage} disabled={pageItems.length === 0}>
+                      {isPageSelected
+                        ? tx('selection.page_clear', 'Deselect this page')
+                        : tx('selection.page', 'Select this page ({{count}})', { count: pageItems.length })}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleSelectAll}
+                      disabled={!isFullyLoaded || filteredItems.length === 0 || isAllFilteredSelected}
+                    >
+                      {isFullyLoaded
+                        ? tx('selection.all', 'Select all {{count}}', { count: filteredItems.length })
+                        : tx('selection.all_loading', 'Select all (loading...)')}
+                    </Button>
+                  </div>
+                }
+              >
+                {tx('selection.hint', 'Tap posts to select them')}
+              </Alert>
             )}
 
             {isInitialLoading ? (
-              <div className="grid grid-cols-3 gap-1 md:grid-cols-4 xl:grid-cols-6">
+              <div className="grid grid-cols-3 gap-3 md:grid-cols-4 xl:grid-cols-6">
                 {Array.from({ length: 12 }, (_, index) => (
-                  <div key={index} className={cn('animate-pulse bg-[var(--muted-surface)]', tab === 'reel' ? 'aspect-[9/16]' : 'aspect-[3/4]')} />
+                  <Skeleton key={index} rounded="xl" className={cn('w-full', tab === 'reel' ? 'aspect-[9/16]' : 'aspect-[3/4]')} />
                 ))}
               </div>
             ) : firstPageQuery.isError && items.length === 0 ? (
               <ErrorStateBlock
                 eyebrow={tx('header.eyebrow', 'CognilabsAI')}
                 title={tx('states.error', 'Could not load posts and reels')}
+                description={getApiErrorMessage(firstPageQuery.error)}
                 actionLabel={tx('actions.retry', 'Retry')}
                 onAction={handleRefresh}
-              >
-                <p className="max-w-md text-[13px] text-[var(--danger-text)]">{getApiErrorMessage(firstPageQuery.error)}</p>
-              </ErrorStateBlock>
+              />
             ) : items.length === 0 ? (
               <EmptyStateBlock
                 eyebrow={tx('header.eyebrow', 'CognilabsAI')}
                 title={tx('states.empty', 'No posts or reels found')}
+                description={tx('states.empty_hint', 'Check that the Instagram account is connected in AI Integrations.')}
                 actionLabel={tx('actions.refresh', 'Refresh')}
                 onAction={handleRefresh}
-              >
-                <p className="max-w-md text-[13px] text-[var(--caption)]">
-                  {tx('states.empty_hint', 'Check that the Instagram account is connected in AI Integrations.')}
-                </p>
-              </EmptyStateBlock>
+              />
             ) : filteredItems.length === 0 ? (
               <EmptyStateBlock
                 eyebrow={tx('header.eyebrow', 'CognilabsAI')}
@@ -531,7 +543,7 @@ export function CognilabsAICommentAutomationPage() {
                 }}
               />
             ) : (
-              <div className="grid grid-cols-3 gap-1 md:grid-cols-4 xl:grid-cols-6">
+              <div className="grid grid-cols-3 gap-3 md:grid-cols-4 xl:grid-cols-6">
                 {pageItems.map((media) => (
                   <MediaGridTile
                     key={media.media_id}
@@ -554,7 +566,7 @@ export function CognilabsAICommentAutomationPage() {
                 onPageChange={handlePageChange}
                 pageSizeOptions={PAGE_SIZE_OPTIONS}
                 onPageSizeChange={handlePageSizeChange}
-                className="border-t border-[var(--border)] pt-3"
+                className="border-t border-[var(--border-subtle)] pt-[18px]"
               />
             )}
           </div>
@@ -563,7 +575,7 @@ export function CognilabsAICommentAutomationPage() {
 
       {selectedCount > 0 && (
         <div className="sticky bottom-4 z-30">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3 shadow-[var(--shadow-xl)]">
+          <div className="flex flex-wrap items-center gap-2 rounded-[18px] bg-[var(--card)] px-[18px] py-3 shadow-[var(--elev-xl)]">
             <Badge variant="blue" dot>
               {tx('selection.count', '{{count}} selected', { count: selectedCount })}
             </Badge>

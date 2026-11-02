@@ -1,6 +1,5 @@
-import { Suspense, type ReactNode, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { cn } from '../../../shared/lib/cn'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import type {
   MemberDeliveryBonusPayload,
@@ -17,14 +16,21 @@ import { updateTrackingService } from '../../../shared/api/services/updateTracki
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { useToast } from '../../../shared/toast/useToast'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card, CardMetric, CardSection } from '../../../shared/ui/card'
+import { Checkbox } from '../../../shared/ui/checkbox'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
+import { PageHeader } from '../../../shared/ui/page-header'
+import { Progress } from '../../../shared/ui/progress'
+import { SectionTitle } from '../../../shared/ui/section-title'
 import { SelectField } from '../../../shared/ui/select-field'
+import { Skeleton } from '../../../shared/ui/skeleton'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { AsyncContentLoader } from '../../../shared/ui/async-content-loader'
 import { ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { Textarea } from '../../../shared/ui/textarea'
@@ -262,65 +268,6 @@ function resolveMemberDisplayName(...sources: Array<unknown>) {
   }
 
   return null
-}
-
-type SnapshotCardProps = {
-  label: string
-  value: string
-  accent?: 'default' | 'danger' | 'blue' | 'success' | 'warning'
-  secondaryValue?: string
-  icon?: ReactNode
-}
-
-function SnapshotCard({
-  label,
-  value,
-  accent = 'default',
-  secondaryValue,
-  icon,
-}: SnapshotCardProps) {
-  const iconClasses = {
-    default: 'border-(--border) bg-(--muted-surface) text-(--muted-strong)',
-    danger: 'border-(--danger-border) bg-(--danger-dim) text-(--danger-text)',
-    blue: 'border-(--blue-border) bg-(--blue-dim) text-(--blue-text)',
-    success: 'border-(--success-border) bg-(--success-dim) text-(--success-text)',
-    warning: 'border-(--warning-border) bg-(--warning-dim) text-(--warning-text)',
-  } as const
-
-  const valueClasses = {
-    default: 'text-(--foreground)',
-    danger: 'text-(--danger-text)',
-    blue: 'text-(--blue-text)',
-    success: 'text-(--success-text)',
-    warning: 'text-(--warning-text)',
-  } as const
-
-  return (
-    <div className="group flex flex-col gap-3 rounded-xl border border-(--border) bg-(--surface-elevated) p-4 shadow-sm transition-all hover:border-(--blue-border) hover:shadow-md">
-      <div className="flex items-center justify-between">
-        <div className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors', iconClasses[accent])}>
-          {icon || (
-            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 3v10M3 8h10" />
-            </svg>
-          )}
-        </div>
-        {secondaryValue ? (
-          <span className="rounded-full border border-(--border) bg-(--muted-surface) px-2 py-0.5 text-[10px] font-bold tabular-nums text-(--muted-strong)">
-            {secondaryValue}
-          </span>
-        ) : null}
-      </div>
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-(--muted)">
-          {label}
-        </p>
-        <p className={cn('mt-1.5 text-lg font-bold tabular-nums tracking-tight', valueClasses[accent])}>
-          {value}
-        </p>
-      </div>
-    </div>
-  )
 }
 
 export function FaultsMemberDetailPage({
@@ -1021,332 +968,202 @@ export function FaultsMemberDetailPage({
     Number.isFinite(updatesSummary?.updatePercentage)
       ? updatesSummary!.updatePercentage
       : updatesSummary?.completionPercentage
+  const hasDetailIssues = Boolean(
+    detail.estimateError ||
+    detail.policyError ||
+    detail.mistakesError ||
+    detail.deliveryBonusesError ||
+    detail.updatesError ||
+    detail.calendarError,
+  )
 
   return (
-    <section className="page-enter space-y-4 px-4 pb-6 sm:px-6 lg:px-8">
+    <section className="page-enter space-y-[18px] px-4 pb-6 sm:px-6 lg:px-8">
       {!isMemberUpdatesMode ? (
         <div className="flex items-center">
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             onClick={() => navigate(backTarget)}
-            className="min-h-8 rounded-xl border border-[var(--border)] bg-white px-3 text-[11px] text-[var(--foreground)] hover:border-[var(--border-hover)] hover:bg-[var(--card-hover)] dark:border-white/8 dark:bg-white/[0.03] dark:text-white/78 dark:hover:border-white/12 dark:hover:bg-white/[0.05] dark:hover:text-white"
+            leftIcon={
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10 3.5 5.5 8 10 12.5" />
+              </svg>
+            }
           >
-            <svg viewBox="0 0 16 16" className="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M10 3.5 5.5 8 10 12.5" />
-            </svg>
             {errorActionLabel}
           </Button>
         </div>
       ) : null}
 
-      <Card variant="glass" noPadding className="page-header-card overflow-hidden rounded-xl border-[var(--blue-border)]">
-        <div className="relative overflow-hidden px-6 py-6 sm:px-8 sm:py-7">
-          <div className="page-header-decor pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_38%),radial-gradient(circle_at_right,rgba(34,211,238,0.12),transparent_26%)]" />
+      <PageHeader
+        eyebrow={topHeaderEyebrow}
+        title={detail.report.fullName}
+        description={detail.report.roleLabel ? lt(detail.report.roleLabel) : lt('Member')}
+        actions={
+          <>
+            {showCompensationActions ? (
+              <Button variant="ghost" size="sm" onClick={() => openMistakeDialog()}>
+                {tr('Add mistake', "Xato qo'shish", 'Добавить ошибку')}
+              </Button>
+            ) : null}
+            {showCompensationActions ? (
+              <Button variant="success" size="sm" onClick={() => openDeliveryBonusDialog()}>
+                {tr('Add delivery bonus', "Topshirish bonusini qo'shish", 'Добавить бонус за сдачу')}
+              </Button>
+            ) : null}
+            {showCompensationActions ? (
+              <Button variant="success" size="sm" onClick={() => { setSimpleBonusDraft({ amount: '', reason: '' }); setIsSimpleBonusDialogOpen(true) }}>
+                {tr('Add simple bonus', "Oddiy bonus qo'shish", 'Добавить простой бонус')}
+              </Button>
+            ) : null}
+            {showCompensationActions ? (
+              <Button variant="danger" size="sm" onClick={() => { setSimplePenaltyDraft({ amount: '', reason: '' }); setIsSimplePenaltyDialogOpen(true) }}>
+                {tr('Add simple penalty', "Oddiy jarima qo'shish", 'Добавить простой штраф')}
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<RefreshIcon />}
+              onClick={() => void handleRefresh()}
+              loading={detailQuery.isLoading}
+            >
+              {tr('Refresh details', 'Tafsilotlarni yangilash', 'Обновить детали')}
+            </Button>
+          </>
+        }
+      />
 
-          <div className="relative z-10 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div>
-                <p className="text-[11px] font-semibold tracking-[0.02em] text-[var(--blue-text)]">
-                  {topHeaderEyebrow}
-                </p>
-                <h1 className="ui-page-title mt-2 text-[var(--foreground)]">
-                  {detail.report.fullName}
-                </h1>
-                <p className="mt-2 text-sm text-[var(--muted-strong)]">
-                  {detail.report.roleLabel ? lt(detail.report.roleLabel) : lt('Member')}
-                </p>
+      <Card className="flex flex-col gap-[18px]">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="blue">{lt('Employee API detail')}</Badge>
+          <Badge variant={detail.report.hasPenalty ? 'danger' : 'secondary'}>
+            {detail.report.hasPenalty ? lt('Penalty applied') : lt('No penalties')}
+          </Badge>
+          <Badge variant={detail.report.hasBonus ? 'blue' : 'secondary'}>
+            {detail.report.hasBonus ? lt('Bonus applied') : lt('No bonuses')}
+          </Badge>
+          <Badge variant="secondary">{detail.report.label}</Badge>
+          <Badge variant="lime">{getMonthName(month)} {year}</Badge>
+        </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Badge variant="blue">{lt('Employee API detail')}</Badge>
-                  <Badge variant={detail.report.hasPenalty ? 'danger' : 'outline'}>
-                    {detail.report.hasPenalty ? lt('Penalty applied') : lt('No penalties')}
-                  </Badge>
-                  <Badge variant={detail.report.hasBonus ? 'blue' : 'outline'}>
-                    {detail.report.hasBonus ? lt('Bonus applied') : lt('No bonuses')}
-                  </Badge>
-                  <Badge variant="outline">{detail.report.label}</Badge>
-                </div>
+        <div className="grid gap-[18px] md:grid-cols-2">
+          <div>
+            <Label className="mb-2 block">{lt('Year')}</Label>
+            <Input
+              type="number"
+              min="2020"
+              max="2035"
+              value={year}
+              onChange={(event) => updatePeriod({ year: clampNumber(Number(event.target.value) || defaultYear, 2020, 2035) })}
+            />
+          </div>
 
-                {detail.estimateError ? (
-                  <p className="mt-4 text-xs leading-5 text-amber-300">
-                    {lt('Estimate API unavailable')}: {detail.estimateError}
-                  </p>
-                ) : null}
-                {detail.policyError ? (
-                  <p className="mt-2 text-xs leading-5 text-amber-300">
-                    {lt('Compensation policy unavailable')}: {detail.policyError}
-                  </p>
-                ) : null}
-                {detail.mistakesError ? (
-                  <p className="mt-2 text-xs leading-5 text-amber-300">
-                    {lt('Mistake incidents unavailable')}: {detail.mistakesError}
-                  </p>
-                ) : null}
-                {detail.deliveryBonusesError ? (
-                  <p className="mt-2 text-xs leading-5 text-amber-300">
-                    {lt('Delivery bonuses unavailable')}: {detail.deliveryBonusesError}
-                  </p>
-                ) : null}
-                {detail.updatesError ? (
-                  <p className="mt-2 text-xs leading-5 text-amber-300">
-                    {lt('Update statistics unavailable')}: {detail.updatesError}
-                  </p>
-                ) : null}
-                {detail.calendarError ? (
-                  <p className="mt-2 text-xs leading-5 text-amber-300">
-                    {lt('Daily update calendar unavailable')}: {detail.calendarError}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                {showCompensationActions ? (
-                  <Button variant="ghost" size="sm" onClick={() => openMistakeDialog()} className="rounded-xl">
-                    {tr('Add mistake', "Xato qo'shish", 'Добавить ошибку')}
-                  </Button>
-                ) : null}
-                {showCompensationActions ? (
-                  <Button variant="success" size="sm" onClick={() => openDeliveryBonusDialog()} className="rounded-xl">
-                    {tr('Add delivery bonus', "Topshirish bonusini qo'shish", 'Добавить бонус за сдачу')}
-                  </Button>
-                ) : null}
-                {showCompensationActions ? (
-                  <Button variant="success" size="sm" onClick={() => { setSimpleBonusDraft({ amount: '', reason: '' }); setIsSimpleBonusDialogOpen(true) }} className="rounded-xl">
-                    {tr('Add simple bonus', "Oddiy bonus qo'shish", 'Добавить простой бонус')}
-                  </Button>
-                ) : null}
-                {showCompensationActions ? (
-                  <Button variant="danger" size="sm" onClick={() => { setSimplePenaltyDraft({ amount: '', reason: '' }); setIsSimplePenaltyDialogOpen(true) }} className="rounded-xl">
-                    {tr('Add simple penalty', "Oddiy jarima qo'shish", 'Добавить простой штраф')}
-                  </Button>
-                ) : null}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  leftIcon={<RefreshIcon />}
-                  onClick={() => void handleRefresh()}
-                  loading={detailQuery.isLoading}
-                  className="rounded-xl"
-                >
-                  {tr('Refresh details', 'Tafsilotlarni yangilash', 'Обновить детали')}
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
-              <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)]">{lt('Year')}</Label>
-                <Input
-                  type="number"
-                  min="2020"
-                  max="2035"
-                  value={year}
-                  onChange={(event) => updatePeriod({ year: clampNumber(Number(event.target.value) || defaultYear, 2020, 2035) })}
-                  className="rounded-xl border-[var(--border)] bg-white dark:border-white/10 dark:bg-white/[0.03]"
-                />
-              </div>
-
-              <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)]">{lt('Month')}</Label>
-                <SelectField
-                  value={String(month)}
-                  options={monthOptions}
-                  onValueChange={(value) => updatePeriod({ month: clampNumber(Number(value), 1, 12) })}
-                  className="rounded-xl border-[var(--border)] bg-white dark:border-white/10 dark:bg-white/[0.03]"
-                />
-              </div>
-
-              <div className="grid gap-3 md:self-end md:justify-items-end">
-                <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
-                  {getMonthName(month)} {year}
-                </Badge>
-              </div>
-            </div>
+          <div>
+            <Label className="mb-2 block">{lt('Month')}</Label>
+            <SelectField
+              value={String(month)}
+              options={monthOptions}
+              onValueChange={(value) => updatePeriod({ month: clampNumber(Number(value), 1, 12) })}
+            />
           </div>
         </div>
       </Card>
 
-      <Card noPadding className="overflow-hidden rounded-xl border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-lg)]">
-        <CardSection eyebrow={lt('Snapshot')} title={tr('Salary at a glance', 'Maosh umumiy ko\'rinishi', 'Зарплата кратко')}>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <SnapshotCard
-              label={tr('Final salary', 'Yakuniy maosh', 'Итоговая зарплата')}
-              value={formatAmount(detail.report.finalSalary)}
-              icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>}
-            />
-            <SnapshotCard
-              label={tr('Bonus amount', 'Bonus summasi', 'Сумма бонуса')}
-              value={formatAmount(detail.report.bonusAmount)}
-              accent="blue"
-              icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 15 2 2 4-4"/><rect width="20" height="14" x="2" y="6" rx="2"/><path d="M12 10V6"/><path d="M12 21v-2"/></svg>}
-            />
-            <SnapshotCard
-              label={tr('Bonus %', 'Bonus %', 'Бонус %')}
-              value={formatPercent(detail.report.totalBonusPercent)}
-              accent="blue"
-              icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21 21 3"/><circle cx="7" cy="17" r="3"/><circle cx="17" cy="7" r="3"/></svg>}
-            />
-            <SnapshotCard
-              label={tr('Productivity', 'Mahsuldorlik', 'Продуктивность')}
-              value={Number.isFinite(detail.report.productivityPercentage)
-                ? `${formatCount(detail.report.updateDays)}/${formatCount(detail.report.workingDays)}`
-                : '-'}
-              secondaryValue={Number.isFinite(detail.report.productivityPercentage)
-                ? formatPercent(detail.report.productivityPercentage)
-                : undefined}
-              accent="success"
-              icon={<svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
-            />
-          </div>
-        </CardSection>
+      {hasDetailIssues ? (
+        <div className="space-y-2">
+          {detail.estimateError ? (
+            <Alert tone="warning">
+              {lt('Estimate API unavailable')}: {detail.estimateError}
+            </Alert>
+          ) : null}
+          {detail.policyError ? (
+            <Alert tone="warning">
+              {lt('Compensation policy unavailable')}: {detail.policyError}
+            </Alert>
+          ) : null}
+          {detail.mistakesError ? (
+            <Alert tone="warning">
+              {lt('Mistake incidents unavailable')}: {detail.mistakesError}
+            </Alert>
+          ) : null}
+          {detail.deliveryBonusesError ? (
+            <Alert tone="warning">
+              {lt('Delivery bonuses unavailable')}: {detail.deliveryBonusesError}
+            </Alert>
+          ) : null}
+          {detail.updatesError ? (
+            <Alert tone="warning">
+              {lt('Update statistics unavailable')}: {detail.updatesError}
+            </Alert>
+          ) : null}
+          {detail.calendarError ? (
+            <Alert tone="warning">
+              {lt('Daily update calendar unavailable')}: {detail.calendarError}
+            </Alert>
+          ) : null}
+        </div>
+      ) : null}
 
-            <Card noPadding className="overflow-hidden rounded-xl">
-              <CardSection
-                title={tr('Salary details breakdown', 'Maosh tafsilotlari taqsimoti', 'Распределение деталей зарплаты')}
-                headerAction={
-                  <>
-                    <Badge variant={(detail.report.penaltyPercentage ?? 0) > 0 ? 'danger' : 'outline'}>
-                      {formatPercent(detail.report.penaltyPercentage)} {tr('deduction impact', 'ayirma ta\'siri', 'влияние удержания')}
-                    </Badge>
-                    <Badge variant={updatesSummary ? 'blue' : 'outline'}>
-                      {updatesSummary
-                        ? `${formatPercent(updatesSummary.completionPercentage)} ${lt('completion')}`
-                        : tr('No update stats', "Update statistikasi yo'q", 'Нет статистики обновлений')}
-                    </Badge>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-full text-[var(--blue-text)] hover:text-[var(--blue-text)]"
-                      onClick={() => setIsCompensationPolicyDrawerOpen(true)}
-                    >
-                      {tr('Open compensation policy', 'Kompensatsiya siyosatini ochish', 'Открыть политику компенсации')}
-                    </Button>
-                  </>
-                }
-              >
-                <div className="space-y-4">
-                  {/* Salary Composition Group */}
-                  <div>
-                    <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-(--muted)">
-                      {tr('Salary Composition', 'Maosh tarkibi', 'Состав зарплаты')}
-                    </h4>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      <SnapshotCard
-                        label={lt('Base salary')}
-                        value={formatAmount(detail.report.baseSalary)}
-                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
-                      />
-                      <SnapshotCard
-                        label={tr('After deduction', 'Ayirmadan keyin', 'После удержания')}
-                        value={formatAmount(detail.report.afterPenalty)}
-                        accent="warning"
-                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11h18M3 15h18"/></svg>}
-                      />
-                      <SnapshotCard
-                        label={lt('Mistakes')}
-                        value={formatCount(detail.report.mistakesCount)}
-                        accent="danger"
-                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>}
-                      />
-                      <SnapshotCard
-                        label={tr('Delivery bonuses', 'Topshirish bonuslari', 'Бонусы за сдачу')}
-                        value={formatCount(detail.report.deliveryBonusCount)}
-                        accent="success"
-                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>}
-                      />
-                    </div>
-                  </div>
+      <SectionTitle
+        eyebrow={lt('Snapshot')}
+        title={tr('Salary at a glance', 'Maosh umumiy ko\'rinishi', 'Зарплата кратко')}
+      />
 
-                  {/* Update Performance Group */}
-                  <div>
-                    <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-(--muted)">
-                      {tr('Update Performance', 'Update ko\'rsatkichlari', 'Показатели обновлений')}
-                    </h4>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      <SnapshotCard
-                        label={lt('Logged updates')}
-                        value={updatesSummary ? formatCount(updatesSummary.submittedCount) : '-'}
-                        accent="success"
-                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
-                      />
-                      <SnapshotCard
-                        label={lt('Missing days')}
-                        value={updatesSummary ? formatCount(updatesSummary.missingCount) : '-'}
-                        accent="danger"
-                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>}
-                      />
-                      <SnapshotCard
-                        label={lt('Update percentage')}
-                        value={updatesSummary ? formatPercent(updatesCompletion) : '-'}
-                        accent="blue"
-                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21 21 3"/><circle cx="7" cy="17" r="3"/><circle cx="17" cy="7" r="3"/></svg>}
-                      />
-                      <SnapshotCard
-                        label={tr('Salary in update', 'Yangilanishdagi maosh', 'Зарплата в обновлении')}
-                        value={typeof updatesSummary?.salaryAmount === 'number' ? formatAmount(updatesSummary.salaryAmount) : '-'}
-                        icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/></svg>}
-                      />
-                    </div>
-                    
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-                        <div className="text-(--muted)">
-                          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-(--muted)">{tr('Last update', 'Oxirgi yangilanish', 'Последнее обновление')}</p>
-                          <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-                            {updatesSummary?.lastUpdateDate ? formatDetailDate(updatesSummary.lastUpdateDate) : tr('Not provided', 'Kiritilmagan', 'Не указано')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-                        <div className="text-(--muted)">
-                          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-(--muted)">{tr('Next payment date', "Keyingi to'lov sanasi", 'Дата следующей выплаты')}</p>
-                          <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-                            {updatesSummary?.nextPaymentDate ? formatDetailDate(updatesSummary.nextPaymentDate) : tr('Not provided', 'Kiritilmagan', 'Не указано')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          solid
+          label={tr('Final salary', 'Yakuniy maosh', 'Итоговая зарплата')}
+          value={formatAmount(detail.report.finalSalary)}
+          icon={<svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>}
+          onOpen={() => setIsCompensationPolicyDrawerOpen(true)}
+          openLabel={tr('Open compensation policy', 'Kompensatsiya siyosatini ochish', 'Открыть политику компенсации')}
+        />
+        <StatCard
+          label={tr('Bonus amount', 'Bonus summasi', 'Сумма бонуса')}
+          value={formatAmount(detail.report.bonusAmount)}
+          iconTone="blue"
+          icon={<svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 15 2 2 4-4"/><rect width="20" height="14" x="2" y="6" rx="2"/><path d="M12 10V6"/><path d="M12 21v-2"/></svg>}
+        />
+        <StatCard
+          label={tr('Bonus %', 'Bonus %', 'Бонус %')}
+          value={formatPercent(detail.report.totalBonusPercent)}
+          iconTone="violet"
+          icon={<svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21 21 3"/><circle cx="7" cy="17" r="3"/><circle cx="17" cy="7" r="3"/></svg>}
+        />
+        <StatCard
+          label={tr('Productivity', 'Mahsuldorlik', 'Продуктивность')}
+          value={Number.isFinite(detail.report.productivityPercentage)
+            ? `${formatCount(detail.report.updateDays)}/${formatCount(detail.report.workingDays)}`
+            : '-'}
+          delta={Number.isFinite(detail.report.productivityPercentage)
+            ? formatPercent(detail.report.productivityPercentage)
+            : undefined}
+          deltaTone="success"
+          iconTone="success"
+          icon={<svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
+        />
+      </div>
 
-                  {updatesSummary?.note ? (
-                    <div className="rounded-xl bg-[var(--blue-surface)]/5 px-6 py-5 border border-[var(--blue-border)]/20">
-                      <div className="flex items-center gap-2 mb-3">
-                         <div className="text-[var(--blue-text)]">
-                           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                         </div>
-                         <h5 className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--blue-text)]">
-                           {lt('Manager note')}
-                         </h5>
-                      </div>
-                      <p className="text-sm leading-6 text-[var(--foreground)]">
-                        {updatesSummary.note}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </CardSection>
-
-              <div className="hidden">
-              <CardSection
-          title={tr('How the final salary is built', 'Yakuniy maosh qanday shakllanadi', 'Как формируется итоговая зарплата')}
+      <Card noPadding>
+        <CardSection
+          title={tr('Salary details breakdown', 'Maosh tafsilotlari taqsimoti', 'Распределение деталей зарплаты')}
           headerAction={
             <>
-              <Badge variant={(detail.report.penaltyPercentage ?? 0) > 0 ? 'danger' : 'outline'}>
+              <Badge variant={(detail.report.penaltyPercentage ?? 0) > 0 ? 'danger' : 'secondary'}>
                 {formatPercent(detail.report.penaltyPercentage)} {tr('deduction impact', 'ayirma ta\'siri', 'влияние удержания')}
+              </Badge>
+              <Badge variant={updatesSummary ? 'blue' : 'secondary'}>
+                {updatesSummary
+                  ? `${formatPercent(updatesSummary.completionPercentage)} ${lt('completion')}`
+                  : tr('No update stats', "Update statistikasi yo'q", 'Нет статистики обновлений')}
               </Badge>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="rounded-full text-[var(--blue-text)] hover:text-[var(--blue-text)]"
+                className="text-[var(--primary)] hover:bg-[var(--blue-dim)] hover:text-[var(--primary)]"
                 onClick={() => setIsCompensationPolicyDrawerOpen(true)}
               >
                 {tr('Open compensation policy', 'Kompensatsiya siyosatini ochish', 'Открыть политику компенсации')}
@@ -1354,124 +1171,243 @@ export function FaultsMemberDetailPage({
             </>
           }
         >
-          <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
-            <CardMetric label={lt('Base salary')} value={formatAmount(detail.report.baseSalary)} />
-            <CardMetric label={tr('After deduction', 'Ayirmadan keyin', 'После удержания')} value={formatAmount(detail.report.afterPenalty)} />
-            <CardMetric label={lt('Mistakes')} value={formatCount(detail.report.mistakesCount)} tone="danger" />
-            <CardMetric label={tr('Delivery bonuses', 'Topshirish bonuslari', 'Бонусы за сдачу')} value={formatCount(detail.report.deliveryBonusCount)} tone="success" />
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-            <span className="text-[var(--foreground)]">{formatAmount(detail.report.baseSalary)}</span>
-            <span className="text-[var(--muted)]">−</span>
-            <span className="font-semibold text-[var(--danger-text)]">{formatAmount(detail.report.deductionAmount)}</span>
-            <span className="text-[var(--muted)]">+</span>
-            <span className="font-semibold text-[var(--blue-text)]">{formatAmount(detail.report.bonusAmount)}</span>
-            <span className="text-[var(--muted)]">=</span>
-            <span className="text-base font-semibold tracking-tight text-[var(--foreground)]">
-              {formatAmount(detail.report.finalSalary)}
-            </span>
-          </div>
-
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--muted-surface)]">
-            <div
-              className="h-full rounded-full bg-[var(--danger-text)] transition-[width] duration-300"
-              style={{ width: `${Math.min(100, Math.max(0, Number.isFinite(detail.report.penaltyPercentage) ? detail.report.penaltyPercentage : 0))}%` }}
-            />
-          </div>
-              </CardSection>
+          <div className="space-y-[18px]">
+            <div>
+              <h4 className="ui-card-label mb-3">
+                {tr('Salary Composition', 'Maosh tarkibi', 'Состав зарплаты')}
+              </h4>
+              <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  className="min-h-[124px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
+                  label={lt('Base salary')}
+                  value={formatAmount(detail.report.baseSalary)}
+                  iconTone="neutral"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+                />
+                <StatCard
+                  className="min-h-[124px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
+                  label={tr('After deduction', 'Ayirmadan keyin', 'После удержания')}
+                  value={formatAmount(detail.report.afterPenalty)}
+                  iconTone="warning"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11h18M3 15h18"/></svg>}
+                />
+                <StatCard
+                  className="min-h-[124px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
+                  label={lt('Mistakes')}
+                  value={formatCount(detail.report.mistakesCount)}
+                  iconTone="danger"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>}
+                />
+                <StatCard
+                  className="min-h-[124px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
+                  label={tr('Delivery bonuses', 'Topshirish bonuslari', 'Бонусы за сдачу')}
+                  value={formatCount(detail.report.deliveryBonusCount)}
+                  iconTone="success"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>}
+                />
               </div>
-            </Card>
+            </div>
 
-      {/* Developer KPI Section */}
-      <Card className="rounded-xl border-[var(--border)] bg-[var(--card)] p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--blue-text)]">{lt('Developer KPI')}</p>
-            <h2 className="mt-1 text-lg font-black tracking-tight text-[var(--foreground)]">{getMonthName(month)} {year} — {lt('KPI Score')}</h2>
+            <div>
+              <h4 className="ui-card-label mb-3">
+                {tr('Update Performance', 'Update ko\'rsatkichlari', 'Показатели обновлений')}
+              </h4>
+              <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  className="min-h-[124px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
+                  label={lt('Logged updates')}
+                  value={updatesSummary ? formatCount(updatesSummary.submittedCount) : '-'}
+                  iconTone="success"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+                />
+                <StatCard
+                  className="min-h-[124px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
+                  label={lt('Missing days')}
+                  value={updatesSummary ? formatCount(updatesSummary.missingCount) : '-'}
+                  iconTone="danger"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>}
+                />
+                <StatCard
+                  className="min-h-[124px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
+                  label={lt('Update percentage')}
+                  value={updatesSummary ? formatPercent(updatesCompletion) : '-'}
+                  iconTone="blue"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21 21 3"/><circle cx="7" cy="17" r="3"/><circle cx="17" cy="7" r="3"/></svg>}
+                />
+                <StatCard
+                  className="min-h-[124px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
+                  label={tr('Salary in update', 'Yangilanishdagi maosh', 'Зарплата в обновлении')}
+                  value={typeof updatesSummary?.salaryAmount === 'number' ? formatAmount(updatesSummary.salaryAmount) : '-'}
+                  iconTone="neutral"
+                  icon={<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/></svg>}
+                />
+              </div>
+
+              <div className="mt-[18px] grid gap-[18px] sm:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                  </span>
+                  <div className="min-w-0">
+                    <p className="ui-card-label">{tr('Last update', 'Oxirgi yangilanish', 'Последнее обновление')}</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-[var(--foreground)]">
+                      {updatesSummary?.lastUpdateDate ? formatDetailDate(updatesSummary.lastUpdateDate) : tr('Not provided', 'Kiritilmagan', 'Не указано')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[var(--violet-dim)] text-[var(--violet-text)]">
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                  </span>
+                  <div className="min-w-0">
+                    <p className="ui-card-label">{tr('Next payment date', "Keyingi to'lov sanasi", 'Дата следующей выплаты')}</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-[var(--foreground)]">
+                      {updatesSummary?.nextPaymentDate ? formatDetailDate(updatesSummary.nextPaymentDate) : tr('Not provided', 'Kiritilmagan', 'Не указано')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {updatesSummary?.note ? (
+              <Alert
+                tone="blue"
+                title={lt('Manager note')}
+                icon={
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                }
+              >
+                {updatesSummary.note}
+              </Alert>
+            ) : null}
+          </div>
+        </CardSection>
+
+        <div className="hidden">
+          <CardSection
+            title={tr('How the final salary is built', 'Yakuniy maosh qanday shakllanadi', 'Как формируется итоговая зарплата')}
+            headerAction={
+              <>
+                <Badge variant={(detail.report.penaltyPercentage ?? 0) > 0 ? 'danger' : 'secondary'}>
+                  {formatPercent(detail.report.penaltyPercentage)} {tr('deduction impact', 'ayirma ta\'siri', 'влияние удержания')}
+                </Badge>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-[var(--primary)] hover:bg-[var(--blue-dim)] hover:text-[var(--primary)]"
+                  onClick={() => setIsCompensationPolicyDrawerOpen(true)}
+                >
+                  {tr('Open compensation policy', 'Kompensatsiya siyosatini ochish', 'Открыть политику компенсации')}
+                </Button>
+              </>
+            }
+          >
+            <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
+              <CardMetric label={lt('Base salary')} value={formatAmount(detail.report.baseSalary)} />
+              <CardMetric label={tr('After deduction', 'Ayirmadan keyin', 'После удержания')} value={formatAmount(detail.report.afterPenalty)} />
+              <CardMetric label={lt('Mistakes')} value={formatCount(detail.report.mistakesCount)} tone="danger" />
+              <CardMetric label={tr('Delivery bonuses', 'Topshirish bonuslari', 'Бонусы за сдачу')} value={formatCount(detail.report.deliveryBonusCount)} tone="success" />
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+              <span className="text-[var(--foreground)]">{formatAmount(detail.report.baseSalary)}</span>
+              <span className="text-[var(--muted)]">−</span>
+              <span className="font-semibold text-[var(--danger-text)]">{formatAmount(detail.report.deductionAmount)}</span>
+              <span className="text-[var(--muted)]">+</span>
+              <span className="font-semibold text-[var(--blue-text)]">{formatAmount(detail.report.bonusAmount)}</span>
+              <span className="text-[var(--muted)]">=</span>
+              <span className="text-base font-semibold tracking-[-0.02em] text-[var(--foreground)]">
+                {formatAmount(detail.report.finalSalary)}
+              </span>
+            </div>
+
+            <Progress
+              className="mt-3"
+              size="xs"
+              tone="danger"
+              value={Number.isFinite(detail.report.penaltyPercentage) ? detail.report.penaltyPercentage : 0}
+            />
+          </CardSection>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="mb-[18px] flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="ui-eyebrow">{lt('Developer KPI')}</p>
+            <h2 className="ui-section-title mt-1 text-[var(--foreground)]">{getMonthName(month)} {year} — {lt('KPI Score')}</h2>
           </div>
           {kpiEstimate ? (
-            <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">{lt('Final KPI')}</p>
-              <p className="text-2xl font-black text-[var(--blue-text)]">{kpiEstimate.scores.final_kpi.toFixed(1)}%</p>
+            <div className="rounded-[18px] bg-[var(--surface-inverse)] px-5 py-3.5 text-right">
+              <p className="ui-eyebrow">{lt('Final KPI')}</p>
+              <p className="mt-1 text-[28px] leading-none font-bold tracking-[-0.03em] tabular-nums text-white" data-ui-number="true">{kpiEstimate.scores.final_kpi.toFixed(1)}%</p>
             </div>
           ) : null}
         </div>
 
         {kpiQuery.isLoading || kpiQuery.status === 'idle' ? (
           <div className="space-y-3">
-            {[1,2,3,4,5].map(i => <div key={i} className="h-8 animate-pulse rounded-xl bg-[var(--surface-elevated)]" />)}
+            {[1,2,3,4,5].map(i => <Skeleton key={i} rounded="lg" className="h-8" />)}
           </div>
         ) : kpiQuery.isError ? (
-          <p className="text-sm text-[var(--muted-strong)]">{lt('KPI data unavailable for this period.')}</p>
+          <p className="text-sm text-[var(--muted)]">{lt('KPI data unavailable for this period.')}</p>
         ) : kpiEstimate ? (
           <>
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {([
-                { key: 'delivery', label: lt('Delivery'), color: 'bg-blue-500', weight: '35%' },
-                { key: 'deadline', label: lt('Deadline'), color: 'bg-violet-500', weight: '20%' },
-                { key: 'quality', label: lt('Quality'), color: 'bg-emerald-500', weight: '20%' },
-                { key: 'team', label: lt('Team'), color: 'bg-amber-500', weight: '15%' },
-                { key: 'discipline', label: lt('Discipline'), color: 'bg-cyan-500', weight: '10%' },
-              ] as const).map(({ key, label, color, weight }) => {
+                { key: 'delivery', label: lt('Delivery'), tone: 'blue', weight: '35%' },
+                { key: 'deadline', label: lt('Deadline'), tone: 'violet', weight: '20%' },
+                { key: 'quality', label: lt('Quality'), tone: 'success', weight: '20%' },
+                { key: 'team', label: lt('Team'), tone: 'warning', weight: '15%' },
+                { key: 'discipline', label: lt('Discipline'), tone: 'lime', weight: '10%' },
+              ] as const).map(({ key, label, tone, weight }) => {
                 const score = kpiEstimate.scores[key]
                 return (
                   <div key={key}>
-                    <div className="mb-1 flex items-center justify-between">
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-[var(--muted-strong)] uppercase tracking-wider">{label}</span>
-                        <span className="rounded bg-[var(--surface-elevated)] px-1.5 py-0.5 text-[9px] font-black text-[var(--muted)] uppercase">{weight}</span>
+                        <span className="text-[13px] font-semibold text-[var(--foreground)]">{label}</span>
+                        <span className="rounded-full bg-[var(--input-surface)] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[var(--muted)]">{weight}</span>
                       </div>
-                      <span className="text-xs font-black text-[var(--foreground)]">{score.toFixed(1)}%</span>
+                      <span className="text-[13px] font-semibold tabular-nums text-[var(--foreground)]">{score.toFixed(1)}%</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-elevated)]">
-                      <div className={`h-full rounded-full transition-[width] duration-500 ${color}`} style={{ width: `${Math.min(100, Math.max(0, score))}%` }} />
-                    </div>
+                    <Progress value={score} tone={tone} size="sm" label={label} />
                   </div>
                 )
               })}
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{lt('Expected Salary')}</p>
-                <p className="mt-1 text-base font-black text-[var(--foreground)]">{kpiEstimate.salary.expected_salary.toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{lt('Base Salary')}</p>
-                <p className="mt-1 text-base font-black text-[var(--foreground)]">{kpiEstimate.salary.base_salary.toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{lt('KPI Bonus')}</p>
-                <p className="mt-1 text-base font-black text-blue-400">+{kpiEstimate.salary.kpi_bonus.toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{lt('Deductions')}</p>
-                <p className="mt-1 text-base font-black text-rose-400">-{kpiEstimate.salary.approved_deductions.toLocaleString()}</p>
+            <div className="mt-[18px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
+              <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+                <CardMetric label={lt('Expected Salary')} value={kpiEstimate.salary.expected_salary.toLocaleString()} />
+                <CardMetric label={lt('Base Salary')} value={kpiEstimate.salary.base_salary.toLocaleString()} />
+                <CardMetric label={lt('KPI Bonus')} value={`+${kpiEstimate.salary.kpi_bonus.toLocaleString()}`} tone="blue" />
+                <CardMetric label={lt('Deductions')} value={`-${kpiEstimate.salary.approved_deductions.toLocaleString()}`} tone="danger" />
               </div>
             </div>
 
-            <div className="mt-5">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--muted)]">{lt('Features this period')}</p>
+            <div className="mt-[18px]">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="ui-card-label">{lt('Features this period')}</p>
                 <Badge variant="blue">{kpiFeatures.length}</Badge>
               </div>
               {kpiFeaturesQuery.isLoading || kpiFeaturesQuery.status === 'idle' ? (
                 <div className="space-y-2">
-                  {[1,2,3].map(i => <div key={i} className="h-12 animate-pulse rounded-xl bg-[var(--surface-elevated)]" />)}
+                  {[1,2,3].map(i => <Skeleton key={i} rounded="xl" className="h-12" />)}
                 </div>
               ) : kpiFeatures.length === 0 ? (
-                <p className="text-sm text-[var(--muted-strong)]">{lt('No features assigned for this period.')}</p>
+                <p className="text-sm text-[var(--muted)]">{lt('No features assigned for this period.')}</p>
               ) : (
                 <div className="space-y-2">
                   {kpiFeatures.map(feature => (
-                    <div key={feature.id} className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
+                    <div key={feature.id} className="flex items-center justify-between gap-4 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-[var(--foreground)]">{feature.title}</p>
-                        <p className="text-xs text-[var(--muted-strong)]">{feature.status}{feature.due_date ? ` · due ${feature.due_date.slice(0, 10)}` : ''}</p>
+                        <p className="text-[12.5px] text-[var(--muted)]">{feature.status}{feature.due_date ? ` · due ${feature.due_date.slice(0, 10)}` : ''}</p>
                       </div>
-                      <div className="ml-4 flex shrink-0 items-center gap-2">
-                        <Badge variant={feature.status === 'accepted' ? 'success' : feature.status === 'completed' ? 'blue' : 'outline'}>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge variant={feature.status === 'accepted' ? 'success' : feature.status === 'completed' ? 'blue' : 'secondary'}>
                           {feature.points}pts
                         </Badge>
                         {feature.is_mandatory ? <Badge variant="warning">mandatory</Badge> : null}
@@ -1483,26 +1419,21 @@ export function FaultsMemberDetailPage({
             </div>
           </>
         ) : (
-          <p className="text-sm text-[var(--muted-strong)]">{lt('No KPI data available for this period.')}</p>
+          <p className="text-sm text-[var(--muted)]">{lt('No KPI data available for this period.')}</p>
         )}
       </Card>
 
-        <CardSection bleed>
-          <div className="grid gap-4 px-5 py-5 sm:px-6 sm:py-6">
-
-            <Card noPadding className="overflow-hidden rounded-xl">
-              <CardSection
+      <Card noPadding>
+        <CardSection
           title={tr('Deduction records for this month', 'Bu oy uchun ayirma yozuvlari', 'Записи удержаний за этот месяц')}
           headerAction={
-            <Badge variant={detail.penalties.length > 0 ? 'danger' : 'outline'}>
+            <Badge variant={detail.penalties.length > 0 ? 'danger' : 'secondary'}>
               {detail.penalties.length} {lt('entries')}
             </Badge>
           }
         >
           {detail.penalties.length > 0 ? (
             <DataTable
-              zebra
-              className="rounded-none border-x-0 border-b-0"
               caption={tr('Deduction records table', 'Ayirma yozuvlari jadvali', 'Tablitsa zapisey uderzhaniy')}
               rows={detail.penalties}
               getRowKey={(row) => String(row.id)}
@@ -1531,31 +1462,29 @@ export function FaultsMemberDetailPage({
                   key: 'amount',
                   header: tr('Amount', 'Summa', 'Summa'),
                   align: 'right',
-                  render: (row) => <span className="font-semibold text-[var(--danger-text)]">{formatAmount(row.amount)}</span>,
+                  render: (row) => <span className="font-semibold tabular-nums text-[var(--danger-text)]">{formatAmount(row.amount)}</span>,
                 },
               ]}
             />
           ) : (
-            <p className="text-sm text-[var(--muted-strong)]">
+            <p className="text-sm text-[var(--muted)]">
               {tr('No deduction line-items were returned for this member in the selected month.', 'Tanlangan oy uchun bu xodim bo‘yicha ayirma yozuvlari qaytmadi.', 'За выбранный месяц для этого сотрудника не вернулись записи удержаний.')}
             </p>
           )}
-              </CardSection>
-            </Card>
+        </CardSection>
+      </Card>
 
-            <Card noPadding className="overflow-hidden rounded-xl">
-              <CardSection
+      <Card noPadding>
+        <CardSection
           title={tr('Bonuses for this month', 'Bu oy uchun bonuslar', 'Бонусы за этот месяц')}
           headerAction={
-            <Badge variant={detail.bonuses.length > 0 ? 'success' : 'outline'}>
+            <Badge variant={detail.bonuses.length > 0 ? 'success' : 'secondary'}>
               {detail.bonuses.length} {lt('entries')}
             </Badge>
           }
         >
           {detail.bonuses.length > 0 ? (
             <DataTable
-              zebra
-              className="rounded-none border-x-0 border-b-0"
               caption={tr('Bonus records table', 'Bonus yozuvlari jadvali', 'Tablitsa zapisey bonusov')}
               rows={detail.bonuses}
               getRowKey={(row) => String(row.id)}
@@ -1579,84 +1508,77 @@ export function FaultsMemberDetailPage({
                   key: 'amount',
                   header: tr('Amount', 'Summa', 'Summa'),
                   align: 'right',
-                  render: (row) => <span className="font-semibold text-[var(--success-text)]">{formatAmount(row.amount)}</span>,
+                  render: (row) => <span className="font-semibold tabular-nums text-[var(--success-text)]">{formatAmount(row.amount)}</span>,
                 },
               ]}
             />
           ) : (
-            <p className="text-sm text-[var(--muted-strong)]">
+            <p className="text-sm text-[var(--muted)]">
               {lt('No bonus line-items were returned for this member in the selected month.')}
             </p>
           )}
-              </CardSection>
-            </Card>
+        </CardSection>
+      </Card>
 
-            <Card noPadding className="overflow-hidden rounded-xl">
-              <MistakeIncidentSection
+      <Card noPadding>
+        <MistakeIncidentSection
           items={detail.mistakes}
           editable={showCompensationActions}
           onAdd={showCompensationActions ? () => openMistakeDialog() : undefined}
           onEdit={showCompensationActions ? (item) => openMistakeDialog(item) : undefined}
           onDelete={showCompensationActions ? (item) => setDeleteTarget({ kind: 'mistake', record: item }) : undefined}
-              />
-            </Card>
-            <Card noPadding className="overflow-hidden rounded-xl">
-              <DeliveryBonusSection
+        />
+      </Card>
+
+      <Card noPadding>
+        <DeliveryBonusSection
           items={detail.deliveryBonuses}
           editable={showCompensationActions}
           onAdd={showCompensationActions ? () => openDeliveryBonusDialog() : undefined}
           onEdit={showCompensationActions ? (item) => openDeliveryBonusDialog(item) : undefined}
           onDelete={showCompensationActions ? (item) => setDeleteTarget({ kind: 'delivery-bonus', record: item }) : undefined}
-              />
-            </Card>
-            {showCompensationActions ? (
-              <Card noPadding className="overflow-hidden rounded-xl">
-                <SimpleBonusSection
-                  items={simpleBonuses}
-                  editable
-                  onAdd={() => { setSimpleBonusDraft({ amount: '', reason: '' }); setIsSimpleBonusDialogOpen(true) }}
-                  onDelete={(item) => setDeleteTarget({ kind: 'simple-bonus', record: item })}
-                />
-              </Card>
-            ) : null}
-            {showCompensationActions ? (
-              <Card noPadding className="overflow-hidden rounded-xl">
-                <SimplePenaltySection
-                  items={simplePenalties}
-                  editable
-                  onAdd={() => { setSimplePenaltyDraft({ amount: '', reason: '' }); setIsSimplePenaltyDialogOpen(true) }}
-                  onDelete={(item) => setDeleteTarget({ kind: 'simple-penalty', record: item })}
-                />
-              </Card>
-            ) : null}
-          </div>
-        </CardSection>
+        />
       </Card>
 
-      {detail.updateCalendar ? (
-        <Card noPadding className="overflow-hidden rounded-xl">
-          <CardSection bleed>
-            <div className="px-4 py-4 sm:px-5 sm:py-5">
-              <MemberMonthlyUpdateCalendarBoard
-                calendar={detail.updateCalendar}
-                onMonthShift={handleCalendarMonthShift}
-                onJumpToToday={handleCalendarTodayJump}
-                attendanceRecords={attendanceRecords}
-              />
-              {/* Salary attendance donut and recent 7-day stats */}
-              <div className="mt-4">
-                <SalaryAttendanceDonut employeeId={detail.report.id} year={year} month={month} monthRecords={attendanceRecords} />
-              </div>
-            </div>
-          </CardSection>
+      {showCompensationActions ? (
+        <Card noPadding>
+          <SimpleBonusSection
+            items={simpleBonuses}
+            editable
+            onAdd={() => { setSimpleBonusDraft({ amount: '', reason: '' }); setIsSimpleBonusDialogOpen(true) }}
+            onDelete={(item) => setDeleteTarget({ kind: 'simple-bonus', record: item })}
+          />
         </Card>
+      ) : null}
+
+      {showCompensationActions ? (
+        <Card noPadding>
+          <SimplePenaltySection
+            items={simplePenalties}
+            editable
+            onAdd={() => { setSimplePenaltyDraft({ amount: '', reason: '' }); setIsSimplePenaltyDialogOpen(true) }}
+            onDelete={(item) => setDeleteTarget({ kind: 'simple-penalty', record: item })}
+          />
+        </Card>
+      ) : null}
+
+      {detail.updateCalendar ? (
+        <>
+          <Card>
+            <MemberMonthlyUpdateCalendarBoard
+              calendar={detail.updateCalendar}
+              onMonthShift={handleCalendarMonthShift}
+              onJumpToToday={handleCalendarTodayJump}
+              attendanceRecords={attendanceRecords}
+            />
+          </Card>
+          <SalaryAttendanceDonut employeeId={detail.report.id} year={year} month={month} monthRecords={attendanceRecords} />
+        </>
       ) : detail.calendarError ? (
-        <Card noPadding className="overflow-hidden rounded-xl">
-          <CardSection>
-            <p className="text-sm text-amber-600 dark:text-amber-300">
-              {lt('Monthly calendar could not be loaded from the CEO employee updates endpoint.')}
-            </p>
-          </CardSection>
+        <Card>
+          <p className="text-sm text-[var(--warning-text)]">
+            {lt('Monthly calendar could not be loaded from the CEO employee updates endpoint.')}
+          </p>
         </Card>
       ) : null}
 
@@ -1696,20 +1618,19 @@ export function FaultsMemberDetailPage({
           }
         >
           <div className="grid gap-4">
-            <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
-              <p className="text-xs text-[var(--muted-strong)]">{tr('Employee', 'Xodim', 'Сотрудник')}</p>
-              <p className="mt-2 text-base font-semibold text-[var(--foreground)] dark:text-white">{detail.report.fullName}</p>
+            <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+              <p className="ui-card-label">{tr('Employee', 'Xodim', 'Сотрудник')}</p>
+              <p className="mt-1.5 text-[15px] font-semibold text-[var(--foreground)]">{detail.report.fullName}</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Reviewer', "Ko'rib chiquvchi", 'Проверяющий')}</Label>
+                <Label className="mb-2 block">{tr('Reviewer', "Ko'rib chiquvchi", 'Проверяющий')}</Label>
                 {reviewerOptions.length > 0 ? (
                   <SelectField
                     value={mistakeDraft.reviewerId}
                     options={reviewerOptions}
                     onValueChange={(value) => setMistakeDraft((current) => ({ ...current, reviewerId: value }))}
-                    className="rounded-xl"
                   />
                 ) : (
                   <Input
@@ -1723,13 +1644,12 @@ export function FaultsMemberDetailPage({
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Project', 'Loyiha', 'Проект')}</Label>
+                <Label className="mb-2 block">{tr('Project', 'Loyiha', 'Проект')}</Label>
                 {projectOptions.length > 1 ? (
                   <SelectField
                     value={mistakeDraft.projectId}
                     options={projectOptions}
                     onValueChange={(value) => setMistakeDraft((current) => ({ ...current, projectId: value }))}
-                    className="rounded-xl"
                   />
                 ) : (
                   <Input
@@ -1745,13 +1665,12 @@ export function FaultsMemberDetailPage({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Category', 'Kategoriya', 'Категория')}</Label>
+                <Label className="mb-2 block">{tr('Category', 'Kategoriya', 'Категория')}</Label>
                 {mistakeCategoryOptions.length > 0 ? (
                   <SelectField
                     value={mistakeDraft.category}
                     options={mistakeCategoryOptions}
                     onValueChange={(value) => setMistakeDraft((current) => ({ ...current, category: value }))}
-                    className="rounded-xl"
                   />
                 ) : (
                   <Input
@@ -1763,13 +1682,12 @@ export function FaultsMemberDetailPage({
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Severity', 'Daraja', 'Степень')}</Label>
+                <Label className="mb-2 block">{tr('Severity', 'Daraja', 'Степень')}</Label>
                 {severityOptions.length > 0 ? (
                   <SelectField
                     value={mistakeDraft.severity}
                     options={severityOptions}
                     onValueChange={(value) => setMistakeDraft((current) => ({ ...current, severity: value }))}
-                    className="rounded-xl"
                   />
                 ) : (
                   <Input
@@ -1783,7 +1701,7 @@ export function FaultsMemberDetailPage({
 
             <div className="grid gap-4 md:grid-cols-[1fr_180px]">
               <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Title', 'Sarlavha', 'Название')}</Label>
+                <Label className="mb-2 block">{tr('Title', 'Sarlavha', 'Название')}</Label>
                 <Input
                   value={mistakeDraft.title}
                   onChange={(event) => setMistakeDraft((current) => ({ ...current, title: event.target.value }))}
@@ -1792,7 +1710,7 @@ export function FaultsMemberDetailPage({
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Incident date', "Sodir bo'lgan sana", 'Дата инцидента')}</Label>
+                <Label className="mb-2 block">{tr('Incident date', "Sodir bo'lgan sana", 'Дата инцидента')}</Label>
                 <Input
                   type="date"
                   value={mistakeDraft.incidentDate}
@@ -1802,7 +1720,7 @@ export function FaultsMemberDetailPage({
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Description', 'Tavsif', 'Описание')}</Label>
+              <Label className="mb-2 block">{tr('Description', 'Tavsif', 'Описание')}</Label>
               <Textarea
                 value={mistakeDraft.description}
                 onChange={(event) => setMistakeDraft((current) => ({ ...current, description: event.target.value }))}
@@ -1811,22 +1729,20 @@ export function FaultsMemberDetailPage({
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              <Label className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--foreground)] dark:border-white/10 dark:bg-white/[0.03] dark:text-white/84">
-                <input
-                  type="checkbox"
+              <Label className="flex min-h-11 items-center gap-3 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3 text-sm font-medium text-[var(--foreground)]">
+                <Checkbox
+                  size="sm"
                   checked={mistakeDraft.reachedClient}
                   onChange={(event) => setMistakeDraft((current) => ({ ...current, reachedClient: event.target.checked }))}
-                  className="h-4 w-4 rounded border border-[var(--border)] bg-[var(--input-surface)] accent-blue-500 dark:border-white/15 dark:bg-transparent"
                 />
                 {tr('Reached client', 'Mijozga yetib borgan', 'Дошло до клиента')}
               </Label>
 
-              <Label className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--foreground)] dark:border-white/10 dark:bg-white/[0.03] dark:text-white/84">
-                <input
-                  type="checkbox"
+              <Label className="flex min-h-11 items-center gap-3 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3 text-sm font-medium text-[var(--foreground)]">
+                <Checkbox
+                  size="sm"
                   checked={mistakeDraft.unclearTask}
                   onChange={(event) => setMistakeDraft((current) => ({ ...current, unclearTask: event.target.checked }))}
-                  className="h-4 w-4 rounded border border-[var(--border)] bg-[var(--input-surface)] accent-blue-500 dark:border-white/15 dark:bg-transparent"
                 />
                 {tr('Unclear task', 'Vazifa noaniq', 'Неясная задача')}
               </Label>
@@ -1858,20 +1774,19 @@ export function FaultsMemberDetailPage({
           }
         >
           <div className="grid gap-4">
-            <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
-              <p className="text-xs text-[var(--muted-strong)]">{tr('Employee', 'Xodim', 'Сотрудник')}</p>
-              <p className="mt-2 text-base font-semibold text-[var(--foreground)] dark:text-white">{detail.report.fullName}</p>
+            <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+              <p className="ui-card-label">{tr('Employee', 'Xodim', 'Сотрудник')}</p>
+              <p className="mt-1.5 text-[15px] font-semibold text-[var(--foreground)]">{detail.report.fullName}</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Bonus type', 'Bonus turi', 'Тип бонуса')}</Label>
+                <Label className="mb-2 block">{tr('Bonus type', 'Bonus turi', 'Тип бонуса')}</Label>
                 {deliveryBonusTypeOptions.length > 0 ? (
                   <SelectField
                     value={deliveryBonusDraft.bonusType}
                     options={deliveryBonusTypeOptions}
                     onValueChange={(value) => setDeliveryBonusDraft((current) => ({ ...current, bonusType: value }))}
-                    className="rounded-xl"
                   />
                 ) : (
                   <Input
@@ -1883,7 +1798,7 @@ export function FaultsMemberDetailPage({
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Award date', 'Berilgan sana', 'Дата выдачи')}</Label>
+                <Label className="mb-2 block">{tr('Award date', 'Berilgan sana', 'Дата выдачи')}</Label>
                 <Input
                   type="date"
                   value={deliveryBonusDraft.awardDate}
@@ -1893,7 +1808,7 @@ export function FaultsMemberDetailPage({
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Title', 'Sarlavha', 'Название')}</Label>
+              <Label className="mb-2 block">{tr('Title', 'Sarlavha', 'Название')}</Label>
               <Input
                 value={deliveryBonusDraft.title}
                 onChange={(event) => setDeliveryBonusDraft((current) => ({ ...current, title: event.target.value }))}
@@ -1902,13 +1817,12 @@ export function FaultsMemberDetailPage({
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Project', 'Loyiha', 'Проект')}</Label>
+              <Label className="mb-2 block">{tr('Project', 'Loyiha', 'Проект')}</Label>
               {projectOptions.length > 1 ? (
                 <SelectField
                   value={deliveryBonusDraft.projectId}
                   options={projectOptions}
                   onValueChange={(value) => setDeliveryBonusDraft((current) => ({ ...current, projectId: value }))}
-                  className="rounded-xl"
                 />
               ) : (
                 <Input
@@ -1922,7 +1836,7 @@ export function FaultsMemberDetailPage({
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Description', 'Tavsif', 'Описание')}</Label>
+              <Label className="mb-2 block">{tr('Description', 'Tavsif', 'Описание')}</Label>
               <Textarea
                 value={deliveryBonusDraft.description}
                 onChange={(event) => setDeliveryBonusDraft((current) => ({ ...current, description: event.target.value }))}
@@ -1956,11 +1870,11 @@ export function FaultsMemberDetailPage({
             </>
           }
         >
-          <div className="rounded-xl border border-red-500/20 bg-red-50 px-4 py-4 text-sm text-[var(--muted-strong)] dark:bg-red-500/8 dark:text-white/84">
-            <p className="font-semibold text-[var(--foreground)] dark:text-white">
+          <div className="rounded-[18px] bg-[var(--danger-dim)] px-4 py-4 text-sm text-[var(--muted-strong)]">
+            <p className="font-semibold text-[var(--danger-text)]">
               {'title' in (deleteTarget?.record ?? {}) ? (deleteTarget?.record as { title: string }).title : (deleteTarget?.record as { reason: string } | undefined)?.reason}
             </p>
-            <p className="mt-2 text-sm text-[var(--muted-strong)] dark:text-white/72">
+            <p className="mt-2 text-sm text-[var(--muted-strong)]">
               {deleteTarget?.kind === 'mistake'
                 ? lt('The mistake incident entry will be permanently removed from this employee history.')
                 : deleteTarget?.kind === 'delivery-bonus'
@@ -1993,7 +1907,7 @@ export function FaultsMemberDetailPage({
         >
           <div className="grid gap-4">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">
+              <Label className="mb-2 block">
                 {tr('Amount', 'Summa', 'Сумма')}
               </Label>
               <Input
@@ -2005,7 +1919,7 @@ export function FaultsMemberDetailPage({
               />
             </div>
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">
+              <Label className="mb-2 block">
                 {tr('Reason', 'Sabab', 'Причина')}
               </Label>
               <Textarea
@@ -2038,7 +1952,7 @@ export function FaultsMemberDetailPage({
         >
           <div className="grid gap-4">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">
+              <Label className="mb-2 block">
                 {tr('Amount', 'Summa', 'Сумма')}
               </Label>
               <Input
@@ -2050,7 +1964,7 @@ export function FaultsMemberDetailPage({
               />
             </div>
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">
+              <Label className="mb-2 block">
                 {tr('Reason', 'Sabab', 'Причина')}
               </Label>
               <Textarea

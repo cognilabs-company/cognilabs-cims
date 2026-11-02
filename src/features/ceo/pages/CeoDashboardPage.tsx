@@ -8,11 +8,16 @@ import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { formatCurrency, formatShortDate, formatShortDateTime } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../shared/ui/card'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
+import { IconButton } from '../../../shared/ui/icon-button'
+import { Skeleton } from '../../../shared/ui/skeleton'
+import { StatCard } from '../../../shared/ui/stat-card'
+import type { Tone } from '../../../shared/ui/tone'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { CrmDashboardCharts } from '../../crm/components/CrmDashboardCharts'
 import { MessageComposerModal, type MessageComposerValues } from '../components/MessageComposerModal'
@@ -60,6 +65,66 @@ function filterOpenTasks(tasks: UserOpenCardRecord[]) {
 
 function getTaskPath(task: UserOpenCardRecord) {
   return `/projects/${task.project_id}?board=${task.board_id}&card=${task.id}`
+}
+
+const statPanelClassName = 'min-h-0 gap-3 rounded-[18px] bg-[var(--accent-soft)] p-4'
+
+const glyphPaths = {
+  send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
+  lead: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 1 0 8 4 4 0 0 1 0-8M19 8v6M22 11h-6',
+  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9.5 9.2a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1 1-1.1 1.8M12 17h.01',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7.5v5l3 2',
+  check: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.4 12.2l2.5 2.4 4.7-4.9',
+  alert: 'M12 3.5l8.5 15H3.5l8.5-15zM12 9.5v4M12 16.5h.01',
+  note: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5zM14 3v5h5M9 13h6M9 17h4',
+}
+
+function Glyph({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  )
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  )
+}
+
+function SwapIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <path d="M1 4v6h6" />
+      <path d="M23 20v-6h-6" />
+      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  )
 }
 
 export function CeoDashboardPage() {
@@ -559,7 +624,7 @@ export function CeoDashboardPage() {
   }
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-[18px]">
       <CrmDashboardCharts
         weekly={chartsQuery.data?.weekly}
         monthly={chartsQuery.data?.monthly}
@@ -624,10 +689,10 @@ export function CeoDashboardPage() {
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-[18px] xl:grid-cols-2">
         {/* Task Overview */}
         <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>{t('ceo.dashboard.tasks.title', 'Task Overview')}</CardTitle>
             <Badge variant="blue" dot>
               {t('ceo.dashboard.tasks.user_count', { count: users.filter((u) => u.is_active).length, defaultValue: '{{count}} users' })}
@@ -640,13 +705,13 @@ export function CeoDashboardPage() {
                 title={t('ceo.dashboard.tasks.empty_users', 'No users found')}
               />
             ) : (
-              <div className="grid grid-cols-2 gap-2 py-1 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {users.map((user) => (
                   <button
                     key={user.id}
                     type="button"
                     onClick={() => void handleOpenUserTasks(user.id)}
-                    className="flex flex-col items-center gap-2 rounded-xl border border-(--border) bg-(--accent-soft)/20 p-3 text-center transition-colors hover:border-(--border-active,var(--border)) hover:bg-(--accent-soft)"
+                    className="flex flex-col items-center gap-2.5 rounded-[18px] bg-[var(--accent-soft)] p-4 text-center transition-colors hover:bg-[var(--blue-dim)]"
                   >
                     <Avatar
                       name={user.name}
@@ -655,18 +720,18 @@ export function CeoDashboardPage() {
                       size="lg"
                     />
                     <div className="w-full min-w-0">
-                      <p className="truncate text-sm font-semibold leading-snug">
+                      <p className="truncate text-sm font-semibold leading-snug text-[var(--foreground)]">
                         {user.name} {user.surname}
                       </p>
                       {user.job_title && (
-                        <p className="mt-0.5 truncate text-xs text-(--muted)">{user.job_title as string}</p>
+                        <p className="mt-0.5 truncate text-xs text-[var(--muted)]">{user.job_title as string}</p>
                       )}
-                      <div className="mt-1.5 flex justify-center">
+                      <div className="mt-2 flex justify-center">
                         {isLoadingTaskCounts ? (
-                          <Badge variant="outline" size="sm">...</Badge>
+                          <Skeleton rounded="full" className="h-[22px] w-16" />
                         ) : (
                           <Badge
-                            variant={userTaskCounts[user.id] ? 'warning' : 'outline'}
+                            variant={userTaskCounts[user.id] ? 'warning' : 'secondary'}
                             dot={Boolean(userTaskCounts[user.id])}
                             size="sm"
                           >
@@ -683,9 +748,9 @@ export function CeoDashboardPage() {
         </Card>
 
         {/* Right column: Company Payment Reminders + CEO Payment List */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-[18px]">
           <Card noPadding>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
               <div className="space-y-1">
                 <CardTitle>{t('ceo.dashboard.recurring.title')}</CardTitle>
               </div>
@@ -698,7 +763,6 @@ export function CeoDashboardPage() {
                 caption={t('ceo.dashboard.recurring.title')}
                 rows={companyPayments}
                 getRowKey={(row) => String(row.id)}
-                zebra
                 emptyState={
                   <EmptyStateBlock
                     eyebrow={t('ceo.dashboard.header.eyebrow', 'CEO Workspace')}
@@ -711,8 +775,8 @@ export function CeoDashboardPage() {
                     header: t('ceo.recurring.form.title'),
                     render: (row) => (
                       <div>
-                        <p className="font-semibold text-white">{row.title}</p>
-                        {row.note && <p className="mt-1 text-xs text-(--muted) line-clamp-1">{row.note}</p>}
+                        <p className="font-semibold text-[var(--foreground)]">{row.title}</p>
+                        {row.note && <p className="mt-1 text-xs text-[var(--muted)] line-clamp-1">{row.note}</p>}
                       </div>
                     ),
                   },
@@ -720,16 +784,18 @@ export function CeoDashboardPage() {
                     key: 'amount',
                     header: t('ceo.recurring.form.amount'),
                     align: 'right',
-                    render: (row) => formatCurrency(row.amount),
+                    render: (row) => (
+                      <span className="font-semibold tabular-nums">{formatCurrency(row.amount)}</span>
+                    ),
                   },
                   {
                     key: 'day',
                     header: t('ceo.recurring.form.payment_day'),
                     align: 'center',
                     render: (row) => (
-                      <div className="flex flex-col items-center">
-                        <span className="text-sm font-bold text-blue-400">{row.payment_day}</span>
-                        <span className="text-[10px] uppercase text-(--muted)">{row.payment_time}</span>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-sm font-bold tabular-nums text-[var(--blue-text)]">{row.payment_day}</span>
+                        <span className="text-[11px] tabular-nums text-[var(--muted)]">{row.payment_time}</span>
                       </div>
                     ),
                   },
@@ -737,7 +803,7 @@ export function CeoDashboardPage() {
                     key: 'status',
                     header: t('common.status'),
                     render: (row) => (
-                      <Badge variant={row.is_active ? 'success' : 'outline'}>
+                      <Badge variant={row.is_active ? 'success' : 'secondary'} dot>
                         {row.is_active ? t('status.active') : t('status.inactive')}
                       </Badge>
                     ),
@@ -747,12 +813,12 @@ export function CeoDashboardPage() {
                     header: t('common.actions'),
                     render: (row) => (
                       <div className="flex items-center gap-1">
-                        <button type="button" title={t('common.edit')} onClick={() => openEditCompanyPaymentModal(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button type="button" title={t('customers.actions.delete')} onClick={() => void handleDeleteCompanyPayment(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                        </button>
+                        <IconButton size="sm" label={t('common.edit')} onClick={() => openEditCompanyPaymentModal(row)}>
+                          <PencilIcon />
+                        </IconButton>
+                        <IconButton size="sm" tone="danger" label={t('customers.actions.delete')} onClick={() => void handleDeleteCompanyPayment(row)}>
+                          <TrashIcon />
+                        </IconButton>
                       </div>
                     ),
                   },
@@ -762,9 +828,9 @@ export function CeoDashboardPage() {
           </Card>
 
           <Card noPadding>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>{t('ceo.dashboard.payments.title')}</CardTitle>
-              <div className="flex wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Badge variant="success" dot>
                   {t('ceo.dashboard.payments.paid_count', { count: payments.filter((row) => row.payment).length })}
                 </Badge>
@@ -778,7 +844,6 @@ export function CeoDashboardPage() {
                 caption={t('ceo.dashboard.payments.title')}
                 rows={payments}
                 getRowKey={(row) => String(row.id)}
-                zebra
                 emptyState={
                   <EmptyStateBlock
                     eyebrow={t('ceo.dashboard.header.eyebrow', 'CEO Workspace')}
@@ -789,18 +854,24 @@ export function CeoDashboardPage() {
                   {
                     key: 'project',
                     header: t('ceo.dashboard.table.project'),
-                    render: (row) => row.project,
+                    render: (row) => <span className="font-medium text-[var(--foreground)]">{row.project}</span>,
                   },
                   {
                     key: 'date',
                     header: t('ceo.dashboard.table.date'),
-                    render: (row) => (row.date ? formatShortDate(row.date) : '-'),
+                    render: (row) => (
+                      <span className="tabular-nums text-[var(--muted-strong)]">
+                        {row.date ? formatShortDate(row.date) : '-'}
+                      </span>
+                    ),
                   },
                   {
                     key: 'amount',
                     header: t('ceo.dashboard.table.amount'),
                     align: 'right',
-                    render: (row) => formatCurrency(Number(row.summ ?? 0)),
+                    render: (row) => (
+                      <span className="font-semibold tabular-nums">{formatCurrency(Number(row.summ ?? 0))}</span>
+                    ),
                   },
                   {
                     key: 'status',
@@ -816,15 +887,15 @@ export function CeoDashboardPage() {
                     header: t('common.actions'),
                     render: (row) => (
                       <div className="flex items-center gap-1">
-                        <button type="button" title={t('common.edit')} onClick={() => openEditPaymentModal(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button type="button" title={t('ceo.dashboard.actions.toggle')} onClick={() => void handleTogglePayment(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-                        </button>
-                        <button type="button" title={t('customers.actions.delete')} onClick={() => void handleDeletePayment(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                        </button>
+                        <IconButton size="sm" label={t('common.edit')} onClick={() => openEditPaymentModal(row)}>
+                          <PencilIcon />
+                        </IconButton>
+                        <IconButton size="sm" tone="primary" label={t('ceo.dashboard.actions.toggle')} onClick={() => void handleTogglePayment(row)}>
+                          <SwapIcon />
+                        </IconButton>
+                        <IconButton size="sm" tone="danger" label={t('customers.actions.delete')} onClick={() => void handleDeletePayment(row)}>
+                          <TrashIcon />
+                        </IconButton>
                       </div>
                     ),
                   },
@@ -838,42 +909,45 @@ export function CeoDashboardPage() {
       {/* Instagram Media Funnel */}
       {dashboardQuery.data?.statistics?.instagram_media_posts !== undefined && (
         <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>Instagram Media Funnel</CardTitle>
             <Badge variant="blue" dot>
               {dashboardQuery.data.statistics.instagram_media_posts.length} media
             </Badge>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-[18px]">
             <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
               {([
-                { label: 'Jami yuborildi', value: dashboardQuery.data.statistics.instagram_media_total_sent_count ?? 0, color: 'text-blue-400' },
-                { label: 'Jami lead', value: dashboardQuery.data.statistics.instagram_media_total_lead_count ?? 0, color: 'text-emerald-400' },
-                { label: 'Contacted', value: dashboardQuery.data.statistics.instagram_media_total_contacted_count ?? 0, color: 'text-sky-400' },
-                { label: 'Continuing', value: dashboardQuery.data.statistics.instagram_media_total_continuing_count ?? 0, color: 'text-violet-400' },
-                { label: 'Noaniq yuborildi', value: dashboardQuery.data.statistics.instagram_media_unknown_sent_count ?? 0, color: 'text-amber-400' },
-                { label: 'Noaniq lead', value: dashboardQuery.data.statistics.instagram_media_unknown_lead_count ?? 0, color: 'text-orange-400' },
-              ] as const).map((item) => (
-                <div key={item.label} className="rounded-xl border border-(--border) bg-(--accent-soft)/30 px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--muted)">{item.label}</p>
-                  <p className={`mt-2 text-2xl font-semibold leading-none ${item.color}`}>{item.value}</p>
-                </div>
+                { label: 'Jami yuborildi', value: dashboardQuery.data.statistics.instagram_media_total_sent_count ?? 0, tone: 'blue', glyph: glyphPaths.send },
+                { label: 'Jami lead', value: dashboardQuery.data.statistics.instagram_media_total_lead_count ?? 0, tone: 'success', glyph: glyphPaths.lead },
+                { label: 'Contacted', value: dashboardQuery.data.statistics.instagram_media_total_contacted_count ?? 0, tone: 'blue', glyph: glyphPaths.chat },
+                { label: 'Continuing', value: dashboardQuery.data.statistics.instagram_media_total_continuing_count ?? 0, tone: 'violet', glyph: glyphPaths.arrow },
+                { label: 'Noaniq yuborildi', value: dashboardQuery.data.statistics.instagram_media_unknown_sent_count ?? 0, tone: 'warning', glyph: glyphPaths.help },
+                { label: 'Noaniq lead', value: dashboardQuery.data.statistics.instagram_media_unknown_lead_count ?? 0, tone: 'warning', glyph: glyphPaths.help },
+              ] as ReadonlyArray<{ label: string; value: number; tone: Tone; glyph: string }>).map((item) => (
+                <StatCard
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                  icon={<Glyph d={item.glyph} />}
+                  iconTone={item.tone}
+                  className={statPanelClassName}
+                />
               ))}
             </div>
             {dashboardQuery.data.statistics.instagram_media_posts.length === 0 ? (
-              <p className="py-4 text-center text-sm text-(--muted)">Hali media context qo'shilmagan.</p>
+              <p className="rounded-[18px] bg-[var(--muted-surface)] py-6 text-center text-sm text-[var(--muted)]">Hali media context qo'shilmagan.</p>
             ) : (
               <>
                 {(dashboardQuery.data.statistics.instagram_media_unknown_sent_count ?? 0) > 0 && (
-                  <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                  <Alert tone="warning">
                     Ba'zi Instagram media xabarlari contextga bog'lanmagan. Media Contexts sahifasidan post/reel/story link qo'shing.
-                  </p>
+                  </Alert>
                 )}
                 <DataTable
                   caption="Instagram media posts"
                   rows={dashboardQuery.data.statistics.instagram_media_posts}
                   getRowKey={(row) => String(row.post_id)}
-                  zebra
                   emptyState={<EmptyStateBlock eyebrow="CEO Workspace" title="No media" />}
                   columns={[
                     {
@@ -881,22 +955,22 @@ export function CeoDashboardPage() {
                       header: 'Post',
                       render: (row) => (
                         <div className="min-w-0">
-                          <p className="font-semibold text-white text-sm truncate">{row.title}</p>
-                          <p className="text-xs text-(--muted) capitalize">{row.media_type}</p>
+                          <p className="truncate text-sm font-semibold text-[var(--foreground)]">{row.title}</p>
+                          <p className="text-xs capitalize text-[var(--muted)]">{row.media_type}</p>
                         </div>
                       ),
                     },
-                    { key: 'sent', header: 'Yuborildi', align: 'center', render: (row) => <span className="font-semibold text-blue-400">{row.sent_count}</span> },
-                    { key: 'leads', header: 'Lead', align: 'center', render: (row) => <span className="font-semibold text-emerald-400">{row.lead_count}</span> },
-                    { key: 'contacted', header: 'Contacted', align: 'center', render: (row) => <span className="font-semibold text-sky-400">{row.contacted_count}</span> },
-                    { key: 'continuing', header: 'Continuing', align: 'center', render: (row) => <span className="font-semibold text-violet-400">{row.continuing_count}</span> },
+                    { key: 'sent', header: 'Yuborildi', align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--blue-text)]">{row.sent_count}</span> },
+                    { key: 'leads', header: 'Lead', align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--success-text)]">{row.lead_count}</span> },
+                    { key: 'contacted', header: 'Contacted', align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--blue-text)]">{row.contacted_count}</span> },
+                    { key: 'continuing', header: 'Continuing', align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--violet-text)]">{row.continuing_count}</span> },
                     {
                       key: 'conversion',
                       header: 'Conversion',
                       align: 'right',
                       render: (row) => {
                         const pct = row.sent_count > 0 ? ((row.lead_count / row.sent_count) * 100).toFixed(1) : '0.0'
-                        return <span className="font-semibold text-emerald-400">{pct}%</span>
+                        return <span className="rounded-full bg-[var(--success-dim)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--success-text)]">{pct}%</span>
                       },
                     },
                     {
@@ -907,7 +981,7 @@ export function CeoDashboardPage() {
                           href={row.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs text-(--muted) hover:text-blue-400 transition-colors underline-offset-2 hover:underline"
+                          className="text-xs font-medium text-[var(--muted)] transition-colors underline-offset-2 hover:text-[var(--primary)] hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Instagram
@@ -925,28 +999,33 @@ export function CeoDashboardPage() {
       {/* Lead Response Metrics */}
       {(dashboardQuery.data?.statistics?.lead_response_total_count ?? 0) > 0 && (
         <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>Lead Javob Vaqti</CardTitle>
             <Badge variant="blue" dot>
               SLA: {dashboardQuery.data?.statistics?.lead_response_limit_minutes ?? 5} min
             </Badge>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {([
-                { label: 'Jami lead', value: dashboardQuery.data?.statistics?.lead_response_total_count ?? 0, color: 'text-blue-400', border: 'border-blue-500/20' },
-                { label: "O'z vaqtida", value: dashboardQuery.data?.statistics?.lead_response_on_time_count ?? 0, color: 'text-emerald-400', border: 'border-emerald-500/20' },
-                { label: 'Kech boglanildi', value: dashboardQuery.data?.statistics?.lead_response_late_count ?? 0, color: 'text-red-400', border: 'border-red-500/20' },
-                { label: "Status o'zgarmadi", value: dashboardQuery.data?.statistics?.lead_response_no_status_change_count ?? 0, color: 'text-amber-400', border: 'border-amber-500/20' },
-                { label: 'Note yozilgan', value: dashboardQuery.data?.statistics?.lead_response_note_written_count ?? 0, color: 'text-sky-400', border: 'border-sky-500/20' },
-                { label: 'Note yozilmagan', value: dashboardQuery.data?.statistics?.lead_response_note_missing_count ?? 0, color: 'text-orange-400', border: 'border-orange-500/20' },
-                { label: 'Note yoqsiz status', value: dashboardQuery.data?.statistics?.lead_response_status_changed_without_note_count ?? 0, color: 'text-fuchsia-400', border: 'border-fuchsia-500/20' },
-                { label: "O'rtacha vaqt", value: dashboardQuery.data?.statistics?.lead_response_average_human ?? '-', color: 'text-violet-400', border: 'border-violet-500/20' },
-              ] as const).map((item) => (
-                <div key={item.label} className={`rounded-xl border ${item.border} bg-(--accent-soft)/20 px-4 py-3`}>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--muted)">{item.label}</p>
-                  <p className={`mt-2 text-xl font-semibold leading-none ${item.color}`}>{item.value}</p>
-                </div>
+                { label: 'Jami lead', value: dashboardQuery.data?.statistics?.lead_response_total_count ?? 0, tone: 'blue', glyph: glyphPaths.lead },
+                { label: "O'z vaqtida", value: dashboardQuery.data?.statistics?.lead_response_on_time_count ?? 0, tone: 'success', glyph: glyphPaths.check },
+                { label: 'Kech boglanildi', value: dashboardQuery.data?.statistics?.lead_response_late_count ?? 0, tone: 'danger', glyph: glyphPaths.clock },
+                { label: "Status o'zgarmadi", value: dashboardQuery.data?.statistics?.lead_response_no_status_change_count ?? 0, tone: 'warning', glyph: glyphPaths.alert },
+                { label: 'Note yozilgan', value: dashboardQuery.data?.statistics?.lead_response_note_written_count ?? 0, tone: 'blue', glyph: glyphPaths.note },
+                { label: 'Note yozilmagan', value: dashboardQuery.data?.statistics?.lead_response_note_missing_count ?? 0, tone: 'warning', glyph: glyphPaths.note },
+                { label: 'Note yoqsiz status', value: dashboardQuery.data?.statistics?.lead_response_status_changed_without_note_count ?? 0, tone: 'violet', glyph: glyphPaths.alert },
+                { label: "O'rtacha vaqt", value: dashboardQuery.data?.statistics?.lead_response_average_human ?? '-', tone: 'violet', glyph: glyphPaths.clock, solid: true },
+              ] as ReadonlyArray<{ label: string; value: string | number; tone: Tone; glyph: string; solid?: boolean }>).map((item) => (
+                <StatCard
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                  icon={<Glyph d={item.glyph} />}
+                  iconTone={item.tone}
+                  solid={item.solid}
+                  className={item.solid ? 'min-h-0 gap-3 rounded-[18px] p-4' : statPanelClassName}
+                />
               ))}
             </div>
           </CardContent>
@@ -966,15 +1045,15 @@ export function CeoDashboardPage() {
         size="lg"
       >
         {isLoadingUserTasks ? (
-          <div className="flex items-center justify-center py-10 text-sm text-(--muted)">
+          <div className="flex items-center justify-center rounded-[18px] bg-[var(--muted-surface)] py-10 text-sm text-[var(--muted)]">
             {t('common.loading', 'Loading...')}
           </div>
         ) : userTasksData.length === 0 ? (
-          <div className="py-10 text-center text-sm text-(--muted)">
+          <div className="rounded-[18px] bg-[var(--muted-surface)] py-10 text-center text-sm text-[var(--muted)]">
             {t('ceo.dashboard.tasks.no_tasks', 'No open tasks')}
           </div>
         ) : (
-          <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-[60vh] space-y-2.5 overflow-y-auto pr-1">
             {userTasksData.map((task) => {
               const isOverdue = isDueDateOverdue(task.due_date)
               return (
@@ -989,7 +1068,7 @@ export function CeoDashboardPage() {
                       navigate(getTaskPath(task))
                     }
                   }}
-                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-(--border) p-3 text-left transition-colors hover:bg-(--accent-soft)/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
+                  className="flex cursor-pointer items-start gap-3 rounded-[18px] bg-[var(--accent-soft)] p-4 text-left transition-colors hover:bg-[var(--blue-dim)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35"
                 >
                   <button
                     type="button"
@@ -1001,21 +1080,22 @@ export function CeoDashboardPage() {
                       event.stopPropagation()
                     }}
                     disabled={isCompletingTaskId === task.id}
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-(--border) text-green-400 transition-colors hover:border-green-400 hover:bg-green-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.6px] border-[#D3D7E0] bg-[var(--surface)] text-transparent transition-colors hover:border-transparent hover:bg-[var(--lime)] hover:text-[var(--lime-ink)] disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={t('ceo.dashboard.tasks.mark_done', 'Mark task as done')}
                     title={t('ceo.dashboard.tasks.mark_done', 'Mark task as done')}
                   >
+                    <CheckIcon />
                   </button>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold leading-snug">{task.title}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-(--muted)">
+                    <p className="text-sm font-semibold leading-snug text-[var(--foreground)]">{task.title}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-[var(--muted)]">
                       <span>{task.project_name}</span>
                       <span>·</span>
                       <span>{task.column_name}</span>
                       {task.due_date && (
                         <>
                           <span>·</span>
-                          <span className={isOverdue ? 'text-red-400' : ''}>
+                          <span className={isOverdue ? 'font-semibold text-[var(--danger-text)]' : ''}>
                             {formatShortDateTime(task.due_date)}
                             {isOverdue ? ` (${t('ceo.dashboard.tasks.overdue', 'overdue')})` : ''}
                           </span>
@@ -1028,7 +1108,7 @@ export function CeoDashboardPage() {
                       variant={
                         task.priority === 'urgent' ? 'danger' :
                         task.priority === 'high' ? 'warning' :
-                        'outline'
+                        'secondary'
                       }
                       size="sm"
                       className="shrink-0"

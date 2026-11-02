@@ -1,6 +1,8 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useLocale } from '../hooks/useLocale'
 import { translateCurrentLiteral } from '../../shared/i18n/translations'
+import { Badge } from '../../shared/ui/badge'
+import { Button } from '../../shared/ui/button'
 
 const routeCopy = {
   '/auth/login': {
@@ -90,29 +92,29 @@ export function AuthLayout() {
         <section className="auth-visual-panel order-2 lg:order-1">
           <div key={`visual-${routeAnimationKey}`} className="auth-route-pane auth-route-pane--visual">
             <div className="relative z-10 max-w-xl">
-              <p className="ui-eyebrow text-cyan-300/80">{tl(copy.eyebrow)}</p>
-              <h1 className="ui-page-title mt-5 max-w-xl text-[var(--foreground)]">{tl(copy.title)}</h1>
+              <p className="ui-eyebrow text-[var(--lime)]">{tl(copy.eyebrow)}</p>
+              <h1 className="ui-page-title mt-[18px] max-w-xl text-white">{tl(copy.title)}</h1>
             </div>
 
             <div className="auth-preview-card">
               <div className="auth-preview-card__grid" />
 
-              <div className="relative z-10 space-y-4">
+              <div className="relative z-10 space-y-[18px]">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="ui-eyebrow text-cyan-300/75">{badgeText}</p>
-                    <h2 className="ui-section-title mt-3 max-w-sm text-[var(--foreground)]">
+                    <p className="ui-eyebrow text-[var(--lime)]">{badgeText}</p>
+                    <h2 className="ui-section-title mt-3 max-w-sm text-white">
                       {tl('Permissions, sessions, and recovery stay inside one motion-driven surface.')}
                     </h2>
                   </div>
-                  <span className="ui-card-label rounded-full border border-cyan-300/25 bg-cyan-300/10 px-4 py-1.5 text-cyan-200">
+                  <Badge variant="lime" dot>
                     {tl('Online')}
-                  </span>
+                  </Badge>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-[18px] sm:grid-cols-2">
                   {previewStats.map((item) => (
-                    <div key={item.label} className="rounded-xl border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
+                    <div key={item.label} className="rounded-[18px] bg-[var(--card)] p-4">
                       <p className="ui-card-label text-[var(--muted)]">{tl(item.label)}</p>
                       <p className="ui-body mt-2 font-semibold text-[var(--foreground)]">
                         {item.value === 'Realtime token guard'
@@ -134,20 +136,13 @@ export function AuthLayout() {
         <section className="auth-form-panel order-1 lg:order-2">
           <div className="auth-form-wrap">
             <div key={`form-${routeAnimationKey}`} className="auth-route-pane auth-route-pane--form">
-              <div className="mb-6 flex items-start justify-between gap-4">
-                <div>
-                  <p className="ui-eyebrow text-slate-400">
-                    {panelEyebrow}
-                  </p>
-                </div>
+              <div className="mb-[18px] flex items-center justify-between gap-4">
+                <Badge variant="secondary">{panelEyebrow}</Badge>
 
                 {!isLoginRoute ? (
-                  <Link
-                    to="/auth/login"
-                    className="ui-button-text rounded-full border border-[var(--border)] bg-[var(--muted-surface)] px-4 py-2 text-[var(--foreground)] transition hover:bg-[var(--accent-soft)]"
-                  >
-                    {tl('Back to login')}
-                  </Link>
+                  <Button asChild variant="secondary" size="sm">
+                    <Link to="/auth/login">{tl('Back to login')}</Link>
+                  </Button>
                 ) : null}
               </div>
 

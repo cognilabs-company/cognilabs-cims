@@ -11,8 +11,8 @@ type SwitchProps = {
 }
 
 export function Switch({ checked, onChange, disabled, size = 'md', tone = 'blue', label, className }: SwitchProps) {
-  const trackOn = tone === 'emerald' ? 'bg-emerald-500' : 'bg-blue-600'
-  const ringColor = tone === 'emerald' ? 'focus-visible:ring-emerald-500/30' : 'focus-visible:ring-blue-500/30'
+  const trackOn = tone === 'emerald' ? 'bg-[var(--success-text)]' : 'bg-[var(--primary)]'
+  const ringColor = tone === 'emerald' ? 'focus-visible:ring-[var(--success-text)]/30' : 'focus-visible:ring-[var(--primary)]/30'
 
   const trackClass = size === 'sm'
     ? 'h-4 w-7'
@@ -38,13 +38,13 @@ export function Switch({ checked, onChange, disabled, size = 'md', tone = 'blue'
         ringColor,
         'disabled:cursor-not-allowed disabled:opacity-50',
         trackClass,
-        checked ? trackOn : 'bg-[var(--border)]',
+        checked ? trackOn : 'bg-[#D3D7E0]',
         className,
       )}
     >
       <span
         className={cn(
-          'pointer-events-none block rounded-full bg-white shadow-sm',
+          'pointer-events-none block rounded-full bg-white shadow-[var(--elev-sm)]',
           'transform transition-transform duration-200',
           thumbClass,
           checked ? thumbOn : thumbOff,

@@ -14,6 +14,7 @@ type DialogProps = {
   size?: 'md' | 'lg' | 'xl'
   tone?: 'default' | 'danger'
   headerIcon?: ReactNode
+  className?: string
 }
 
 const sizeClasses = {
@@ -33,6 +34,7 @@ export function Dialog({
   size = 'md',
   tone = 'default',
   headerIcon,
+  className,
 }: DialogProps) {
   useEffect(() => {
     if (!open) {
@@ -65,64 +67,46 @@ export function Dialog({
       <button
         type="button"
         aria-label={translateCurrentLiteral('Close dialog')}
-        className={cn(
-          'dialog-backdrop absolute inset-0 backdrop-blur-md',
-          tone === 'danger'
-            ? 'bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.16),transparent_34%),rgba(0,0,0,0.76)]'
-            : 'bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.14),transparent_32%),rgba(0,0,0,0.72)]',
-        )}
+        className="dialog-backdrop absolute inset-0"
         onClick={onClose}
       />
       <div
         data-ui-surface="true"
+        role="dialog"
+        aria-modal="true"
         className={cn(
-          'dialog-content relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full flex-col overflow-hidden rounded-xl border shadow-[var(--shadow-xl)] sm:max-h-[calc(100vh-3rem)]',
-          tone === 'danger' && 'border-red-500/20 shadow-[0_30px_80px_rgba(0,0,0,0.5),0_0_0_1px_rgba(239,68,68,0.06)]',
+          'dialog-content relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full flex-col overflow-hidden rounded-[24px] shadow-[var(--elev-xl)] sm:max-h-[calc(100vh-3rem)]',
           sizeClasses[size],
+          className,
         )}
       >
-        <div
-          className={cn(
-            'dialog-header-decor pointer-events-none absolute inset-x-0 top-0 h-28',
-            tone === 'danger'
-              ? 'bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.18),transparent_72%)]'
-              : 'bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.16),transparent_72%)]',
-          )}
-        />
-
-        <div className="dialog-divider relative z-10 flex items-start justify-between gap-4 border-b px-6 py-5 sm:px-7">
+        <div className="dialog-divider relative z-10 flex items-start justify-between gap-4 border-b px-[22px] py-5 sm:px-7">
           <div className="max-w-2xl">
-            {headerIcon ? (
-              <div className="mb-3">
-                {headerIcon}
-              </div>
+            {headerIcon ? <div className="mb-3">{headerIcon}</div> : null}
+            {eyebrow ? (
+              <p className="dialog-eyebrow ui-eyebrow">{translateCurrentLiteral(eyebrow)}</p>
             ) : null}
-            <p className={cn(
-              'dialog-eyebrow ui-eyebrow',
-              tone === 'danger' ? 'text-red-300/80' : 'text-blue-300/70',
-            )}>
-              {translateCurrentLiteral(eyebrow ?? 'Workspace dialog')}
-            </p>
-            <h2 className="ui-dialog-title mt-2 text-[var(--foreground)]">
+            <h2
+              className={cn(
+                'ui-dialog-title',
+                eyebrow && 'mt-2',
+                tone === 'danger' ? 'text-[var(--danger-text)]' : 'text-[var(--foreground)]',
+              )}
+            >
               {translateCurrentLiteral(title)}
             </h2>
             {description ? (
-              <p className={cn(
-                'ui-helper mt-2',
-                tone === 'danger' ? 'text-zinc-300/80' : 'text-[var(--muted-strong)]',
-              )}>
-                {translateCurrentLiteral(description)}
-              </p>
+              <p className="ui-helper mt-2">{translateCurrentLiteral(description)}</p>
             ) : null}
           </div>
           <button
             type="button"
             onClick={onClose}
             className={cn(
-              'inline-flex h-10 w-10 items-center justify-center rounded-xl border bg-[var(--input-surface)] text-[var(--muted-strong)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)] transition hover:text-[var(--foreground)]',
+              'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] transition-colors',
               tone === 'danger'
-                ? 'border-red-500/15 hover:border-red-500/30 hover:bg-red-500/10'
-                : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--accent-soft)]',
+                ? 'text-[var(--danger-text)] hover:bg-[var(--danger-dim)]'
+                : 'text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]',
             )}
             aria-label={translateCurrentLiteral('Close dialog panel')}
           >
@@ -133,13 +117,13 @@ export function Dialog({
         </div>
 
         {children ? (
-          <div className="relative z-10 overflow-y-auto px-6 py-6 sm:px-7">
+          <div className="relative z-10 overflow-y-auto px-[22px] py-6 sm:px-7">
             {children}
           </div>
         ) : null}
 
         {footer ? (
-          <div className="dialog-divider relative z-10 flex flex-wrap justify-end gap-3 border-t px-6 py-5 sm:px-7">
+          <div className="dialog-divider relative z-10 flex flex-wrap justify-end gap-3 border-t px-[22px] py-5 sm:px-7">
             {footer}
           </div>
         ) : null}

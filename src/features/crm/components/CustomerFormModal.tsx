@@ -6,9 +6,12 @@ import { formatNumericDateTime } from '../../../shared/lib/format'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useToast } from '../../../shared/toast/useToast'
 import { Button } from '../../../shared/ui/button'
+import { Checkbox } from '../../../shared/ui/checkbox'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
 import { Modal } from '../../../shared/ui/modal'
 import { SelectField } from '../../../shared/ui/select-field'
+import { Textarea } from '../../../shared/ui/textarea'
 import { EmptyStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 
 export type CustomerFormValues = {
@@ -150,21 +153,21 @@ export function CustomerFormModal({
         </>
       }
     >
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-[18px] md:grid-cols-2">
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.full_name', 'Full name')}</span>
+          <span className="ui-input-label">{t('common.full_name', 'Full name')}</span>
           <Input value={values.full_name} onChange={(event) => onChange('full_name', event.target.value)} />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.platform', 'Platform')}</span>
+          <span className="ui-input-label">{t('common.platform', 'Platform')}</span>
           <Input value={values.platform} onChange={(event) => onChange('platform', event.target.value)} />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.phone', 'Phone')}</span>
+          <span className="ui-input-label">{t('common.phone', 'Phone')}</span>
           <Input value={values.phone_number} onChange={(event) => onChange('phone_number', event.target.value)} />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.status', 'Status')}</span>
+          <span className="ui-input-label">{t('common.status', 'Status')}</span>
           <SelectField
             key={`customer-status-${values.status || 'empty'}`}
             value={values.status}
@@ -173,15 +176,15 @@ export function CustomerFormModal({
           />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.username', 'Username')}</span>
+          <span className="ui-input-label">{t('common.username', 'Username')}</span>
           <Input value={values.username} onChange={(event) => onChange('username', event.target.value)} />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.assistant', 'Assistant')}</span>
+          <span className="ui-input-label">{t('common.assistant', 'Assistant')}</span>
           <Input value={values.assistant_name} onChange={(event) => onChange('assistant_name', event.target.value)} />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.recall_time', 'Recall time')}</span>
+          <span className="ui-input-label">{t('common.recall_time', 'Recall time')}</span>
           <Input
             type="datetime-local"
             value={values.recall_time}
@@ -189,7 +192,7 @@ export function CustomerFormModal({
           />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.customer_type', 'Customer type')}</span>
+          <span className="ui-input-label">{t('common.customer_type', 'Customer type')}</span>
           <SelectField
             value={values.customer_type}
             onValueChange={(value) => onChange('customer_type', value)}
@@ -197,7 +200,7 @@ export function CustomerFormModal({
           />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">
+          <span className="ui-input-label">
             {t('common.conversation_language', 'Conversation language')}
           </span>
           <SelectField
@@ -207,125 +210,129 @@ export function CustomerFormModal({
           />
         </label>
         <label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('common.audio', 'Audio')}</span>
+          <span className="ui-input-label">{t('common.audio', 'Audio')}</span>
           <input
             type="file"
             accept="audio/*"
-            className="block min-h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-3 py-2 text-xs text-[var(--muted-strong)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)] file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:border-[var(--border-hover)] hover:bg-[var(--input-surface-hover)]"
+            className="block min-h-11 w-full rounded-[14px] border border-transparent bg-[var(--input-surface)] px-3.5 py-2.5 text-[13px] text-[var(--muted-strong)] transition-colors file:mr-3 file:rounded-[9px] file:border-0 file:bg-[var(--blue-dim)] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-[var(--blue-text)] hover:bg-[var(--input-surface-hover)]"
             onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
           />
         </label>
       </div>
 
-      <label className="mt-4 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-hover)] hover:bg-[var(--input-surface-hover)]">
-        <input
-          type="checkbox"
+      <label className="mt-[18px] flex cursor-pointer items-center gap-3 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3 transition-colors hover:bg-[var(--input-surface-hover)]">
+        <Checkbox
+          size="sm"
           checked={values.clear_recall_time}
           onChange={(event) => onChange('clear_recall_time', event.target.checked)}
-          className="h-4 w-4 rounded border border-[var(--border)] accent-blue-500 dark:border-white/10"
         />
-        <span className="text-xs text-[var(--muted-strong)]">{t('customers.form.clear_recall', 'Clear recall time')}</span>
+        <span className="text-sm text-[var(--muted-strong)]">{t('customers.form.clear_recall', 'Clear recall time')}</span>
       </label>
 
       {mode === 'edit' && customerId ? (
-        <div className="mt-6 rounded-xl border border-(--border) overflow-hidden">
-          <div className="flex items-center justify-between gap-4 border-b border-(--border) px-4 py-3">
+        <div className="mt-[18px] space-y-4 rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold text-(--foreground)">{t('customers.detail.notes.title', 'Notes')}</p>
-              <p className="text-[10px] text-(--muted-strong)">{t('customers.detail.notes.description', 'All notes and communications.')}</p>
+              <p className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{t('customers.detail.notes.title', 'Notes')}</p>
+              <p className="mt-1 text-[12.5px] text-[var(--muted)]">{t('customers.detail.notes.description', 'All notes and communications.')}</p>
             </div>
             <Button size="sm" variant="secondary" onClick={() => setShowAddInput((s) => !s)}>
               {t('customers.notes.add_short', 'Add')}
             </Button>
           </div>
 
-          <div className="px-4 py-4 space-y-3">
-            {showAddInput ? (
-              <div className="flex gap-2">
-                <Input
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder={t('customers.notes.add_placeholder', 'Add a new note...')}
-                  className="flex-1"
-                  onKeyDown={(e) => { if (e.key === 'Enter') void handleAddNote() }}
-                />
-                <Button size="sm" onClick={() => void handleAddNote()} disabled={isAdding || !newNote.trim()}>
-                  {isAdding ? '...' : t('common.add', 'Add')}
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => { setShowAddInput(false); setNewNote('') }}>
-                  {t('common.cancel', 'Cancel')}
-                </Button>
-              </div>
-            ) : null}
+          {showAddInput ? (
+            <div className="flex flex-wrap gap-2.5">
+              <Input
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder={t('customers.notes.add_placeholder', 'Add a new note...')}
+                className="min-w-[180px] flex-1 bg-[var(--surface)]"
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleAddNote() }}
+              />
+              <Button size="sm" onClick={() => void handleAddNote()} disabled={isAdding || !newNote.trim()}>
+                {isAdding ? '...' : t('common.add', 'Add')}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { setShowAddInput(false); setNewNote('') }}>
+                {t('common.cancel', 'Cancel')}
+              </Button>
+            </div>
+          ) : null}
 
-            {notesQuery.isLoading ? (
-              <LoadingStateBlock eyebrow={t('customers.detail.notes.title', 'Notes')} title={t('common.loading', 'Loading...')} />
-            ) : notesQuery.data?.items.length ? (
-              <div className="space-y-2">
-                {notesQuery.data.items.map((note) => (
-                  <div
-                    key={note.id}
-                    className="group relative rounded-xl border border-(--border) bg-(--input-surface) p-3 transition hover:border-(--border-hover)"
-                  >
-                    {editingNoteId === note.id ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={editingContent}
-                          onChange={(e) => setEditingContent(e.target.value)}
-                          className="w-full rounded-lg border border-(--border) bg-transparent p-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          rows={3}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="secondary" onClick={() => setEditingNoteId(null)}>
-                            {t('common.cancel', 'Cancel')}
-                          </Button>
-                          <Button size="sm" onClick={() => void handleUpdateNote(note.id)}>
-                            {t('common.save', 'Save')}
-                          </Button>
+          {notesQuery.isLoading ? (
+            <LoadingStateBlock
+              eyebrow={t('customers.detail.notes.title', 'Notes')}
+              title={t('common.loading', 'Loading...')}
+              className="bg-[var(--surface)]"
+            />
+          ) : notesQuery.data?.items.length ? (
+            <div className="space-y-2.5">
+              {notesQuery.data.items.map((note) => (
+                <div
+                  key={note.id}
+                  className="group relative rounded-[14px] bg-[var(--surface)] p-4"
+                >
+                  {editingNoteId === note.id ? (
+                    <div className="space-y-2.5">
+                      <Textarea
+                        value={editingContent}
+                        onChange={(e) => setEditingContent(e.target.value)}
+                        className="min-h-20"
+                        rows={3}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => setEditingNoteId(null)}>
+                          {t('common.cancel', 'Cancel')}
+                        </Button>
+                        <Button size="sm" onClick={() => void handleUpdateNote(note.id)}>
+                          {t('common.save', 'Save')}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--foreground)]">{note.note}</p>
+                      <div className="mt-2.5 flex items-center justify-between gap-3">
+                        <p className="text-[12px] text-[var(--muted)]">
+                          {note.created_by_full_name} {note.created_at ? `• ${formatNumericDateTime(note.created_at)}` : ''}
+                        </p>
+                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                          <IconButton
+                            tone="primary"
+                            size="sm"
+                            label={t('common.edit', 'Edit')}
+                            onClick={() => { setEditingNoteId(note.id); setEditingContent(note.note) }}
+                          >
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </IconButton>
+                          <IconButton
+                            tone="danger"
+                            size="sm"
+                            label={t('common.delete', 'Delete')}
+                            onClick={() => void handleDeleteNote(note.id)}
+                          >
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </IconButton>
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <p className="whitespace-pre-wrap text-sm text-(--foreground)">{note.note}</p>
-                        <div className="mt-2 flex items-center justify-between">
-                          <p className="text-[10px] text-(--muted-strong)">
-                            {note.created_by_full_name} {note.created_at ? `• ${formatNumericDateTime(note.created_at)}` : ''}
-                          </p>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                            <button
-                              onClick={() => { setEditingNoteId(note.id); setEditingContent(note.note) }}
-                              className="p-1 text-(--muted-strong) hover:text-blue-500"
-                              title={t('common.edit', 'Edit')}
-                            >
-                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => void handleDeleteNote(note.id)}
-                              className="p-1 text-(--muted-strong) hover:text-red-500"
-                              title={t('common.delete', 'Delete')}
-                            >
-                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyStateBlock
-                eyebrow={t('customers.detail.notes.title', 'Notes')}
-                title={t('customers.detail.notes.empty_title', 'No notes')}
-                description={t('customers.detail.notes.empty_description', 'There are no notes.')}
-              />
-            )}
-          </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyStateBlock
+              eyebrow={t('customers.detail.notes.title', 'Notes')}
+              title={t('customers.detail.notes.empty_title', 'No notes')}
+              description={t('customers.detail.notes.empty_description', 'There are no notes.')}
+              className="bg-[var(--surface)]"
+            />
+          )}
         </div>
       ) : null}
     </Modal>

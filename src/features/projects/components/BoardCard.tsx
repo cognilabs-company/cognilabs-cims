@@ -18,15 +18,12 @@ export function BoardCard({ board, onEdit, onArchive, canManage = true }: BoardC
   const boardUrl = `/projects/${board.project_id}?board=${board.id}`
 
   return (
-    <div data-slot="card" className="group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-hover)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.2)]">
-      {/* Gradient accent top */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.08),transparent_72%)]" />
-
+    <div data-slot="card" className="group relative flex flex-col gap-[18px] overflow-hidden rounded-[24px] bg-[var(--surface)] p-[22px] transition-colors hover:bg-[var(--card-hover)]">
       <div className="relative z-10 flex items-start justify-between gap-3">
         {/* Board icon + info */}
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--blue-dim)] text-blue-400">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
+            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
               <rect x="3" y="3" width="7" height="9" rx="2" />
               <rect x="14" y="3" width="7" height="5" rx="2" />
               <rect x="14" y="12" width="7" height="9" rx="2" />
@@ -35,11 +32,11 @@ export function BoardCard({ board, onEdit, onArchive, canManage = true }: BoardC
           </div>
           <div className="min-w-0">
             {board.is_archived ? (
-              <p className="truncate text-sm font-semibold text-[var(--muted)]">{board.name}</p>
+              <p className="truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--muted)]">{board.name}</p>
             ) : (
               <Link
                 to={boardUrl}
-                className="block truncate text-sm font-semibold text-[var(--foreground)] hover:text-white transition-colors"
+                className="block truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
               >
                 {board.name}
               </Link>
@@ -73,19 +70,19 @@ export function BoardCard({ board, onEdit, onArchive, canManage = true }: BoardC
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 flex items-center justify-between border-t border-[var(--border)] pt-3">
-        <div className="flex items-center gap-2">
+      <div className="relative z-10 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-[18px]">
+        <div className="flex min-w-0 items-center gap-2">
           <Avatar
             name={board.created_by.name}
             surname={board.created_by.surname}
             imageUrl={board.created_by.profile_image}
             size="xs"
           />
-          <span className="text-[10px] text-[var(--muted)]">
+          <span className="truncate text-[12.5px] text-[var(--muted)]">
             {board.created_by.name} {board.created_by.surname}
           </span>
         </div>
-        <span className="text-[10px] text-[var(--muted)]">
+        <span className="shrink-0 text-[12.5px] text-[var(--caption)]">
           {formatRelativeDate(board.updated_at)}
         </span>
       </div>

@@ -82,15 +82,15 @@ export function ResetPasswordPage() {
       description={t('auth.reset.description', 'Enter the verification code from your email and set a new password.')}
       footerLinks={[{ label: t('auth.back_to_login', 'Back to login'), to: '/auth/login' }]}
     >
-      <form className="grid gap-4" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-2 rounded-md border border-[var(--border)] bg-[var(--muted-surface)] p-1">
+      <form className="grid gap-[18px]" onSubmit={handleSubmit}>
+        <div className="grid grid-cols-2 gap-1 rounded-[12px] bg-[var(--input-surface)] p-1">
           <Link
             to="/auth/forgot-password"
-            className="rounded-md px-3 py-1.5 text-center text-xs font-medium text-[var(--muted)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]"
+            className="inline-flex h-[30px] items-center justify-center rounded-[9px] px-3 text-[12.5px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
           >
             {t('auth.forgot_password_tab', 'Forgot Password')}
           </Link>
-          <span className="rounded-md bg-[var(--card)] px-3 py-1.5 text-center text-xs font-medium text-[var(--foreground)]">
+          <span className="inline-flex h-[30px] items-center justify-center rounded-[9px] bg-[var(--surface)] px-3 text-[12.5px] font-semibold text-[var(--foreground)] shadow-[var(--elev-seg)]">
             {t('auth.reset_password_tab', 'Reset Password')}
           </span>
         </div>
@@ -117,7 +117,7 @@ export function ResetPasswordPage() {
           onChange={(event) => setValues((current) => ({ ...current, code: event.target.value }))}
         />
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-[18px] md:grid-cols-2">
           <PasswordField
             label={t('auth.reset.new_password', 'New password')}
             name="new_password"

@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { ApiResponseError } from '../../../shared/api/types'
 import { faceIdAttendanceService, type FaceIdAttendanceStatus, type FaceIdDailyRecord } from '../../../shared/api/services/attendance.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
+import { Card } from '../../../shared/ui/card'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
+import { MemberAvatar } from '../../../shared/ui/member-avatar'
+import { PageHeader } from '../../../shared/ui/page-header'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { StateBlock } from '../../../shared/ui/state-block'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useToast } from '../../../shared/toast/useToast'
@@ -28,6 +34,37 @@ const sourceOptions: SelectFieldOption[] = [
   { value: 'faceid', label: 'FaceID' },
   { value: 'manual', label: 'Manual' },
 ]
+
+const headCellClass = 'bg-[var(--muted-surface)] px-3 py-2.5 text-left align-middle text-xs font-medium whitespace-nowrap text-[var(--muted)]'
+const bodyCellClass = 'border-b border-[var(--border-subtle)] px-3 py-3.5 align-middle'
+
+const presentIcon = (
+  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M8.2 12.3l2.6 2.6 5-5.5" />
+  </svg>
+)
+
+const lateIcon = (
+  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5.3l3.4 2" />
+  </svg>
+)
+
+const incompleteIcon = (
+  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3a9 9 0 0 1 0 18M8.4 4a9 9 0 0 0-4.1 5.1M3.1 13.1a9 9 0 0 0 3.3 6" />
+    <path d="M8.8 12h6.4" />
+  </svg>
+)
+
+const deleteWarningIcon = (
+  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M10.3 4.2 2.9 17.1A1.9 1.9 0 0 0 4.6 20h14.8a1.9 1.9 0 0 0 1.7-2.9L13.7 4.2a1.9 1.9 0 0 0-3.4 0Z" />
+    <path d="M12 9.3v4M12 16.4v.2" />
+  </svg>
+)
 
 function getDateTimeParts(value: Date) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -235,32 +272,28 @@ export function AttendanceManagementPage() {
   }
 
   return (
-    <div className="page-enter space-y-5">
-      <section className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-6 sm:px-7">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_68%)]" />
-        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-blue-400">Operations / FaceID</p>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--foreground)] sm:text-3xl">Attendance</h1>
-            <p className="mt-2 max-w-2xl text-sm text-[var(--muted-strong)]">Review device attendance records and correct exceptions when the source data is incomplete.</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[310px]">
-            <SummaryStat label="Present" value={presentCount} className="text-[var(--success-text)]" />
-            <SummaryStat label="Late" value={lateCount} className="text-[var(--warning-text)]" />
-            <SummaryStat label="Incomplete" value={incompleteCount} className="text-[var(--blue-text)]" />
-          </div>
-        </div>
-      </section>
+    <section className="page-enter space-y-[18px]">
+      <PageHeader
+        eyebrow="Operations / FaceID"
+        title="Attendance"
+        description="Review device attendance records and correct exceptions when the source data is incomplete."
+      />
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[170px_150px_minmax(220px,1fr)_180px_160px]">
+      <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard label="Present" value={presentCount} icon={presentIcon} iconTone="success" solid />
+        <StatCard label="Late" value={lateCount} icon={lateIcon} iconTone="warning" />
+        <StatCard label="Incomplete" value={incompleteCount} icon={incompleteIcon} iconTone="blue" />
+      </div>
+
+      <Card>
+        <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-[170px_150px_minmax(220px,1fr)_180px_160px]">
           <FilterLabel label="Month"><Input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></FilterLabel>
           <FilterLabel label="Day"><Input type="number" min="1" max="31" value={day} onChange={(event) => setDay(event.target.value)} placeholder="All days" /></FilterLabel>
           <FilterLabel label="Employee"><SelectField value={employeeId} options={employeeOptions} onValueChange={setEmployeeId} searchable searchPlaceholder="Search employee..." disabled={employeesQuery.isLoading} /></FilterLabel>
           <FilterLabel label="Status"><SelectField value={status} options={statusOptions} onValueChange={setStatus} /></FilterLabel>
           <FilterLabel label="Source"><SelectField value={source} options={sourceOptions} onValueChange={setSource} /></FilterLabel>
         </div>
-      </section>
+      </Card>
 
       {recordsQuery.isLoading ? (
         <StateBlock tone="loading" eyebrow="Attendance" title="Loading attendance records" />
@@ -269,45 +302,53 @@ export function AttendanceManagementPage() {
       ) : records.length === 0 ? (
         <StateBlock tone="empty" eyebrow="Attendance" title="Davomat ma'lumoti topilmadi" description="Change the filters or select another month." />
       ) : (
-        <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
-            <p className="text-sm font-semibold text-[var(--foreground)]">{totalItems} attendance records</p>
-            <p className="text-xs text-[var(--muted)]">Times are shown in Asia/Tashkent.</p>
+        <Card className="space-y-[18px]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{totalItems} attendance records</p>
+            <p className="text-[12.5px] text-[var(--muted)]">Times are shown in Asia/Tashkent.</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1050px] text-left">
-              <thead><tr className="border-b border-[var(--border)] bg-[var(--muted-surface)]/40 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
-                <th className="px-5 py-3.5">Employee</th><th className="px-4 py-3.5">Date</th><th className="px-4 py-3.5">Came</th><th className="px-4 py-3.5">Gone</th><th className="px-4 py-3.5">Worked time</th><th className="px-4 py-3.5">Status</th><th className="px-4 py-3.5">Source</th><th className="px-4 py-3.5">Note</th><th className="px-5 py-3.5 text-right">Action</th>
+          <div className="custom-scrollbar-visible overflow-x-auto">
+            <table className="w-full min-w-[1050px] border-separate border-spacing-0 text-left">
+              <thead><tr>
+                <th className={cn(headCellClass, 'rounded-l-[12px] pl-3.5')}>Employee</th><th className={headCellClass}>Date</th><th className={headCellClass}>Came</th><th className={headCellClass}>Gone</th><th className={headCellClass}>Worked time</th><th className={headCellClass}>Status</th><th className={headCellClass}>Source</th><th className={headCellClass}>Note</th><th className={cn(headCellClass, 'rounded-r-[12px] pr-3.5 text-right')}>Action</th>
               </tr></thead>
-              <tbody className="divide-y divide-[var(--border)]">
+              <tbody>
                 {records.map((record) => (
-                  <tr key={`${record.employee_id}-${record.attendance_date}`} className="transition-colors hover:bg-[var(--accent-soft)]/45">
-                    <td className="px-5 py-4"><button type="button" onClick={() => setSelectedEmployeeRecord(record)} className="text-left text-sm font-semibold text-[var(--foreground)] transition hover:text-[var(--blue-text)] hover:underline">{getEmployeeName(record)}</button><p className="mt-0.5 text-xs text-[var(--muted)]">ID: {record.employee_id}</p></td>
-                    <td className="px-4 py-4 text-sm font-medium text-[var(--foreground)]">{formatDate(record.attendance_date)}</td>
-                    <td className="px-4 py-4 text-sm text-[var(--muted-strong)]">{formatTime(record.check_in_at, record.check_in_time)}</td>
-                    <td className="px-4 py-4 text-sm text-[var(--muted-strong)]">{formatTime(record.check_out_at, record.check_out_time)}</td>
-                    <td className="px-4 py-4 text-sm font-semibold text-[var(--foreground)]">{formatWorkedMinutes(record.worked_minutes)}</td>
-                    <td className="px-4 py-4"><Badge variant={statusBadgeVariant(record.status)} dot>{record.status}</Badge></td>
-                    <td className="px-4 py-4"><Badge variant={record.is_manual ? 'blue' : 'outline'}>{record.is_manual ? 'manual' : record.source_system || 'faceid'}</Badge></td>
-                    <td className="max-w-[230px] px-4 py-4 text-sm text-[var(--muted-strong)]"><p className="line-clamp-2">{record.note || '-'}</p></td>
-                    <td className="px-5 py-4 text-right"><Button variant="ghost" size="sm" onClick={() => openEdit(record)}>Edit</Button></td>
+                  <tr key={`${record.employee_id}-${record.attendance_date}`} className="transition-colors hover:bg-[var(--card-hover)]">
+                    <td className={cn(bodyCellClass, 'pl-3.5')}>
+                      <div className="flex items-center gap-3">
+                        <MemberAvatar name={getEmployeeName(record)} size="md" />
+                        <div className="min-w-0">
+                          <button type="button" onClick={() => setSelectedEmployeeRecord(record)} className="block text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--primary)]">{getEmployeeName(record)}</button>
+                          <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">ID: {record.employee_id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={cn(bodyCellClass, 'text-[13.5px] font-medium text-[var(--foreground)]')}>{formatDate(record.attendance_date)}</td>
+                    <td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>{formatTime(record.check_in_at, record.check_in_time)}</td>
+                    <td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>{formatTime(record.check_out_at, record.check_out_time)}</td>
+                    <td className={cn(bodyCellClass, 'text-[13.5px] font-semibold tabular-nums text-[var(--foreground)]')}>{formatWorkedMinutes(record.worked_minutes)}</td>
+                    <td className={bodyCellClass}><Badge variant={statusBadgeVariant(record.status)} dot>{record.status}</Badge></td>
+                    <td className={bodyCellClass}><Badge variant={record.is_manual ? 'blue' : 'secondary'}>{record.is_manual ? 'manual' : record.source_system || 'faceid'}</Badge></td>
+                    <td className={cn(bodyCellClass, 'max-w-[230px] text-[13.5px] text-[var(--muted-strong)]')}><p className="line-clamp-2">{record.note || '-'}</p></td>
+                    <td className={cn(bodyCellClass, 'pr-3.5 text-right')}><Button variant="ghost" size="sm" onClick={() => openEdit(record)}>Edit</Button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-4">
-            <p className="text-xs text-[var(--muted)]">Page {page} of {totalPages}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[12.5px] text-[var(--muted)]">Page {page} of {totalPages}</p>
             <div className="flex items-center gap-2"><Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>Previous</Button><Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)}>Next</Button></div>
           </div>
-        </section>
+        </Card>
       )}
 
       <Dialog open={editingRecord !== null} onClose={closeEdit} title={isDeleteMode ? 'Delete attendance record' : 'Edit attendance record'} description={editingRecord ? `${getEmployeeName(editingRecord)} - ${formatDate(editingRecord.attendance_date)}` : undefined} eyebrow="Attendance correction" tone={isDeleteMode ? 'danger' : 'default'} footer={<><Button variant="ghost" size="md" onClick={closeEdit} disabled={isSaving}>Cancel</Button><Button variant={isDeleteMode ? 'danger' : 'primary'} size="md" onClick={() => void saveEdit()} loading={isSaving}>{isDeleteMode ? 'Delete record' : 'Save changes'}</Button></>}>
         {isDeleteMode ? (
-          <div className="space-y-4"><div className="rounded-xl border border-[var(--danger-border)] bg-[var(--danger-dim)] px-4 py-3 text-sm text-[var(--danger-text)]">This hides the selected daily record from attendance reports. Provide the reason for auditability.</div><FilterLabel label="Delete reason"><Textarea value={editValues.deleteReason} rows={3} onChange={(event) => setEditValues((current) => ({ ...current, deleteReason: event.target.value }))} placeholder="Wrong employee mapping" /></FilterLabel><Button type="button" variant="ghost" size="sm" onClick={() => setIsDeleteMode(false)}>Back to edit</Button></div>
+          <div className="space-y-[18px]"><Alert tone="danger" icon={deleteWarningIcon}>This hides the selected daily record from attendance reports. Provide the reason for auditability.</Alert><FilterLabel label="Delete reason"><Textarea value={editValues.deleteReason} rows={3} onChange={(event) => setEditValues((current) => ({ ...current, deleteReason: event.target.value }))} placeholder="Wrong employee mapping" /></FilterLabel><Button type="button" variant="ghost" size="sm" onClick={() => setIsDeleteMode(false)}>Back to edit</Button></div>
         ) : (
-          <div className="space-y-4"><div className="grid gap-4 sm:grid-cols-2"><FilterLabel label="Status"><SelectField value={editValues.status} options={statusOptions.slice(1)} onValueChange={(value) => setEditValues((current) => ({ ...current, status: value as FaceIdAttendanceStatus }))} /></FilterLabel><div className="flex items-end"><Badge variant="outline" className="mb-2">Asia/Tashkent (+05:00)</Badge></div><FilterLabel label="Check in"><Input type="datetime-local" value={editValues.checkInAt} onChange={(event) => setEditValues((current) => ({ ...current, checkInAt: event.target.value }))} /></FilterLabel><FilterLabel label="Check out"><Input type="datetime-local" value={editValues.checkOutAt} onChange={(event) => setEditValues((current) => ({ ...current, checkOutAt: event.target.value }))} /></FilterLabel></div><FilterLabel label="Note"><Textarea value={editValues.note} rows={4} onChange={(event) => setEditValues((current) => ({ ...current, note: event.target.value }))} placeholder="Check-out event missing" /></FilterLabel><div className="flex justify-end border-t border-[var(--border)] pt-4"><Button type="button" variant="ghost" size="sm" className="text-[var(--danger-text)]" onClick={() => setIsDeleteMode(true)}>Delete record</Button></div></div>
+          <div className="space-y-[18px]"><div className="grid gap-[18px] sm:grid-cols-2"><FilterLabel label="Status"><SelectField value={editValues.status} options={statusOptions.slice(1)} onValueChange={(value) => setEditValues((current) => ({ ...current, status: value as FaceIdAttendanceStatus }))} /></FilterLabel><div className="flex items-end"><Badge variant="secondary" className="mb-2.5">Asia/Tashkent (+05:00)</Badge></div><FilterLabel label="Check in"><Input type="datetime-local" value={editValues.checkInAt} onChange={(event) => setEditValues((current) => ({ ...current, checkInAt: event.target.value }))} /></FilterLabel><FilterLabel label="Check out"><Input type="datetime-local" value={editValues.checkOutAt} onChange={(event) => setEditValues((current) => ({ ...current, checkOutAt: event.target.value }))} /></FilterLabel></div><FilterLabel label="Note"><Textarea value={editValues.note} rows={4} onChange={(event) => setEditValues((current) => ({ ...current, note: event.target.value }))} placeholder="Check-out event missing" /></FilterLabel><div className="flex justify-end border-t border-[var(--border-subtle)] pt-[18px]"><Button type="button" variant="danger" size="sm" onClick={() => setIsDeleteMode(true)}>Delete record</Button></div></div>
         )}
       </Dialog>
 
@@ -325,8 +366,8 @@ export function AttendanceManagementPage() {
         ) : employeeDetailQuery.isError ? (
           <StateBlock tone="error" eyebrow="Attendance" title="Unable to load employee attendance" description={getErrorMessage(employeeDetailQuery.error)} actionLabel="Retry" onAction={() => void employeeDetailQuery.refetch()} />
         ) : employeeDetailQuery.data ? (
-          <div className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-[18px]">
+            <div className="grid gap-[18px] sm:grid-cols-2 lg:grid-cols-4">
               <SummaryStat label="Total records" value={employeeDetailQuery.data.stats.total_records} className="text-[var(--foreground)]" />
               <SummaryStat label="Present" value={employeeDetailQuery.data.stats.present_count} className="text-[var(--success-text)]" />
               <SummaryStat label="Late" value={employeeDetailQuery.data.stats.late_count} className="text-[var(--warning-text)]" />
@@ -335,29 +376,27 @@ export function AttendanceManagementPage() {
               <SummaryStat label="Worked time" value={formatWorkedMinutes(employeeDetailQuery.data.stats.total_worked_minutes)} className="text-[var(--blue-text)]" />
               <SummaryStat label="Average / day" value={formatWorkedMinutes(employeeDetailQuery.data.stats.avg_worked_minutes)} className="text-[var(--muted-strong)]" />
             </div>
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[650px] text-left">
-                  <thead><tr className="border-b border-[var(--border)] bg-[var(--muted-surface)]/40 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]"><th className="px-4 py-3">Date</th><th className="px-4 py-3">Came</th><th className="px-4 py-3">Gone</th><th className="px-4 py-3">Worked time</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Action</th></tr></thead>
-                  <tbody className="divide-y divide-[var(--border)]">
-                    {employeeDetailQuery.data.items.map((record) => (
-                      <tr key={`${record.employee_id}-${record.attendance_date}`} className="hover:bg-[var(--accent-soft)]/45"><td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{formatDate(record.attendance_date)}</td><td className="px-4 py-3 text-sm text-[var(--muted-strong)]">{formatTime(record.check_in_at, record.check_in_time)}</td><td className="px-4 py-3 text-sm text-[var(--muted-strong)]">{formatTime(record.check_out_at, record.check_out_time)}</td><td className="px-4 py-3 text-sm font-semibold text-[var(--foreground)]">{formatWorkedMinutes(record.worked_minutes)}</td><td className="px-4 py-3"><Badge variant={statusBadgeVariant(record.status)} dot>{record.status}</Badge></td><td className="px-4 py-3 text-right"><Button variant="ghost" size="sm" onClick={() => { setSelectedEmployeeRecord(null); openEdit(record) }}>Edit</Button></td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="custom-scrollbar-visible overflow-x-auto">
+              <table className="w-full min-w-[650px] border-separate border-spacing-0 text-left">
+                <thead><tr><th className={cn(headCellClass, 'rounded-l-[12px] pl-3.5')}>Date</th><th className={headCellClass}>Came</th><th className={headCellClass}>Gone</th><th className={headCellClass}>Worked time</th><th className={headCellClass}>Status</th><th className={cn(headCellClass, 'rounded-r-[12px] pr-3.5 text-right')}>Action</th></tr></thead>
+                <tbody>
+                  {employeeDetailQuery.data.items.map((record) => (
+                    <tr key={`${record.employee_id}-${record.attendance_date}`} className="transition-colors hover:bg-[var(--card-hover)]"><td className={cn(bodyCellClass, 'pl-3.5 text-[13.5px] font-medium text-[var(--foreground)]')}>{formatDate(record.attendance_date)}</td><td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>{formatTime(record.check_in_at, record.check_in_time)}</td><td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>{formatTime(record.check_out_at, record.check_out_time)}</td><td className={cn(bodyCellClass, 'text-[13.5px] font-semibold tabular-nums text-[var(--foreground)]')}>{formatWorkedMinutes(record.worked_minutes)}</td><td className={bodyCellClass}><Badge variant={statusBadgeVariant(record.status)} dot>{record.status}</Badge></td><td className={cn(bodyCellClass, 'pr-3.5 text-right')}><Button variant="ghost" size="sm" onClick={() => { setSelectedEmployeeRecord(null); openEdit(record) }}>Edit</Button></td></tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         ) : null}
       </Dialog>
-    </div>
+    </section>
   )
 }
 
-function FilterLabel({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="flex flex-col gap-1.5"><label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">{label}</label>{children}</div>
+function FilterLabel({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="flex flex-col gap-2"><Label>{label}</Label>{children}</div>
 }
 
 function SummaryStat({ label, value, className }: { label: string; value: number | string; className: string }) {
-  return <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]/75 px-3 py-2.5 text-center shadow-sm backdrop-blur-sm"><p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">{label}</p><p className={cn('mt-1 text-xl font-black', className)}>{value}</p></div>
+  return <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5"><p className="ui-card-label">{label}</p><p className={cn('mt-2 text-[22px] font-bold tracking-[-0.03em] tabular-nums', className)}>{value}</p></div>
 }

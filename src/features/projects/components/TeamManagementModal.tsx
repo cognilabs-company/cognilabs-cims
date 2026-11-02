@@ -7,6 +7,8 @@ import { useToast } from '../../../shared/toast/useToast'
 import { Button } from '../../../shared/ui/button'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
+import { Skeleton } from '../../../shared/ui/skeleton'
 import { Textarea } from '../../../shared/ui/textarea'
 import { AvatarGroup } from './Avatar'
 import { MemberSelector } from './MemberSelector'
@@ -124,34 +126,34 @@ export function TeamManagementModal({ open, onClose, onChanged }: {
       size="xl"
       footer={<Button variant="ghost" size="md" onClick={onClose}>{t('projects.close', 'Close')}</Button>}
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
           {teamsQuery.isLoading ? (
             <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--muted-surface)]" />)}
+              {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} rounded="xl" className="h-28" />)}
             </div>
           ) : teams.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--accent-soft)]/40 p-8 text-center">
+            <div className="rounded-[18px] bg-[var(--muted-surface)] p-8 text-center">
               <p className="text-sm font-semibold text-[var(--foreground)]">{t('projects.no_teams', 'No teams yet')}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">{t('projects.create_team_hint', 'Create a team to reuse its members across projects.')}</p>
+              <p className="mt-1.5 text-[12.5px] text-[var(--muted)]">{t('projects.create_team_hint', 'Create a team to reuse its members across projects.')}</p>
             </div>
           ) : (
             <div className="space-y-3">
               {teams.map((team) => (
-                <div key={team.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition hover:border-[var(--border-hover)]">
+                <div key={team.id} className="rounded-[18px] bg-[var(--accent-soft)] p-[18px] transition-colors hover:bg-[var(--input-surface-hover)]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-[var(--foreground)]">{team.name}</p>
-                      {team.description ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--muted)]">{team.description}</p> : null}
+                      {team.description ? <p className="mt-1 line-clamp-2 text-[12.5px] leading-5 text-[var(--muted)]">{team.description}</p> : null}
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <Button type="button" variant="ghost" size="sm" onClick={() => beginEdit(team)}>{t('projects.edit', 'Edit')}</Button>
-                      <Button type="button" variant="ghost" size="sm" className="text-[var(--danger-text)]" onClick={() => void removeTeam(team)}>{t('projects.delete', 'Delete')}</Button>
+                      <Button type="button" variant="ghost" size="sm" className="text-[var(--danger-text)] hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]" onClick={() => void removeTeam(team)}>{t('projects.delete', 'Delete')}</Button>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
-                    {team.members.length > 0 ? <AvatarGroup users={team.members} max={5} size="xs" /> : <span className="text-[11px] text-[var(--muted)]">{t('projects.no_members', 'No members')}</span>}
-                    <span className="text-[11px] font-medium text-[var(--muted)]">{team.members.length} {t('projects.members', 'members')}</span>
+                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--border-hover)] pt-3.5">
+                    {team.members.length > 0 ? <AvatarGroup users={team.members} max={5} size="xs" /> : <span className="text-[12px] text-[var(--muted)]">{t('projects.no_members', 'No members')}</span>}
+                    <span className="text-[12px] font-medium text-[var(--muted)]">{team.members.length} {t('projects.members', 'members')}</span>
                   </div>
                 </div>
               ))}
@@ -164,24 +166,24 @@ export function TeamManagementModal({ open, onClose, onChanged }: {
             event.preventDefault()
             void saveTeam()
           }}
-          className="flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] p-4 sm:p-5"
+          className="flex flex-col gap-[18px] rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
         >
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-[var(--foreground)]">{editingTeam ? t('projects.edit_team', 'Edit team') : t('projects.new_team', 'New team')}</h3>
+            <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{editingTeam ? t('projects.edit_team', 'Edit team') : t('projects.new_team', 'New team')}</h3>
             {editingTeam ? <Button type="button" variant="ghost" size="sm" onClick={beginCreate}>{t('projects.cancel_edit', 'Cancel')}</Button> : null}
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">{t('projects.team_name', 'Team name')}</label>
-            <Input value={values.name} onChange={(event) => { setValues((current) => ({ ...current, name: event.target.value })); setNameError('') }} placeholder={t('projects.team_name_placeholder', 'Frontend team')} />
-            {nameError ? <p className="text-xs text-[var(--danger-text)]">{nameError}</p> : null}
+          <div className="flex flex-col gap-2">
+            <Label>{t('projects.team_name', 'Team name')}</Label>
+            <Input value={values.name} onChange={(event) => { setValues((current) => ({ ...current, name: event.target.value })); setNameError('') }} placeholder={t('projects.team_name_placeholder', 'Frontend team')} className="bg-[var(--surface)] hover:bg-[var(--surface)]" />
+            {nameError ? <p className="text-[12.5px] text-[var(--danger-text)]">{nameError}</p> : null}
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">{t('projects.description', 'Description')}</label>
-            <Textarea value={values.description} onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))} rows={2} placeholder={t('projects.team_description_placeholder', 'What this team owns')} />
+          <div className="flex flex-col gap-2">
+            <Label>{t('projects.description', 'Description')}</Label>
+            <Textarea value={values.description} onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))} rows={2} placeholder={t('projects.team_description_placeholder', 'What this team owns')} className="bg-[var(--surface)] hover:bg-[var(--surface)]" />
           </div>
-          <div className="flex min-h-0 flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">{t('projects.members_selected', 'Members ({count} selected)', { count: values.memberIds.length })}</label>
-            {usersQuery.isLoading ? <p className="py-3 text-xs text-[var(--muted)]">{t('projects.loading_members', 'Loading members...')}</p> : <MemberSelector allUsers={users} selectedIds={values.memberIds} onChange={(memberIds) => setValues((current) => ({ ...current, memberIds }))} disabled={isSaving} />}
+          <div className="flex min-h-0 flex-col gap-2">
+            <Label>{t('projects.members_selected', 'Members ({count} selected)', { count: values.memberIds.length })}</Label>
+            {usersQuery.isLoading ? <p className="py-3 text-[12.5px] text-[var(--muted)]">{t('projects.loading_members', 'Loading members...')}</p> : <MemberSelector allUsers={users} selectedIds={values.memberIds} onChange={(memberIds) => setValues((current) => ({ ...current, memberIds }))} disabled={isSaving} />}
           </div>
           <Button type="submit" variant="primary" size="md" loading={isSaving}>{editingTeam ? t('projects.save_changes', 'Save changes') : t('projects.create_team', 'Create team')}</Button>
         </form>

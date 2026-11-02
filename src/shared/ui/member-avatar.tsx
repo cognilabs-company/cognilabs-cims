@@ -1,5 +1,6 @@
 import { cn } from '../lib/cn'
 import { resolveMediaUrl } from '../lib/media-url'
+import { pickAvatarTone } from './avatar-tone'
 
 export type MemberAvatarSize = 'xs' | 'sm' | 'md' | 'lg'
 
@@ -43,10 +44,6 @@ function getInitials(name?: string | null, surname?: string | null) {
   return initials || 'MB'
 }
 
-function stringToHue(value: string) {
-  return value.split('').reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) % 360, 11)
-}
-
 export function MemberAvatar({
   name,
   surname,
@@ -57,7 +54,6 @@ export function MemberAvatar({
 }: MemberAvatarProps) {
   const displayName = getDisplayName(name, surname) || 'Member'
   const initials = getInitials(name, surname)
-  const hue = stringToHue(displayName)
   const resolvedImageUrl = resolveMediaUrl(imageUrl) ?? imageUrl ?? null
 
   if (resolvedImageUrl) {
@@ -76,15 +72,11 @@ export function MemberAvatar({
       title={title ?? displayName}
       aria-label={title ?? displayName}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full font-semibold select-none',
+        'inline-flex shrink-0 items-center justify-center rounded-full font-bold select-none',
         sizeClasses[size],
+        pickAvatarTone(displayName),
         className,
       )}
-      style={{
-        background: `linear-gradient(135deg, hsl(${hue}, 62%, 50%), hsl(${(hue + 34) % 360}, 64%, 43%))`,
-        color: '#ffffff',
-        boxShadow: '0 8px 18px rgba(37, 99, 235, 0.18)',
-      }}
     >
       {initials}
     </span>

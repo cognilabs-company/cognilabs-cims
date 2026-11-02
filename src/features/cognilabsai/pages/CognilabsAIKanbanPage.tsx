@@ -3,6 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { cn } from '../../../shared/lib/cn'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
+import { Badge } from '../../../shared/ui/badge'
+import { IconButton } from '../../../shared/ui/icon-button'
+import { Skeleton } from '../../../shared/ui/skeleton'
+import { Tabs, type TabItem } from '../../../shared/ui/tabs'
+import { toneDot, toneSurface, toneText, type Tone } from '../../../shared/ui/tone'
 import {
   cognilabsaiService,
   type ConversationItem,
@@ -11,37 +16,37 @@ import {
 
 type ChannelTab = 'all' | 'instagram' | 'telegram'
 
-type StageConfig = { key: string; label: string; color: string; bg: string; border: string; dot: string }
+type StageConfig = { key: string; label: string; tone: Tone }
 
-const STAGE_PALETTE: Array<{ color: string; bg: string; border: string; dot: string }> = [
-  { color: 'text-slate-400',   bg: 'bg-slate-500/10',   border: 'border-slate-500/20',   dot: 'bg-slate-400' },
-  { color: 'text-sky-400',     bg: 'bg-sky-500/10',     border: 'border-sky-500/20',     dot: 'bg-sky-400' },
-  { color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    dot: 'bg-blue-400' },
-  { color: 'text-violet-400',  bg: 'bg-violet-500/10',  border: 'border-violet-500/20',  dot: 'bg-violet-400' },
-  { color: 'text-indigo-400',  bg: 'bg-indigo-500/10',  border: 'border-indigo-500/20',  dot: 'bg-indigo-400' },
-  { color: 'text-purple-400',  bg: 'bg-purple-500/10',  border: 'border-purple-500/20',  dot: 'bg-purple-400' },
-  { color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/20', dot: 'bg-fuchsia-400' },
-  { color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   dot: 'bg-amber-400' },
-  { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-400' },
-  { color: 'text-orange-400',  bg: 'bg-orange-500/10',  border: 'border-orange-500/20',  dot: 'bg-orange-400' },
-  { color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20',     dot: 'bg-red-400' },
-  { color: 'text-teal-400',    bg: 'bg-teal-500/10',    border: 'border-teal-500/20',    dot: 'bg-teal-400' },
-  { color: 'text-cyan-400',    bg: 'bg-cyan-500/10',    border: 'border-cyan-500/20',    dot: 'bg-cyan-400' },
-  { color: 'text-rose-400',    bg: 'bg-rose-500/10',    border: 'border-rose-500/20',    dot: 'bg-rose-400' },
-  { color: 'text-lime-400',    bg: 'bg-lime-500/10',    border: 'border-lime-500/20',    dot: 'bg-lime-400' },
+const STAGE_PALETTE: Tone[] = [
+  'neutral',
+  'blue',
+  'blue',
+  'violet',
+  'violet',
+  'violet',
+  'warning',
+  'lime',
+  'success',
+  'warning',
+  'danger',
+  'success',
+  'blue',
+  'danger',
+  'lime',
 ]
 
 const FALLBACK_STAGES: StageConfig[] = [
-  { key: 'service_interest',    label: 'Xizmatga qiziqdi',       ...STAGE_PALETTE[0] },
-  { key: 'business_field',      label: 'Sohasini yozdi',         ...STAGE_PALETTE[1] },
-  { key: 'experience_years',    label: 'Sohadagi yil etildi',    ...STAGE_PALETTE[2] },
-  { key: 'phone_discussion',    label: 'Telefon orqali muhokama',...STAGE_PALETTE[3] },
-  { key: 'phone_collected',     label: 'Telefon olindi',         ...STAGE_PALETTE[4] },
-  { key: 'call_time_collected', label: 'Qulay vaqt olindi',      ...STAGE_PALETTE[5] },
-  { key: 'name_collected',      label: 'Ism olindi',             ...STAGE_PALETTE[6] },
-  { key: 'agreement_confirmed', label: 'Kelishuv tasdiqlandi',   ...STAGE_PALETTE[7] },
-  { key: 'lead_created',        label: 'Lead yaratildi',         ...STAGE_PALETTE[8] },
-  { key: 'lost',                label: "Yo'qotildi",             ...STAGE_PALETTE[10] },
+  { key: 'service_interest',    label: 'Xizmatga qiziqdi',       tone: STAGE_PALETTE[0] },
+  { key: 'business_field',      label: 'Sohasini yozdi',         tone: STAGE_PALETTE[1] },
+  { key: 'experience_years',    label: 'Sohadagi yil etildi',    tone: STAGE_PALETTE[2] },
+  { key: 'phone_discussion',    label: 'Telefon orqali muhokama',tone: STAGE_PALETTE[3] },
+  { key: 'phone_collected',     label: 'Telefon olindi',         tone: STAGE_PALETTE[4] },
+  { key: 'call_time_collected', label: 'Qulay vaqt olindi',      tone: STAGE_PALETTE[5] },
+  { key: 'name_collected',      label: 'Ism olindi',             tone: STAGE_PALETTE[6] },
+  { key: 'agreement_confirmed', label: 'Kelishuv tasdiqlandi',   tone: STAGE_PALETTE[7] },
+  { key: 'lead_created',        label: 'Lead yaratildi',         tone: STAGE_PALETTE[8] },
+  { key: 'lost',                label: "Yo'qotildi",             tone: STAGE_PALETTE[10] },
 ]
 
 const FALLBACK_LABEL_MAP = new Map(FALLBACK_STAGES.map((s) => [s.key, s.label]))
@@ -50,15 +55,15 @@ function buildStageConfigs(apiStages: Array<{ value: string; label: string; orde
   return apiStages.map((s, i) => ({
     key: s.value,
     label: FALLBACK_LABEL_MAP.get(s.value) ?? s.label,
-    ...STAGE_PALETTE[i % STAGE_PALETTE.length],
+    tone: STAGE_PALETTE[i % STAGE_PALETTE.length],
   }))
 }
 
 
 function getChannelBadgeStyle(channel: string) {
-  if (channel === 'instagram') return { bg: 'bg-pink-500', label: 'IG' }
-  if (channel === 'telegram') return { bg: 'bg-[#2AABEE]', label: 'TG' }
-  return { bg: 'bg-emerald-500', label: 'WS' }
+  if (channel === 'instagram') return { bg: 'bg-[var(--violet-text)]', label: 'IG' }
+  if (channel === 'telegram') return { bg: 'bg-[var(--primary)]', label: 'TG' }
+  return { bg: 'bg-[var(--success-text)]', label: 'WS' }
 }
 
 function AvatarInitials({ name, url, size = 'sm' }: { name: string; url?: string | null; size?: 'sm' | 'xs' }) {
@@ -72,7 +77,7 @@ function AvatarInitials({ name, url, size = 'sm' }: { name: string; url?: string
         src={resolved}
         alt={name}
         onError={() => setFailed(true)}
-        className={cn(sizeClass, 'rounded-full object-cover ring-1 ring-[var(--border)] shrink-0')}
+        className={cn(sizeClass, 'rounded-full object-cover shrink-0')}
       />
     )
   }
@@ -82,7 +87,7 @@ function AvatarInitials({ name, url, size = 'sm' }: { name: string; url?: string
   return (
     <div className={cn(
       sizeClass,
-      'rounded-full bg-[var(--blue-dim)] text-[var(--blue-text)] font-semibold flex items-center justify-center select-none ring-1 ring-[var(--border)] shrink-0',
+      'rounded-full bg-[var(--blue-dim)] text-[var(--blue-text)] font-semibold flex items-center justify-center select-none shrink-0',
     )}>
       {initials}
     </div>
@@ -120,17 +125,17 @@ function KanbanCard({ conv, onClick, highlighted }: { conv: ConversationItem; on
       type="button"
       onClick={onClick}
       className={cn(
-        'group w-full text-left rounded-xl border p-3 transition-all duration-150 hover:shadow-md active:scale-[0.98]',
+        'group w-full text-left rounded-[18px] p-3.5 transition-colors duration-150 active:scale-[0.99]',
         highlighted
-          ? 'border-blue-500/60 bg-blue-500/8 shadow-[0_0_0_2px_rgba(59,130,246,0.25)] hover:border-blue-500/80 hover:bg-blue-500/12'
-          : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-hover)] hover:bg-[var(--surface-elevated)]',
+          ? 'bg-[var(--blue-dim)] ring-2 ring-[var(--primary)]'
+          : 'bg-[var(--accent-soft)] hover:bg-[var(--input-surface-hover)]',
       )}
     >
       <div className="flex items-start gap-2.5 mb-2">
         <div className="relative shrink-0 mt-0.5">
           <AvatarInitials name={name} url={conv.client_avatar_url} size="sm" />
           <div className={cn(
-            'absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[var(--surface)] text-[7px] font-bold text-white flex items-center justify-center',
+            'absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full ring-2 ring-[var(--accent-soft)] text-[8px] font-bold text-white flex items-center justify-center',
             ch.bg,
           )}>
             {ch.label[0]}
@@ -138,55 +143,57 @@ function KanbanCard({ conv, onClick, highlighted }: { conv: ConversationItem; on
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-[var(--foreground)] truncate leading-snug">{name}</p>
+          <p className="text-[13.5px] font-semibold text-[var(--foreground)] truncate leading-snug tracking-[-0.01em]">{name}</p>
           {conv.ai_interest && (
-            <p className="text-[11px] text-[var(--muted)] mt-0.5 truncate">{conv.ai_interest}</p>
+            <p className="text-[11.5px] text-[var(--muted)] mt-0.5 truncate">{conv.ai_interest}</p>
           )}
         </div>
 
-        <span className="shrink-0 text-[10px] text-[var(--caption)] font-medium">{formatTime(conv.last_message_at)}</span>
+        <span className="shrink-0 text-[11px] font-medium text-[var(--caption)]">{formatTime(conv.last_message_at)}</span>
       </div>
 
       {conv.last_message_preview && (
-        <p className="text-[11.5px] text-[var(--caption)] leading-relaxed line-clamp-2 mb-2">
+        <p className="text-[12px] text-[var(--muted)] leading-relaxed line-clamp-2 mb-2.5">
           {conv.last_message_preview}
         </p>
       )}
 
-      {/* Tags row */}
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {conv.lead_phone_number && (
-          <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">
+          <Badge variant="success" size="sm">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
             {conv.lead_phone_number}
-          </span>
+          </Badge>
         )}
         {conv.crm_customer_id && (
-          <span className="inline-flex items-center gap-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-blue-400">
+          <Badge variant="blue" size="sm">
             CRM
-          </span>
+          </Badge>
         )}
         {conv.unread_count > 0 && (
-          <span className="inline-flex items-center justify-center rounded-full bg-blue-600 px-1.5 h-4 min-w-4 text-[9px] font-bold text-white">
+          <span
+            data-ui-number="true"
+            className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-1.5 h-5 min-w-5 text-[10.5px] font-bold text-white"
+          >
             {conv.unread_count > 99 ? '99+' : conv.unread_count}
           </span>
         )}
         {hasFollowUpSent && (
-          <span className="inline-flex items-center gap-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-blue-400">
+          <Badge variant="blue" size="sm">
             AI Follow-up ✓
-          </span>
+          </Badge>
         )}
         {hasFollowUpScheduled && !hasFollowUpSent && (
-          <span className="inline-flex items-center gap-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-purple-400">
+          <Badge variant="violet" size="sm">
             ⏱ AI Follow-up
-          </span>
+          </Badge>
         )}
         {conv.pause_reason && (
-          <span className="inline-flex items-center rounded-md bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+          <Badge variant="warning" size="sm">
             {conv.pause_reason}
-          </span>
+          </Badge>
         )}
       </div>
     </button>
@@ -205,29 +212,30 @@ function KanbanColumn({
   highlightedConvId?: number | null
 }) {
   return (
-    <div className="flex flex-col w-[280px] shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden h-full">
-      {/* Column header */}
-      <div className={cn('flex items-center justify-between gap-2 px-3.5 py-3 border-b border-[var(--border)]', stage.bg)}>
+    <div className="flex flex-col w-[292px] shrink-0 rounded-[24px] bg-[var(--card)] p-3 overflow-hidden h-full">
+      <div className={cn('flex shrink-0 items-center justify-between gap-2 h-10 rounded-[14px] px-3', toneSurface[stage.tone])}>
         <div className="flex items-center gap-2 min-w-0">
-          <span className={cn('h-2 w-2 rounded-full shrink-0', stage.dot)} />
-          <h3 className={cn('text-[12px] font-bold uppercase tracking-wider truncate', stage.color)}>
+          <span className={cn('h-2 w-2 rounded-full shrink-0', toneDot[stage.tone])} />
+          <h3 className={cn('text-[12.5px] font-semibold tracking-[-0.01em] truncate', toneText[stage.tone])}>
             {stage.label}
           </h3>
         </div>
-        <span className={cn(
-          'shrink-0 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-bold',
-          stage.bg, stage.color, 'border', stage.border,
-        )}>
+        <span
+          data-ui-number="true"
+          className={cn(
+            'shrink-0 inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[var(--surface)] px-1.5 text-[11.5px] font-bold',
+            toneText[stage.tone],
+          )}
+        >
           {cards.length}
         </span>
       </div>
 
-      {/* Cards */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar-visible min-h-0">
+      <div className="flex-1 overflow-y-auto mt-3 space-y-2.5 custom-scrollbar-visible min-h-0">
         {cards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <span className={cn('text-2xl opacity-20', stage.dot.replace('bg-', 'text-'))}>—</span>
-            <p className="text-[11px] text-[var(--caption)] mt-1">Bo'sh</p>
+          <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] py-10 text-center">
+            <span className="text-2xl text-[var(--border-hover)]">—</span>
+            <p className="text-[11.5px] text-[var(--caption)] mt-1">Bo'sh</p>
           </div>
         ) : (
           cards.map((conv) => (
@@ -239,10 +247,29 @@ function KanbanColumn({
   )
 }
 
-const CHANNEL_TABS: { key: ChannelTab; label: string }[] = [
-  { key: 'all', label: 'Barchasi' },
-  { key: 'instagram', label: 'Instagram' },
-  { key: 'telegram', label: 'Telegram' },
+function KanbanBoardSkeleton() {
+  return (
+    <div className="flex-1 overflow-hidden pb-[18px]">
+      <div className="flex gap-[18px] px-7 h-full">
+        {[0, 1, 2, 3, 4].map((column) => (
+          <div key={column} className="flex flex-col w-[292px] shrink-0 rounded-[24px] bg-[var(--card)] p-3">
+            <Skeleton rounded="lg" className="h-10 w-full" />
+            <div className="mt-3 space-y-2.5">
+              {[0, 1, 2].map((row) => (
+                <Skeleton key={row} rounded="xl" className="h-[112px] w-full" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const CHANNEL_TABS: TabItem<ChannelTab>[] = [
+  { value: 'all', label: 'Barchasi' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'telegram', label: 'Telegram' },
 ]
 
 export function CognilabsAIKanbanPage() {
@@ -464,8 +491,8 @@ export function CognilabsAIKanbanPage() {
     let extraIdx = 0
     for (const key of byStage.keys()) {
       if (!usedKeys.has(key)) {
-        const palette = STAGE_PALETTE[(stages.length + extraIdx) % STAGE_PALETTE.length]
-        result.push({ key, label: key.replaceAll('_', ' '), ...palette })
+        const tone = STAGE_PALETTE[(stages.length + extraIdx) % STAGE_PALETTE.length]
+        result.push({ key, label: key.replaceAll('_', ' '), tone })
         usedKeys.add(key)
         extraIdx++
       }
@@ -490,83 +517,61 @@ export function CognilabsAIKanbanPage() {
   }
 
   return (
-    <div className="flex flex-col h-full -mx-4 -mt-4 -mb-6 sm:-mx-6 lg:-mx-8" style={{ height: 'calc(100vh - 74px)' }}>
+    <div className="flex flex-col h-full -mx-7 -mt-[26px] -mb-10" style={{ height: 'var(--page-h-bleed)' }}>
       {/* Top bar */}
-      <div className="shrink-0 flex items-center justify-between gap-4 px-5 py-3 border-b border-[var(--border)] bg-[var(--surface)] flex-wrap">
-        <div className="flex items-center gap-4 flex-wrap">
+      <div className="shrink-0 flex items-center justify-between gap-4 px-7 pt-[26px] pb-[18px] flex-wrap">
+        <div className="flex items-center gap-5 flex-wrap">
           <div>
-            <h2 className="text-[15px] font-bold text-[var(--foreground)] tracking-tight">AI Kanban</h2>
+            <h2 className="text-[22px] font-bold text-[var(--foreground)] tracking-[-0.03em]">AI Kanban</h2>
             {lastRefresh && (
-              <p className="text-[10px] text-[var(--caption)]">
+              <p className="text-[11.5px] text-[var(--caption)]">
                 Yangilandi: {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
           </div>
 
           {/* Stats */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-[12px] text-[var(--muted)]">AI faol: <strong className="text-[var(--foreground)]">{totalActive}</strong></span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-2 h-9 rounded-full bg-[var(--card)] px-3.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--success-text)]" />
+              <span className="text-[12.5px] text-[var(--muted)]">AI faol: <strong className="text-[var(--foreground)]">{totalActive}</strong></span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              <span className="text-[12px] text-[var(--muted)]">Leadlar: <strong className="text-emerald-400">{totalLeads}</strong></span>
+            <div className="inline-flex items-center gap-2 h-9 rounded-full bg-[var(--card)] px-3.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--success-text)]" />
+              <span className="text-[12.5px] text-[var(--muted)]">Leadlar: <strong className="text-[var(--success-text)]">{totalLeads}</strong></span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-blue-400" />
-              <span className="text-[12px] text-[var(--muted)]">Jami: <strong className="text-[var(--foreground)]">{filtered.length}</strong></span>
+            <div className="inline-flex items-center gap-2 h-9 rounded-full bg-[var(--card)] px-3.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--primary)]" />
+              <span className="text-[12.5px] text-[var(--muted)]">Jami: <strong className="text-[var(--foreground)]">{filtered.length}</strong></span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Channel filter */}
-          <div className="flex items-center gap-1 rounded-xl bg-[var(--background)] border border-[var(--border)] p-1">
-            {CHANNEL_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setChannelTab(tab.key)}
-                className={cn(
-                  'px-3 py-1 rounded-lg text-[12px] font-semibold transition-all',
-                  channelTab === tab.key
-                    ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
-                    : 'text-[var(--muted)] hover:text-[var(--foreground)]',
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <Tabs items={CHANNEL_TABS} value={channelTab} onChange={setChannelTab} className="bg-[var(--card)]" />
 
-          <button
-            type="button"
+          <IconButton
+            label="Yangilash"
             onClick={() => void fetchAll()}
             disabled={isLoading}
-            className="h-8 w-8 flex items-center justify-center rounded-xl border border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors disabled:opacity-50"
-            title="Yangilash"
+            className="bg-[var(--card)] hover:bg-[var(--input-surface-hover)]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn('h-4 w-4', isLoading && 'animate-spin')}>
               <path d="M1 4v6h6M23 20v-6h-6"/>
               <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
             </svg>
-          </button>
+          </IconButton>
         </div>
       </div>
 
       {/* Kanban board */}
       {isLoading && conversations.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-            <p className="text-[13px] text-[var(--muted)]">Yuklanmoqda...</p>
-          </div>
-        </div>
+        <KanbanBoardSkeleton />
       ) : (
         <div
           ref={boardRef}
-          className="flex-1 overflow-x-auto overflow-y-hidden"
+          className="flex-1 overflow-x-auto overflow-y-hidden pb-[18px]"
           onClickCapture={(e) => {
             if (dragRef.current.didDrag) {
               e.stopPropagation()
@@ -574,7 +579,7 @@ export function CognilabsAIKanbanPage() {
             }
           }}
         >
-          <div className="flex gap-4 p-4 h-full" style={{ width: 'max-content' }}>
+          <div className="flex gap-[18px] px-7 h-full" style={{ width: 'max-content' }}>
             {orderedStages.map((stage) => (
               <KanbanColumn
                 key={stage.key}

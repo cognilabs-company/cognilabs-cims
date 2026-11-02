@@ -1,3 +1,4 @@
+import { Alert } from '../../../shared/ui/alert'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
@@ -54,30 +55,32 @@ export function MessageComposerModal({
         </>
       }
     >
-      {!isBroadcast ? (
-        <div className="rounded-xl border border-blue-500/15 bg-blue-50 px-4 py-3 text-xs text-[var(--muted-strong)] dark:bg-blue-600/10 dark:text-[var(--muted)]">
-          {t('ceo.messages.receiver')}:
-          <span className="ml-2 font-bold text-[var(--foreground)] dark:text-white">{values.receiver_label}</span>
+      <div className="space-y-[18px]">
+        {!isBroadcast ? (
+          <Alert tone="blue">
+            {t('ceo.messages.receiver')}:
+            <span className="ml-2 font-semibold text-[var(--foreground)]">{values.receiver_label}</span>
+          </Alert>
+        ) : null}
+        <div className="grid gap-[18px]">
+          <Label className="grid gap-2">
+            <span className="ui-input-label">{t('ceo.messages.subject')}</span>
+            <Input
+              value={values.subject}
+              placeholder={t('ceo.messages.subject_placeholder')}
+              onChange={(event) => onChange('subject', event.target.value)}
+            />
+          </Label>
+          <Label className="grid gap-2">
+            <span className="ui-input-label">{t('ceo.messages.body')}</span>
+            <Textarea
+              rows={7}
+              value={values.body}
+              placeholder={t('ceo.messages.body_placeholder')}
+              onChange={(event) => onChange('body', event.target.value)}
+            />
+          </Label>
         </div>
-      ) : null}
-      <div className="mt-4 grid gap-4">
-        <Label className="grid gap-2">
-          <span className="text-xs font-bold tracking-tight text-[var(--foreground)] dark:text-white">{t('ceo.messages.subject')}</span>
-          <Input
-            value={values.subject}
-            placeholder={t('ceo.messages.subject_placeholder')}
-            onChange={(event) => onChange('subject', event.target.value)}
-          />
-        </Label>
-        <Label className="grid gap-2">
-          <span className="text-xs font-bold tracking-tight text-[var(--foreground)] dark:text-white">{t('ceo.messages.body')}</span>
-          <Textarea
-            rows={7}
-            value={values.body}
-            placeholder={t('ceo.messages.body_placeholder')}
-            onChange={(event) => onChange('body', event.target.value)}
-          />
-        </Label>
       </div>
     </Modal>
   )

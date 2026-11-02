@@ -7,55 +7,65 @@ import type {
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
 import { formatCompactNumber, formatShortMonthDay, getLocalizedShortWeekdayName } from '../../../shared/lib/format'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
+import { StatCard } from '../../../shared/ui/stat-card'
+
+const CHART_GRID_LINE = '#ECEEF3'
+const CHART_AXIS_TEXT = '#8A90A2'
 
 const tonePalette = {
   blue: {
-    line: '#60a5fa',
-    areaStart: 'rgba(96,165,250,0.28)',
-    areaEnd: 'rgba(96,165,250,0.02)',
-    dot: '#bfdbfe',
-    ring: 'border-blue-500/16 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.08),0_0_24px_rgba(59,130,246,0.05)]',
+    line: '#2B59FF',
+    areaStart: 'rgba(43,89,255,0.18)',
+    areaEnd: 'rgba(43,89,255,0)',
+    dot: '#FFFFFF',
     label: 'text-[var(--blue-text)]',
     badge: 'blue' as const,
-    bar: 'bg-blue-400',
   },
   violet: {
-    line: '#a78bfa',
-    areaStart: 'rgba(167,139,250,0.26)',
-    areaEnd: 'rgba(167,139,250,0.03)',
-    dot: '#ddd6fe',
-    ring: 'border-violet-500/16 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.08),0_0_24px_rgba(139,92,246,0.05)]',
-    label: 'text-[#A78BFA]',
+    line: '#6A3FE0',
+    areaStart: 'rgba(106,63,224,0.16)',
+    areaEnd: 'rgba(106,63,224,0)',
+    dot: '#FFFFFF',
+    label: 'text-[var(--violet-text)]',
     badge: 'violet' as const,
-    bar: 'bg-violet-400',
-  },
-  emerald: {
-    line: '#34d399',
-    areaStart: 'rgba(52,211,153,0.26)',
-    areaEnd: 'rgba(52,211,153,0.03)',
-    dot: '#a7f3d0',
-    ring: 'border-emerald-500/16 shadow-[inset_0_0_0_1px_rgba(34,197,94,0.08),0_0_24px_rgba(34,197,94,0.05)]',
-    label: 'text-[var(--success-text)]',
-    badge: 'success' as const,
-    bar: 'bg-emerald-400',
-  },
-  amber: {
-    line: '#fbbf24',
-    areaStart: 'rgba(251,191,36,0.24)',
-    areaEnd: 'rgba(251,191,36,0.03)',
-    dot: '#fde68a',
-    ring: 'border-amber-500/16 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.08),0_0_24px_rgba(245,158,11,0.05)]',
-    label: 'text-[var(--warning-text)]',
-    badge: 'warning' as const,
-    bar: 'bg-amber-400',
   },
 } as const
 
 type AccentTone = keyof typeof tonePalette
+
+const iconTotalLeads = (
+  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19" />
+    <circle cx="10" cy="8" r="3.2" />
+    <path d="M17 11.2a3 3 0 0 0 0-6M20 19v-1.2a3.4 3.4 0 0 0-2.4-3.2" />
+  </svg>
+)
+
+const iconThisWeek = (
+  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3.5" y="5" width="17" height="15" rx="3" />
+    <path d="M8 3.5v3M16 3.5v3M3.5 10h17" />
+  </svg>
+)
+
+const iconStarted = (
+  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M13.5 3.5 5 13.8h5l-1.5 6.7 8.5-10.3h-5z" />
+  </svg>
+)
+
+const iconConversion = (
+  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" />
+  </svg>
+)
 
 type CrmDashboardChartsProps = {
   weekly?: SalesDashboardChartsResponse
@@ -119,9 +129,9 @@ function MiniStat({
   value: string
 }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{label}</p>
-      <p className="mt-2 text-xl font-bold tracking-tight text-[var(--foreground)]">{value}</p>
+    <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+      <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--caption)]">{label}</p>
+      <p className="mt-2 text-[22px] font-bold tracking-[-0.03em] tabular-nums text-[var(--foreground)]" data-ui-number="true">{value}</p>
     </div>
   )
 }
@@ -177,11 +187,11 @@ function TrendChartCard({
   const labelStep = totalPoints <= 7 ? 1 : Math.max(1, Math.ceil(totalPoints / 6))
 
   return (
-    <Card className={cn('p-5', colors.ring)}>
+    <Card>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className={cn('text-[10px] font-semibold uppercase tracking-[0.22em]', colors.label)}>{title}</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--foreground)]">
+          <p className={cn('text-[11px] font-semibold tracking-[0.08em] uppercase', colors.label)}>{title}</p>
+          <h3 className="mt-2 text-[26px] font-bold tracking-[-0.03em] text-[var(--foreground)]">
             {payload
               ? `${formatCompactNumber(payload.summary.total_period_leads)} ${t('crm.charts.units.leads')}`
               : t('crm.charts.states.no_dataset')}
@@ -191,14 +201,14 @@ function TrendChartCard({
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={colors.badge}>{payload ? formatRangeLabel(payload) : t('crm.charts.states.waiting_api')}</Badge>
           {payload ? (
-            <Badge variant="outline">{formatPercent(payload.summary.conversion_rate_percent)} {t('crm.charts.metric.conversion').toLowerCase()}</Badge>
+            <Badge variant="secondary">{formatPercent(payload.summary.conversion_rate_percent)} {t('crm.charts.metric.conversion').toLowerCase()}</Badge>
           ) : null}
         </div>
       </div>
 
       {payload && trend.length > 0 ? (
         <>
-          <div className="mt-5 overflow-hidden rounded-xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] px-2 py-4">
+          <div className="mt-[18px] overflow-hidden rounded-[18px] bg-[var(--accent-soft)] px-2 py-4">
             <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-56 w-full">
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -217,8 +227,8 @@ function TrendChartCard({
                     x2={chartWidth - padX}
                     y1={y}
                     y2={y}
-                    stroke="rgba(148,163,184,0.22)"
-                    strokeDasharray="3 6"
+                    stroke={CHART_GRID_LINE}
+                    strokeWidth="1"
                   />
                 )
               })}
@@ -229,7 +239,7 @@ function TrendChartCard({
                   d={linePath}
                   fill="none"
                   stroke={colors.line}
-                  strokeWidth="3"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -263,9 +273,9 @@ function TrendChartCard({
                     x={point.x}
                     y={chartHeight - 2}
                     textAnchor={textAnchor}
-                    fill="rgba(100,116,139,0.88)"
-                    fontSize="10"
-                    fontWeight="600"
+                    fill={CHART_AXIS_TEXT}
+                    fontSize="11"
+                    fontWeight="500"
                   >
                     {formatTickLabel(point.date, totalPoints)}
                   </text>
@@ -274,7 +284,7 @@ function TrendChartCard({
             </svg>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="mt-[18px] grid gap-3 sm:grid-cols-3">
             <MiniStat
               label={t('crm.charts.metric.today')}
               value={formatCompactNumber(payload.summary.today)}
@@ -290,7 +300,7 @@ function TrendChartCard({
           </div>
         </>
       ) : (
-        <div className="mt-5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-8 text-sm text-[var(--muted-strong)]">
+        <div className="mt-[18px] rounded-[18px] bg-[var(--muted-surface)] px-4 py-8 text-sm text-[var(--muted)]">
           {t('crm.charts.states.trend_empty')}
         </div>
       )}
@@ -317,11 +327,9 @@ export function CrmDashboardCharts({
   ]), [t])
 
   return (
-    <Card className="overflow-hidden border-[var(--border)] p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)]">{t('crm.charts.header.title')}</h2>
-        </div>
+    <div className="space-y-[18px]">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <h2 className="text-[22px] font-bold tracking-[-0.02em] text-[var(--foreground)]">{t('crm.charts.header.title')}</h2>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="min-w-[180px]">
@@ -340,20 +348,28 @@ export function CrmDashboardCharts({
       </div>
 
       {summary ? (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <MiniStat
+        <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            solid
+            icon={iconTotalLeads}
             label={t('crm.charts.metric.total_30d')}
             value={formatCompactNumber(summary.total_period_leads)}
           />
-          <MiniStat
+          <StatCard
+            icon={iconThisWeek}
+            iconTone="blue"
             label={t('crm.charts.metric.this_week')}
             value={formatCompactNumber(summary.this_week)}
           />
-          <MiniStat
+          <StatCard
+            icon={iconStarted}
+            iconTone="lime"
             label={t('crm.charts.metric.started')}
             value={formatCompactNumber(summary.project_started)}
           />
-          <MiniStat
+          <StatCard
+            icon={iconConversion}
+            iconTone="violet"
             label={t('crm.charts.metric.conversion')}
             value={formatPercent(summary.conversion_rate_percent)}
           />
@@ -361,25 +377,21 @@ export function CrmDashboardCharts({
       ) : null}
 
       {isError && !weekly && !monthly ? (
-        <div className="mt-5 rounded-xl border border-dashed border-rose-500/30 bg-rose-50 px-5 py-8 text-sm text-rose-700 dark:bg-rose-500/[0.06] dark:text-rose-100/80">
-          {t('crm.charts.states.load_failed')}
-        </div>
+        <Alert tone="danger">{t('crm.charts.states.load_failed')}</Alert>
       ) : (
-        <>
-          <div className="mt-5 grid gap-4 xl:grid-cols-2">
-            <TrendChartCard
-              title={t('crm.charts.card.weekly_title')}
-              payload={weekly}
-              accent="blue"
-            />
-            <TrendChartCard
-              title={t('crm.charts.card.monthly_title')}
-              payload={monthly}
-              accent="violet"
-            />
-          </div>
-        </>
+        <div className="grid gap-[18px] xl:grid-cols-2">
+          <TrendChartCard
+            title={t('crm.charts.card.weekly_title')}
+            payload={weekly}
+            accent="blue"
+          />
+          <TrendChartCard
+            title={t('crm.charts.card.monthly_title')}
+            payload={monthly}
+            accent="violet"
+          />
+        </div>
       )}
-    </Card>
+    </div>
   )
 }

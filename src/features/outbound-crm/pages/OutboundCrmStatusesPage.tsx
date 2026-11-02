@@ -14,8 +14,10 @@ import { Button } from '../../../shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../shared/ui/card'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
+import { PageHeader } from '../../../shared/ui/page-header'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { Textarea } from '../../../shared/ui/textarea'
 
@@ -57,6 +59,18 @@ function toStatusName(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 }
 
+function EditGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+  )
+}
+
+function TrashGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
+  )
+}
+
 function BooleanToggle({
   value,
   onChange,
@@ -74,10 +88,10 @@ function BooleanToggle({
         type="button"
         onClick={() => onChange(true)}
         className={cn(
-          'rounded-xl border px-4 py-3 text-left text-sm transition',
+          'min-h-11 rounded-[14px] px-4 py-3 text-left text-sm transition-colors',
           value
-            ? 'border-emerald-400/35 bg-emerald-500/10 text-(--foreground)'
-            : 'border-(--border) bg-(--surface-elevated) text-(--muted-strong) hover:border-(--border-hover)',
+            ? 'bg-[var(--success-dim)] font-semibold text-[var(--success-text)]'
+            : 'bg-[var(--input-surface)] font-medium text-[var(--muted-strong)] hover:bg-[var(--input-surface-hover)]',
         )}
       >
         {trueLabel}
@@ -86,10 +100,10 @@ function BooleanToggle({
         type="button"
         onClick={() => onChange(false)}
         className={cn(
-          'rounded-xl border px-4 py-3 text-left text-sm transition',
+          'min-h-11 rounded-[14px] px-4 py-3 text-left text-sm transition-colors',
           !value
-            ? 'border-amber-400/35 bg-amber-500/10 text-(--foreground)'
-            : 'border-(--border) bg-(--surface-elevated) text-(--muted-strong) hover:border-(--border-hover)',
+            ? 'bg-[var(--warning-dim)] font-semibold text-[var(--warning-text)]'
+            : 'bg-[var(--input-surface)] font-medium text-[var(--muted-strong)] hover:bg-[var(--input-surface-hover)]',
         )}
       >
         {falseLabel}
@@ -241,36 +255,28 @@ export function OutboundCrmStatusesPage() {
   }
 
   return (
-    <section className="space-y-4 page-enter">
-      <Card variant="glass" noPadding className="overflow-hidden rounded-xl">
-        <div className="px-6 py-5 sm:px-8 sm:py-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--blue-text)]">Outbound CRM</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-[1.75rem]">
-                {t('outbound_crm.statuses.title', 'Statuses')}
-              </h1>
-              <p className="mt-1 text-[13px] text-[var(--muted-strong)]">
-                {t('outbound_crm.statuses.description', 'Lead pipeline stages used only by Outbound CRM.')}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => navigate('/outbound-crm')}>
-                {t('customers.detail.back_to', 'Back to {{title}}', { title: 'Outbound CRM' })}
-              </Button>
-              <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => void statusesQuery.refetch()}>
-                {t('common.refresh', 'Refresh')}
-              </Button>
-              <Button size="sm" className="rounded-xl" onClick={openCreateDialog}>
-                {t('outbound_crm.statuses.actions.create', 'Create status')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
+    <section className="space-y-[18px] page-enter">
+      <PageHeader
+        eyebrow="Outbound CRM"
+        title={t('outbound_crm.statuses.title', 'Statuses')}
+        description={t('outbound_crm.statuses.description', 'Lead pipeline stages used only by Outbound CRM.')}
+        actions={(
+          <>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/outbound-crm')}>
+              {t('customers.detail.back_to', 'Back to {{title}}', { title: 'Outbound CRM' })}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => void statusesQuery.refetch()}>
+              {t('common.refresh', 'Refresh')}
+            </Button>
+            <Button size="sm" onClick={openCreateDialog}>
+              {t('outbound_crm.statuses.actions.create', 'Create status')}
+            </Button>
+          </>
+        )}
+      />
 
       <Card noPadding>
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
           <CardTitle>{t('outbound_crm.statuses.list_title', 'Pipeline statuses')}</CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="success">{activeCount} {t('outbound_crm.statuses.active', 'Active')}</Badge>
@@ -299,10 +305,10 @@ export function OutboundCrmStatusesPage() {
                   render: (row) => (
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: row.color || '#64748b' }} />
-                        <p className="font-semibold text-(--foreground)">{row.display_name}</p>
+                        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color || '#8A90A2' }} />
+                        <p className="font-semibold text-[var(--foreground)]">{row.display_name}</p>
                       </div>
-                      <p className="mt-1 text-xs uppercase tracking-[0.14em] text-(--muted)">{row.name}</p>
+                      <p className="mt-1 text-[12px] text-[var(--muted)]">{row.name}</p>
                     </div>
                   ),
                 },
@@ -310,7 +316,7 @@ export function OutboundCrmStatusesPage() {
                   key: 'description',
                   header: t('outbound_crm.statuses.fields.description', 'Description'),
                   render: (row) => (
-                    <span className="text-sm text-(--muted-strong)">{row.description || '-'}</span>
+                    <span className="text-[13.5px] text-[var(--muted-strong)]">{row.description || '-'}</span>
                   ),
                 },
                 {
@@ -341,12 +347,12 @@ export function OutboundCrmStatusesPage() {
                   header: t('customers.table.actions', 'Actions'),
                   render: (row) => (
                     <div className="flex items-center gap-1">
-                      <button type="button" title={t('common.edit', 'Edit')} onClick={() => openEditDialog(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button type="button" title={t('outbound_crm.statuses.actions.delete', 'Delete status')} onClick={() => void handleDelete(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                      </button>
+                      <IconButton size="sm" label={t('common.edit', 'Edit')} onClick={() => openEditDialog(row)}>
+                        <EditGlyph />
+                      </IconButton>
+                      <IconButton size="sm" tone="danger" label={t('outbound_crm.statuses.actions.delete', 'Delete status')} onClick={() => void handleDelete(row)}>
+                        <TrashGlyph />
+                      </IconButton>
                     </div>
                   ),
                 },
@@ -377,10 +383,10 @@ export function OutboundCrmStatusesPage() {
           </>
         )}
       >
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-4">
+        <div className="grid gap-[18px] lg:grid-cols-2">
+          <div className="space-y-[18px]">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-(--foreground)">
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">
                 {t('outbound_crm.statuses.fields.display_name', 'Display name')}
               </Label>
               <Input
@@ -391,7 +397,7 @@ export function OutboundCrmStatusesPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-(--foreground)">
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">
                 {t('outbound_crm.statuses.fields.name', 'System name')}
               </Label>
               <Input
@@ -401,14 +407,14 @@ export function OutboundCrmStatusesPage() {
                 placeholder={toStatusName(form.displayName) || 'contacted'}
               />
               {dialogMode === 'create' ? (
-                <p className="mt-1.5 text-xs text-(--muted)">
+                <p className="mt-1.5 text-[12.5px] text-[var(--muted)]">
                   {t('outbound_crm.statuses.fields.name_hint', 'Leave empty to generate from display name.')}
                 </p>
               ) : null}
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-(--foreground)">
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">
                 {t('outbound_crm.statuses.fields.description', 'Description')}
               </Label>
               <Textarea
@@ -418,9 +424,9 @@ export function OutboundCrmStatusesPage() {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-[18px]">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-(--foreground)">
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">
                 {t('outbound_crm.statuses.fields.color', 'Color')}
               </Label>
               <div className="flex flex-wrap items-center gap-3">
@@ -428,7 +434,7 @@ export function OutboundCrmStatusesPage() {
                   type="color"
                   value={form.color}
                   onChange={(event) => setForm((current) => ({ ...current, color: event.target.value }))}
-                  className="h-12 w-18 rounded-xl p-2"
+                  className="h-11 w-16 rounded-[14px] p-1.5"
                 />
                 <div className="flex flex-wrap gap-2">
                   {statusColorPresets.map((color) => (
@@ -437,8 +443,8 @@ export function OutboundCrmStatusesPage() {
                       type="button"
                       onClick={() => setForm((current) => ({ ...current, color }))}
                       className={cn(
-                        'h-8 w-8 rounded-full border-2 transition',
-                        form.color === color ? 'border-(--foreground)' : 'border-transparent',
+                        'h-9 w-9 rounded-full border-2 transition-colors',
+                        form.color === color ? 'border-[var(--foreground)]' : 'border-transparent',
                       )}
                       style={{ backgroundColor: color }}
                       aria-label={color}
@@ -449,7 +455,7 @@ export function OutboundCrmStatusesPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-(--foreground)">
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">
                 {t('outbound_crm.statuses.fields.order', 'Order')}
               </Label>
               <Input
@@ -460,7 +466,7 @@ export function OutboundCrmStatusesPage() {
             </div>
 
             <div>
-              <p className="mb-2 block text-sm font-semibold text-(--foreground)">
+              <p className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">
                 {t('outbound_crm.statuses.fields.state', 'State')}
               </p>
               <BooleanToggle

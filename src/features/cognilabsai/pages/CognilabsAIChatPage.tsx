@@ -13,9 +13,16 @@ import { useAuth } from '../../auth/hooks/useAuth'
 import { crmService } from '../../../shared/api/services/crm.service'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
+import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
+import { Dialog } from '../../../shared/ui/dialog'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
+import { Skeleton } from '../../../shared/ui/skeleton'
+import { Tabs, type TabItem } from '../../../shared/ui/tabs'
 import { Textarea } from '../../../shared/ui/textarea'
+import { toneDot, toneText, type Tone } from '../../../shared/ui/tone'
 import { SelectField } from '../../../shared/ui/select-field'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
 import { Switch } from '../../../shared/ui/switch'
@@ -98,16 +105,16 @@ function getChannelLabel(channel: string) {
 }
 
 function getChannelBadgeClass(channel: string) {
-  if (channel === 'instagram') return 'bg-pink-500'
-  if (channel === 'telegram') return 'bg-[#2AABEE]'
-  if (channel === 'website_ai' || channel === 'website') return 'bg-emerald-500'
+  if (channel === 'instagram') return 'bg-[var(--violet-text)]'
+  if (channel === 'telegram') return 'bg-[var(--primary)]'
+  if (channel === 'website_ai' || channel === 'website') return 'bg-[var(--success-text)]'
   return 'bg-[var(--muted)]'
 }
 
-function getPresenceTone(status: string | null | undefined) {
-  if (status === 'online') return 'text-emerald-400'
-  if (status === 'recently') return 'text-amber-400'
-  return 'text-[var(--muted)]'
+function getPresenceTone(status: string | null | undefined): Tone {
+  if (status === 'online') return 'success'
+  if (status === 'recently') return 'warning'
+  return 'neutral'
 }
 
 function formatPresenceLabel(
@@ -178,7 +185,7 @@ function AvatarOrInitials({
         src={resolved}
         alt={name}
         onError={() => setFailed(true)}
-        className={cn(sizeClass, 'shrink-0 rounded-full object-cover ring-1 ring-[var(--border)]')}
+        className={cn(sizeClass, 'shrink-0 rounded-full bg-[var(--muted-surface)] object-cover')}
       />
     )
   }
@@ -195,7 +202,7 @@ function AvatarOrInitials({
     <div
       className={cn(
         sizeClass,
-        'shrink-0 rounded-full bg-[var(--blue-dim)] text-[var(--blue-text)] font-medium flex items-center justify-center select-none ring-1 ring-[var(--border)]',
+        'flex shrink-0 items-center justify-center rounded-full bg-[var(--blue-dim)] font-semibold tracking-[-0.01em] text-[var(--blue-text)] select-none',
       )}
     >
       {initials}
@@ -242,9 +249,14 @@ function ChannelIcon({ channel }: { channel: string }) {
   )
 }
 
-function ChannelFilterIcon({ channel }: { channel: ChannelTab }) {
+function ChannelFilterIcon({ channel, label }: { channel: ChannelTab; label: string }) {
   return (
-    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/15 text-current">
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className="inline-flex h-5 w-5 items-center justify-center"
+    >
       <ChannelIcon channel={channel} />
     </span>
   )
@@ -253,27 +265,27 @@ function ChannelFilterIcon({ channel }: { channel: ChannelTab }) {
 function PauseReasonBadge({ reason }: { reason: string | null }) {
   if (!reason) return null
   return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-400 uppercase tracking-wider">
+    <Badge variant="warning" size="sm">
       {reason}
-    </span>
+    </Badge>
   )
 }
 
 function AiFollowUpBadge({ dueAt, sentAt }: { dueAt: string | null; sentAt: string | null }) {
   if (sentAt) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+      <Badge variant="blue" size="sm">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         AI Follow-up ✓
-      </span>
+      </Badge>
     )
   }
   if (dueAt) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-[10px] font-semibold text-purple-400">
+      <Badge variant="violet" size="sm">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l3 3" strokeLinecap="round" strokeLinejoin="round"/></svg>
         AI Follow-up
-      </span>
+      </Badge>
     )
   }
   return null
@@ -314,9 +326,9 @@ function translateStageLabel(stage: string | null, label: string | null): string
 function AiStageBadge({ stage, label }: { stage: string | null; label: string | null }) {
   if (!stage) return null
   return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-semibold text-indigo-400 capitalize">
+    <Badge variant="violet" size="sm" className="capitalize">
       {translateStageLabel(stage, label)}
-    </span>
+    </Badge>
   )
 }
 
@@ -333,18 +345,11 @@ function PresenceBadge({
 
   if (!label) return null
 
+  const tone = getPresenceTone(isOnline === true ? 'online' : status)
+
   return (
-    <span className={cn('inline-flex items-center gap-1 text-[11px] font-medium', getPresenceTone(status))}>
-      <span
-        className={cn(
-          'h-1.5 w-1.5 rounded-full',
-          isOnline === true || status === 'online'
-            ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.55)]'
-            : status === 'recently'
-              ? 'bg-amber-400'
-              : 'bg-[var(--muted)]',
-        )}
-      />
+    <span className={cn('inline-flex items-center gap-1.5 text-[11.5px] font-medium', toneText[tone])}>
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', toneDot[tone])} />
       <span className="truncate">{label}</span>
     </span>
   )
@@ -376,20 +381,20 @@ function ConversationListItem({
       type="button"
       onClick={onSelect}
       className={cn(
-        'group w-full rounded-xl px-3 py-2.5 text-left transition-all duration-150 relative flex items-center gap-3 border border-transparent',
+        'group relative flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors duration-150',
         isActive
-          ? 'bg-[var(--accent-soft)] border-[var(--border-hover)] shadow-sm'
+          ? 'bg-[var(--blue-dim)]'
           : 'hover:bg-[var(--accent-soft)]',
       )}
     >
       {isActive && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-7 bg-blue-500 rounded-r-full" />
+        <div className="absolute left-0 top-1/2 h-7 w-0.5 -translate-y-1/2 rounded-r-full bg-[var(--primary)]" />
       )}
 
-      <div className="relative shrink-0 ml-1">
+      <div className="relative ml-1 shrink-0">
         <AvatarOrInitials avatarUrl={conv.client_avatar_url} name={name} size="md" />
         <div className={cn(
-          'absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-[var(--background)] flex items-center justify-center',
+          'absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--surface)] text-white',
           getChannelBadgeClass(conv.channel)
         )}>
           <ChannelIcon channel={conv.channel} />
@@ -398,23 +403,20 @@ function ConversationListItem({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-1.5">
-          <div className="min-w-0 flex items-center gap-2">
-            <p className={cn(
-              'truncate text-[13.5px] font-semibold leading-snug',
-              isActive ? 'text-[var(--foreground)]' : 'text-[var(--foreground)]'
-            )}>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm leading-snug font-semibold tracking-[-0.01em] text-[var(--foreground)]">
               {name}
             </p>
             {conv.unread_count > 0 ? (
-              <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white">
+              <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-[11px] font-bold tabular-nums text-white">
                 {conv.unread_count > 99 ? '99+' : conv.unread_count}
               </span>
             ) : null}
           </div>
           {timeLabel && (
             <span className={cn(
-              'shrink-0 text-[11px] font-medium group-hover:hidden',
-              isActive ? 'text-[var(--muted)]' : 'text-[var(--caption)]'
+              'shrink-0 text-[11.5px] font-medium tabular-nums group-hover:hidden',
+              isActive ? 'text-[var(--muted-strong)]' : 'text-[var(--caption)]'
             )}>
               {timeLabel}
             </span>
@@ -424,7 +426,7 @@ function ConversationListItem({
               <button
                 type="button"
                 onClick={onOpenCrm}
-                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2 text-[11px] font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--success-dim)] px-2.5 text-[11.5px] font-semibold text-[var(--success-text)] transition-colors hover:bg-[var(--success-strong)]"
                 title="CRM"
               >
                 <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -446,29 +448,29 @@ function ConversationListItem({
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className={cn(
-              'truncate text-[12px] leading-snug',
-              isActive ? 'text-[var(--muted)]' : 'text-[var(--caption)]'
+              'truncate text-[12.5px] leading-snug',
+              isActive ? 'text-[var(--muted-strong)]' : 'text-[var(--muted)]'
             )}>
               {conv.last_message_preview || <span className="italic text-[var(--caption)]">Xabar yo'q</span>}
             </p>
-            {presenceLabel ? (
-              <div className="mt-1">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 empty:hidden">
+              {presenceLabel ? (
                 <PresenceBadge
                   status={conv.telegram_presence_status}
                   isOnline={conv.telegram_is_online}
                   lastSeenAt={conv.telegram_last_seen_at}
                 />
-              </div>
-            ) : null}
-            {conv.ai_stage && !isActive ? (
-              <AiStageBadge stage={conv.ai_stage} label={conv.ai_stage_label} />
-            ) : null}
-            {!conv.crm_customer_id && !conv.lead_phone_number && (conv.ai_follow_up_due_at || conv.ai_follow_up_sent_at) ? (
-              <AiFollowUpBadge dueAt={conv.ai_follow_up_due_at} sentAt={conv.ai_follow_up_sent_at} />
-            ) : null}
+              ) : null}
+              {conv.ai_stage && !isActive ? (
+                <AiStageBadge stage={conv.ai_stage} label={conv.ai_stage_label} />
+              ) : null}
+              {!conv.crm_customer_id && !conv.lead_phone_number && (conv.ai_follow_up_due_at || conv.ai_follow_up_sent_at) ? (
+                <AiFollowUpBadge dueAt={conv.ai_follow_up_due_at} sentAt={conv.ai_follow_up_sent_at} />
+              ) : null}
+            </div>
           </div>
           {conv.pause_reason && !isActive ? (
-            <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-amber-400" />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning-text)]" />
           ) : null}
         </div>
       </div>
@@ -513,12 +515,12 @@ function MessageBubble({ msg, isNextSameSender }: { msg: MessageItem; isNextSame
 
   if (isSystem) {
     return (
-      <div className="flex justify-center my-3">
-        <div className="max-w-[78%] rounded-2xl border border-(--border) bg-(--muted-surface) px-4 py-2 text-center shadow-sm">
-          <div className="mb-1 flex items-center justify-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-(--caption)">
-            <span className="rounded-full bg-(--accent-soft) px-2 py-0.5 text-[10px] font-bold text-(--muted-strong)">Auto follow-up</span>
+      <div className="my-3 flex justify-center">
+        <div className="max-w-[78%] rounded-[18px] bg-[var(--surface)] px-[18px] py-3 text-center">
+          <div className="mb-1.5 flex items-center justify-center">
+            <Badge variant="secondary" size="sm">Auto follow-up</Badge>
           </div>
-          <p className="whitespace-pre-wrap wrap-break-word text-[12.5px] text-(--foreground)">{msg.text}</p>
+          <p className="whitespace-pre-wrap wrap-break-word text-[12.5px] text-[var(--muted-strong)]">{msg.text}</p>
         </div>
       </div>
     )
@@ -536,33 +538,32 @@ function MessageBubble({ msg, isNextSameSender }: { msg: MessageItem; isNextSame
     )}>
       <div
         className={cn(
-          'relative max-w-[75%] sm:max-w-[62%] px-3.5 py-2 text-[13.5px] leading-relaxed shadow-sm',
+          'relative max-w-[75%] px-3.5 py-2.5 text-[13.5px] leading-relaxed sm:max-w-[62%]',
           isClient
-            ? 'bg-[var(--surface-elevated)] text-[var(--foreground)] border border-[var(--border)] rounded-xl rounded-bl-sm'
-            : 'bg-[var(--surface-elevated)] text-[var(--foreground)] border border-[var(--border)] rounded-xl rounded-br-sm',
-          isNextSameSender && (isClient ? 'rounded-bl-sm' : 'rounded-br-sm')
+            ? 'rounded-[18px] rounded-bl-[7px] bg-[var(--surface)] text-[var(--foreground)]'
+            : 'rounded-[18px] rounded-br-[7px] bg-[var(--primary)] text-white',
         )}
       >
         {(isAi || msg.sender_type === 'operator') && (
-          <p className={cn('mb-0.5 text-[10.5px] font-bold tracking-wide uppercase', !isClient ? 'text-[var(--foreground)]' : 'text-(--foreground)')}>
+          <p className={cn('mb-0.5 text-[11px] font-bold tracking-wide uppercase', isClient ? 'text-[var(--muted)]' : 'text-white/70')}>
             {isAi ? 'AI' : msg.operator_name_snapshot || 'Operator'}
           </p>
         )}
         {isUnreadClientMessage ? (
-          <p className={cn('mb-1 text-[10px] font-bold uppercase tracking-[0.18em]', !isClient ? 'text-[var(--foreground)]' : 'text-(--foreground)')}>
+          <p className="mb-1 text-[11px] font-bold tracking-[0.18em] uppercase text-[var(--primary)]">
             New
           </p>
         ) : null}
 
         <div className="flex flex-col gap-2">
           {isAnimatedSticker && mediaUrl && animationData ? (
-            <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-black/5 p-1">
+            <div className="overflow-hidden rounded-[14px] bg-[var(--muted-surface)] p-1">
               <div className="h-[180px] w-[180px] sm:h-[220px] sm:w-[220px]">
                 <Lottie animationData={animationData as object} loop autoplay />
               </div>
             </div>
           ) : isStaticSticker && mediaUrl ? (
-            <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-black/5">
+            <div className="overflow-hidden rounded-[14px] bg-[var(--muted-surface)]">
               <img
                 src={mediaUrl}
                 alt={msg.text?.trim() || 'Sticker'}
@@ -574,17 +575,17 @@ function MessageBubble({ msg, isNextSameSender }: { msg: MessageItem; isNextSame
           ) : null}
 
           {!isSticker || !mediaUrl || showStickerCaption || (isAnimatedSticker && !animationData) ? (
-            <p className="whitespace-pre-wrap wrap-break-word text-(--foreground)">{msg.text}</p>
+            <p className="whitespace-pre-wrap wrap-break-word">{msg.text}</p>
           ) : null}
         </div>
 
         <div className={cn(
-          'flex items-center gap-1 mt-1',
+          'mt-1 flex items-center gap-1',
           isClient ? 'justify-start' : 'justify-end'
         )}>
-          <span className={cn('text-[10px] font-medium', !isClient ? 'text-[#2AABEE]' : 'text-(--muted)')}>{timeStr}</span>
+          <span className={cn('text-[11px] font-medium tabular-nums', isClient ? 'text-[var(--caption)]' : 'text-white/70')}>{timeStr}</span>
           {!isClient && (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5 text-[#2AABEE]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5 text-white/70">
               <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
@@ -596,8 +597,8 @@ function MessageBubble({ msg, isNextSameSender }: { msg: MessageItem; isNextSame
 
 function DateSeparator({ date }: { date: string }) {
   return (
-    <div className="flex justify-center my-4 sticky top-2 z-20">
-      <span className="rounded-full bg-[var(--card)] border border-[var(--border)] px-4 py-1 text-[11px] font-semibold text-[var(--muted)] shadow-sm backdrop-blur-md">
+    <div className="sticky top-2 z-20 my-4 flex justify-center">
+      <span className="rounded-full bg-[var(--surface)] px-4 py-1.5 text-[11.5px] font-semibold text-[var(--muted)]">
         {date}
       </span>
     </div>
@@ -670,161 +671,36 @@ function TelegramSearchModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-[420px] rounded-xl bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xl)] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-[#2AABEE]/10 border border-[#2AABEE]/20 flex items-center justify-center text-[#2AABEE]">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.932z"/>
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-[14px] font-semibold text-white">Yangi Telegram Chat</h3>
-              <p className="text-[11px] text-[var(--muted)]">Username, @handle yoki link qidiring</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[var(--accent-soft)] text-[var(--muted)] hover:text-[var(--muted-strong)] transition-colors"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="px-5 py-4">
-          <div className="relative">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--caption)]">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <Input
-              placeholder="dev949, @username, t.me/link..."
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setSelectedPeer(null)
-              }}
-              className="h-10 pl-10 pr-4 bg-[var(--input-surface)] border-[var(--border)] focus:border-[#2AABEE]/50 rounded-xl text-[13.5px] text-[var(--foreground)] placeholder:text-[var(--caption)]"
-              autoFocus
-            />
-          </div>
-        </div>
-
-        {/* Results */}
-        <div className="px-2 pb-2">
-          {isSearching ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <div className="h-5 w-5 border-2 border-[#2AABEE]/30 border-t-[#2AABEE] rounded-full animate-spin" />
-              <p className="mt-2 text-[12px] text-[var(--muted)]">Qidirilmoqda...</p>
-            </div>
-          ) : results.length > 0 ? (
-            <div className="max-h-[260px] space-y-0.5 overflow-y-auto custom-scrollbar-visible">
-              {results.map((item) => (
-                <button
-                  key={item.peer}
-                  type="button"
-                  onClick={() => setSelectedPeer(item)}
-                  className={cn(
-                    'w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all',
-                    selectedPeer?.peer === item.peer
-                      ? 'bg-[#2AABEE]/10 border border-[#2AABEE]/25'
-                      : 'border border-transparent hover:bg-[var(--accent-soft)]',
-                  )}
-                >
-                  <AvatarOrInitials avatarUrl={item.avatar_url} name={item.full_name || item.username || item.peer} size="md" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-semibold text-[var(--foreground)]">{item.full_name || item.username || item.peer}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {item.username && (
-                        <p className="truncate text-[12px] text-[var(--muted)]">@{item.username}</p>
-                      )}
-                      {item.presence_status || item.is_online === true ? (
-                        <PresenceBadge
-                          status={item.presence_status}
-                          isOnline={item.is_online}
-                          lastSeenAt={item.last_seen_at}
-                        />
-                      ) : null}
-                      {item.existing_conversation_id && (
-                        <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-1.5 py-0.5">
-                          Mavjud chat
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {selectedPeer?.peer === item.peer && (
-                    <div className="shrink-0 h-4 w-4 rounded-full bg-[#2AABEE] flex items-center justify-center">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-2.5 w-2.5 text-white">
-                        <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          ) : query.trim() && !isSearching ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="h-10 w-10 rounded-full bg-[var(--muted-surface)] flex items-center justify-center mb-2">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-[var(--caption)]">
-                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-                </svg>
-              </div>
-              <p className="text-[13px] font-medium text-[var(--muted)]">Natija topilmadi</p>
-              <p className="text-[11px] text-[var(--caption)] mt-0.5">Boshqa username yoki link kiriting</p>
-            </div>
-          ) : !query.trim() ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <p className="text-[12px] text-[var(--caption)]">Username yoki Telegram link kiriting</p>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Message input (new chat) */}
-        {selectedPeer && !selectedPeer.existing_conversation_id ? (
-          <div className="px-5 pb-4">
-            <div className="relative rounded-xl border border-[var(--border)] bg-[var(--input-surface)] focus-within:border-[#2AABEE]/40 transition-colors">
-              <textarea
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                rows={3}
-                placeholder="Birinchi xabarni yozing..."
-                className="w-full resize-none rounded-xl bg-transparent px-4 py-3 text-[13.5px] text-[var(--foreground)] focus:outline-none placeholder:text-[var(--caption)]"
-              />
-            </div>
-          </div>
-        ) : null}
-
-        {/* Actions */}
-        <div className="flex gap-2 px-5 pb-5">
+    <Dialog
+      open
+      onClose={onClose}
+      title="Yangi Telegram Chat"
+      description="Username, @handle yoki link qidiring"
+      className="max-w-[460px]"
+      headerIcon={
+        <span className="flex h-9 w-9 items-center justify-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--primary)]">
+          <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="currentColor" aria-hidden="true">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.932z"/>
+          </svg>
+        </span>
+      }
+      footer={
+        <>
           {onBackToCrm ? (
             <Button
               variant="ghost"
               onClick={onBackToCrm}
               disabled={isSending}
-              className="flex-1 h-10 rounded-xl font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] text-[13px]"
+              leftIcon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
+                  <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              }
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="mr-1.5 h-4 w-4">
-                <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
               CRM ga qaytish
             </Button>
           ) : null}
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            disabled={isSending}
-            className={cn(
-              'h-10 rounded-xl font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] text-[13px]',
-              onBackToCrm ? 'flex-1' : 'w-full',
-            )}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSending}>
             Bekor qilish
           </Button>
           {selectedPeer ? (
@@ -837,7 +713,6 @@ function TelegramSearchModal({
                 }
               }}
               disabled={isSending || (!selectedPeer.existing_conversation_id && !messageText.trim())}
-              className="flex-[2] h-10 rounded-xl font-semibold bg-[#2AABEE] hover:bg-[#229ED9] text-white text-[13px]"
             >
               {selectedPeer.existing_conversation_id
                 ? 'Chatni ochish'
@@ -846,9 +721,116 @@ function TelegramSearchModal({
                   : 'Boshlash'}
             </Button>
           ) : null}
+        </>
+      }
+    >
+      <div className="space-y-[18px]">
+        {/* Search */}
+        <div className="relative">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <Input
+            placeholder="dev949, @username, t.me/link..."
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setSelectedPeer(null)
+            }}
+            className="pl-10"
+            autoFocus
+          />
         </div>
+
+        {/* Results */}
+        <div>
+          {isSearching ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 rounded-[14px] px-3 py-2.5">
+                  <Skeleton rounded="full" className="h-11 w-11 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton rounded="full" className="h-3 w-2/5" />
+                    <Skeleton rounded="full" className="h-3 w-3/4" />
+                  </div>
+                </div>
+              ))}
+              <p className="pt-1 text-center text-[12.5px] text-[var(--muted)]">Qidirilmoqda...</p>
+            </div>
+          ) : results.length > 0 ? (
+            <div className="custom-scrollbar-visible max-h-[260px] space-y-1 overflow-y-auto">
+              {results.map((item) => (
+                <button
+                  key={item.peer}
+                  type="button"
+                  onClick={() => setSelectedPeer(item)}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors',
+                    selectedPeer?.peer === item.peer
+                      ? 'bg-[var(--blue-dim)]'
+                      : 'hover:bg-[var(--accent-soft)]',
+                  )}
+                >
+                  <AvatarOrInitials avatarUrl={item.avatar_url} name={item.full_name || item.username || item.peer} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold tracking-[-0.01em] text-[var(--foreground)]">{item.full_name || item.username || item.peer}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      {item.username && (
+                        <p className="truncate text-[12.5px] text-[var(--muted)]">@{item.username}</p>
+                      )}
+                      {item.presence_status || item.is_online === true ? (
+                        <PresenceBadge
+                          status={item.presence_status}
+                          isOnline={item.is_online}
+                          lastSeenAt={item.last_seen_at}
+                        />
+                      ) : null}
+                      {item.existing_conversation_id && (
+                        <Badge variant="success" size="sm">
+                          Mavjud chat
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {selectedPeer?.peer === item.peer && (
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--primary)]">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-2.5 w-2.5 text-white">
+                        <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : query.trim() && !isSearching ? (
+            <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] px-6 py-8 text-center">
+              <div className="mb-2.5 flex h-11 w-11 items-center justify-center rounded-[14px] bg-[var(--surface)]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-[var(--muted)]">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+              <p className="text-[13px] font-semibold text-[var(--foreground)]">Natija topilmadi</p>
+              <p className="mt-1 text-[12.5px] text-[var(--muted)]">Boshqa username yoki link kiriting</p>
+            </div>
+          ) : !query.trim() ? (
+            <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] px-6 py-6 text-center">
+              <p className="text-[12.5px] text-[var(--muted)]">Username yoki Telegram link kiriting</p>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Message input (new chat) */}
+        {selectedPeer && !selectedPeer.existing_conversation_id ? (
+          <Textarea
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            rows={3}
+            placeholder="Birinchi xabarni yozing..."
+          />
+        ) : null}
       </div>
-    </div>
+    </Dialog>
   )
 }
 
@@ -1320,11 +1302,11 @@ export function CognilabsAIChatPage() {
     ? `${followUpModeLabel}${selectedConversation?.follow_up_sent_at ? ' · Sent' : selectedConversation?.follow_up_due_at ? ' · Pending' : ''}`
     : 'Disabled'
 
-  const tabItems: Array<{ key: ChannelTab; label: string }> = [
-    { key: 'all', label: 'All' },
-    { key: 'instagram', label: 'Instagram' },
-    { key: 'telegram', label: 'Telegram' },
-    { key: 'website', label: 'Website' },
+  const tabItems: TabItem<ChannelTab>[] = [
+    { value: 'all', label: <ChannelFilterIcon channel="all" label="All" /> },
+    { value: 'instagram', label: <ChannelFilterIcon channel="instagram" label="Instagram" /> },
+    { value: 'telegram', label: <ChannelFilterIcon channel="telegram" label="Telegram" /> },
+    { value: 'website', label: <ChannelFilterIcon channel="website" label="Website" /> },
   ]
 
   function handleReturnToCrm() {
@@ -1334,91 +1316,79 @@ export function CognilabsAIChatPage() {
 
   return (
     <div
-      className="flex min-h-0 flex-col bg-[var(--background)] text-[var(--foreground)] font-sans -mx-4 -mt-4 -mb-6 sm:-mx-6 lg:-mx-8"
-      style={{ height: 'calc(100vh - 74px)' }}
+      className="flex min-h-0 flex-col bg-[var(--background)] text-[var(--foreground)] font-sans -mx-7 -mt-[26px] -mb-10"
+      style={{ height: 'var(--page-h-bleed)' }}
     >
-      <div className="flex min-h-0 flex-1 overflow-hidden w-full">
+      <div className="flex min-h-0 w-full flex-1 gap-[18px] overflow-hidden p-[18px]">
 
         {/* Left panel – conversations list */}
         <div
           className={cn(
-            'flex w-full flex-col md:w-[340px] lg:w-[400px] xl:w-[440px] bg-[var(--surface)] border-r border-[var(--border)] overflow-hidden shrink-0',
+            'flex w-full shrink-0 flex-col overflow-hidden rounded-[24px] bg-[var(--surface)] md:w-[340px] lg:w-[400px] xl:w-[440px]',
             showChat && isMobile ? 'hidden' : 'flex',
           )}
         >
           {/* Header */}
-          <div className="shrink-0 px-4 pt-4 pb-3 border-b border-[var(--border)]">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-[15px] font-bold text-[var(--foreground)] tracking-tight">Xabarlar</h2>
-              <button
+          <div className="shrink-0 px-[18px] pt-[18px] pb-4">
+            <div className="mb-[18px] flex items-center justify-between gap-3">
+              <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--foreground)]">Xabarlar</h2>
+              <IconButton
+                tone="primary"
+                label="Yangi Telegram chat"
+                className="bg-[var(--blue-dim)] hover:bg-[var(--blue-soft)]"
                 onClick={() => {
                   setNewTelegramInitialQuery('')
                   setShowNewTelegramModal(true)
                 }}
-                className="h-8 w-8 flex items-center justify-center rounded-xl bg-[#2AABEE]/10 text-[#2AABEE] hover:bg-[#2AABEE] hover:text-white transition-colors border border-[#2AABEE]/20"
-                title="Yangi Telegram chat"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
                   <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-              </button>
+              </IconButton>
             </div>
 
             {/* Filter tabs */}
-            <div className="flex items-center gap-1 mb-3">
-              {tabItems.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  aria-label={tab.label}
-                  title={tab.label}
-                  className={cn(
-                    'flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-all inline-flex items-center justify-center',
-                    activeTab === tab.key
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-[var(--muted)] hover:text-[var(--muted-strong)] hover:bg-[var(--accent-soft)]',
-                  )}
-                >
-                  <ChannelFilterIcon channel={tab.key} />
-                </button>
-              ))}
-            </div>
+            <Tabs
+              items={tabItems}
+              value={activeTab}
+              onChange={setActiveTab}
+              className="mb-3"
+            />
 
             {/* Pagination */}
             {conversationsTotal > 50 && (
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] text-[var(--caption)]">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <span className="text-[11.5px] font-medium tabular-nums text-[var(--muted)]">
                   {conversationsPage * 50 + 1}–{Math.min((conversationsPage + 1) * 50, conversationsTotal)} / {conversationsTotal}
                 </span>
                 <div className="flex items-center gap-1">
-                  <button
-                    type="button"
+                  <IconButton
+                    size="sm"
+                    label="Oldingi"
                     onClick={() => setConversationsPage((p) => Math.max(0, p - 1))}
                     disabled={conversationsPage === 0 || conversationsQuery.isLoading}
-                    className="h-6 w-6 flex items-center justify-center rounded-lg text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
                       <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                  </button>
-                  <button
-                    type="button"
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    label="Keyingi"
                     onClick={() => setConversationsPage((p) => p + 1)}
                     disabled={(conversationsPage + 1) * 50 >= conversationsTotal || conversationsQuery.isLoading}
-                    className="h-6 w-6 flex items-center justify-center rounded-lg text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
                       <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                  </button>
+                  </IconButton>
                 </div>
               </div>
             )}
 
             {/* Search */}
             <div className="relative">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--caption)]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
                 <circle cx="11" cy="11" r="8" />
                 <path d="m21 21-4.3-4.3" />
               </svg>
@@ -1426,31 +1396,31 @@ export function CognilabsAIChatPage() {
                 placeholder="Qidiruv..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 pl-8 pr-3 text-[13px] bg-[var(--input-surface)] border-[var(--border)] focus:border-blue-500/40 rounded-xl text-[var(--foreground)] placeholder:text-[var(--caption)]"
+                className="min-h-9 rounded-[11px] pl-9 text-[13px]"
               />
             </div>
           </div>
 
           {/* Chat list */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar-visible p-2">
+          <div className="custom-scrollbar-visible flex-1 overflow-y-auto px-[10px] pb-[18px]">
             {conversationsQuery.isLoading ? (
               <div className="space-y-1">
                 {[1,2,3,4,5].map(i => (
-                  <div key={i} className="flex gap-3 animate-pulse px-3 py-2.5 rounded-xl">
-                    <div className="h-11 w-11 rounded-full bg-[var(--accent-soft)] shrink-0" />
+                  <div key={i} className="flex gap-3 rounded-[14px] px-3 py-2.5">
+                    <Skeleton rounded="full" className="h-11 w-11 shrink-0" />
                     <div className="flex-1 space-y-2 py-1">
-                      <div className="h-2.5 w-2/5 bg-[var(--accent-soft)] rounded" />
-                      <div className="h-2.5 w-3/4 bg-[var(--accent-soft)] rounded" />
+                      <Skeleton rounded="full" className="h-2.5 w-2/5" />
+                      <Skeleton rounded="full" className="h-2.5 w-3/4" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : filteredConversations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-[var(--caption)]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10 mb-3 opacity-40">
+              <div className="mx-2 mt-2 flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] px-6 py-14 text-center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 h-10 w-10 text-[var(--caption)]">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <p className="text-[13px] font-medium">Chatlar topilmadi</p>
+                <p className="text-[13px] font-semibold text-[var(--muted-strong)]">Chatlar topilmadi</p>
               </div>
             ) : (
               <div className="space-y-0.5">
@@ -1478,68 +1448,71 @@ export function CognilabsAIChatPage() {
         {/* Right panel – chat */}
         <div
           className={cn(
-            'flex min-h-0 flex-1 flex-col bg-[var(--background)] overflow-hidden relative',
+            'relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[var(--surface)]',
             !showChat && isMobile ? 'hidden' : 'flex',
           )}
         >
           {!selectedConversation ? (
-            <div className="flex flex-1 flex-col items-center justify-center text-center px-6">
-              <div className="h-16 w-16 rounded-xl bg-[var(--muted-surface)] border border-[var(--border)] flex items-center justify-center mb-4">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-8 w-8 text-[var(--caption)]">
+            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[18px] bg-[var(--muted-surface)]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-8 w-8 text-[var(--muted)]">
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <h3 className="text-[15px] font-semibold text-[var(--muted-strong)] mb-1">Chat tanlang</h3>
-              <p className="text-[13px] text-[var(--caption)] max-w-xs">Chap tomondagi ro'yxatdan suhbatni tanlang</p>
+              <h3 className="mb-1 text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">Chat tanlang</h3>
+              <p className="max-w-xs text-[13px] text-[var(--muted)]">Chap tomondagi ro'yxatdan suhbatni tanlang</p>
             </div>
           ) : (
             <>
               {/* Chat Header */}
-              <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3 bg-[var(--surface)] backdrop-blur-xl z-30 border-b border-[var(--border)]">
+              <div className="z-30 flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-[22px] py-3.5">
                 <div className="flex items-center gap-3 min-w-0">
                   {isMobile ? (
-                    <button
-                      type="button"
+                    <IconButton
+                      size="sm"
+                      label="Orqaga"
                       onClick={() => setSelectedConversationId(null)}
-                      className="rounded-lg p-1.5 hover:bg-[var(--accent-soft)] text-[var(--muted)]"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
                         <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                    </button>
+                    </IconButton>
                   ) : null}
                   <div className="relative shrink-0">
                     <AvatarOrInitials avatarUrl={selectedConversation.client_avatar_url} name={getClientName(selectedConversation)} size="sm" />
                     <div className={cn(
-                      'absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-[var(--surface)] flex items-center justify-center',
+                      'absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--surface)] text-white',
                       getChannelBadgeClass(selectedConversation.channel)
                     )}>
                       <ChannelIcon channel={selectedConversation.channel} />
                     </div>
                     </div>
                   {returnCustomerId ? (
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={handleReturnToCrm}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--input-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--foreground)] transition hover:border-[var(--border-hover)] hover:bg-[var(--input-surface-hover)]"
+                      className="shrink-0 px-2.5 text-[12px]"
                       title="Back to CRM"
+                      leftIcon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4" aria-hidden="true">
+                          <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      }
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4" aria-hidden="true">
-                        <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
                       CRM
-                    </button>
+                    </Button>
                   ) : null}
                     <div className="min-w-0">
-                      <h3 className="truncate text-[14px] font-bold text-[var(--foreground)]">{getClientName(selectedConversation)}</h3>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="inline-flex items-center gap-1 text-[11px] text-[var(--muted)] font-medium">
+                      <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{getClientName(selectedConversation)}</h3>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--muted)]">
                           <ChannelIcon channel={selectedConversation.channel} />
                           {getChannelLabel(selectedConversation.channel)}
                         </span>
                         {selectedConversation.channel === 'telegram' && (
                           <>
-                            <span className="h-1 w-1 rounded-full bg-[var(--border)] shrink-0" />
+                            <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
                             <PresenceBadge
                               status={selectedConversation.telegram_presence_status}
                               isOnline={selectedConversation.telegram_is_online}
@@ -1549,47 +1522,47 @@ export function CognilabsAIChatPage() {
                         )}
                         {selectedConversation.pause_reason && (
                           <>
-                            <span className="h-1 w-1 rounded-full bg-[var(--border)] shrink-0" />
+                            <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
                           <PauseReasonBadge reason={selectedConversation.pause_reason} />
                         </>
                       )}
                       {selectedConversation.last_operator_name && (
                         <>
-                          <span className="h-1 w-1 rounded-full bg-[var(--border)] shrink-0" />
-                          <span className="text-[11px] text-[var(--muted)]">{selectedConversation.last_operator_name}</span>
+                          <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
+                          <span className="text-[11.5px] font-medium text-[var(--muted)]">{selectedConversation.last_operator_name}</span>
                         </>
                       )}
                       {selectedConversation.ai_stage && (
                         <>
-                          <span className="h-1 w-1 rounded-full bg-[var(--border)] shrink-0" />
+                          <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
                           <AiStageBadge stage={selectedConversation.ai_stage} label={selectedConversation.ai_stage_label} />
                         </>
                       )}
                       {!selectedConversation.crm_customer_id && !selectedConversation.lead_phone_number && (selectedConversation.ai_follow_up_due_at || selectedConversation.ai_follow_up_sent_at) && (
                         <>
-                          <span className="h-1 w-1 rounded-full bg-[var(--border)] shrink-0" />
+                          <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
                           <AiFollowUpBadge dueAt={selectedConversation.ai_follow_up_due_at} sentAt={selectedConversation.ai_follow_up_sent_at} />
                         </>
                       )}
                     </div>
                     {/* Lead info row */}
                     {(selectedConversation.lead_phone_number || selectedConversation.lead_full_name) && (
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {selectedConversation.lead_phone_number && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                          <Badge variant="success" size="sm" className="tabular-nums">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-2.5 w-2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                             {selectedConversation.lead_phone_number}
-                          </span>
+                          </Badge>
                         )}
                         {selectedConversation.lead_full_name && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-[var(--accent-soft)] border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)]">
+                          <Badge variant="secondary" size="sm">
                             {selectedConversation.lead_full_name}
-                          </span>
+                          </Badge>
                         )}
                         {selectedConversation.lead_business_field && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-[var(--accent-soft)] border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)]">
+                          <Badge variant="secondary" size="sm">
                             {selectedConversation.lead_business_field}
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     )}
@@ -1598,31 +1571,37 @@ export function CognilabsAIChatPage() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   {returnToKanban && selectedConversationId ? (
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={() => navigate(`/cognilabsai/kanban?highlight=${selectedConversationId}`)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--input-surface)] px-3 text-[12px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface-hover)]"
+                      className="text-[12px]"
                       title="Kanbanga qaytish"
+                      leftIcon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5" aria-hidden="true">
+                          <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      }
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5" aria-hidden="true">
-                        <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
                       Kanban
-                    </button>
+                    </Button>
                   ) : null}
                   {selectedConversation.crm_customer_id ? (
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
+                      variant="success"
                       onClick={() => handleOpenCrm(selectedConversation.crm_customer_id!)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-[12px] font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                      className="text-[12px]"
                       title="CRM da ko'rish"
+                      leftIcon={
+                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                          <path d="M2.5 5.25A1.75 1.75 0 0 1 4.25 3.5h7.5A1.75 1.75 0 0 1 13.5 5.25v5.5a1.75 1.75 0 0 1-1.75 1.75h-7.5A1.75 1.75 0 0 1 2.5 10.75z" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M5 6.25h6M5 8h3.25" strokeLinecap="round" />
+                        </svg>
+                      }
                     >
-                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                        <path d="M2.5 5.25A1.75 1.75 0 0 1 4.25 3.5h7.5A1.75 1.75 0 0 1 13.5 5.25v5.5a1.75 1.75 0 0 1-1.75 1.75h-7.5A1.75 1.75 0 0 1 2.5 10.75z" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M5 6.25h6M5 8h3.25" strokeLinecap="round" />
-                      </svg>
                       CRM
-                    </button>
+                    </Button>
                   ) : null}
                   {supportsAi && (
                     <Button
@@ -1631,10 +1610,10 @@ export function CognilabsAIChatPage() {
                       onClick={() => handleToggleAi(aiPaused ? 'resume' : 'pause')}
                       disabled={isTogglingAi}
                       className={cn(
-                        "h-8 px-3 rounded-lg text-[12px] font-semibold transition-colors border",
+                        'text-[12px]',
                         aiPaused
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500 hover:text-white"
-                          : "bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500 hover:text-white"
+                          ? 'bg-[var(--success-dim)] text-[var(--success-text)] hover:bg-[var(--success-strong)] hover:text-[var(--success-text)]'
+                          : 'bg-[var(--warning-dim)] text-[var(--warning-text)] hover:bg-[var(--warning-soft)] hover:text-[var(--warning-text)]'
                       )}
                     >
                       {isTogglingAi ? '...' : aiPaused ? 'AI yoqish' : "AI to'xtatish"}
@@ -1644,18 +1623,18 @@ export function CognilabsAIChatPage() {
               </div>
 
               {/* Follow-up */}
-              <div className="shrink-0 px-4 sm:px-6 py-3 bg-(--surface) border-b border-(--border)">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--border) bg-(--muted-surface) px-4 py-3">
+              <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-[18px] py-[18px] sm:px-[22px]">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-[12px] font-semibold text-(--foreground)">Follow-up</h4>
-                      <span className="rounded-full border border-(--border) bg-(--card) px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-(--muted)">
+                      <h4 className="text-[13px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">Follow-up</h4>
+                      <Badge variant="secondary" size="sm">
                         {followUpStatusLabel}
-                      </span>
+                      </Badge>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <Switch
                       checked={followUpDraft.enabled}
                       onChange={(v) => setFollowUpDraft((prev) => ({ ...prev, enabled: v }))}
@@ -1665,7 +1644,6 @@ export function CognilabsAIChatPage() {
                       size="sm"
                       onClick={() => void handleSaveFollowUp()}
                       disabled={isSavingFollowUp || !followUpDraft.enabled}
-                      className="h-8 px-3"
                     >
                       {isSavingFollowUp ? 'Saving...' : 'Save follow-up'}
                     </Button>
@@ -1673,9 +1651,9 @@ export function CognilabsAIChatPage() {
                 </div>
 
                 {followUpDraft.enabled ? (
-                  <div className="mt-3 grid gap-3 lg:grid-cols-[170px_1fr]">
+                  <div className="mt-[18px] grid gap-[18px] lg:grid-cols-[170px_1fr]">
                     <div>
-                      <label className="mb-1 block text-[11px] font-semibold text-(--foreground)">Mode</label>
+                      <Label className="mb-1.5 block">Mode</Label>
                       <SelectField
                         value={followUpDraft.mode}
                         onValueChange={(value) => setFollowUpDraft((prev) => ({ ...prev, mode: value as FollowUpMode }))}
@@ -1683,13 +1661,12 @@ export function CognilabsAIChatPage() {
                           { value: 'global', label: 'Global' },
                           { value: 'custom', label: 'Custom' },
                         ]}
-                        className="h-10"
                       />
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-[18px] sm:grid-cols-2">
                       <div className={followUpDraft.mode === 'global' ? 'opacity-60' : ''}>
-                        <label className="mb-1 block text-[11px] font-semibold text-(--foreground)">Delay (minutes)</label>
+                        <Label className="mb-1.5 block">Delay (minutes)</Label>
                         <Input
                           type="number"
                           min={1}
@@ -1697,11 +1674,12 @@ export function CognilabsAIChatPage() {
                           value={followUpDraft.mode === 'custom' ? followUpDraft.delay_minutes : ''}
                           onChange={(e) => setFollowUpDraft((prev) => ({ ...prev, delay_minutes: e.target.value }))}
                           placeholder="60"
+                          className="tabular-nums"
                         />
                       </div>
 
                       <div className={followUpDraft.mode === 'global' ? 'opacity-60 sm:col-span-2' : 'sm:col-span-2'}>
-                        <label className="mb-1 block text-[11px] font-semibold text-(--foreground)">Message</label>
+                        <Label className="mb-1.5 block">Message</Label>
                         <Textarea
                           disabled={followUpDraft.mode !== 'custom'}
                           value={followUpDraft.mode === 'custom' ? followUpDraft.message : ''}
@@ -1718,13 +1696,13 @@ export function CognilabsAIChatPage() {
               {/* Messages */}
               <div
                 ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 custom-scrollbar-visible relative"
+                className="custom-scrollbar-visible relative flex-1 overflow-y-auto bg-[var(--accent-soft)] px-[18px] py-[18px] sm:px-[22px]"
               >
-                <div className="flex flex-col min-h-full">
+                <div className="flex min-h-full flex-col">
                   <div className="flex-1" />
                   {messages.length === 0 && !isLoadingMessages ? (
-                    <div className="py-10 flex flex-col items-center justify-center text-center">
-                      <div className="px-4 py-2 rounded-xl bg-[var(--muted-surface)] border border-[var(--border)]">
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <div className="rounded-full bg-[var(--surface)] px-4 py-2">
                         <p className="text-[13px] font-medium text-[var(--muted)]">Xabarlar ko'rsatiladi</p>
                       </div>
                     </div>
@@ -1752,8 +1730,8 @@ export function CognilabsAIChatPage() {
                     </div>
                   )}
                   {isLoadingMessages ? (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--background)]/40 backdrop-blur-[1px]">
-                      <div className="h-5 w-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--accent-soft)]/70">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--border-hover)] border-t-[var(--primary)]" />
                     </div>
                   ) : null}
                 </div>
@@ -1761,18 +1739,18 @@ export function CognilabsAIChatPage() {
 
               {/* AI Controls bar (Instagram only) */}
               {supportsAi && (
-                <div className="shrink-0 flex items-center flex-wrap gap-2 px-4 py-2 bg-[var(--surface)] border-t border-[var(--border)]">
-                  <span className="text-[11px] text-[var(--caption)] font-medium uppercase tracking-wider">AI:</span>
+                <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--surface)] px-[18px] py-2.5 sm:px-[22px]">
+                  <span className="ui-eyebrow">AI:</span>
 
                   <button
                     type="button"
                     onClick={() => handleToggleAi(aiPaused ? 'resume' : 'pause')}
                     disabled={isTogglingAi}
                     className={cn(
-                      'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold border transition-colors',
+                      'inline-flex h-[30px] items-center gap-1.5 rounded-[9px] px-2.5 text-[12px] font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40',
                       aiPaused
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
+                        ? 'bg-[var(--success-dim)] text-[var(--success-text)] hover:bg-[var(--success-strong)]'
+                        : 'bg-[var(--warning-dim)] text-[var(--warning-text)] hover:bg-[var(--warning-soft)]'
                     )}
                   >
                     {aiPaused ? (
@@ -1791,7 +1769,7 @@ export function CognilabsAIChatPage() {
                     type="button"
                     onClick={() => void handleRetryAi()}
                     disabled={isTogglingAi}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold border border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                    className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--blue-dim)] px-2.5 text-[12px] font-semibold text-[var(--blue-text)] transition-colors hover:bg-[var(--blue-soft)] disabled:pointer-events-none disabled:opacity-40"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
                       <path d="M1 4v6h6M23 20v-6h-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -1803,36 +1781,36 @@ export function CognilabsAIChatPage() {
                   {/* Pause until */}
                   {showPauseUntil ? (
                     <div className="flex items-center gap-1.5">
-                      <input
+                      <Input
                         type="datetime-local"
                         value={pauseUntilDate}
                         onChange={(e) => setPauseUntilDate(e.target.value)}
-                        className="h-7 rounded-lg px-2 text-[11px] bg-[var(--input-surface)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none focus:border-blue-500/50"
+                        className="h-[30px] min-h-[30px] w-auto rounded-[9px] px-2 py-0 text-[12px] tabular-nums"
                       />
                       <button
                         type="button"
                         onClick={() => void handlePauseUntil()}
                         disabled={isTogglingAi || !pauseUntilDate}
-                        className="inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-semibold border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                        className="inline-flex h-[30px] items-center rounded-[9px] bg-[var(--warning-dim)] px-2.5 text-[12px] font-semibold text-[var(--warning-text)] transition-colors hover:bg-[var(--warning-soft)] disabled:pointer-events-none disabled:opacity-40"
                       >
                         Tasdiqlash
                       </button>
-                      <button
-                        type="button"
+                      <IconButton
+                        size="sm"
+                        label="Bekor qilish"
                         onClick={() => { setShowPauseUntil(false); setPauseUntilDate('') }}
-                        className="inline-flex items-center rounded-lg px-2 py-1 text-[11px] font-semibold border border-[var(--border)] text-[var(--muted)] hover:bg-[var(--accent-soft)] transition-colors"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
                           <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
                         </svg>
-                      </button>
+                      </IconButton>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setShowPauseUntil(true)}
                       disabled={isTogglingAi}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold border border-[var(--border)] text-[var(--muted)] hover:bg-[var(--accent-soft)] transition-colors"
+                      className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--input-surface)] px-2.5 text-[12px] font-semibold text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface-hover)] disabled:pointer-events-none disabled:opacity-40"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
                         <circle cx="12" cy="12" r="10" />
@@ -1845,8 +1823,8 @@ export function CognilabsAIChatPage() {
               )}
 
               {/* Composer */}
-              <div className="shrink-0 bg-[var(--surface)] px-4 py-3 z-30 border-t border-[var(--border)]">
-                <div className="flex items-end gap-2.5 bg-[var(--input-surface)] rounded-xl px-3 py-2 border border-[var(--border)] focus-within:border-blue-500/40 focus-within:ring-1 focus-within:ring-blue-500/20 transition-all">
+              <div className="z-30 shrink-0 border-t border-[var(--border)] bg-[var(--surface)] px-[18px] py-[18px] sm:px-[22px]">
+                <div className="flex items-end gap-2.5 rounded-[18px] bg-[var(--input-surface)] px-3 py-2 transition-colors focus-within:bg-[var(--surface)] focus-within:ring-2 focus-within:ring-[var(--primary)]/20">
                   <textarea
                     ref={textareaRef}
                     value={messageText}
@@ -1859,17 +1837,17 @@ export function CognilabsAIChatPage() {
                     }}
                     placeholder="Xabar yozing..."
                     rows={1}
-                    className="flex-1 resize-none bg-transparent border-0 focus:ring-0 text-[13.5px] leading-relaxed py-1.5 max-h-[200px] overflow-y-auto custom-scrollbar-none placeholder:text-[var(--caption)] text-[var(--foreground)] outline-none"
+                    className="custom-scrollbar-none max-h-[200px] flex-1 resize-none overflow-y-auto border-0 bg-transparent py-1.5 text-[13.5px] leading-relaxed text-[var(--foreground)] outline-none placeholder:text-[var(--muted)] focus:ring-0"
                     style={{ fieldSizing: 'content' } as React.CSSProperties}
                   />
                   <button
                     onClick={() => void handleSend()}
                     disabled={isSending || !messageText.trim()}
                     className={cn(
-                      "h-8 w-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 mb-0.5",
+                      "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] transition-colors duration-150",
                       messageText.trim()
-                        ? "bg-blue-600 text-white hover:bg-blue-500 shadow-sm"
-                        : "bg-[var(--accent-soft)] text-[var(--caption)] cursor-not-allowed"
+                        ? "bg-[var(--primary)] text-white shadow-[var(--elev-primary)] hover:bg-[var(--primary-hover)]"
+                        : "cursor-not-allowed bg-[var(--surface)] text-[var(--caption)]"
                     )}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cn("h-4 w-4", messageText.trim() && "ml-0.5")}>

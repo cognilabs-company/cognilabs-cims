@@ -13,6 +13,7 @@ type ActionsMenuProps = {
   items: ActionsMenuItem[]
   label?: ReactNode
   triggerVariant?: 'icon' | 'button'
+  className?: string
 }
 
 type MenuPosition = {
@@ -33,7 +34,10 @@ function getMenuPosition(trigger: HTMLElement, itemCount: number): MenuPosition 
   return { top, left }
 }
 
-export function ActionsMenu({ items, label, triggerVariant = 'icon' }: ActionsMenuProps) {
+const triggerBase =
+  'inline-flex items-center justify-center rounded-[11px] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50'
+
+export function ActionsMenu({ items, label, triggerVariant = 'icon', className }: ActionsMenuProps) {
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState<MenuPosition | null>(null)
@@ -77,7 +81,6 @@ export function ActionsMenu({ items, label, triggerVariant = 'icon' }: ActionsMe
 
   if (items.length === 0) return null
 
-  // If there's only 1 item, show its name directly and make it a single action button
   if (items.length === 1) {
     const item = items[0]
     return (
@@ -86,8 +89,12 @@ export function ActionsMenu({ items, label, triggerVariant = 'icon' }: ActionsMe
         onClick={item.onSelect}
         title={typeof label === 'string' ? label : item.label}
         className={cn(
-          'inline-flex items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-[var(--border)] bg-transparent hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)] text-xs font-medium',
-          item.tone === 'danger' ? 'text-red-500 hover:text-red-600 border-red-500/20 hover:border-red-500/40' : 'text-[var(--foreground)]',
+          triggerBase,
+          'h-9 px-3.5 text-[13px] font-semibold',
+          item.tone === 'danger'
+            ? 'bg-[var(--danger-dim)] text-[var(--danger-text)] hover:bg-[#FADFDF]'
+            : 'border border-[var(--border-hover)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]',
+          className,
         )}
       >
         {item.icon && <span className="mr-2 flex h-3.5 w-3.5 items-center justify-center">{item.icon}</span>}
@@ -96,7 +103,6 @@ export function ActionsMenu({ items, label, triggerVariant = 'icon' }: ActionsMe
     )
   }
 
-  // If 2 or more items, always show dots icon as per requirement
   return (
     <>
       <button
@@ -107,10 +113,11 @@ export function ActionsMenu({ items, label, triggerVariant = 'icon' }: ActionsMe
         onClick={openMenu}
         title={typeof label === 'string' ? label : undefined}
         className={cn(
-          'inline-flex items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+          triggerBase,
           triggerVariant === 'icon'
-            ? 'h-9 w-9 border border-[var(--border)] bg-transparent hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]'
-            : 'h-9 px-4 py-2 border border-[var(--border)] bg-transparent hover:bg-[var(--accent-soft)] text-sm font-medium',
+            ? 'h-9 w-9 text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]'
+            : 'h-9 border border-[var(--border-hover)] bg-[var(--surface)] px-4 text-[13px] font-semibold text-[var(--foreground)] hover:bg-[var(--input-surface)]',
+          className,
         )}
       >
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
@@ -121,10 +128,10 @@ export function ActionsMenu({ items, label, triggerVariant = 'icon' }: ActionsMe
       {isOpen && position && typeof document !== 'undefined'
         ? createPortal(
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} aria-hidden="true" />
+              <div className="fixed inset-0 z-[119]" onClick={() => setIsOpen(false)} aria-hidden="true" />
               <div
                 role="menu"
-                className="fixed z-50 min-w-[220px] overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-1 text-[var(--foreground)] shadow-[var(--shadow-lg)] animate-in fade-in zoom-in-95 duration-100"
+                className="fixed z-[120] min-w-[220px] overflow-hidden rounded-[14px] bg-[var(--surface)] p-1.5 text-[var(--foreground)] shadow-[var(--elev-lg)] ring-1 ring-[var(--border)]"
                 style={position}
               >
                 {items.map((item) => (
@@ -137,10 +144,10 @@ export function ActionsMenu({ items, label, triggerVariant = 'icon' }: ActionsMe
                       item.onSelect()
                     }}
                     className={cn(
-                      'relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-[var(--accent-soft)] focus:text-[var(--accent-foreground)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-[var(--accent-soft)]',
+                      'relative flex w-full items-center rounded-[9px] px-2.5 py-2 text-sm font-medium outline-none transition-colors select-none',
                       item.tone === 'danger'
-                        ? 'text-red-500 hover:text-red-600'
-                        : 'text-[var(--foreground)]',
+                        ? 'text-[var(--danger-text)] hover:bg-[var(--danger-dim)]'
+                        : 'text-[var(--foreground)] hover:bg-[var(--input-surface)]',
                     )}
                   >
                     {item.icon && <span className="mr-2 flex h-3.5 w-3.5 items-center justify-center">{item.icon}</span>}

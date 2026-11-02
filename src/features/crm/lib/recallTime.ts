@@ -27,10 +27,10 @@ export function getRecallTimeTone(value?: string | null, now = new Date()): Reca
 export function getRecallTimeToneClasses(tone: RecallTimeTone) {
   switch (tone) {
     case 'past':
-      return 'border-red-500/30 bg-red-500/15 text-red-700 dark:text-red-300'
+      return 'border-transparent bg-[var(--danger-dim)] text-[var(--danger-text)]'
     case 'active':
-      return 'border-yellow-500/35 bg-yellow-500/18 text-yellow-700 dark:text-yellow-300'
+      return 'border-transparent bg-[var(--warning-dim)] text-[var(--warning-text)]'
     case 'future':
-      return 'border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+      return 'border-transparent bg-[var(--success-dim)] text-[var(--success-text)]'
   }
 }

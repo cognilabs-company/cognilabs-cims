@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useTheme } from '../../../app/hooks/useTheme'
 import { projectsService, type ProjectRecord, type UserSummary } from '../../../shared/api/services/projects.service'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
@@ -10,6 +9,7 @@ import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
+import { Skeleton } from '../../../shared/ui/skeleton'
 import { StateBlock } from '../../../shared/ui/state-block'
 import { useToast } from '../../../shared/toast/useToast'
 import { useAuth } from '../../auth/hooks/useAuth'
@@ -31,13 +31,11 @@ function parseMemberId(rawValue: string | null) {
 }
 
 export function ProjectsListPage() {
-  const { theme } = useTheme()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
   const { user } = useAuth()
   const lt = translateCurrentLiteral
   const [searchParams, setSearchParams] = useSearchParams()
-  const isDark = theme === 'dark'
 
   const canManageProjects = Boolean(user)
   const priorityConfigMap = getPriorityConfig()
@@ -330,11 +328,11 @@ export function ProjectsListPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 page-enter pt-4">
-        <Card variant="glass" className="rounded-xl">
-          <div className="flex flex-col gap-4">
+      <div className="page-enter flex flex-col gap-[18px]">
+        <Card>
+          <div className="flex flex-col gap-[18px]">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">{lt('Members')}</h2>
+              <h2 className="ui-section-title text-[var(--foreground)]">{lt('Members')}</h2>
 
               <div className="flex items-center gap-2">
                 {selectedMemberId !== null ? (
@@ -368,14 +366,11 @@ export function ProjectsListPage() {
             {membersPanelLoading ? (
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {Array.from({ length: 8 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-20 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--muted-surface)]"
-                  />
+                  <Skeleton key={index} rounded="xl" className="h-[84px]" />
                 ))}
               </div>
             ) : members.length === 0 ? (
-              <p className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-5 text-sm text-[var(--muted)]">
+              <p className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-5 text-sm text-[var(--muted)]">
                 {lt('Members are not available yet.')}
               </p>
             ) : (
@@ -384,20 +379,24 @@ export function ProjectsListPage() {
                   type="button"
                   onClick={() => selectMember(null)}
                   className={cn(
-                    'flex min-h-[84px] items-center justify-between gap-4 rounded-xl border px-4 py-4 text-left shadow-[0_8px_22px_rgba(148,163,184,0.10)] transition-all duration-150',
+                    'flex min-h-[84px] items-center justify-between gap-4 rounded-[18px] px-4 py-4 text-left transition-colors duration-150',
                     selectedMemberId === null
-                      ? isDark
-                        ? 'border-blue-500/45 bg-[linear-gradient(180deg,rgba(17,24,39,0.94),rgba(15,23,42,0.98))] text-blue-50 ring-1 ring-blue-400/20 shadow-[0_14px_28px_rgba(37,99,235,0.18)]'
-                        : 'border-blue-300 bg-[linear-gradient(180deg,rgba(239,246,255,0.98),rgba(219,234,254,0.92))] text-[var(--foreground)] shadow-[0_14px_28px_rgba(37,99,235,0.12)]'
-                      : 'border-[var(--border)] bg-white text-[var(--muted)] hover:border-[var(--blue-border)] hover:bg-[var(--surface-elevated)] hover:text-[var(--foreground)] dark:bg-[var(--surface)]',
+                      ? 'bg-[var(--blue-dim)]'
+                      : 'bg-[var(--accent-soft)] hover:bg-[var(--input-surface-hover)]',
                   )}
                 >
                   <div>
                     <p className="text-sm font-semibold text-[var(--foreground)]">{lt('All members')}</p>
                   </div>
-                  <Badge variant={selectedMemberId === null ? 'blue' : 'secondary'}>
+                  <span
+                    data-ui-number="true"
+                    className={cn(
+                      'shrink-0 text-[17px] font-bold tabular-nums',
+                      selectedMemberId === null ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]',
+                    )}
+                  >
                     {total}
-                  </Badge>
+                  </span>
                 </button>
 
                 {members.map((member) => {
@@ -410,15 +409,13 @@ export function ProjectsListPage() {
                       type="button"
                       onClick={() => selectMember(member.id)}
                       className={cn(
-                        'flex min-h-[84px] items-center justify-between gap-4 rounded-xl border px-4 py-4 text-left shadow-[0_8px_22px_rgba(148,163,184,0.10)] transition-all duration-150',
+                        'flex min-h-[84px] items-center justify-between gap-4 rounded-[18px] px-4 py-4 text-left transition-colors duration-150',
                         isSelected
-                          ? isDark
-                            ? 'border-blue-500/45 bg-[linear-gradient(180deg,rgba(17,24,39,0.94),rgba(15,23,42,0.98))] text-blue-50 ring-1 ring-blue-400/20 shadow-[0_14px_28px_rgba(37,99,235,0.18)]'
-                            : 'border-blue-300 bg-[linear-gradient(180deg,rgba(239,246,255,0.98),rgba(219,234,254,0.92))] text-[var(--foreground)] shadow-[0_14px_28px_rgba(37,99,235,0.12)]'
-                          : 'border-[var(--border)] bg-white text-[var(--muted)] hover:border-[var(--blue-border)] hover:bg-[var(--surface-elevated)] hover:text-[var(--foreground)] dark:bg-[var(--surface)]',
+                          ? 'bg-[var(--blue-dim)]'
+                          : 'bg-[var(--accent-soft)] hover:bg-[var(--input-surface-hover)]',
                       )}
                     >
-                      <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
                         <Avatar
                           name={member.name}
                           surname={member.surname}
@@ -433,9 +430,15 @@ export function ProjectsListPage() {
                         </div>
                       </div>
 
-                      <Badge variant={isSelected ? 'blue' : 'secondary'}>
+                      <span
+                        data-ui-number="true"
+                        className={cn(
+                          'shrink-0 text-[17px] font-bold tabular-nums',
+                          isSelected ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]',
+                        )}
+                      >
                         {projectCount}
-                      </Badge>
+                      </span>
                     </button>
                   )
                 })}
@@ -445,10 +448,10 @@ export function ProjectsListPage() {
         </Card>
 
         {selectedMember ? (
-          <Card variant="glass" className="rounded-xl">
-            <div className="flex flex-col gap-4">
+          <Card>
+            <div className="flex flex-col gap-[18px]">
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-4">
+                <div className="flex min-w-0 items-center gap-3.5">
                   <Avatar
                     name={selectedMember.name}
                     surname={selectedMember.surname}
@@ -456,7 +459,7 @@ export function ProjectsListPage() {
                     size="lg"
                   />
                   <div className="min-w-0">
-                    <h2 className="truncate text-xl font-semibold text-[var(--foreground)]">
+                    <h2 className="truncate text-[20px] font-bold tracking-[-0.02em] text-[var(--foreground)]">
                       {selectedMember.name} {selectedMember.surname}
                     </h2>
                   </div>
@@ -472,12 +475,9 @@ export function ProjectsListPage() {
               </div>
 
               {isSelectedMemberOverviewLoading ? (
-                <div className="grid gap-4 xl:grid-cols-2">
+                <div className="grid gap-[18px] xl:grid-cols-2">
                   {Array.from({ length: Math.max(selectedMemberProjects.length, 2) }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="h-48 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--muted-surface)]"
-                    />
+                    <Skeleton key={index} rounded="xl" className="h-48" />
                   ))}
                 </div>
               ) : isSelectedMemberOverviewError ? (
@@ -490,36 +490,36 @@ export function ProjectsListPage() {
                   onAction={refetchSelectedMemberData}
                 />
               ) : memberOverview && memberOverview.projects.length > 0 ? (
-                <div className="grid gap-4 xl:grid-cols-2">
+                <div className="grid gap-[18px] xl:grid-cols-2">
                   {memberOverview.projects.map((project) => (
                     <div
                       key={project.projectId}
-                      className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"
+                      className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <Link
                             to={`/projects/${project.projectId}`}
-                            className="text-base font-semibold text-[var(--foreground)] transition hover:text-blue-400"
+                            className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
                           >
                             {project.projectName}
                           </Link>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="secondary">{project.boardCount} {lt('boards')}</Badge>
-                          <Badge variant={project.taskCount > 0 ? 'warning' : 'secondary'}>
+                          <Badge variant="secondary" size="sm">{project.boardCount} {lt('boards')}</Badge>
+                          <Badge variant={project.taskCount > 0 ? 'warning' : 'secondary'} size="sm">
                             {project.taskCount} {lt('tasks')}
                           </Badge>
                         </div>
                       </div>
 
                       {project.tasks.length === 0 ? (
-                        <p className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] px-4 py-3 text-sm text-[var(--muted)]">
+                        <p className="mt-4 rounded-[14px] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--muted)]">
                           {lt('This member has no assigned tasks in active boards for this project.')}
                         </p>
                       ) : (
-                        <div className="mt-4 space-y-3">
+                        <div className="mt-4 space-y-2.5">
                           {project.tasks.map((task) => {
                             const priorityConfig = task.priority ? priorityConfigMap[task.priority] : null
                             const dueVariant = task.dueDate
@@ -534,25 +534,25 @@ export function ProjectsListPage() {
                               <Link
                                 key={task.cardId}
                                 to={`/projects/${task.projectId}?board=${task.boardId}`}
-                                className="block rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] px-4 py-3 transition hover:border-[var(--border-hover)] hover:bg-[var(--accent-soft)]"
+                                className="block rounded-[14px] bg-[var(--surface)] px-4 py-3 transition-colors hover:bg-[var(--blue-dim)]"
                               >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                   <div className="min-w-0">
                                     <p className="truncate text-sm font-semibold text-[var(--foreground)]">
                                       {task.title}
                                     </p>
-                                    <p className="mt-1 text-[11px] text-[var(--muted)]">
+                                    <p className="mt-1 text-[12px] text-[var(--muted)]">
                                       {task.boardName} - {task.columnName}
                                     </p>
                                   </div>
 
                                   <div className="flex flex-wrap gap-2">
                                     {priorityConfig ? (
-                                      <Badge variant={priorityConfig.badgeVariant}>
+                                      <Badge variant={priorityConfig.badgeVariant} size="sm">
                                         {priorityConfig.label}
                                       </Badge>
                                     ) : null}
-                                    <Badge variant={dueVariant}>
+                                    <Badge variant={dueVariant} size="sm">
                                       {task.dueDate ? `${lt('Due')} ${formatProjectDateTime(task.dueDate)}` : lt('No due date')}
                                     </Badge>
                                   </div>
@@ -581,7 +581,7 @@ export function ProjectsListPage() {
           <div className="relative max-w-sm flex-1">
             <svg
               viewBox="0 0 16 16"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
+              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.8"
@@ -593,22 +593,18 @@ export function ProjectsListPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={selectedMember ? lt('Search selected member projects...') : lt('Search projects...')}
-              className="pl-9"
+              className="bg-[var(--surface)] pl-10 hover:bg-[var(--surface)]"
             />
           </div>
           {search ? (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="text-xs text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setSearch('')}>
               {lt('Clear')}
-            </button>
+            </Button>
           ) : null}
         </div>
 
         {projectsQuery.isLoading || isSelectedMemberProjectsLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
               <ProjectCardSkeleton key={index} />
             ))}
@@ -646,7 +642,7 @@ export function ProjectsListPage() {
             onAction={!search && !selectedMember && canManageProjects ? () => setIsCreateOpen(true) : undefined}
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProjects.map((project) => (
               <ProjectCard
                 key={project.id}

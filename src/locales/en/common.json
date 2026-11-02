@@ -11,6 +11,8 @@
   "common.search": "Search",
   "common.previous_page": "Previous page",
   "common.next_page": "Next page",
+  "common.prev": "Prev",
+  "common.next": "Next",
   "common.results_range": "{{start}}-{{end}} of {{total}} results",
   "common.per_page": "{{count}} per page",
   "common.play": "Play",

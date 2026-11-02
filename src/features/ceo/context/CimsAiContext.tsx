@@ -1,7 +1,6 @@
 import {
   createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -187,12 +186,4 @@ export function CimsAiProvider({ children }: PropsWithChildren) {
   )
 }
 
-export function useCimsAi() {
-  const context = useContext(CimsAiContext)
-
-  if (!context) {
-    throw new Error('useCimsAi must be used within CimsAiProvider')
-  }
-
-  return context
-}
+export { CimsAiContext }

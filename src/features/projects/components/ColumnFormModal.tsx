@@ -3,6 +3,7 @@ import { useLocale } from '../../../app/hooks/useLocale'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
 import { cn } from '../../../shared/lib/cn'
 import type { ColumnRecord } from '../../../shared/api/services/projects.service'
 import { getColumnColors } from '../lib/format'
@@ -82,11 +83,11 @@ export function ColumnFormModal({
         </>
       )}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
-            {t('projects.column_name', 'Column Name')} <span className="text-red-400">*</span>
-          </label>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+        <div className="flex flex-col gap-2">
+          <Label>
+            {t('projects.column_name', 'Column Name')} <span className="text-[var(--danger-text)]">*</span>
+          </Label>
           <Input
             value={values.name}
             onChange={(event) => {
@@ -96,14 +97,14 @@ export function ColumnFormModal({
             placeholder={t('projects.column_name_placeholder', 'To Do, In Progress, Done...')}
             autoFocus
           />
-          {nameError ? <p className="text-xs text-[var(--danger-text)]">{nameError}</p> : null}
+          {nameError ? <p className="text-[12.5px] text-[var(--danger-text)]">{nameError}</p> : null}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="flex flex-col gap-3 rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
+          <Label>
             {t('projects.accent_color', 'Accent Color')}
-          </label>
-          <div className="flex flex-wrap gap-2">
+          </Label>
+          <div className="flex flex-wrap gap-2.5">
             {columnColors.map((colorOption) => (
               <button
                 key={colorOption.value}
@@ -111,10 +112,10 @@ export function ColumnFormModal({
                 title={colorOption.label}
                 onClick={() => setValues((prev) => ({ ...prev, color: colorOption.value }))}
                 className={cn(
-                  'h-8 w-8 rounded-full border-2 transition-transform hover:scale-110',
+                  'h-9 w-9 rounded-full transition-shadow',
                   values.color === colorOption.value
-                    ? 'scale-110 border-white'
-                    : 'border-transparent',
+                    ? 'ring-2 ring-[var(--foreground)] ring-offset-2 ring-offset-[var(--accent-soft)]'
+                    : 'ring-1 ring-[var(--border-hover)]',
                 )}
                 style={{ background: colorOption.value }}
               />
@@ -122,7 +123,7 @@ export function ColumnFormModal({
           </div>
 
           <div
-            className="h-1 w-full rounded-full opacity-70"
+            className="h-1.5 w-full rounded-full"
             style={{ background: values.color }}
           />
         </div>

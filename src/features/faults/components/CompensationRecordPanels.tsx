@@ -9,6 +9,7 @@ import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { CardSection } from '../../../shared/ui/card'
 import { DataTable } from '../../../shared/ui/data-table'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { formatAmount, formatDetailDate } from '../lib/salaryEstimates'
 
 const lt = translateCurrentLiteral
@@ -30,6 +31,28 @@ const tr = (key: string, uzFallback: string, ruFallback: string) => {
   }
 
   return uzFallback
+}
+
+const emptyStateClassName = 'rounded-[18px] bg-[var(--muted-surface)] px-4 py-5 text-sm text-[var(--muted)]'
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  )
 }
 
 function renderProjectLabel(projectName?: string | null, projectId?: number | null) {
@@ -79,11 +102,11 @@ export function MistakeIncidentSection({
       title={tr('Recorded compensation mistakes', 'Qayd etilgan kompensatsiya xatolari', 'Zafiksirovannye oshibki kompensatsii')}
       headerAction={
         <>
-          <Badge variant={items.length > 0 ? 'danger' : 'outline'}>
+          <Badge variant={items.length > 0 ? 'danger' : 'secondary'}>
             {items.length} {lt('entries')}
           </Badge>
           {editable && onAdd ? (
-            <Button variant="ghost" size="sm" onClick={onAdd} className="rounded-xl text-[var(--danger-text)]">
+            <Button variant="danger" size="sm" onClick={onAdd}>
               {tr('Add mistake', 'Xato qoshish', 'Dobavit oshibku')}
             </Button>
           ) : null}
@@ -93,7 +116,6 @@ export function MistakeIncidentSection({
       {items.length > 0 ? (
         <DataTable
           zebra
-          className="rounded-none border-x-0 border-b-0"
           caption={tr('Mistake incidents table', 'Xatolar jadvali', 'Tablitsa oshibok')}
           rows={items}
           getRowKey={(row) => `mistake-${row.id}`}
@@ -111,7 +133,7 @@ export function MistakeIncidentSection({
             {
               key: 'severity',
               header: tr('Severity', 'Daraja', 'Stepen'),
-              render: (row) => <span className="font-semibold text-[var(--danger-text)]">{row.severity}</span>,
+              render: (row) => <Badge variant="danger" size="sm">{row.severity}</Badge>,
             },
             {
               key: 'date',
@@ -133,8 +155,8 @@ export function MistakeIncidentSection({
               header: tr('Flags', 'Belgilar', 'Flagi'),
               render: (row) => (
                 <div className="flex flex-wrap gap-1.5">
-                  {row.reached_client ? <Badge variant="danger">{lt('Reached client')}</Badge> : <Badge variant="outline">{lt('Internal only')}</Badge>}
-                  {row.unclear_task ? <Badge variant="warning">{lt('Unclear task')}</Badge> : null}
+                  {row.reached_client ? <Badge variant="danger" size="sm">{lt('Reached client')}</Badge> : <Badge variant="secondary" size="sm">{lt('Internal only')}</Badge>}
+                  {row.unclear_task ? <Badge variant="warning" size="sm">{lt('Unclear task')}</Badge> : null}
                 </div>
               ),
             },
@@ -142,20 +164,20 @@ export function MistakeIncidentSection({
               key: 'actions',
               header: tr('Actions', 'Amallar', 'Deystviya'),
               render: (row) => editable && onEdit && onDelete ? (
-                <div className="flex items-center gap-1 shrink-0" onClick={(event) => event.stopPropagation()}>
-                  <button type="button" title={lt('Edit mistake')} onClick={() => onEdit(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </button>
-                  <button type="button" title={lt('Delete mistake')} onClick={() => onDelete(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                  </button>
+                <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
+                  <IconButton size="sm" label={lt('Edit mistake')} onClick={() => onEdit(row)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton size="sm" tone="danger" label={lt('Delete mistake')} onClick={() => onDelete(row)}>
+                    <TrashIcon />
+                  </IconButton>
                 </div>
               ) : '-',
             },
           ]}
         />
       ) : (
-        <p className="text-sm text-[var(--muted-strong)]">
+        <p className={emptyStateClassName}>
           {tr('No mistake incidents were returned for the selected month.', 'Tanlangan oy uchun xato holatlari qaytmadi.', 'Za vybrannyi mesyats zapisi ob oshibkakh ne vernulis.')}
         </p>
       )}
@@ -186,11 +208,11 @@ export function DeliveryBonusSection({
       title={tr('Recorded delivery bonus events', 'Qayd etilgan topshirish bonuslari', 'Zafiksirovannye sobytiya bonusov za sdachu')}
       headerAction={
         <>
-          <Badge variant={items.length > 0 ? 'success' : 'outline'}>
+          <Badge variant={items.length > 0 ? 'success' : 'secondary'}>
             {items.length} {lt('entries')}
           </Badge>
           {editable && onAdd ? (
-            <Button variant="ghost" size="sm" onClick={onAdd} className="rounded-xl font-semibold text-[var(--success-text)]">
+            <Button variant="success" size="sm" onClick={onAdd}>
               {tr('Add delivery bonus', 'Topshirish bonusini qoshish', 'Dobavit bonus za sdachu')}
             </Button>
           ) : null}
@@ -200,7 +222,6 @@ export function DeliveryBonusSection({
       {items.length > 0 ? (
         <DataTable
           zebra
-          className="rounded-none border-x-0 border-b-0"
           caption={tr('Delivery bonus table', 'Topshirish bonuslari jadvali', 'Tablitsa bonusov za sdachu')}
           rows={items}
           getRowKey={(row) => `delivery-bonus-${row.id}`}
@@ -234,20 +255,20 @@ export function DeliveryBonusSection({
               key: 'actions',
               header: tr('Actions', 'Amallar', 'Deystviya'),
               render: (row) => editable && onEdit && onDelete ? (
-                <div className="flex items-center gap-1 shrink-0" onClick={(event) => event.stopPropagation()}>
-                  <button type="button" title={lt('Edit delivery bonus')} onClick={() => onEdit(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </button>
-                  <button type="button" title={lt('Delete delivery bonus')} onClick={() => onDelete(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                  </button>
+                <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
+                  <IconButton size="sm" label={lt('Edit delivery bonus')} onClick={() => onEdit(row)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton size="sm" tone="danger" label={lt('Delete delivery bonus')} onClick={() => onDelete(row)}>
+                    <TrashIcon />
+                  </IconButton>
                 </div>
               ) : '-',
             },
           ]}
         />
       ) : (
-        <p className="text-sm text-[var(--muted-strong)]">
+        <p className={emptyStateClassName}>
           {tr('No delivery bonus records were returned for the selected month.', 'Tanlangan oy uchun topshirish bonuslari qaytmadi.', 'Za vybrannyi mesyats zapisi o bonusakh za sdachu ne vernulis.')}
         </p>
       )}
@@ -276,11 +297,11 @@ export function SimpleBonusSection({
       title={tr('Simple bonuses', 'Oddiy bonuslar', 'Простые бонусы')}
       headerAction={
         <>
-          <Badge variant={items.length > 0 ? 'success' : 'outline'}>
+          <Badge variant={items.length > 0 ? 'success' : 'secondary'}>
             {items.length} {lt('entries')}
           </Badge>
           {editable && onAdd ? (
-            <Button variant="ghost" size="sm" onClick={onAdd} className="rounded-xl font-semibold text-[var(--success-text)]">
+            <Button variant="success" size="sm" onClick={onAdd}>
               {tr('Add bonus', "Bonus qo'shish", 'Добавить бонус')}
             </Button>
           ) : null}
@@ -290,7 +311,6 @@ export function SimpleBonusSection({
       {items.length > 0 ? (
         <DataTable
           zebra
-          className="rounded-none border-x-0 border-b-0"
           caption={tr('Simple bonuses table', 'Oddiy bonuslar jadvali', 'Tablitsa prostykh bonusov')}
           rows={items}
           getRowKey={(row) => `simple-bonus-${row.id}`}
@@ -304,7 +324,7 @@ export function SimpleBonusSection({
               key: 'amount',
               header: tr('Amount', 'Summa', 'Summa'),
               align: 'right',
-              render: (row) => <span className="font-semibold text-[var(--success-text)]">{formatAmount(row.amount)}</span>,
+              render: (row) => <span className="font-semibold tabular-nums text-[var(--success-text)]">{formatAmount(row.amount)}</span>,
             },
             {
               key: 'date',
@@ -315,17 +335,17 @@ export function SimpleBonusSection({
               key: 'actions',
               header: tr('Actions', 'Amallar', 'Deystviya'),
               render: (row) => editable && onDelete ? (
-                <div className="flex items-center gap-1 shrink-0" onClick={(event) => event.stopPropagation()}>
-                  <button type="button" title={lt('Delete bonus')} onClick={() => onDelete(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                  </button>
+                <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
+                  <IconButton size="sm" tone="danger" label={lt('Delete bonus')} onClick={() => onDelete(row)}>
+                    <TrashIcon />
+                  </IconButton>
                 </div>
               ) : '-',
             },
           ]}
         />
       ) : (
-        <p className="text-sm text-[var(--muted-strong)]">
+        <p className={emptyStateClassName}>
           {tr('No simple bonuses for the selected period.', 'Tanlangan davr uchun oddiy bonuslar yo\'q.', 'Za vybrannyi period prostykh bonusov net.')}
         </p>
       )}
@@ -354,11 +374,11 @@ export function SimplePenaltySection({
       title={tr('Simple penalties', 'Oddiy jarimalar', 'Простые штрафы')}
       headerAction={
         <>
-          <Badge variant={items.length > 0 ? 'danger' : 'outline'}>
+          <Badge variant={items.length > 0 ? 'danger' : 'secondary'}>
             {items.length} {lt('entries')}
           </Badge>
           {editable && onAdd ? (
-            <Button variant="ghost" size="sm" onClick={onAdd} className="rounded-xl text-[var(--danger-text)]">
+            <Button variant="danger" size="sm" onClick={onAdd}>
               {tr('Add penalty', "Jarima qo'shish", 'Добавить штраф')}
             </Button>
           ) : null}
@@ -368,7 +388,6 @@ export function SimplePenaltySection({
       {items.length > 0 ? (
         <DataTable
           zebra
-          className="rounded-none border-x-0 border-b-0"
           caption={tr('Simple penalties table', 'Oddiy jarimalar jadvali', 'Tablitsa prostykh shtrafov')}
           rows={items}
           getRowKey={(row) => `simple-penalty-${row.id}`}
@@ -382,7 +401,7 @@ export function SimplePenaltySection({
               key: 'amount',
               header: tr('Amount', 'Summa', 'Summa'),
               align: 'right',
-              render: (row) => <span className="font-semibold text-[var(--danger-text)]">{formatAmount(row.amount)}</span>,
+              render: (row) => <span className="font-semibold tabular-nums text-[var(--danger-text)]">{formatAmount(row.amount)}</span>,
             },
             {
               key: 'date',
@@ -393,17 +412,17 @@ export function SimplePenaltySection({
               key: 'actions',
               header: tr('Actions', 'Amallar', 'Deystviya'),
               render: (row) => editable && onDelete ? (
-                <div className="flex items-center gap-1 shrink-0" onClick={(event) => event.stopPropagation()}>
-                  <button type="button" title={lt('Delete penalty')} onClick={() => onDelete(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                  </button>
+                <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
+                  <IconButton size="sm" tone="danger" label={lt('Delete penalty')} onClick={() => onDelete(row)}>
+                    <TrashIcon />
+                  </IconButton>
                 </div>
               ) : '-',
             },
           ]}
         />
       ) : (
-        <p className="text-sm text-[var(--muted-strong)]">
+        <p className={emptyStateClassName}>
           {tr('No simple penalties for the selected period.', 'Tanlangan davr uchun oddiy jarimalar yo\'q.', 'Za vybrannyi period prostykh shtrafov net.')}
         </p>
       )}

@@ -13,11 +13,15 @@ import {
 } from '../../../shared/lib/customer-display'
 import { formatNumericDate, formatNumericDateTime } from '../../../shared/lib/format'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge, StatusBadge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
 import { Card } from '../../../shared/ui/card'
+import { MemberAvatar } from '../../../shared/ui/member-avatar'
 import { SectionTitle } from '../../../shared/ui/section-title'
+import { Textarea } from '../../../shared/ui/textarea'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { useToast } from '../../../shared/toast/useToast'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -26,6 +30,15 @@ import { resolveCustomerAudioUrl } from '../lib/customerAudio'
 import { getCustomerActionErrorMessage, getCustomerUnavailableMessage, getCustomerUnavailableTitle } from '../lib/customerErrors'
 import { getRecallTimeTone, getRecallTimeToneClasses } from '../lib/recallTime'
 import { AudioPlayerCard } from './AudioPlayerCard'
+
+type MergedCustomerNote = {
+  id: number | string
+  note: string
+  created_by?: number
+  created_by_full_name: string
+  created_at: string | null
+  isAi?: boolean
+}
 
 function formatCustomerNotes(notes?: string | null) {
   if (!notes) {
@@ -87,7 +100,7 @@ function CustomerAudioPanel({ audioSource, customerName }: { audioSource: string
     <div className="flex flex-col gap-3">
       <AudioPlayerCard src={audioSource} name={customerName} />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         <Button variant="secondary" size="sm" asChild>
           <a href={audioSource} target="_blank" rel="noreferrer">
             {t('common.open_audio', 'Open audio')}
@@ -122,7 +135,9 @@ export function CustomerDetailContent({
   const customerName = getCustomerDisplayName(customer)
   const formattedNotes = formatCustomerNotes(customer.notes)
   const recallTone = getRecallTimeTone(customer.recall_time)
-  const recallTimeClasses = recallTone ? getRecallTimeToneClasses(recallTone) : ''
+  const recallTimeClasses = recallTone
+    ? getRecallTimeToneClasses(recallTone)
+    : 'bg-[var(--muted-surface)] text-[var(--muted-strong)]'
 
   // Additional notes from API
   const notesQuery = useAsyncData(() => crmService.getAdditionalNotes(customer.id), [customer.id], { enabled: Boolean(customer.id) })
@@ -182,137 +197,136 @@ export function CustomerDetailContent({
   }
 
   return (
-    <section className="space-y-4">
-      <Card noPadding className="overflow-hidden rounded-xl border-[var(--border)] bg-[var(--surface-elevated)] shadow-none">
-        <div className="relative overflow-hidden px-6 py-6 sm:px-7">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_34%),radial-gradient(circle_at_right,rgba(168,85,247,0.12),transparent_28%)]" />
+    <section className="space-y-[18px]">
+      <Card className="flex flex-col gap-[18px]">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <MemberAvatar name={customerName} size="lg" />
 
-          <div className="relative z-10 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--blue-text)]">
-                  {t('customers.detail.header_eyebrow', 'CRM / Customer')}
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-[2rem]">
-                  {customerName}
-                </h2>
-                <p className="mt-2 text-sm text-[var(--muted-strong)]">
-                  {getCustomerDisplayMeta(customer)}
-                </p>
+            <div className="min-w-0">
+              <p className="ui-eyebrow">
+                {t('customers.detail.header_eyebrow', 'CRM / Customer')}
+              </p>
+              <h2 className="mt-1.5 text-3xl font-bold tracking-[-0.03em] text-[var(--foreground)]">
+                {customerName}
+              </h2>
+              <p className="mt-1.5 text-sm text-[var(--muted)]">
+                {getCustomerDisplayMeta(customer)}
+              </p>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <StatusBadge status={customer.status} />
-                  {customer.assistant_name ? <Badge variant="violet">{customer.assistant_name}</Badge> : null}
-                  {customer.conversation_language ? (
-                    <Badge variant="outline">
-                      {formatConversationLanguageLabel((key, fallback) => t(key, fallback), customer.conversation_language)}
-                    </Badge>
-                  ) : null}
-                </div>
-              </div>
-
-              {!hideActions && (
-                <div className="flex flex-wrap gap-2">
-                  {onOpenChat ? (
-                    <Button variant="secondary" size="sm" onClick={onOpenChat}>
-                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 mr-1.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                        <path d="M14 10a1.33 1.33 0 0 1-1.33 1.33H4.67L2 14V3.33A1.33 1.33 0 0 1 3.33 2h9.34A1.33 1.33 0 0 1 14 3.33z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      {t('customers.detail.go_to_chat', "Suhbatga o'tish")}
-                    </Button>
-                  ) : null}
-                  {audioSource ? (
-                    <Button variant="secondary" size="sm" asChild>
-                      <a href={audioSource} target="_blank" rel="noreferrer">
-                        {t('common.open_audio', 'Open audio')}
-                      </a>
-                    </Button>
-                  ) : null}
-                </div>
-              )}
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-xl border border-blue-500/16 bg-blue-500/[0.08] px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{t('common.platform', 'Platform')}</p>
-                <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">{getCustomerDisplayPlatform(customer) || '-'}</p>
-              </div>
-              <div className="rounded-xl border border-violet-500/16 bg-violet-500/[0.08] px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{t('common.username', 'Username')}</p>
-                <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">{formatUsernameHandle(customer.username) || '-'}</p>
-              </div>
-              <div className="rounded-xl border border-emerald-500/16 bg-emerald-500/[0.08] px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{t('customers.table.recall', 'Recall time')}</p>
-                <p className={`mt-2 inline-flex rounded-sm border px-2.5 py-1 text-[13px] font-medium leading-none ${recallTimeClasses}`}>
-                  {formatNumericDateTime(customer.recall_time)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-amber-500/16 bg-amber-500/[0.08] px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{t('common.created', 'Created')}</p>
-                <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">{formatNumericDate(customer.created_at)}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <StatusBadge status={customer.status} />
+                {customer.assistant_name ? <Badge variant="violet">{customer.assistant_name}</Badge> : null}
+                {customer.conversation_language ? (
+                  <Badge variant="secondary">
+                    {formatConversationLanguageLabel((key, fallback) => t(key, fallback), customer.conversation_language)}
+                  </Badge>
+                ) : null}
               </div>
             </div>
+          </div>
+
+          {!hideActions && (
+            <div className="flex flex-wrap gap-2.5">
+              {onOpenChat ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={onOpenChat}
+                  leftIcon={
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                      <path d="M14 10a1.33 1.33 0 0 1-1.33 1.33H4.67L2 14V3.33A1.33 1.33 0 0 1 3.33 2h9.34A1.33 1.33 0 0 1 14 3.33z" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  }
+                >
+                  {t('customers.detail.go_to_chat', "Suhbatga o'tish")}
+                </Button>
+              ) : null}
+              {audioSource ? (
+                <Button variant="secondary" size="sm" asChild>
+                  <a href={audioSource} target="_blank" rel="noreferrer">
+                    {t('common.open_audio', 'Open audio')}
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+            <p className="ui-card-label">{t('common.platform', 'Platform')}</p>
+            <p className="mt-2 text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{getCustomerDisplayPlatform(customer) || '-'}</p>
+          </div>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+            <p className="ui-card-label">{t('common.username', 'Username')}</p>
+            <p className="mt-2 text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{formatUsernameHandle(customer.username) || '-'}</p>
+          </div>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+            <p className="ui-card-label">{t('customers.table.recall', 'Recall time')}</p>
+            <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-none ${recallTimeClasses}`}>
+              {formatNumericDateTime(customer.recall_time)}
+            </p>
+          </div>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+            <p className="ui-card-label">{t('common.created', 'Created')}</p>
+            <p className="mt-2 text-[17px] font-semibold tracking-[-0.01em] tabular-nums text-[var(--foreground)]">{formatNumericDate(customer.created_at)}</p>
           </div>
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-[18px] lg:grid-cols-2">
         {/* 1. AI Summary Card */}
-        <Card className="overflow-hidden rounded-xl border-[var(--border)]">
-          <div className="border-b border-[var(--border)] px-6 py-5">
-            <SectionTitle
-              title={t('customers.detail.ai_summary.title', 'AI summary')}
-              description={t('customers.detail.ai_summary.description', 'CRM-generated summary.')}
+        <Card className="flex flex-col gap-4">
+          <SectionTitle
+            title={t('customers.detail.ai_summary.title', 'AI summary')}
+            description={t('customers.detail.ai_summary.description', 'CRM-generated summary.')}
+          />
+          {customer.aisummary ? (
+            <p className="whitespace-pre-wrap rounded-[18px] bg-[var(--accent-soft)] p-[18px] text-sm leading-6 text-[var(--muted-strong)]">{customer.aisummary}</p>
+          ) : (
+            <EmptyStateBlock
+              eyebrow={t('customers.detail.ai_summary.title', 'AI summary')}
+              title={t('customers.detail.ai_summary.empty_title', 'No AI summary')}
+              description={t('customers.detail.ai_summary.empty_description', 'AI summary is not available.')}
             />
-          </div>
-          <div className="px-6 py-5">
-            {customer.aisummary ? (
-              <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--muted-strong)]">{customer.aisummary}</p>
-            ) : (
-              <EmptyStateBlock
-                eyebrow={t('customers.detail.ai_summary.title', 'AI summary')}
-                title={t('customers.detail.ai_summary.empty_title', 'No AI summary')}
-                description={t('customers.detail.ai_summary.empty_description', 'AI summary is not available.')}
-              />
-            )}
-          </div>
+          )}
         </Card>
 
         {/* 2. Profile Card */}
-        <Card className="overflow-hidden rounded-xl border-[var(--border)]">
-          <div className="border-b border-[var(--border)] px-6 py-5">
-            <SectionTitle
-              title={t('customers.detail.profile.title', 'Profile')}
-              description={t('customers.detail.profile.description', 'Core contact and routing metadata.')}
-            />
-          </div>
-          <div className="grid gap-3 px-6 py-5">
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-              <span className="text-sm text-[var(--muted-strong)]">{t('common.phone', 'Phone')}</span>
+        <Card className="flex flex-col gap-4">
+          <SectionTitle
+            title={t('customers.detail.profile.title', 'Profile')}
+            description={t('customers.detail.profile.description', 'Core contact and routing metadata.')}
+          />
+          <div className="grid gap-2.5">
+            <div className="flex items-start justify-between gap-4 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3">
+              <span className="text-sm text-[var(--muted)]">{t('common.phone', 'Phone')}</span>
               <span className="max-w-[62%] break-all text-right text-sm font-semibold text-[var(--foreground)]">{customer.phone_number ?? customer.phone ?? '-'}</span>
             </div>
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-              <span className="text-sm text-[var(--muted-strong)]">{t('common.platform', 'Platform')}</span>
+            <div className="flex items-start justify-between gap-4 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3">
+              <span className="text-sm text-[var(--muted)]">{t('common.platform', 'Platform')}</span>
               <span className="max-w-[62%] break-all text-right text-sm font-semibold text-[var(--foreground)]">{getCustomerDisplayPlatform(customer) || '-'}</span>
             </div>
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-              <span className="text-sm text-[var(--muted-strong)]">{t('customers.detail.audio_file_id', 'Audio file ID')}</span>
+            <div className="flex items-start justify-between gap-4 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3">
+              <span className="text-sm text-[var(--muted)]">{t('customers.detail.audio_file_id', 'Audio file ID')}</span>
               <span className="max-w-[62%] break-all text-right text-sm font-semibold text-[var(--foreground)]">{customer.audio_file_id || '-'}</span>
             </div>
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-              <span className="text-sm text-[var(--muted-strong)]">{t('common.assistant', 'Assistant')}</span>
+            <div className="flex items-start justify-between gap-4 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3">
+              <span className="text-sm text-[var(--muted)]">{t('common.assistant', 'Assistant')}</span>
               <span className="max-w-[62%] break-all text-right text-sm font-semibold text-[var(--foreground)]">{customer.assistant_name || '-'}</span>
             </div>
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-              <span className="text-sm text-[var(--muted-strong)]">{t('common.conversation_language', 'Conversation language')}</span>
+            <div className="flex items-start justify-between gap-4 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3">
+              <span className="text-sm text-[var(--muted)]">{t('common.conversation_language', 'Conversation language')}</span>
               <span className="max-w-[62%] break-all text-right text-sm font-semibold text-[var(--foreground)]">
                 {formatConversationLanguageLabel((key, fallback) => t(key, fallback), customer.conversation_language)}
               </span>
             </div>
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-              <span className="text-sm text-[var(--muted-strong)]">{t('common.recall_time', 'Recall time')}</span>
+            <div className="flex items-start justify-between gap-4 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3">
+              <span className="text-sm text-[var(--muted)]">{t('common.recall_time', 'Recall time')}</span>
               <span className="max-w-[62%] break-all text-right text-sm font-semibold text-[var(--foreground)]">
-                <span className={`inline-flex rounded-sm border px-2.5 py-1 text-[13px] font-medium leading-none ${recallTimeClasses}`}>
+                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-none ${recallTimeClasses}`}>
                   {formatNumericDateTime(customer.recall_time)}
                 </span>
               </span>
@@ -322,74 +336,71 @@ export function CustomerDetailContent({
 
         {/* Lead Response Metrics */}
         {customer.lead_response_metrics && (
-          <Card className="overflow-hidden rounded-xl border-[var(--border)] lg:col-span-2">
-            <div className="border-b border-[var(--border)] px-6 py-5">
-              <SectionTitle
-                title={t('customers.detail.lead_response.title', 'Lead javob vaqti')}
-                description={t('customers.detail.lead_response.description', `SLA: ${customer.lead_response_metrics.response_limit_minutes} daqiqa`)}
-              />
-            </div>
-            <div className="px-6 py-5 space-y-3">
-              {customer.lead_response_metrics.message && (
-                <div className={cn(
-                  'rounded-xl border px-4 py-3 text-sm font-medium',
+          <Card className="flex flex-col gap-4 lg:col-span-2">
+            <SectionTitle
+              title={t('customers.detail.lead_response.title', 'Lead javob vaqti')}
+              description={t('customers.detail.lead_response.description', `SLA: ${customer.lead_response_metrics.response_limit_minutes} daqiqa`)}
+            />
+            {customer.lead_response_metrics.message && (
+              <Alert
+                tone={
                   customer.lead_response_metrics.is_late_response
-                    ? 'border-red-500/20 bg-red-500/[0.08] text-red-400'
+                    ? 'danger'
                     : customer.lead_response_metrics.status_changed
-                      ? 'border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-400'
-                      : 'border-amber-500/20 bg-amber-500/[0.08] text-amber-400',
+                      ? 'success'
+                      : 'warning'
+                }
+              >
+                {customer.lead_response_metrics.message}
+              </Alert>
+            )}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+                <p className="ui-card-label">Javob vaqti</p>
+                <p className={cn('mt-1.5 text-[20px] font-bold tracking-[-0.02em]',
+                  customer.lead_response_metrics.is_late_response ? 'text-[var(--danger-text)]' : 'text-[var(--success-text)]'
                 )}>
-                  {customer.lead_response_metrics.message}
+                  {customer.lead_response_metrics.response_human ?? '-'}
+                </p>
+              </div>
+              <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+                <p className="ui-card-label">Holat</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {!customer.lead_response_metrics.status_changed && (
+                    <Badge variant="warning" size="sm">
+                      Hali bog'lanilmagan
+                    </Badge>
+                  )}
+                  {customer.lead_response_metrics.status_changed && !customer.lead_response_metrics.is_late_response && (
+                    <Badge variant="success" size="sm">
+                      O'z vaqtida
+                    </Badge>
+                  )}
+                  {customer.lead_response_metrics.is_late_response && (
+                    <Badge variant="danger" size="sm">
+                      Kech bog'lanildi
+                    </Badge>
+                  )}
+                  {customer.lead_response_metrics.status_changed_without_note && (
+                    <Badge variant="warning" size="sm">
+                      Note yozilmadi
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {customer.lead_response_metrics.note_human && (
+                <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+                  <p className="ui-card-label">Note vaqti</p>
+                  <p className="mt-1.5 text-[20px] font-bold tracking-[-0.02em] text-[var(--blue-text)]">{customer.lead_response_metrics.note_human}</p>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Javob vaqti</p>
-                  <p className={cn('mt-1.5 text-lg font-semibold',
-                    customer.lead_response_metrics.is_late_response ? 'text-red-400' : 'text-emerald-400'
-                  )}>
-                    {customer.lead_response_metrics.response_human ?? '-'}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Holat</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {!customer.lead_response_metrics.status_changed && (
-                      <span className="inline-flex items-center rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
-                        Hali bog'lanilmagan
-                      </span>
-                    )}
-                    {customer.lead_response_metrics.status_changed && !customer.lead_response_metrics.is_late_response && (
-                      <span className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
-                        O'z vaqtida
-                      </span>
-                    )}
-                    {customer.lead_response_metrics.is_late_response && (
-                      <span className="inline-flex items-center rounded-md border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-400">
-                        Kech bog'lanildi
-                      </span>
-                    )}
-                    {customer.lead_response_metrics.status_changed_without_note && (
-                      <span className="inline-flex items-center rounded-md border border-orange-500/20 bg-orange-500/10 px-2 py-0.5 text-[11px] font-semibold text-orange-400">
-                        Note yozilmadi
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {customer.lead_response_metrics.note_human && (
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Note vaqti</p>
-                    <p className="mt-1.5 text-lg font-semibold text-sky-400">{customer.lead_response_metrics.note_human}</p>
-                  </div>
-                )}
-              </div>
             </div>
           </Card>
         )}
 
         {/* 3. Notes Card (Operator + Additional Notes combined) */}
-        <Card className="overflow-hidden rounded-xl border-[var(--border)] lg:col-span-2">
-          <div className="border-b border-[var(--border)] px-6 py-5 flex items-center justify-between gap-4">
+        <Card className="flex flex-col gap-4 lg:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <SectionTitle
               title={t('customers.detail.notes.title', 'Notes')}
               description={t('customers.detail.notes.description', 'All notes and communications.')}
@@ -404,94 +415,94 @@ export function CustomerDetailContent({
             </div>
           </div>
 
-          <div className="px-6 py-5">
-            {showAddInput ? (
-              <div className="mb-4 flex gap-2">
-                <Input
-                  value={newNote}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNote(e.target.value)}
-                  placeholder={t('customers.notes.add_placeholder', 'Add a new note...')}
-                  className="flex-1"
-                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleAddNote() }}
-                />
-                <Button size="sm" onClick={handleAddNote} disabled={isAdding || !newNote.trim()}>
-                  {isAdding ? '...' : t('common.add', 'Add')}
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => { setShowAddInput(false); setNewNote('') }}>
-                  {t('common.cancel', 'Cancel')}
-                </Button>
-              </div>
-            ) : null}
+          {showAddInput ? (
+            <div className="flex flex-wrap gap-2.5">
+              <Input
+                value={newNote}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNote(e.target.value)}
+                placeholder={t('customers.notes.add_placeholder', 'Add a new note...')}
+                className="min-w-[180px] flex-1"
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleAddNote() }}
+              />
+              <Button size="sm" onClick={handleAddNote} disabled={isAdding || !newNote.trim()}>
+                {isAdding ? '...' : t('common.add', 'Add')}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { setShowAddInput(false); setNewNote('') }}>
+                {t('common.cancel', 'Cancel')}
+              </Button>
+            </div>
+          ) : null}
 
-            {notesQuery.isLoading ? (
-              <LoadingStateBlock eyebrow={t('customers.detail.notes.title', 'Notes')} title={t('common.loading', 'Loading...')} />
-            ) : mergedNotes.length > 0 ? (
-              <div className="space-y-3">
-                {mergedNotes.map((note: any) => (
-                  <div key={String(note.id)} className="group relative rounded-xl border border-[var(--border)] bg-[var(--input-surface)] p-3 transition hover:border-[var(--border-hover)]">
-                    {editingNoteId === note.id ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={editingContent}
-                          onChange={(e) => setEditingContent(e.target.value)}
-                          className="w-full rounded-lg border border-[var(--border)] bg-transparent p-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          rows={3}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="secondary" onClick={() => setEditingNoteId(null)}>
-                            {t('common.cancel', 'Cancel')}
-                          </Button>
-                          <Button size="sm" onClick={() => handleUpdateNote(note.id)}>
-                            {t('common.save', 'Save')}
-                          </Button>
+          {notesQuery.isLoading ? (
+            <LoadingStateBlock eyebrow={t('customers.detail.notes.title', 'Notes')} title={t('common.loading', 'Loading...')} />
+          ) : mergedNotes.length > 0 ? (
+            <div className="space-y-2.5">
+              {mergedNotes.map((note: MergedCustomerNote) => (
+                <div key={String(note.id)} className="group relative rounded-[18px] bg-[var(--accent-soft)] p-4">
+                  {editingNoteId === note.id ? (
+                    <div className="space-y-2.5">
+                      <Textarea
+                        value={editingContent}
+                        onChange={(e) => setEditingContent(e.target.value)}
+                        className="min-h-20 bg-[var(--surface)]"
+                        rows={3}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => setEditingNoteId(null)}>
+                          {t('common.cancel', 'Cancel')}
+                        </Button>
+                        <Button size="sm" onClick={() => handleUpdateNote(note.id as number)}>
+                          {t('common.save', 'Save')}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--foreground)]">{note.note}</p>
+                      <div className="mt-2.5 flex items-center justify-between gap-3">
+                        <p className="text-[12px] text-[var(--muted)]">
+                          {note.isAi ? note.created_by_full_name : (currentUser && note.created_by === currentUser.id ? `${currentUser.name} ${currentUser.surname}` : note.created_by_full_name)} {note.created_at ? `• ${formatNumericDateTime(note.created_at)}` : ''}
+                        </p>
+                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                          {note.isAi ? null : (
+                            <>
+                              <IconButton
+                                tone="primary"
+                                size="sm"
+                                label={t('common.edit', 'Edit')}
+                                onClick={() => { setEditingNoteId(note.id); setEditingContent(note.note) }}
+                              >
+                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </IconButton>
+                              <IconButton
+                                tone="danger"
+                                size="sm"
+                                label={t('common.delete', 'Delete')}
+                                onClick={() => handleDeleteNote(note.id as number)}
+                              >
+                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </IconButton>
+                            </>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <p className="whitespace-pre-wrap text-sm text-[var(--foreground)]">{note.note}</p>
-                        <div className="mt-2 flex items-center justify-between">
-                          <p className="text-[10px] text-[var(--muted-strong)]">
-                            {note.isAi ? note.created_by_full_name : (currentUser && note.created_by === currentUser.id ? `${currentUser.name} ${currentUser.surname}` : note.created_by_full_name)} {note.created_at ? `• ${formatNumericDateTime(note.created_at)}` : ''}
-                          </p>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                            {note.isAi ? null : (
-                              <>
-                                <button
-                                  onClick={() => handleDeleteNote(note.id as number)}
-                                  className="p-1 text-(--muted-strong) hover:text-red-500"
-                                  title={t('common.delete', 'Delete')}
-                                >
-                                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => { setEditingNoteId(note.id); setEditingContent(note.note) }}
-                                  className="p-1 text-(--muted-strong) hover:text-blue-500"
-                                  title={t('common.edit', 'Edit')}
-                                >
-                                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyStateBlock
-                eyebrow={t('customers.detail.notes.title', 'Notes')}
-                title={t('customers.detail.notes.empty_title', 'No notes')}
-                description={t('customers.detail.notes.empty_description', 'There are no notes.')}
-              />
-            )}
-          </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyStateBlock
+              eyebrow={t('customers.detail.notes.title', 'Notes')}
+              title={t('customers.detail.notes.empty_title', 'No notes')}
+              description={t('customers.detail.notes.empty_description', 'There are no notes.')}
+            />
+          )}
         </Card>
 
         {/* Audio Panel */}
@@ -571,82 +582,90 @@ export function CustomerDetailDrawer({
       <button
         type="button"
         aria-label={t('customers.detail.drawer_close', 'Close customer detail drawer')}
-        className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(59,130,246,0.10),transparent_24%),rgba(0,0,0,0.62)] backdrop-blur-md"
+        className="dialog-backdrop absolute inset-0"
         onClick={onClose}
       />
 
       <div className="absolute inset-y-0 right-0 w-full md:w-[min(50vw,760px)]">
-        <div className="sheet-enter flex h-full flex-col border-l border-[var(--border)] bg-[var(--surface-elevated)] shadow-[0_20px_80px_rgba(0,0,0,0.46)]">
-          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-6">
+        <div className="sheet-enter flex h-full flex-col overflow-hidden bg-[var(--surface)] shadow-[var(--elev-xl)] md:rounded-l-[24px]">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-[18px] py-4 sm:px-[22px]">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--blue-text)]">
+              <p className="ui-eyebrow">
                 {t('customers.detail.drawer_eyebrow', 'CRM drawer')}
               </p>
-              <h2 className="mt-1 truncate text-lg font-semibold tracking-tight text-[var(--foreground)]">
+              <h2 className="mt-1.5 truncate text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">
                 {customer ? getCustomerDisplayName(customer) : t('customers.detail', 'Customer detail')}
               </h2>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               {customer && onSearchTelegram && customerPhoneNumber ? (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   title={t('customers.detail.search_telegram', 'Search Telegram')}
                   onClick={() => onSearchTelegram(customerPhoneNumber, customer.id)}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#2AABEE]/30 bg-[#2AABEE]/10 px-3 text-xs font-semibold text-[#2AABEE] transition hover:bg-[#2AABEE]/20"
+                  leftIcon={
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                      <circle cx="7" cy="7" r="4.25" />
+                      <path d="M10.25 10.25 13 13" strokeLinecap="round" />
+                    </svg>
+                  }
                 >
-                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                    <circle cx="7" cy="7" r="4.25" />
-                    <path d="M10.25 10.25 13 13" strokeLinecap="round" />
-                  </svg>
                   {t('customers.detail.search_telegram', 'Search Telegram')}
-                </button>
+                </Button>
               ) : null}
               {customer && onEdit ? (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   title={t('customers.detail.edit', 'Edit customer')}
                   onClick={() => onEdit(customer)}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 text-xs font-semibold text-blue-400 transition hover:bg-blue-500/20"
+                  leftIcon={
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                      <path d="M11.33 2.67L13.33 4.67M2 14h3.33l8-8V3.67A1.33 1.33 0 0 0 12 2.33H3.33A1.33 1.33 0 0 0 2 3.67z" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  }
                 >
-                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                    <path d="M11.33 2.67L13.33 4.67M2 14h3.33l8-8V3.67A1.33 1.33 0 0 0 12 2.33H3.33A1.33 1.33 0 0 0 2 3.67z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
                   {t('customers.detail.edit', 'Edit')}
-                </button>
+                </Button>
               ) : null}
               {customer?.chat_url && onOpenChat ? (() => {
                 const match = customer.chat_url?.match(/conversation_id=(\d+)/)
                 const convId = match ? Number(match[1]) : null
                 return convId ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="primary"
+                    size="sm"
                     title={t('customers.detail.view_chat', "Suhbatni ko'rish")}
                     onClick={() => onOpenChat(convId)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#3390ec]/30 bg-[#3390ec]/10 px-3 text-xs font-semibold text-[#3390ec] transition hover:bg-[#3390ec]/20"
+                    leftIcon={
+                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                        <path d="M14 10a1.33 1.33 0 0 1-1.33 1.33H4.67L2 14V3.33A1.33 1.33 0 0 1 3.33 2h9.34A1.33 1.33 0 0 1 14 3.33z" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    }
                   >
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                      <path d="M14 10a1.33 1.33 0 0 1-1.33 1.33H4.67L2 14V3.33A1.33 1.33 0 0 1 3.33 2h9.34A1.33 1.33 0 0 1 14 3.33z" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
                     {t('customers.detail.view_chat', "Suhbat")}
-                  </button>
+                  </Button>
                 ) : null
               })() : null}
 
-              <button
-                type="button"
+              <IconButton
+                size="md"
+                label={t('customers.detail.close', 'Close detail drawer')}
                 onClick={onClose}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--input-surface)] text-[var(--muted-strong)] transition hover:border-[var(--border-hover)] hover:bg-[var(--input-surface-hover)] hover:text-[var(--foreground)]"
-                aria-label={t('customers.detail.close', 'Close detail drawer')}
               >
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                   <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
                 </svg>
-              </button>
+              </IconButton>
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--app-canvas)] p-[18px] sm:p-[22px]">
             {isCustomerUnavailable ? (
               <ErrorStateBlock
                 eyebrow={t('customers.detail', 'Customer detail')}

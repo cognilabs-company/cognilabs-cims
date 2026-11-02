@@ -22,16 +22,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../shared/ui/car
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
+import { MemberAvatar } from '../../../shared/ui/member-avatar'
+import { Skeleton } from '../../../shared/ui/skeleton'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { Textarea } from '../../../shared/ui/textarea'
+import { toneText, type Tone } from '../../../shared/ui/tone'
 import { PermissionEditorModal } from '../components/PermissionEditorModal'
 import { type MessageComposerValues } from '../components/MessageComposerModal'
 import { MetricCard } from '../components/MetricCard'
 import { UserFormModal, type UserFormValues } from '../components/UserFormModal'
 import { permissionCatalog } from '../lib/permissionCatalog'
-import { resolveMediaUrl } from '../../../shared/lib/media-url'
 
 const initialUserForm: UserFormValues = {
   email: '',
@@ -173,25 +176,36 @@ function isCeoUser(user: CeoUserRecord) {
   return normalizeUserRole(String(user.role ?? '')) === 'CEO'
 }
 
-function getRoleTextClass(role?: string | null) {
+type RoleTone = Extract<Tone, 'blue' | 'success' | 'warning' | 'danger' | 'violet' | 'neutral'>
+
+const roleBadgeVariants: Record<RoleTone, 'blue' | 'success' | 'warning' | 'danger' | 'violet' | 'secondary'> = {
+  blue: 'blue',
+  success: 'success',
+  warning: 'warning',
+  danger: 'danger',
+  violet: 'violet',
+  neutral: 'secondary',
+}
+
+function getRoleTone(role?: string | null): RoleTone {
   if (String(role ?? '').trim().toLowerCase() === 'seller') {
-    return 'text-[var(--warning-text)]'
+    return 'warning'
   }
 
   switch (normalizeUserRole(role)) {
     case 'CEO':
-      return 'text-[var(--violet-text)]'
+      return 'violet'
     case 'Finance':
-      return 'text-[var(--success-text)]'
+      return 'success'
     case 'SalesManager':
-      return 'text-[var(--warning-text)]'
+      return 'warning'
     case 'Admin':
-      return 'text-[var(--danger-text)]'
+      return 'danger'
     case 'Customer':
-      return 'text-sky-500'
+      return 'neutral'
     case 'Member':
     default:
-      return 'text-[var(--blue-text)]'
+      return 'blue'
   }
 }
 
@@ -199,30 +213,14 @@ function renderJobTitleTag(jobTitle: string, role?: string | null) {
   const isCeo = normalizeUserRole(String(role ?? '')) === 'CEO'
 
   return (
-    <span
-      data-keep-color="true"
-      className={cn(
-        'mt-1 inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold',
-        isCeo
-          ? 'border-[var(--violet-border)] bg-[var(--violet-dim)] text-[var(--violet-text)]'
-          : 'border-[var(--success-border)] bg-[var(--success-dim)] text-[var(--success-text)]',
-      )}
-    >
+    <Badge variant={isCeo ? 'violet' : 'success'} size="sm" className="mt-1.5">
       {jobTitle}
-    </span>
+    </Badge>
   )
 }
 
 function getUserDisplayName(user: Pick<CeoUserRecord, 'name' | 'surname'>) {
   return `${user.name} ${user.surname}`.trim()
-}
-
-function getUserInitials(user: Pick<CeoUserRecord, 'name' | 'surname'>) {
-  return `${user.name?.charAt(0) ?? ''}${user.surname?.charAt(0) ?? ''}`.toUpperCase() || '?'
-}
-
-function getUserAvatarHue(user: Pick<CeoUserRecord, 'name'>) {
-  return ((user.name?.charCodeAt(0) ?? 0) * 7) % 360
 }
 
 function UserAvatar({
@@ -232,31 +230,14 @@ function UserAvatar({
   user: Pick<CeoUserRecord, 'name' | 'surname' | 'profile_image'>
   size?: 'sm' | 'md' | 'lg'
 }) {
-  const imageUrl = resolveMediaUrl(user.profile_image) ?? user.profile_image
-  const sizeClassName = size === 'lg' ? 'h-16 w-16 text-lg' : size === 'sm' ? 'h-10 w-10 text-sm' : 'h-12 w-12 text-base'
-
-  if (imageUrl) {
-    return (
-      <img
-        src={imageUrl}
-        alt={getUserDisplayName(user)}
-        className={cn('shrink-0 rounded-full border border-white/10 object-cover', sizeClassName)}
-      />
-    )
-  }
-
-  const hue = getUserAvatarHue(user)
-
   return (
-    <div
-      className={cn('flex shrink-0 items-center justify-center rounded-full font-bold', sizeClassName)}
-      style={{
-        background: `hsl(${hue}, 45%, 18%)`,
-        color: `hsl(${hue}, 65%, 65%)`,
-      }}
-    >
-      {getUserInitials(user)}
-    </div>
+    <MemberAvatar
+      name={user.name}
+      surname={user.surname}
+      imageUrl={user.profile_image}
+      size={size === 'sm' ? 'md' : 'lg'}
+      className={size === 'lg' ? 'h-16 w-16 text-base' : undefined}
+    />
   )
 }
 
@@ -900,8 +881,8 @@ export function CeoUsersPage() {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-4 stagger-children">
+    <section className="space-y-[18px]">
+      <div className="grid gap-[18px] md:grid-cols-4 stagger-children">
         <MetricCard label={lt('Users')} value={formatCompactNumber(statistics?.user_count ?? users.length)} accent="blue" sparkBars={[4,5,6,7,7,8]} />
         <MetricCard label={tr('Active', 'Faol', 'Активные')} value={formatCompactNumber(statistics?.active_user_count ?? 0)} accent="success" sparkBars={[5,6,6,7,8,8]} />
         <MetricCard label={tr('Inactive', 'Nofaol', 'Неактивные')} value={formatCompactNumber(statistics?.inactive_user_count ?? 0)} accent="warning" sparkBars={[3,2,3,2,2,2]} />
@@ -909,11 +890,11 @@ export function CeoUsersPage() {
       </div>
 
       <Card noPadding>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
           <CardTitle>{lt('CEO users table')}</CardTitle>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <Input
-              className="w-full md:w-80"
+              className="w-full md:w-72"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={lt('Search by email, name, or role')}
@@ -951,15 +932,15 @@ export function CeoUsersPage() {
                       event.stopPropagation()
                       openProfileDialog(row)
                     }}
-                    className="group/user flex w-full items-center gap-3 rounded-xl py-1 text-left transition hover:text-[var(--blue-text)] focus-visible:outline-none"
+                    className="group/user flex w-full items-center gap-3 rounded-[14px] py-1 text-left transition-colors hover:text-[var(--blue-text)] focus-visible:outline-none"
                     aria-label={`${lt('Profile')}: ${row.name} ${row.surname}`}
                   >
                     <UserAvatar user={row} size="sm" />
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-[var(--foreground)] transition group-hover/user:text-[var(--blue-text)]">
+                      <p className="truncate text-sm font-semibold text-[var(--foreground)] transition-colors group-hover/user:text-[var(--blue-text)]">
                         {row.name} {row.surname}
                       </p>
-                      <p className="truncate text-xs font-medium text-[var(--muted-strong)]">{row.email}</p>
+                      <p className="truncate text-[12.5px] text-[var(--muted)]">{row.email}</p>
                       {row.job_title ? (
                         renderJobTitleTag(row.job_title, row.role)
                       ) : null}
@@ -971,12 +952,9 @@ export function CeoUsersPage() {
                 key: 'role',
                 header: lt('Role'),
                 render: (row) => (
-                  <span
-                    data-keep-color="true"
-                    className={cn('text-xs font-semibold', getRoleTextClass(row.role))}
-                  >
+                  <Badge variant={roleBadgeVariants[getRoleTone(row.role)]} size="sm">
                     {row.role}
-                  </span>
+                  </Badge>
                 ),
               },
               {
@@ -984,19 +962,19 @@ export function CeoUsersPage() {
                 header: lt('Permissions'),
                 render: (row) => {
                   const perms = permissionsByUserId.get(row.id)
-                  if (!perms) return <span className="text-xs text-zinc-500">—</span>
+                  if (!perms) return <span className="text-xs text-[var(--muted)]">—</span>
                   return (
-                    <div className="flex flex-wrap items-center gap-1">
-                      <Badge className="bg-white/5 text-white border-white/10 text-[10px]">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="blue" size="sm">
                         {perms.permissions_count}
                       </Badge>
                       {perms.permissions_display.slice(0, 2).map((p) => (
-                        <Badge key={p} className="bg-white/5 text-white/60 border-white/8 text-[10px]">
+                        <Badge key={p} variant="secondary" size="sm">
                           {p}
                         </Badge>
                       ))}
                       {perms.permissions_display.length > 2 && (
-                        <Badge className="bg-white/5 text-white/40 border-white/8 text-[10px]">
+                        <Badge variant="ghost" size="sm">
                           +{perms.permissions_display.length - 2}
                         </Badge>
                       )}
@@ -1015,7 +993,7 @@ export function CeoUsersPage() {
                     incomingMessagesQuery.isLoading
 
                   if (isMessageDataLoading && !sentMessagesQuery.data && !incomingMessagesQuery.data) {
-                    return <span className="text-xs text-zinc-600">…</span>
+                    return <Skeleton className="h-9 w-[76px]" />
                   }
 
                   return (
@@ -1025,11 +1003,11 @@ export function CeoUsersPage() {
                         event.stopPropagation()
                         openMessageDialog(row)
                       }}
-                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/4 px-3 py-1.5 text-left transition hover:border-blue-400/30 hover:bg-blue-500/8"
+                      className="inline-flex h-9 items-center gap-2 rounded-[11px] bg-[var(--accent-soft)] px-3 text-left transition-colors hover:bg-[var(--blue-dim)]"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 shrink-0 text-blue-400"
+                        className="h-4 w-4 shrink-0 text-[var(--primary)]"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -1040,11 +1018,11 @@ export function CeoUsersPage() {
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                       </svg>
                       {conversation.totalCount > 0 ? (
-                        <span className="text-xs font-semibold text-white">
+                        <span className="text-xs font-semibold tabular-nums text-[var(--foreground)]" data-ui-number="true">
                           {conversation.totalCount}
                         </span>
                       ) : (
-                        <span className="text-xs text-zinc-500">{lt('Send')}</span>
+                        <span className="text-xs font-medium text-[var(--muted-strong)]">{lt('Send')}</span>
                       )}
                     </button>
                   )
@@ -1054,12 +1032,9 @@ export function CeoUsersPage() {
                 key: 'status',
                 header: lt('Status'),
                 render: (row) => (
-                  <span
-                    data-keep-color="true"
-                    className={cn('text-xs font-bold uppercase tracking-wider', row.is_active ? 'text-emerald-400' : 'text-rose-500')}
-                  >
+                  <Badge variant={row.is_active ? 'success' : 'danger'} size="sm" dot>
                     {row.is_active ? tr('Active', 'Faol', 'Активные') : tr('Inactive', 'Nofaol', 'Неактивные')}
-                  </span>
+                  </Badge>
                 ),
               },
               {
@@ -1067,12 +1042,12 @@ export function CeoUsersPage() {
                 header: lt('Actions'),
                 render: (row) => (
                   <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
-                    <button type="button" title={lt('Edit')} onClick={() => openEditUserModal(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                    <button type="button" title={lt('Delete')} onClick={() => void handleDeleteUser(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </button>
+                    <IconButton label={lt('Edit')} size="sm" onClick={() => openEditUserModal(row)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </IconButton>
+                    <IconButton label={lt('Delete')} size="sm" tone="danger" onClick={() => void handleDeleteUser(row)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </IconButton>
                     <ActionsMenu
                       label={`${lt('Open actions for')} ${row.email}`}
                       items={[
@@ -1136,19 +1111,19 @@ export function CeoUsersPage() {
         }
         size="xl"
       >
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-4">
+        <div className="grid gap-[18px] xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-[18px] bg-[var(--accent-soft)] p-[22px]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
               <div>
-                <p className="text-sm font-semibold text-white">{lt('Conversation')}</p>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="text-[15px] font-semibold text-[var(--foreground)]">{lt('Conversation')}</p>
+                <p className="mt-1 text-[12.5px] text-[var(--muted)]">
                   {lt('Previous messages and latest activity appear here.')}
                 </p>
               </div>
-              <Badge variant="outline">{activeConversation.totalCount} {lt('entries')}</Badge>
+              <Badge variant="secondary">{activeConversation.totalCount} {lt('entries')}</Badge>
             </div>
 
-            <div className="mt-4 max-h-[440px] space-y-3 overflow-y-auto pr-1">
+            <div className="mt-[18px] max-h-[440px] space-y-3 overflow-y-auto pr-1">
               {activeConversation.totalCount > 0 ? (
                 activeConversation.entries.map((entry) => {
                   const presentation = getMessagePresentation(entry)
@@ -1157,10 +1132,10 @@ export function CeoUsersPage() {
                     <div
                       key={entry.id}
                       className={cn(
-                        'relative min-w-0 max-w-[90%] overflow-hidden rounded-xl border px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+                        'relative min-w-0 max-w-[90%] overflow-hidden rounded-[18px] px-4 py-4',
                         entry.direction === 'outgoing'
-                          ? 'ml-auto border-violet-500/24 bg-[linear-gradient(180deg,rgba(139,92,246,0.16),rgba(139,92,246,0.08))]'
-                          : 'border-blue-500/22 bg-[linear-gradient(180deg,rgba(59,130,246,0.14),rgba(59,130,246,0.07))]',
+                          ? 'ml-auto bg-[var(--violet-dim)]'
+                          : 'bg-[var(--surface)]',
                       )}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1170,17 +1145,17 @@ export function CeoUsersPage() {
                         >
                           {entry.direction === 'incoming' ? t('ceo.users.thread.from_user') : t('ceo.users.thread.from_ceo')}
                         </Badge>
-                        <span className="text-[11px] text-white/45">
+                        <span className="text-[11.5px] tabular-nums text-[var(--caption)]" data-ui-number="true">
                           {formatMessageTimestamp(entry.sentAt)}
                         </span>
                       </div>
 
                       <div className="mt-3 min-w-0 space-y-2">
-                        <p className="break-words text-[15px] font-semibold text-white">
+                        <p className="break-words text-[15px] font-semibold text-[var(--foreground)]">
                           {presentation.headline}
                         </p>
                         {presentation.preview ? (
-                          <p className="break-words whitespace-pre-wrap text-[13px] leading-6 text-white/72">
+                          <p className="break-words whitespace-pre-wrap text-[13px] leading-6 text-[var(--muted-strong)]">
                             {presentation.preview}
                           </p>
                         ) : null}
@@ -1188,7 +1163,7 @@ export function CeoUsersPage() {
 
                       {presentation.hasHiddenPayload ? (
                         <div className="mt-3">
-                          <Badge variant="outline" size="sm" className="border-white/10 bg-white/[0.03] text-white/60">
+                          <Badge variant="secondary" size="sm">
                             {t('ceo.users.thread.attachment_hidden')}
                           </Badge>
                         </div>
@@ -1197,39 +1172,39 @@ export function CeoUsersPage() {
                   )
                 })
               ) : (
-                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-sm text-zinc-500">
+                <div className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-6 text-center text-[13px] text-[var(--muted)]">
                   {t('ceo.users.thread.empty')}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-4">
-            <Card variant="glass" className="space-y-4 rounded-xl border-white/10 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="space-y-[18px]">
+            <Card variant="inset" className="space-y-4 rounded-[18px]">
               <div className="flex items-center gap-3">
                 {messageThreadUser ? <UserAvatar user={messageThreadUser} size="md" /> : null}
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">
+                  <p className="truncate text-sm font-semibold text-[var(--foreground)]">
                     {messageThreadUser ? getUserDisplayName(messageThreadUser) : t('ceo.users.thread.selected_user')}
                   </p>
-                  <p className="truncate text-xs text-zinc-500">
+                  <p className="truncate text-[12.5px] text-[var(--muted)]">
                     {messageThreadUser?.email ?? t('ceo.users.thread.no_recipient')}
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(96px,1fr))]">
-                <div className="min-w-0 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
-                  <p className="ui-card-label leading-[1.35] text-[var(--caption)] [overflow-wrap:anywhere]">{t('ceo.users.thread.sent')}</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{activeConversation.outgoingCount}</p>
+              <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(96px,1fr))]">
+                <div className="min-w-0 rounded-[14px] bg-[var(--surface)] px-3.5 py-3">
+                  <p className="text-[12px] leading-[1.35] text-[var(--muted)] [overflow-wrap:anywhere]">{t('ceo.users.thread.sent')}</p>
+                  <p className="mt-2 text-[20px] font-bold tracking-[-0.02em] tabular-nums text-[var(--foreground)]" data-ui-number="true">{activeConversation.outgoingCount}</p>
                 </div>
-                <div className="min-w-0 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
-                  <p className="ui-card-label leading-[1.35] text-[var(--caption)] [overflow-wrap:anywhere]">{t('ceo.users.thread.incoming')}</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{activeConversation.incomingCount}</p>
+                <div className="min-w-0 rounded-[14px] bg-[var(--surface)] px-3.5 py-3">
+                  <p className="text-[12px] leading-[1.35] text-[var(--muted)] [overflow-wrap:anywhere]">{t('ceo.users.thread.incoming')}</p>
+                  <p className="mt-2 text-[20px] font-bold tracking-[-0.02em] tabular-nums text-[var(--foreground)]" data-ui-number="true">{activeConversation.incomingCount}</p>
                 </div>
-                <div className="min-w-0 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] px-3 py-3">
-                  <p className="ui-card-label leading-[1.35] text-[var(--caption)] [overflow-wrap:anywhere]">{t('ceo.users.thread.latest')}</p>
-                  <p className="mt-2 text-sm font-semibold text-white">
+                <div className="min-w-0 rounded-[14px] bg-[var(--surface)] px-3.5 py-3">
+                  <p className="text-[12px] leading-[1.35] text-[var(--muted)] [overflow-wrap:anywhere]">{t('ceo.users.thread.latest')}</p>
+                  <p className="mt-2 text-sm font-semibold tabular-nums text-[var(--foreground)]" data-ui-number="true">
                     {activeConversation.entries.length > 0
                       ? formatShortDate(activeConversation.entries[activeConversation.entries.length - 1]?.sentAt)
                       : '-'}
@@ -1238,16 +1213,16 @@ export function CeoUsersPage() {
               </div>
             </Card>
 
-            <Card className="space-y-4 rounded-xl border-white/10 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <Card variant="inset" className="space-y-4 rounded-[18px]">
               <div>
-                <p className="text-sm font-semibold text-white">{t('ceo.users.thread.write_title')}</p>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="text-[15px] font-semibold text-[var(--foreground)]">{t('ceo.users.thread.write_title')}</p>
+                <p className="mt-1 text-[12.5px] text-[var(--muted)]">
                   {t('ceo.users.thread.write_description')}
                 </p>
               </div>
 
               <Label className="grid gap-2">
-                <span className="text-xs font-semibold text-white">{t('ceo.messages.subject')}</span>
+                <span className="text-[13px] font-semibold text-[var(--foreground)]">{t('ceo.messages.subject')}</span>
                 <Input
                   value={messageValues.subject}
                   placeholder={t('ceo.messages.subject_placeholder')}
@@ -1261,7 +1236,7 @@ export function CeoUsersPage() {
               </Label>
 
               <Label className="grid gap-2">
-                <span className="text-xs font-semibold text-white">{t('ceo.messages.body')}</span>
+                <span className="text-[13px] font-semibold text-[var(--foreground)]">{t('ceo.messages.body')}</span>
                 <Textarea
                   rows={8}
                   value={messageValues.body}
@@ -1316,11 +1291,11 @@ export function CeoUsersPage() {
         }
       >
         {/* Profile image section */}
-        <div className="mb-4 flex items-center gap-4">
+        <div className="mb-[18px] flex items-center gap-4 rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
           {profileUser ? <UserAvatar user={profileUser} size="lg" /> : null}
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">{profileUser?.name} {profileUser?.surname}</p>
-            <p className="mb-2 text-xs text-[var(--muted-strong)]">{profileUser?.email}</p>
+            <p className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{profileUser?.name} {profileUser?.surname}</p>
+            <p className="mb-2.5 text-[12.5px] text-[var(--muted)]">{profileUser?.email}</p>
             <input
               ref={profileImageRef}
               type="file"
@@ -1337,48 +1312,47 @@ export function CeoUsersPage() {
               size="sm"
               onClick={() => profileImageRef.current?.click()}
               loading={isUploadingImage}
-              className="rounded-xl text-xs"
             >
               {profileUser?.profile_image ? t('profile.change_photo') : t('profile.upload_photo')}
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)]">{t('profile.role')}</p>
-            <p className={cn('mt-2 text-lg font-semibold', getRoleTextClass(profileUser?.role))}>{profileUser?.role ?? '-'}</p>
+        <div className="grid gap-[18px] md:grid-cols-2">
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-[18px] py-4">
+            <p className="text-[12px] text-[var(--muted)]">{t('profile.role')}</p>
+            <p className={cn('mt-2 text-[17px] font-semibold tracking-[-0.01em]', toneText[getRoleTone(profileUser?.role)])}>{profileUser?.role ?? '-'}</p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)]">{t('profile.company_code')}</p>
-            <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">{profileUser?.company_code ?? '-'}</p>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-[18px] py-4">
+            <p className="text-[12px] text-[var(--muted)]">{t('profile.company_code')}</p>
+            <p className="mt-2 text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{profileUser?.company_code ?? '-'}</p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)]">{t('profile.job_title')}</p>
-            <p className={cn('mt-2 text-lg font-semibold', profileUser?.job_title ? (isCeoUser(profileUser) ? 'text-[var(--violet-text)]' : 'text-[var(--success-text)]') : 'text-[var(--foreground)]')}>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-[18px] py-4">
+            <p className="text-[12px] text-[var(--muted)]">{t('profile.job_title')}</p>
+            <p className={cn('mt-2 text-[17px] font-semibold tracking-[-0.01em]', profileUser?.job_title ? (isCeoUser(profileUser) ? 'text-[var(--violet-text)]' : 'text-[var(--success-text)]') : 'text-[var(--foreground)]')}>
               {profileUser?.job_title ?? '-'}
             </p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)]">{t('profile.email')}</p>
-            <p className="mt-2 break-all text-base font-semibold text-[var(--foreground)]">{profileUser?.email ?? '-'}</p>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-[18px] py-4">
+            <p className="text-[12px] text-[var(--muted)]">{t('profile.email')}</p>
+            <p className="mt-2 break-all text-[15px] font-semibold text-[var(--foreground)]">{profileUser?.email ?? '-'}</p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)]">{t('profile.status')}</p>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-[18px] py-4">
+            <p className="text-[12px] text-[var(--muted)]">{t('profile.status')}</p>
             <div className="mt-2 flex items-center gap-2">
               <span className={cn('status-dot', profileUser?.is_active ? 'status-dot-success' : 'status-dot-muted')} />
-              <p className={cn('text-base font-semibold', profileUser?.is_active ? 'text-[var(--success-text)]' : 'text-[var(--danger-text)]')}>
+              <p className={cn('text-[15px] font-semibold', profileUser?.is_active ? 'text-[var(--success-text)]' : 'text-[var(--danger-text)]')}>
                 {profileUser?.is_active ? t('status.active') : t('status.inactive')}
               </p>
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)]">{t('auth.register.telegram_id')}</p>
-            <p className="mt-2 break-all text-base font-semibold text-[var(--foreground)]">{profileUser?.telegram_id ?? '-'}</p>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-[18px] py-4">
+            <p className="text-[12px] text-[var(--muted)]">{t('auth.register.telegram_id')}</p>
+            <p className="mt-2 break-all text-[15px] font-semibold text-[var(--foreground)]">{profileUser?.telegram_id ?? '-'}</p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)]">{t('ceo.users.form.default_salary')}</p>
-            <p className="mt-2 text-base font-semibold text-[var(--foreground)]">{formatSalary(profileUser?.default_salary)}</p>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-[18px] py-4">
+            <p className="text-[12px] text-[var(--muted)]">{t('ceo.users.form.default_salary')}</p>
+            <p className="mt-2 text-[15px] font-semibold tabular-nums text-[var(--foreground)]" data-ui-number="true">{formatSalary(profileUser?.default_salary)}</p>
           </div>
         </div>
       </Dialog>

@@ -67,17 +67,16 @@ export function KanbanColumn({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex w-[calc(100vw-64px)] sm:w-[280px] shrink-0 flex-col rounded-xl overflow-hidden',
-        'bg-[var(--accent-soft)]/40 backdrop-blur-md',
-        'border border-[var(--border)] shadow-sm',
-        isDragging && !isOverlay && 'opacity-30 scale-[0.98]',
-        isOverlay && 'rotate-[1deg] opacity-95 shadow-[var(--shadow-xl)]',
+        'flex w-[calc(100vw-64px)] sm:w-[280px] shrink-0 flex-col overflow-hidden rounded-[18px]',
+        'bg-[var(--accent-soft)]',
+        isDragging && !isOverlay && 'opacity-40',
+        isOverlay && 'shadow-[var(--elev-xl)]',
       )}
     >
       {/* Color accent bar */}
       {column.color && (
         <div
-          className="h-1.5 w-full shrink-0 opacity-90"
+          className="h-[3px] w-full shrink-0"
           style={{ background: column.color }}
         />
       )}
@@ -85,17 +84,17 @@ export function KanbanColumn({
       {/* Column header — drag handle */}
       <div
         className={cn(
-          'flex shrink-0 items-center justify-between gap-2 px-4 py-3',
+          'flex shrink-0 items-center justify-between gap-2 px-3.5 py-3',
           readOnly ? 'select-none' : 'cursor-grab active:cursor-grabbing select-none',
         )}
         {...(!readOnly ? attributes : {})}
         {...(!readOnly ? listeners : {})}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <h3 className="truncate text-[13px] font-bold text-[var(--foreground)] tracking-tight">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="truncate text-sm font-semibold tracking-[-0.01em] text-[var(--foreground)]">
             {column.name}
           </h3>
-          <span className="shrink-0 rounded-md bg-[var(--accent-soft)] border border-[var(--border)] px-1.5 py-0.5 text-[10px] font-black text-[var(--muted-strong)] leading-none">
+          <span className="shrink-0 rounded-full bg-[var(--surface)] px-2 py-1 text-[11.5px] font-semibold leading-none tabular-nums text-[var(--muted-strong)]">
             {column.cards.length}
           </span>
         </div>
@@ -116,7 +115,7 @@ export function KanbanColumn({
       {/* Cards scroll area */}
       <div
         ref={scrollRef}
-        className="min-h-[4px] max-h-[calc(100vh-260px)] overflow-y-auto overflow-x-hidden px-2 pt-0.5 pb-2 custom-scrollbar-visible"
+        className="min-h-[4px] max-h-[calc(100vh-302px)] overflow-y-auto overflow-x-hidden px-2.5 pt-0.5 pb-2 custom-scrollbar-visible"
       >
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2.5 py-0.5">
@@ -136,13 +135,13 @@ export function KanbanColumn({
 
       {/* Add card button — below scroll area */}
       {!readOnly ? (
-        <div className="shrink-0 px-2 pb-3 pt-1">
+        <div className="shrink-0 px-2.5 pb-2.5 pt-1">
           <button
             type="button"
             onClick={() => onOpenAddCardModal(column.id)}
-            className="flex w-full items-center gap-2 rounded-xl border border-transparent bg-transparent px-3 py-2 text-[12px] font-bold text-[var(--muted-strong)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]"
+            className="flex min-h-11 w-full items-center gap-2 rounded-[14px] bg-transparent px-3 py-2 text-[13px] font-semibold text-[var(--muted-strong)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M12 5v14M5 12h14" strokeLinecap="round" />
             </svg>
             {tr('Task qo\'shish', 'Task qo\'shish', 'Добавить задачу')}
