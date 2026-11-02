@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { ceoService } from '../../../shared/api/services/ceo.service'
 import {
   developerKpiService,
@@ -24,12 +25,16 @@ import { useToast } from '../../../shared/toast/useToast'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card, CardTitle } from '../../../shared/ui/card'
+import { BarChartCard, type BarDatum } from '../../../shared/ui/charts/bar-chart-card'
+import { FunnelStages, type FunnelStage } from '../../../shared/ui/charts/funnel-stages'
+import { GaugeDonut, type GaugeSegment } from '../../../shared/ui/charts/gauge-donut'
+import { Leaderboard, type LeaderboardEntry } from '../../../shared/ui/charts/leaderboard'
+import { TaskList, type TaskRow } from '../../../shared/ui/charts/task-list'
 import { Checkbox } from '../../../shared/ui/checkbox'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
-import { PageHeader } from '../../../shared/ui/page-header'
 import { Progress } from '../../../shared/ui/progress'
 import { SelectField } from '../../../shared/ui/select-field'
 import { StatCard } from '../../../shared/ui/stat-card'
@@ -142,6 +147,42 @@ function IconReceipt() {
   )
 }
 
+function IconPlan() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 3.5h6v3H9zM7 5H5.5A1.5 1.5 0 0 0 4 6.5v13A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 18.5 5H17" />
+      <path d="M8.5 11h7M8.5 15h4" />
+    </svg>
+  )
+}
+
+function IconProgress() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 12a8 8 0 1 1-2.4-5.7" />
+      <path d="M20 4.5V10h-5.5" />
+    </svg>
+  )
+}
+
+function IconCheckCircle() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M8 12.5l2.8 2.8L16 9.8" />
+    </svg>
+  )
+}
+
+function IconTrophy() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" />
+      <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
+    </svg>
+  )
+}
+
 function KpiBadge({ score }: { score: number }) {
   return <Badge variant={kpiTone(score)}>{formatKpi(score)}</Badge>
 }
@@ -178,8 +219,6 @@ function SeverityBadge({ severity }: { severity: string }) {
   const label = QUALITY_SEVERITY_OPTIONS.find((o) => o.value === severity)?.label ?? severity
   return <Badge variant={danger ? 'danger' : warning ? 'warning' : 'secondary'}>{label}</Badge>
 }
-
-// ─── SalaryEstimatesTab ──────────────────────────────────────────────────────
 
 type EstimateRow = { est: SalaryEstimate; userId: number }
 
@@ -237,14 +276,12 @@ function SalaryEstimatesTab({
         )}
       </div>
 
-      {/* Single employee detail */}
       {selectedUserId != null && (
         <div className="space-y-[18px]">
           {singleQuery.isLoading && <LoadingStateBlock eyebrow="KPI" title="Loading estimate..." />}
           {singleQuery.isError && <ErrorStateBlock eyebrow="Error" title={getApiErrorMessage(singleQuery.error)} />}
           {estimate && (
             <div className="space-y-[18px]">
-              {/* Salary summary */}
               <div className="grid gap-[18px] sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                 {[
                   { label: 'Base Salary', value: formatCurrency(estimate.salary.base_salary), icon: <IconWallet />, iconTone: 'blue' as const, solid: false },
@@ -264,7 +301,6 @@ function SalaryEstimatesTab({
                 ))}
               </div>
 
-              {/* KPI breakdown */}
               <Card className="space-y-[18px]">
                 <div className="flex items-center justify-between gap-3">
                   <CardTitle>KPI Breakdown</CardTitle>
@@ -283,7 +319,6 @@ function SalaryEstimatesTab({
         </div>
       )}
 
-      {/* All employees table (CEO view) */}
       {isCeo && selectedUserId == null && (
         <div>
           {(estimatesQuery.isLoading || estimatesQuery.isIdle) && <LoadingStateBlock eyebrow="KPI" title="Loading estimates..." />}
@@ -324,8 +359,6 @@ function SalaryEstimatesTab({
     </div>
   )
 }
-
-// ─── FeaturesTab ─────────────────────────────────────────────────────────────
 
 function FeaturesTab({
   year,
@@ -507,7 +540,6 @@ function FeaturesTab({
         </Card>
       )}
 
-      {/* Create feature dialog */}
       <Dialog open={showCreate} onClose={() => setShowCreate(false)} title="New Feature">
         <form onSubmit={(e) => void handleCreate(e)} className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-3">
@@ -596,8 +628,6 @@ function FeaturesTab({
     </div>
   )
 }
-
-// ─── DeductionsTab ───────────────────────────────────────────────────────────
 
 function DeductionsTab({
   year,
@@ -701,8 +731,6 @@ function DeductionsTab({
   )
 }
 
-// ─── SnapshotsTab ─────────────────────────────────────────────────────────────
-
 function SnapshotsTab({
   year,
   month,
@@ -790,8 +818,6 @@ function SnapshotsTab({
     </div>
   )
 }
-
-// ─── QualityEventsTab ─────────────────────────────────────────────────────────
 
 function QualityEventsTab({
   year,
@@ -979,8 +1005,6 @@ function QualityEventsTab({
     </div>
   )
 }
-
-// ─── BlockedPeriodsTab ────────────────────────────────────────────────────────
 
 function BlockedPeriodsTab({
   users,
@@ -1178,8 +1202,6 @@ function BlockedPeriodsTab({
   )
 }
 
-// ─── WorkSchedulesTab ─────────────────────────────────────────────────────────
-
 function WorkSchedulesTab({
   users,
   isCeo,
@@ -1345,8 +1367,6 @@ function WorkSchedulesTab({
   )
 }
 
-// ─── ProjectDeliveryTab ───────────────────────────────────────────────────────
-
 type DeliveryStatus = 'in_progress' | 'delivered' | 'delayed' | 'cancelled'
 
 const DELIVERY_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -1479,7 +1499,353 @@ function ProjectDeliveryTab({ isCeo, projects }: { isCeo: boolean; projects: Arr
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+function initialsOf(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || '—'
+}
+
+type DeveloperKpiOverviewProps = {
+  estimates: SalaryEstimate[]
+  features: Feature[]
+  users: Array<{ id: number; name: string; surname: string }>
+  isCeo: boolean
+  monthLabel: string
+  onOpenTab: (tab: Tab) => void
+}
+
+function DeveloperKpiOverview({
+  estimates,
+  features,
+  users,
+  isCeo,
+  monthLabel,
+  onOpenTab,
+}: DeveloperKpiOverviewProps) {
+  const { t } = useLocale()
+
+  const hasEstimates = estimates.length > 0
+
+  const scores = useMemo(() => {
+    const divisor = estimates.length || 1
+    const totals = estimates.reduce(
+      (acc, item) => ({
+        delivery: acc.delivery + item.scores.delivery,
+        deadline: acc.deadline + item.scores.deadline,
+        quality: acc.quality + item.scores.quality,
+        team: acc.team + item.scores.team,
+        discipline: acc.discipline + item.scores.discipline,
+        final_kpi: acc.final_kpi + item.scores.final_kpi,
+      }),
+      { delivery: 0, deadline: 0, quality: 0, team: 0, discipline: 0, final_kpi: 0 },
+    )
+
+    return {
+      delivery: totals.delivery / divisor,
+      deadline: totals.deadline / divisor,
+      quality: totals.quality / divisor,
+      team: totals.team / divisor,
+      discipline: totals.discipline / divisor,
+      final: totals.final_kpi / divisor,
+    }
+  }, [estimates])
+
+  const payroll = useMemo(
+    () =>
+      estimates.reduce(
+        (acc, item) => ({
+          base: acc.base + item.salary.base_salary,
+          bonus: acc.bonus + item.salary.kpi_bonus,
+          maxFund: acc.maxFund + item.salary.max_kpi_fund,
+          deductions: acc.deductions + item.salary.approved_deductions,
+          expected: acc.expected + item.salary.expected_salary,
+        }),
+        { base: 0, bonus: 0, maxFund: 0, deductions: 0, expected: 0 },
+      ),
+    [estimates],
+  )
+
+  const scoreBars = useMemo<BarDatum[]>(() => {
+    if (!hasEstimates) {
+      return []
+    }
+
+    return [
+      { key: 'delivery', label: 'Delivery', value: scores.delivery, amount: formatKpi(scores.delivery), delta: '35%' },
+      { key: 'deadline', label: 'Deadline', value: scores.deadline, amount: formatKpi(scores.deadline), delta: '20%' },
+      { key: 'quality', label: 'Quality', value: scores.quality, amount: formatKpi(scores.quality), delta: '20%' },
+      { key: 'team', label: 'Team', value: scores.team, amount: formatKpi(scores.team), delta: '15%' },
+      { key: 'discipline', label: 'Discipline', value: scores.discipline, amount: formatKpi(scores.discipline), delta: '10%' },
+    ]
+  }, [hasEstimates, scores])
+
+  const weakestKey = useMemo(() => {
+    if (scoreBars.length === 0) {
+      return undefined
+    }
+
+    return scoreBars.reduce((lowest, item) => (item.value < lowest.value ? item : lowest), scoreBars[0]).key
+  }, [scoreBars])
+
+  const tiers = useMemo<GaugeSegment[]>(() => {
+    let excellent = 0
+    let onTrack = 0
+    let atRisk = 0
+
+    for (const item of estimates) {
+      if (item.scores.final_kpi >= 90) {
+        excellent += 1
+      } else if (item.scores.final_kpi >= 70) {
+        onTrack += 1
+      } else {
+        atRisk += 1
+      }
+    }
+
+    return [
+      { key: 'excellent', label: t('developer_kpi.overview.tier_excellent', 'Excellent'), value: excellent, color: '#A6E83B' },
+      { key: 'on_track', label: t('developer_kpi.overview.tier_on_track', 'On track'), value: onTrack, color: '#2B59FF' },
+      { key: 'at_risk', label: t('developer_kpi.overview.tier_at_risk', 'At risk'), value: atRisk, color: '#FFB86B' },
+    ]
+  }, [estimates, t])
+
+  const pipeline = useMemo(() => {
+    const counts: Record<FeatureStatus, number> = { planned: 0, in_progress: 0, completed: 0, accepted: 0 }
+    let points = 0
+    let acceptedPoints = 0
+    let mandatory = 0
+
+    for (const feature of features) {
+      const status = feature.status
+
+      if (status === 'planned' || status === 'in_progress' || status === 'completed' || status === 'accepted') {
+        counts[status] += 1
+      }
+
+      points += feature.points
+
+      if (status === 'accepted') {
+        acceptedPoints += feature.points
+      }
+
+      if (feature.is_mandatory) {
+        mandatory += 1
+      }
+    }
+
+    return { counts, points, acceptedPoints, mandatory }
+  }, [features])
+
+  const funnelStages = useMemo<FunnelStage[]>(() => {
+    const steps = [
+      { key: 'planned' as FeatureStatus, icon: <IconPlan />, hero: false },
+      { key: 'in_progress' as FeatureStatus, icon: <IconProgress />, hero: false },
+      { key: 'completed' as FeatureStatus, icon: <IconCheckCircle />, hero: false },
+      { key: 'accepted' as FeatureStatus, icon: <IconTrophy />, hero: true },
+    ]
+    const max = steps.reduce((acc, step) => Math.max(acc, pipeline.counts[step.key]), 0) || 1
+
+    return steps.map((step) => ({
+      key: step.key,
+      label: FEATURE_STATUS_META[step.key].label,
+      count: pipeline.counts[step.key],
+      value: pipeline.counts[step.key],
+      percent: Math.round((pipeline.counts[step.key] / max) * 100),
+      icon: step.icon,
+      hero: step.hero,
+    }))
+  }, [pipeline])
+
+  const deadlines = useMemo<TaskRow[]>(() => {
+    const reference = new Date()
+    const today = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate()).getTime()
+    const dayMs = 86_400_000
+
+    return features
+      .filter((feature) => Boolean(feature.due_date) && feature.status !== 'accepted')
+      .sort((left, right) => String(left.due_date).localeCompare(String(right.due_date)))
+      .slice(0, 6)
+      .map((feature) => {
+        const due = new Date(String(feature.due_date))
+        const dueStart = Number.isNaN(due.getTime())
+          ? today
+          : new Date(due.getFullYear(), due.getMonth(), due.getDate()).getTime()
+        const daysLeft = Math.round((dueStart - today) / dayMs)
+        const owner = users.find((item) => item.id === feature.owner_id)
+        const tone: TaskRow['tone'] = daysLeft < 0 ? 'danger' : daysLeft <= 3 ? 'warning' : 'blue'
+
+        return {
+          key: String(feature.id),
+          title: feature.title,
+          meta: owner ? `${owner.name} ${owner.surname}` : `#${feature.owner_id}`,
+          tag: String(feature.due_date),
+          tone,
+        }
+      })
+  }, [features, users])
+
+  const owners = useMemo<LeaderboardEntry[]>(() => {
+    const buckets = new Map<number, { points: number; count: number }>()
+
+    for (const feature of features) {
+      const bucket = buckets.get(feature.owner_id) ?? { points: 0, count: 0 }
+      bucket.points += feature.points
+      bucket.count += 1
+      buckets.set(feature.owner_id, bucket)
+    }
+
+    const ranked = [...buckets.entries()].sort(([, left], [, right]) => right.points - left.points).slice(0, 5)
+    const max = ranked.length > 0 ? ranked[0][1].points : 0
+
+    return ranked.map(([ownerId, bucket]) => {
+      const owner = users.find((item) => item.id === ownerId)
+      const name = owner ? `${owner.name} ${owner.surname}` : `#${ownerId}`
+
+      return {
+        key: String(ownerId),
+        name,
+        initials: initialsOf(name),
+        caption: t('developer_kpi.overview.owner_features', '{{count}} features', { count: bucket.count }),
+        amount: bucket.points,
+        percent: max > 0 ? Math.round((bucket.points / max) * 100) : 0,
+      }
+    })
+  }, [features, t, users])
+
+  const emptyHint = (
+    <p className="py-10 text-center text-[13px] text-[var(--muted)]">
+      {t('developer_kpi.overview.no_data', 'No KPI data for this period yet.')}
+    </p>
+  )
+
+  return (
+    <div className="flex flex-col gap-[18px]">
+      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
+        <StatCard
+          solid
+          label={isCeo ? t('developer_kpi.overview.team_kpi', 'Team KPI') : t('developer_kpi.overview.my_kpi', 'My KPI')}
+          value={hasEstimates ? formatKpi(scores.final) : '—'}
+          icon={<IconTarget />}
+          hint={t('developer_kpi.overview.weighted_hint', 'Weighted across five KPI components')}
+        />
+        <StatCard
+          label={t('developer_kpi.overview.expected_payroll', 'Expected payroll')}
+          value={hasEstimates ? formatCurrency(payroll.expected) : '—'}
+          icon={<IconWallet />}
+          iconTone="blue"
+          hint={t('developer_kpi.overview.base_hint', 'Base: {{amount}}', { amount: formatCurrency(payroll.base) })}
+          onOpen={() => onOpenTab('salary_estimates')}
+        />
+        <StatCard
+          label={t('developer_kpi.overview.bonus_pool', 'KPI bonus pool')}
+          value={hasEstimates ? formatCurrency(payroll.bonus) : '—'}
+          icon={<IconTrendUp />}
+          iconTone="success"
+          delta={payroll.maxFund > 0 ? `${Math.round((payroll.bonus / payroll.maxFund) * 100)}%` : undefined}
+          hint={t('developer_kpi.overview.max_fund_hint', 'Max fund: {{amount}}', { amount: formatCurrency(payroll.maxFund) })}
+        />
+        <StatCard
+          label={t('developer_kpi.overview.deductions_total', 'Deductions')}
+          value={hasEstimates ? (payroll.deductions > 0 ? `-${formatCurrency(payroll.deductions)}` : formatCurrency(0)) : '—'}
+          icon={<IconTrendDown />}
+          iconTone={payroll.deductions > 0 ? 'danger' : 'neutral'}
+          hint={t('developer_kpi.overview.deductions_hint', 'Approved for this period')}
+          onOpen={() => onOpenTab('deductions')}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-[18px]">
+        <BarChartCard
+          className="min-w-0 flex-[1.5_1_520px]"
+          title={t('developer_kpi.overview.breakdown', 'KPI components')}
+          deltaBadge={hasEstimates ? formatKpi(scores.final) : undefined}
+          deltaCaption={t('developer_kpi.overview.breakdown_caption', 'Average score per weighted component')}
+          data={scoreBars}
+          highlightKey={weakestKey}
+          summaryTitle={t('developer_kpi.overview.breakdown_summary', 'Delivery and deadline carry 55% of the final score.')}
+          total={hasEstimates ? formatKpi(scores.final) : '—'}
+          totalCaption={t('developer_kpi.overview.final_caption', 'final KPI score')}
+          emptyState={emptyHint}
+        />
+
+        <GaugeDonut
+          className="min-w-0 flex-[1_1_360px]"
+          title={t('developer_kpi.overview.distribution', 'Score distribution')}
+          segments={tiers}
+          centerValue={estimates.length}
+          centerCaption={t('developer_kpi.overview.tracked_caption', 'tracked employees')}
+          emptyState={emptyHint}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-[18px]">
+        <div className="flex min-w-0 flex-[1.3_1_440px] flex-col gap-4 rounded-[24px] bg-[var(--card)] p-[22px]">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
+              {t('developer_kpi.overview.pipeline', 'Feature pipeline')}
+            </span>
+            <span className="text-[13px] text-[var(--muted)]">
+              {t('developer_kpi.overview.pipeline_total', 'total')}{' '}
+              <b className="font-semibold text-[var(--foreground)]">{features.length}</b>
+            </span>
+          </div>
+
+          <FunnelStages stages={funnelStages} />
+
+          <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(130px,1fr))]">
+            <div className="rounded-[18px] bg-[var(--accent-soft)] p-3.5">
+              <p className="ui-card-label">{t('developer_kpi.overview.total_points', 'Total points')}</p>
+              <p className="mt-2 text-[17px] font-bold tracking-[-0.02em] tabular-nums text-[var(--foreground)]">{pipeline.points}</p>
+            </div>
+            <div className="rounded-[18px] bg-[var(--accent-soft)] p-3.5">
+              <p className="ui-card-label">{t('developer_kpi.overview.accepted_points', 'Accepted points')}</p>
+              <p className="mt-2 text-[17px] font-bold tracking-[-0.02em] tabular-nums text-[var(--success-text)]">{pipeline.acceptedPoints}</p>
+            </div>
+            <div className="rounded-[18px] bg-[var(--accent-soft)] p-3.5">
+              <p className="ui-card-label">{t('developer_kpi.overview.mandatory', 'Mandatory')}</p>
+              <p className="mt-2 text-[17px] font-bold tracking-[-0.02em] tabular-nums text-[var(--foreground)]">{pipeline.mandatory}</p>
+            </div>
+          </div>
+        </div>
+
+        <TaskList
+          className="min-w-0 flex-[1_1_300px]"
+          title={t('developer_kpi.overview.deadlines', 'Upcoming deadlines')}
+          tasks={deadlines}
+          onSelect={() => onOpenTab('features')}
+          action={
+            deadlines.length > 0 ? (
+              <span className="rounded-full bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-semibold text-[var(--blue-text)]" data-ui-number="true">
+                {deadlines.length}
+              </span>
+            ) : undefined
+          }
+          emptyState={
+            <p className="py-8 text-center text-[13px] text-[var(--muted)]">
+              {t('developer_kpi.overview.no_deadlines', 'No feature deadlines ahead.')}
+            </p>
+          }
+        />
+
+        <Leaderboard
+          className="min-w-0 flex-[1_1_300px]"
+          title={t('developer_kpi.overview.top_owners', 'Top feature owners')}
+          badge={monthLabel}
+          entries={owners}
+          emptyState={
+            <p className="py-8 text-center text-[13px] text-[var(--on-inverse-muted)]">
+              {t('developer_kpi.overview.no_owners', 'No feature owners for this period.')}
+            </p>
+          }
+        />
+      </div>
+    </div>
+  )
+}
 
 export function DeveloperKpiPage() {
   const { user } = useAuth()
@@ -1506,6 +1872,36 @@ export function DeveloperKpiPage() {
   )
   const projects = projectsQuery.data ?? []
 
+  const overviewEstimatesQuery = useAsyncData<SalaryEstimate[]>(
+    () => {
+      if (isCeo) {
+        return developerKpiService.listSalaryEstimates(year, month)
+      }
+
+      if (user?.id != null) {
+        return developerKpiService.getSalaryEstimate(user.id, year, month).then((estimate) => [estimate])
+      }
+
+      return Promise.resolve([])
+    },
+    [isCeo, user?.id, year, month],
+  )
+
+  const overviewFeaturesQuery = useAsyncData(
+    () => developerKpiService.listFeatures({ year, month }),
+    [year, month],
+  )
+
+  const overviewEstimates = useMemo(
+    () => (Array.isArray(overviewEstimatesQuery.data) ? overviewEstimatesQuery.data : []),
+    [overviewEstimatesQuery.data],
+  )
+
+  const overviewFeatures = useMemo(
+    () => (Array.isArray(overviewFeaturesQuery.data) ? overviewFeaturesQuery.data : []),
+    [overviewFeaturesQuery.data],
+  )
+
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear()
     return Array.from({ length: 3 }, (_, i) => currentYear - 1 + i).map((y) => ({ value: String(y), label: String(y) }))
@@ -1513,30 +1909,32 @@ export function DeveloperKpiPage() {
 
   const monthOptions = MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))
 
-  const tabsWithPeriod: Tab[] = ['salary_estimates', 'features', 'deductions', 'snapshots', 'quality_events', 'blocked_periods']
-
   return (
-    <section className="page-enter space-y-[18px]">
-      {/* Header */}
-      <PageHeader
-        title="Developer KPI"
-        description="KPI scoring · salary estimates · quality tracking"
-        actions={
-          tabsWithPeriod.includes(activeTab) ? (
-            <div className="flex items-center gap-2">
-              {/* Period picker */}
-              <div className="w-32">
-                <SelectField value={String(month)} onValueChange={(v) => setMonth(Number(v))} options={monthOptions} className={FILTER_SELECT} />
-              </div>
-              <div className="w-24">
-                <SelectField value={String(year)} onValueChange={(v) => setYear(Number(v))} options={yearOptions} className={FILTER_SELECT} />
-              </div>
-            </div>
-          ) : undefined
-        }
+    <section className="page-enter flex flex-col gap-[18px]">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="ui-page-title text-[var(--foreground)]">Developer KPI</h1>
+          <p className="text-sm text-[var(--muted)]">KPI scoring · salary estimates · quality tracking</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-32">
+            <SelectField value={String(month)} onValueChange={(v) => setMonth(Number(v))} options={monthOptions} className={FILTER_SELECT} />
+          </div>
+          <div className="w-24">
+            <SelectField value={String(year)} onValueChange={(v) => setYear(Number(v))} options={yearOptions} className={FILTER_SELECT} />
+          </div>
+        </div>
+      </div>
+
+      <DeveloperKpiOverview
+        estimates={overviewEstimates}
+        features={overviewFeatures}
+        users={users}
+        isCeo={isCeo}
+        monthLabel={MONTHS[month - 1]}
+        onOpenTab={setActiveTab}
       />
 
-      {/* Formula card */}
       <Card>
         <div className="grid gap-[18px] sm:grid-cols-2">
           <div className={PANEL}>
@@ -1550,19 +1948,16 @@ export function DeveloperKpiPage() {
         </div>
       </Card>
 
-      {/* Tabs */}
       <div className="custom-scrollbar-visible overflow-x-auto">
         <Tabs
           items={TABS.map((tab) => ({ value: tab, label: TAB_LABELS[tab] }))}
           value={activeTab}
           onChange={setActiveTab}
-          variant="underline"
           ariaLabel="Developer KPI"
           className="min-w-max"
         />
       </div>
 
-      {/* Tab content */}
       <div>
         {activeTab === 'salary_estimates' && (
           <SalaryEstimatesTab year={year} month={month} users={users} isCeo={isCeo} selfId={user?.id} />
