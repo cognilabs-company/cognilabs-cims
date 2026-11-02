@@ -7,8 +7,10 @@ import { useAsyncData } from '../../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../../shared/lib/api-error'
 import { cn } from '../../../../shared/lib/cn'
 import { formatShortDateTime } from '../../../../shared/lib/format'
+import { Alert } from '../../../../shared/ui/alert'
 import { Badge } from '../../../../shared/ui/badge'
 import { Button } from '../../../../shared/ui/button'
+import { Skeleton } from '../../../../shared/ui/skeleton'
 import { AlertIcon, ReplyIcon, SendIcon } from './icons'
 import { PaginationBar } from './PaginationBar'
 import {
@@ -50,23 +52,23 @@ function ReplyLine({
   const tx = useCommentAutomationT()
 
   return (
-    <div className="flex gap-2">
-      <span className="mt-0.5 shrink-0 text-[var(--caption)]">{icon}</span>
-      <div className="min-w-0 flex-1 space-y-1">
+    <div className="flex gap-2.5">
+      <span className="mt-0.5 shrink-0 text-[var(--muted)]">{icon}</span>
+      <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-semibold text-[var(--muted-strong)]">{title}</span>
-          {status ? <EventStatusBadge status={status} /> : <span className="text-[11px] text-[var(--caption)]">-</span>}
+          <span className="text-[12.5px] font-semibold text-[var(--muted-strong)]">{title}</span>
+          {status ? <EventStatusBadge status={status} /> : <span className="text-[12.5px] text-[var(--muted)]">-</span>}
         </div>
         {text ? (
           <p data-i18n-skip="true" className="whitespace-pre-wrap text-[13px] leading-snug text-[var(--foreground)]">{text}</p>
         ) : (
-          <p className="text-[12px] italic text-[var(--caption)]">{tx('events.no_text', 'No text')}</p>
+          <p className="text-[12.5px] italic text-[var(--muted)]">{tx('events.no_text', 'No text')}</p>
         )}
         {error && (
-          <p data-i18n-skip="true" className="rounded-md bg-[var(--danger-dim)] px-2 py-1 text-[11px] text-[var(--danger-text)]">{error}</p>
+          <p data-i18n-skip="true" className="rounded-[9px] bg-[var(--danger-dim)] px-2.5 py-1.5 text-[11.5px] text-[var(--danger-text)]">{error}</p>
         )}
         {messageId && (
-          <p className="break-all text-[10px] text-[var(--caption)]">
+          <p className="break-all text-[11px] text-[var(--caption)]">
             {tx('events.message_id', 'Message ID')}: <span data-i18n-skip="true" className="font-mono">{messageId}</span>
           </p>
         )}
@@ -84,21 +86,21 @@ function CommentThreadItem({ event }: { event: CommentAutomationEvent }) {
   return (
     <li
       className={cn(
-        'flex gap-3 rounded-xl px-2 py-3',
+        'flex gap-3 rounded-[18px] px-3 py-3.5',
         alert === 'failed' && 'bg-[var(--danger-dim)]',
-        alert === 'unknown' && 'bg-amber-500/[0.08]',
+        alert === 'unknown' && 'bg-[var(--warning-dim)]',
       )}
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--muted-surface)] text-[12px] font-bold text-[var(--muted-strong)] ring-1 ring-[var(--border)]">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[12.5px] font-bold text-[var(--muted-strong)]">
         {initial}
       </span>
-      <div className="min-w-0 flex-1 space-y-2">
+      <div className="min-w-0 flex-1 space-y-2.5">
         <div>
           <p className="text-[13px] leading-snug text-[var(--foreground)]">
             <span data-i18n-skip="true" className="mr-1.5 font-semibold">{event.sender_username ? event.sender_username : name}</span>
             {event.comment_text ? <span data-i18n-skip="true" className="whitespace-pre-wrap">{event.comment_text}</span> : null}
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--caption)]">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11.5px] text-[var(--caption)]">
             <span>{formatShortDateTime(event.created_at)}</span>
             {event.sent_at && <span>{tx('events.sent_at', 'sent {{date}}', { date: formatShortDateTime(event.sent_at) })}</span>}
             <EventStatusBadge status={event.status} />
@@ -106,13 +108,13 @@ function CommentThreadItem({ event }: { event: CommentAutomationEvent }) {
         </div>
 
         {alert === 'unknown' && (
-          <p className="flex items-start gap-1.5 text-[11px] font-medium text-[var(--warning-text)]">
+          <p className="flex items-start gap-1.5 text-[11.5px] font-medium text-[var(--warning-text)]">
             <AlertIcon className="mt-px h-3.5 w-3.5 shrink-0" />
             {tx('events.unknown_hint', 'It is unknown whether Meta accepted this reply. It will not be retried automatically, so check it on Instagram.')}
           </p>
         )}
 
-        <div className="space-y-2.5 border-l-2 border-[var(--border)] pl-3">
+        <div className="space-y-3 border-l-2 border-[var(--border-hover)] pl-3">
           <ReplyLine
             icon={<ReplyIcon className="h-3.5 w-3.5" />}
             title={tx('settings.public_title', 'Public reply')}
@@ -131,7 +133,7 @@ function CommentThreadItem({ event }: { event: CommentAutomationEvent }) {
           />
         </div>
 
-        <p className="break-all text-[10px] text-[var(--caption)]">
+        <p className="break-all text-[11px] text-[var(--caption)]">
           {tx('events.comment_id', 'Comment ID')}: <span data-i18n-skip="true" className="font-mono">{event.comment_id}</span>
           {event.sender_id && (
             <>
@@ -172,8 +174,8 @@ export function ReplyHistoryPanel({ mediaId }: { mediaId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+    <div className="flex flex-col gap-[18px]">
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
         {filters.map((item) => (
           <button
             key={item}
@@ -181,10 +183,10 @@ export function ReplyHistoryPanel({ mediaId }: { mediaId: string }) {
             onClick={() => handleFilterChange(item)}
             aria-pressed={filter === item}
             className={cn(
-              'shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+              'inline-flex h-[30px] shrink-0 items-center rounded-full px-3 text-[12.5px] font-semibold transition-colors',
               filter === item
-                ? 'border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]'
-                : 'border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]',
+                ? 'bg-[var(--surface-inverse)] text-white'
+                : 'bg-[var(--muted-surface)] text-[var(--muted-strong)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]',
             )}
           >
             {item === 'all' ? tx('filters.all', 'All') : getEventStatusLabel(item, tx)}
@@ -196,22 +198,26 @@ export function ReplyHistoryPanel({ mediaId }: { mediaId: string }) {
         <div className="space-y-3">
           {[1, 2, 3].map((index) => (
             <div key={index} className="flex gap-3">
-              <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-[var(--muted-surface)]" />
-              <div className="h-20 flex-1 animate-pulse rounded-xl bg-[var(--muted-surface)]" />
+              <Skeleton rounded="full" className="h-9 w-9 shrink-0" />
+              <Skeleton rounded="xl" className="h-20 flex-1" />
             </div>
           ))}
         </div>
       ) : query.isError ? (
-        <div className="rounded-xl border border-[var(--danger-border)] bg-[var(--danger-dim)] p-4 text-center">
-          <p className="text-[13px] text-[var(--danger-text)]">{getApiErrorMessage(query.error)}</p>
-          <Button variant="secondary" size="sm" className="mt-3" onClick={() => void query.refetch().catch(() => undefined)}>
-            {tx('actions.retry', 'Retry')}
-          </Button>
-        </div>
+        <Alert
+          tone="danger"
+          action={
+            <Button variant="secondary" size="sm" onClick={() => void query.refetch().catch(() => undefined)}>
+              {tx('actions.retry', 'Retry')}
+            </Button>
+          }
+        >
+          {getApiErrorMessage(query.error)}
+        </Alert>
       ) : events.length === 0 ? (
-        <p className="py-10 text-center text-[13px] text-[var(--caption)]">{tx('events.empty', 'No records for this filter')}</p>
+        <p className="py-10 text-center text-[13px] text-[var(--muted)]">{tx('events.empty', 'No records for this filter')}</p>
       ) : (
-        <ul className="divide-y divide-[var(--border)]">
+        <ul className="divide-y divide-[var(--border-subtle)]">
           {events.map((event, index) => (
             <CommentThreadItem key={`${event.id ?? event.comment_id}-${index}`} event={event} />
           ))}
@@ -225,7 +231,7 @@ export function ReplyHistoryPanel({ mediaId }: { mediaId: string }) {
           totalItems={total}
           hasNextPage={events.length === EVENTS_PAGE_SIZE}
           onPageChange={setPage}
-          className="border-t border-[var(--border)] pt-3"
+          className="border-t border-[var(--border-subtle)] pt-[18px]"
         />
       )}
     </div>

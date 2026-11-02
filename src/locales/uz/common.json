@@ -11,6 +11,8 @@
   "common.search": "Qidirish",
   "common.previous_page": "Oldingi sahifa",
   "common.next_page": "Keyingi sahifa",
+  "common.prev": "Oldingi",
+  "common.next": "Keyingi",
   "common.results_range": "{{start}}-{{end}} / {{total}} natija",
   "common.per_page": "Har sahifada {{count}} ta",
   "common.play": "Ijro etish",

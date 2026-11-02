@@ -1,57 +1,29 @@
 import type { ReactNode } from 'react'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
+import { StatCard } from '../../../shared/ui/stat-card'
+import { toneDot, type Tone } from '../../../shared/ui/tone'
 
 type TrendDirection = 'up' | 'down' | 'flat'
+
+type MetricAccent = 'blue' | 'success' | 'warning' | 'danger' | 'violet'
 
 type MetricCardProps = {
   label: string
   value: string | number
-  delta?: string        // e.g. "+12%" or "3 today"
-  deltaLabel?: string   // e.g. "vs last week"
+  delta?: string
+  deltaLabel?: string
   trend?: TrendDirection
-  accent?: 'blue' | 'success' | 'warning' | 'danger' | 'violet'
-  sparkBars?: number[]  // 5–8 values for mini sparkline
+  accent?: MetricAccent
+  sparkBars?: number[]
   className?: string
-  children?: ReactNode  // optional slot for custom content
+  children?: ReactNode
 }
 
-const accentConfig = {
-  blue: {
-    bar:    'bg-blue-500',
-    label:  'text-[var(--blue-text)]',
-    glow:   'shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12),0_0_20px_rgba(59,130,246,0.06)]',
-    top:    'from-blue-500 via-blue-400 to-transparent',
-    surface: 'bg-blue-500/10',
-  },
-  success: {
-    bar:    'bg-emerald-500',
-    label:  'text-[var(--success-text)]',
-    glow:   'shadow-[inset_0_0_0_1px_rgba(34,197,94,0.12),0_0_20px_rgba(34,197,94,0.05)]',
-    top:    'from-emerald-500 via-emerald-400 to-transparent',
-    surface: 'bg-emerald-500/10',
-  },
-  warning: {
-    bar:    'bg-amber-400',
-    label:  'text-[var(--warning-text)]',
-    glow:   'shadow-[inset_0_0_0_1px_rgba(245,158,11,0.12),0_0_20px_rgba(245,158,11,0.05)]',
-    top:    'from-amber-400 via-yellow-300 to-transparent',
-    surface: 'bg-amber-400/10',
-  },
-  danger: {
-    bar:    'bg-red-500',
-    label:  'text-[var(--danger-text)]',
-    glow:   'shadow-[inset_0_0_0_1px_rgba(239,68,68,0.12),0_0_20px_rgba(239,68,68,0.05)]',
-    top:    'from-red-500 via-red-400 to-transparent',
-    surface: 'bg-red-500/10',
-  },
-  violet: {
-    bar:    'bg-violet-500',
-    label:  'text-[var(--violet-text)]',
-    glow:   'shadow-[inset_0_0_0_1px_rgba(139,92,246,0.12),0_0_20px_rgba(139,92,246,0.05)]',
-    top:    'from-violet-500 via-violet-400 to-transparent',
-    surface: 'bg-violet-500/10',
-  },
+const deltaToneByTrend: Record<TrendDirection, 'success' | 'danger' | 'neutral'> = {
+  up: 'success',
+  down: 'danger',
+  flat: 'neutral',
 }
 
 function TrendArrow({ trend }: { trend: TrendDirection }) {
@@ -76,15 +48,11 @@ function TrendArrow({ trend }: { trend: TrendDirection }) {
   )
 }
 
-function SparkBars({ values, accentBar }: { values: number[]; accentBar: string }) {
+function SparkBars({ values, tone }: { values: number[]; tone: Tone }) {
   const max = Math.max(...values, 1)
 
   return (
-    <div
-      className="flex items-end gap-0.5"
-      aria-hidden="true"
-      style={{ height: 28 }}
-    >
+    <div className="flex h-7 items-end gap-1" aria-hidden="true">
       {values.map((val, i) => {
         const pct = Math.max(0.08, val / max)
         const isLast = i === values.length - 1
@@ -93,8 +61,8 @@ function SparkBars({ values, accentBar }: { values: number[]; accentBar: string 
           <div
             key={i}
             className={cn(
-              'w-1.5 rounded-[2px] transition-all duration-300',
-              isLast ? accentBar : 'bg-white/12',
+              'w-1.5 rounded-full transition-all duration-300',
+              isLast ? toneDot[tone] : 'bg-[var(--border-hover)]',
             )}
             style={{ height: `${pct * 100}%` }}
           />
@@ -115,59 +83,34 @@ export function MetricCard({
   className,
   children,
 }: MetricCardProps) {
-  const config = accentConfig[accent]
   const localizedLabel = translateCurrentLiteral(label)
   const localizedDeltaLabel = deltaLabel ? translateCurrentLiteral(deltaLabel) : null
+  const spark = sparkBars && sparkBars.length > 0 ? sparkBars : null
 
-  const trendColor =
-    trend === 'up'   ? 'text-emerald-400' :
-    trend === 'down' ? 'text-red-400'     :
-    'text-[var(--muted)]'
-
-  return (
-    <div
-      className={cn(
-        'card-base card-metric relative flex min-h-[128px] flex-col justify-between overflow-hidden p-5',
-        config.glow,
-        className,
-      )}
-    >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10" />
-      <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r', config.top)} />
-      <div className={cn('pointer-events-none absolute -right-6 top-3 h-24 w-24 rounded-full blur-3xl', config.surface)} />
-
-      <div className="flex items-start justify-between gap-2">
-        <p
-          className={cn(
-            'text-[10px] font-bold uppercase tracking-[0.28em]',
-            config.label,
-          )}
-        >
-          {localizedLabel}
-        </p>
-
-        {sparkBars && sparkBars.length > 0 ? (
-          <SparkBars values={sparkBars} accentBar={config.bar} />
-        ) : null}
-      </div>
-
-      <div className="mt-4">
-        <p className="count-up ui-metric-value text-white">
-          {value}
-        </p>
-
-        {delta ? (
-          <div className={cn('mt-2 flex items-center gap-1 text-[11px] font-medium', trendColor)}>
-            <TrendArrow trend={trend} />
-            <span>{delta}</span>
-            {localizedDeltaLabel ? (
-              <span className="text-[var(--caption)] font-normal">{localizedDeltaLabel}</span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
+  const footer = spark || children ? (
+    <div className="flex flex-col gap-3">
+      {spark ? <SparkBars values={spark} tone={accent} /> : null}
       {children}
     </div>
+  ) : null
+
+  return (
+    <StatCard
+      label={localizedLabel}
+      value={value}
+      hint={localizedDeltaLabel}
+      delta={
+        delta ? (
+          <span className="inline-flex items-center gap-1">
+            <TrendArrow trend={trend} />
+            {delta}
+          </span>
+        ) : null
+      }
+      deltaTone={deltaToneByTrend[trend]}
+      iconTone={accent}
+      footer={footer}
+      className={cn('min-h-[148px]', className)}
+    />
   )
 }

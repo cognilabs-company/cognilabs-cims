@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from 'react'
+import { useMemo } from 'react'
 import { developerKpiService, type SalaryEstimate } from '../../../shared/api/services/developer-kpi.service'
 import { useSearchParams } from 'react-router-dom'
 import type { CurrentUser } from '../../../shared/api/types'
@@ -8,14 +8,19 @@ import { updateTrackingService } from '../../../shared/api/services/updateTracki
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
-import { cn } from '../../../shared/lib/cn'
 import { useToast } from '../../../shared/toast/useToast'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
+import { PageHeader } from '../../../shared/ui/page-header'
+import { Progress } from '../../../shared/ui/progress'
 import { SelectField } from '../../../shared/ui/select-field'
 import { SectionTitle } from '../../../shared/ui/section-title'
+import { Skeleton } from '../../../shared/ui/skeleton'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { ErrorStateBlock } from '../../../shared/ui/state-block'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { CompensationPolicyPanel } from '../../faults/components/CompensationPolicyPanel'
@@ -78,15 +83,6 @@ type MemberDashboardData = {
 
 const MEMBER_DASHBOARD_CACHE_PREFIX = 'cims:member-dashboard:'
 const memberDashboardCache = new Map<string, MemberDashboardData>()
-const memberDashboardSuccessTheme = {
-  '--success': '#32A852',
-  '--success-dim': 'rgba(50, 168, 82, 0.10)',
-  '--success-soft': 'rgba(50, 168, 82, 0.10)',
-  '--success-strong': 'rgba(50, 168, 82, 0.13)',
-  '--success-border': 'rgba(50, 168, 82, 0.26)',
-  '--success-text': '#32A852',
-  '--success-rgb': '50, 168, 82',
-} as CSSProperties
 
 function getMemberDashboardCacheKey(userId: number, year: number, month: number) {
   return `${userId}:${year}:${month}`
@@ -183,55 +179,30 @@ async function loadMemberDashboardData(memberUser: CeoUserRecord, year: number, 
   return result
 }
 
-function ProgressBar({
-  value,
-  tone = 'violet',
-}: {
-  value: number
-  tone?: 'violet' | 'success' | 'danger'
-}) {
-  const colorClassName = {
-    violet: 'bg-violet-400',
-    success: 'bg-[var(--success-text)]',
-    danger: 'bg-rose-400',
-  } as const
-
+function CalendarIcon() {
   return (
-    <div className="h-2 rounded-full bg-white/8">
-      <div
-        className={cn('h-full rounded-full transition-[width] duration-300', colorClassName[tone])}
-        style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }}
-      />
-    </div>
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="3.5" />
+      <path d="M8 3v4M16 3v4M3 10h18" />
+    </svg>
   )
 }
 
-function MetricPanel({
-  label,
-  value,
-  hint,
-  progress,
-  progressTone,
-}: {
-  label: string
-  value: string | number
-  hint?: string
-  progress?: number
-  progressTone?: 'violet' | 'success' | 'danger'
-}) {
+function PulseIcon() {
   return (
-    <div className="card-base rounded-xl px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{label}</p>
-      <p className="mt-3 text-[1.9rem] font-semibold tracking-tight text-[var(--foreground)]">{value}</p>
-      {hint ? (
-        <p className="mt-2 text-xs text-[var(--muted-strong)]">{hint}</p>
-      ) : null}
-      {typeof progress === 'number' ? (
-        <div className="mt-4">
-          <ProgressBar value={progress} tone={progressTone} />
-        </div>
-      ) : null}
-    </div>
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12h4l2.5-6 4 12 2.5-6h5" />
+    </svg>
+  )
+}
+
+function TargetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 12h.01" />
+    </svg>
   )
 }
 
@@ -434,135 +405,124 @@ export function MemberDashboardPage() {
     : tr('No bonus records returned.', 'Bonus yozuvlari qaytmadi.', 'Записи бонусов не вернулись.')
 
   return (
-    <section className="space-y-4 page-enter" style={memberDashboardSuccessTheme}>
-      {false ? penaltiesSummary : null}
-      {false ? bonusesSummary : null}
-      <Card variant="glass" noPadding className="overflow-hidden rounded-xl border-white/10">
-        <div className="relative overflow-hidden px-6 py-6 sm:px-8 sm:py-7">
-          <div className="page-header-decor pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_32%),radial-gradient(circle_at_right,rgba(var(--success-rgb),0.12),transparent_24%)]" />
+    <section className="page-enter space-y-[18px]">
+      {void penaltiesSummary}
+      {void bonusesSummary}
 
-          <div className="relative z-10 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div>
-                <p className="text-[11px] font-semibold tracking-[0.02em] text-[var(--blue-text)]">{lt('Member Dashboard')}</p>
-                <h1 className="ui-page-title mt-2 text-[var(--foreground)]">
-                  {detail.report.fullName}
-                </h1>
-                <p className="mt-2 text-sm text-[var(--muted-strong)]">
-                  {detail.report.roleLabel}
-                </p>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{userBadgeLabel}</Badge>
-                  <Badge variant="secondary">{detail.report.roleLabel}</Badge>
-                  <Badge variant={targetReached ? 'success' : 'warning'}>
-                    {targetReached ? lt('Target reached') : lt('Need follow-up')}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] xl:min-w-[430px]">
-                <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{lt('Year')}</label>
-                  <Input
-                    type="number"
-                    min="2020"
-                    max="2035"
-                    value={year}
-                    onChange={(event) => updatePeriod({ year: clampNumber(Number(event.target.value) || defaultYear, 2020, 2035) })}
-                    className="rounded-xl border-[var(--border)] bg-[var(--card)]"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{lt('Month')}</label>
-                  <SelectField
-                    value={String(month)}
-                    options={monthOptions}
-                    onValueChange={(value) => updatePeriod({ month: clampNumber(Number(value), 1, 12) })}
-                    className="rounded-xl border-[var(--border)] bg-[var(--card)]"
-                  />
-                </div>
-                <div className="flex items-end gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    leftIcon={<RefreshIcon />}
-                    onClick={() => void handleRefresh()}
-                    loading={dashboardQuery.isLoading}
-                    className="min-h-10 rounded-xl"
-                  >
-                    {lt('Refresh')}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1.2fr]">
-              <MetricPanel
-                label={lt('Expected updates (to date)')}
-                value={elapsedWorkingDays}
-                hint={expectedUpdatesHint}
-              />
-              <MetricPanel
-                label={lt('This week progress')}
-                value={formatCount(updatesThisWeek)}
-                hint={weeklyProgressHint}
-              />
-              <MetricPanel
-                label={lt('Weekly completion')}
-                value={formatPercent(weeklyCompletion)}
-                hint={weeklyCompletionHint}
-                progress={typeof weeklyCompletion === 'number' ? weeklyCompletion : undefined}
-                progressTone={targetReached ? 'success' : (weeklyCompletion ?? 0) >= 60 ? 'violet' : 'danger'}
+      <PageHeader
+        eyebrow={lt('Member Dashboard')}
+        title={detail.report.fullName}
+        description={detail.report.roleLabel}
+        actions={
+          <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:w-auto xl:min-w-[430px]">
+            <div className="min-w-0">
+              <Label className="mb-1.5 block">{lt('Year')}</Label>
+              <Input
+                type="number"
+                min="2020"
+                max="2035"
+                value={year}
+                onChange={(event) => updatePeriod({ year: clampNumber(Number(event.target.value) || defaultYear, 2020, 2035) })}
               />
             </div>
-
-            {dashboardQuery.isLoading && !dashboardQuery.data ? (
-              <div className="rounded-xl border border-[var(--blue-border)] bg-[var(--blue-dim)] px-4 py-4 text-sm text-[var(--foreground)]">
-                {lt('Syncing your latest dashboard data...')}
-              </div>
-            ) : null}
-
-            {data?.statsError || detail.estimateError || detail.policyError || detail.mistakesError || detail.deliveryBonusesError || detail.updatesError || detail.calendarError ? (
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-4 text-sm text-[var(--foreground)]">
-                {data?.statsError ? <p>{lt('Stats API unavailable:')} {data.statsError}</p> : null}
-                {detail.estimateError ? <p>{lt('Salary estimate API unavailable:')} {detail.estimateError}</p> : null}
-                {detail.policyError ? <p>{tr('Compensation policy API unavailable:', 'Kompensatsiya siyosati API mavjud emas:', 'API политики компенсации недоступен:')} {detail.policyError}</p> : null}
-                {detail.mistakesError ? <p>{tr('Mistake incidents API unavailable:', 'Xato hodisalari API mavjud emas:', 'API инцидентов ошибок недоступен:')} {detail.mistakesError}</p> : null}
-                {detail.deliveryBonusesError ? <p>{tr('Delivery bonuses API unavailable:', 'Topshirish bonuslari API mavjud emas:', 'API бонусов за сдачу недоступен:')} {detail.deliveryBonusesError}</p> : null}
-                {detail.updatesError ? <p>{lt('Update statistics unavailable:')} {detail.updatesError}</p> : null}
-                {detail.calendarError ? <p>{lt('Calendar API unavailable:')} {detail.calendarError}</p> : null}
-              </div>
-            ) : null}
+            <div className="min-w-0">
+              <Label className="mb-1.5 block">{lt('Month')}</Label>
+              <SelectField
+                value={String(month)}
+                options={monthOptions}
+                onValueChange={(value) => updatePeriod({ month: clampNumber(Number(value), 1, 12) })}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                variant="secondary"
+                leftIcon={<RefreshIcon />}
+                onClick={() => void handleRefresh()}
+                loading={dashboardQuery.isLoading}
+              >
+                {lt('Refresh')}
+              </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        }
+      />
 
-      <Card className="rounded-xl border-[var(--border)] bg-[var(--card)] p-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">{userBadgeLabel}</Badge>
+        <Badge variant="blue">{detail.report.roleLabel}</Badge>
+        <Badge variant={targetReached ? 'success' : 'warning'} dot>
+          {targetReached ? lt('Target reached') : lt('Need follow-up')}
+        </Badge>
+      </div>
+
+      <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          label={lt('Expected updates (to date)')}
+          value={elapsedWorkingDays}
+          hint={expectedUpdatesHint}
+          icon={<CalendarIcon />}
+          iconTone="blue"
+        />
+        <StatCard
+          label={lt('This week progress')}
+          value={formatCount(updatesThisWeek)}
+          hint={weeklyProgressHint}
+          icon={<PulseIcon />}
+          iconTone="violet"
+        />
+        <StatCard
+          solid
+          label={lt('Weekly completion')}
+          value={formatPercent(weeklyCompletion)}
+          hint={weeklyCompletionHint}
+          icon={<TargetIcon />}
+          footer={
+            <Progress
+              className="mt-1"
+              value={typeof weeklyCompletion === 'number' ? weeklyCompletion : 0}
+              tone={targetReached || (weeklyCompletion ?? 0) >= 60 ? 'lime' : 'warning'}
+              onInverse
+            />
+          }
+        />
+      </div>
+
+      {dashboardQuery.isLoading && !dashboardQuery.data ? (
+        <Alert tone="blue">{lt('Syncing your latest dashboard data...')}</Alert>
+      ) : null}
+
+      {data?.statsError || detail.estimateError || detail.policyError || detail.mistakesError || detail.deliveryBonusesError || detail.updatesError || detail.calendarError ? (
+        <Alert tone="warning">
+          <div className="space-y-1">
+            {data?.statsError ? <p>{lt('Stats API unavailable:')} {data.statsError}</p> : null}
+            {detail.estimateError ? <p>{lt('Salary estimate API unavailable:')} {detail.estimateError}</p> : null}
+            {detail.policyError ? <p>{tr('Compensation policy API unavailable:', 'Kompensatsiya siyosati API mavjud emas:', 'API политики компенсации недоступен:')} {detail.policyError}</p> : null}
+            {detail.mistakesError ? <p>{tr('Mistake incidents API unavailable:', 'Xato hodisalari API mavjud emas:', 'API инцидентов ошибок недоступен:')} {detail.mistakesError}</p> : null}
+            {detail.deliveryBonusesError ? <p>{tr('Delivery bonuses API unavailable:', 'Topshirish bonuslari API mavjud emas:', 'API бонусов за сдачу недоступен:')} {detail.deliveryBonusesError}</p> : null}
+            {detail.updatesError ? <p>{lt('Update statistics unavailable:')} {detail.updatesError}</p> : null}
+            {detail.calendarError ? <p>{lt('Calendar API unavailable:')} {detail.calendarError}</p> : null}
+          </div>
+        </Alert>
+      ) : null}
+
+      <Card>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-[11px] text-[var(--success-text)]">
-              {salaryEstimateLabel}
-            </p>
-            <h2 className="mt-2 text-[1.7rem] font-semibold tracking-tight text-[var(--foreground)]">
-              {lt('My Salary Snapshot')}
-            </h2>
-          </div>
+          <SectionTitle title={lt('My Salary Snapshot')} description={salaryEstimateLabel} />
 
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={detail.report.hasPenalty ? 'danger' : 'outline'}>
+            <Badge variant={detail.report.hasPenalty ? 'danger' : 'secondary'}>
               {detail.report.hasPenalty ? lt('Deduction applied') : lt('No deductions')}
             </Badge>
-            <Badge variant={detail.report.hasBonus ? 'success' : 'outline'}>
+            <Badge variant={detail.report.hasBonus ? 'success' : 'secondary'}>
               {detail.report.hasBonus ? lt('Bonus applied') : lt('No bonus')}
             </Badge>
-            <Badge variant={(monthlyCompletion ?? 0) >= 80 ? 'success' : (monthlyCompletion ?? 0) > 0 ? 'warning' : 'outline'}>
+            <Badge variant={(monthlyCompletion ?? 0) >= 80 ? 'success' : (monthlyCompletion ?? 0) > 0 ? 'warning' : 'secondary'}>
               {formatPercent(monthlyCompletion)} {lt('monthly completion')}
             </Badge>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-6">
+        <div className="mt-[18px] grid gap-[18px] sm:grid-cols-2 xl:grid-cols-6">
           <DetailStatTile label={lt('Estimated salary')} value={formatAmount(detail.report.estimatedSalary)} tone="success" />
           <DetailStatTile label={lt('Final salary')} value={formatAmount(detail.report.finalSalary)} />
           <DetailStatTile label={lt('Base salary')} value={formatAmount(detail.report.baseSalary)} />
@@ -571,7 +531,7 @@ export function MemberDashboardPage() {
           <DetailStatTile label={lt('Bonus %')} value={formatPercent(detail.report.totalBonusPercent)} tone="success" />
         </div>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-5">
+        <div className="mt-[18px] grid gap-[18px] sm:grid-cols-2 xl:grid-cols-5">
           <DetailStatTile label={tr('After deduction', 'Ayirmadan keyin', 'После удержания')} value={formatAmount(detail.report.afterPenalty)} />
           <DetailStatTile label={lt('Mistakes')} value={formatCount(detail.report.mistakesCount)} tone="danger" />
           <DetailStatTile label={lt('Delivery bonuses')} value={formatCount(detail.report.deliveryBonusCount)} tone="success" />
@@ -582,32 +542,34 @@ export function MemberDashboardPage() {
               : '-'}
             tone={detail.report.qualifiesProductivityBonus ? 'success' : 'default'}
           />
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/8 px-4 py-3">
-            <p className="text-xs text-[#FF0000]">{tr('Deduction percentage', 'Ayirma foizi', 'Процент удержания')}</p>
+          <div className="rounded-[18px] bg-[var(--danger-dim)] px-4 py-3.5">
+            <p className="text-xs font-semibold text-[var(--danger-text)]">{tr('Deduction percentage', 'Ayirma foizi', 'Процент удержания')}</p>
             <div className="mt-2 flex items-center justify-between gap-3">
-              <p className="text-[1.05rem] font-semibold tracking-tight text-[#FF0000]">
+              <p className="text-[17px] font-bold tracking-[-0.02em] tabular-nums text-[var(--danger-text)]">
                 {formatPercent(detail.report.penaltyPercentage)}
               </p>
-              <span className="text-[10px] uppercase tracking-[0.18em] text-[#FF0000]">{tr('deduction impact', 'ayirma ta\'siri', 'влияние удержания')}</span>
+              <span className="text-[11px] font-semibold text-[var(--danger-text)]">{tr('deduction impact', 'ayirma ta\'siri', 'влияние удержания')}</span>
             </div>
-            <div className="mt-3">
-              <ProgressBar value={Number.isFinite(detail.report.penaltyPercentage) ? detail.report.penaltyPercentage : 0} tone={(detail.report.penaltyPercentage ?? 0) > 0 ? 'danger' : 'violet'} />
-            </div>
+            <Progress
+              className="mt-3"
+              value={Number.isFinite(detail.report.penaltyPercentage) ? detail.report.penaltyPercentage : 0}
+              tone="danger"
+            />
           </div>
         </div>
 
         {/* Salary Calculation Formula and Breakdown */}
         {(detail.report.formulaText || detail.report.calculationBreakdown) && (
-          <div className="mt-6 space-y-4">
+          <div className="mt-[22px] space-y-[18px]">
             <SectionTitle
               title={lt('Calculation breakdown')}
               description={lt('Detailed formula used to compute your final salary.')}
             />
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-[18px] lg:grid-cols-2">
               {detail.report.formulaText && (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-6 shadow-sm">
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-strong)]">Formula</p>
+                <div className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
+                  <p className="ui-card-label mb-2.5">Formula</p>
                   <p className="font-mono text-sm leading-relaxed text-[var(--foreground)]">{detail.report.formulaText}</p>
                 </div>
               )}
@@ -615,33 +577,33 @@ export function MemberDashboardPage() {
               {detail.report.calculationBreakdown && (
                 <div className="grid gap-3">
                   {detail.report.calculationBreakdown.bonus_lines.map((line, index) => (
-                    <div key={`bonus-${index}`} className="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 transition hover:bg-blue-500/8">
+                    <div key={`bonus-${index}`} className="flex items-center justify-between gap-3 rounded-[18px] bg-[var(--blue-dim)] p-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="shrink-0 rounded-md bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-blue-500">Bonus</span>
+                          <Badge variant="blue" size="sm" className="shrink-0 bg-[var(--surface)]">Bonus</Badge>
                           <h4 className="truncate text-sm font-semibold text-[var(--foreground)]">{line.label}</h4>
                         </div>
-                        {line.reason && <p className="mt-1 text-xs text-[var(--muted-strong)]">{line.reason}</p>}
+                        {line.reason && <p className="mt-1 text-[12.5px] text-[var(--muted-strong)]">{line.reason}</p>}
                       </div>
-                      <div className="pl-4 text-right">
-                        <p className="text-sm font-black text-blue-500">+{formatAmount(line.amount)}</p>
-                        <p className="text-[10px] font-bold text-blue-400">{line.percent}%</p>
+                      <div className="pl-2 text-right">
+                        <p className="text-sm font-bold tabular-nums text-[var(--blue-text)]">+{formatAmount(line.amount)}</p>
+                        <p className="text-[11px] font-semibold tabular-nums text-[var(--muted)]">{line.percent}%</p>
                       </div>
                     </div>
                   ))}
 
                   {detail.report.calculationBreakdown.deduction_lines.map((line, index) => (
-                    <div key={`deduction-${index}`} className="flex items-center justify-between rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 transition hover:bg-rose-500/8">
+                    <div key={`deduction-${index}`} className="flex items-center justify-between gap-3 rounded-[18px] bg-[var(--danger-dim)] p-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="shrink-0 rounded-md bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-rose-500">Deduction</span>
+                          <Badge variant="danger" size="sm" className="shrink-0 bg-[var(--surface)]">Deduction</Badge>
                           <h4 className="truncate text-sm font-semibold text-[var(--foreground)]">{line.label}</h4>
                         </div>
-                        {line.reason && <p className="mt-1 text-xs text-[var(--muted-strong)]">{line.reason}</p>}
+                        {line.reason && <p className="mt-1 text-[12.5px] text-[var(--muted-strong)]">{line.reason}</p>}
                       </div>
-                      <div className="pl-4 text-right">
-                        <p className="text-sm font-black text-rose-500">-{formatAmount(line.amount)}</p>
-                        <p className="text-[10px] font-bold text-rose-400">{line.percent}%</p>
+                      <div className="pl-2 text-right">
+                        <p className="text-sm font-bold tabular-nums text-[var(--danger-text)]">-{formatAmount(line.amount)}</p>
+                        <p className="text-[11px] font-semibold tabular-nums text-[var(--muted)]">{line.percent}%</p>
                       </div>
                     </div>
                   ))}
@@ -651,71 +613,71 @@ export function MemberDashboardPage() {
           </div>
         )}
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
-          <div className="rounded-xl border border-rose-500/20 bg-rose-50/90 p-4 dark:bg-black/18">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#FF0000]">{tr('Deduction history', 'Ayirma tarixi', 'История удержаний')}</p>
-                <p className="mt-1 text-sm text-[var(--muted-strong)]">
+        <div className="mt-[18px] grid gap-[18px] xl:grid-cols-2">
+          <div className="rounded-[18px] bg-[var(--muted-surface)] p-[18px]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-[var(--foreground)]">{tr('Deduction history', 'Ayirma tarixi', 'История удержаний')}</p>
+                <p className="mt-1 text-[12.5px] text-[var(--muted)]">
                   {detail.penalties.length > 0 ? `${detail.penalties.length} ${lt('entries')}` : tr('No deductions were recorded for this period.', 'Bu davr uchun ayirma qayd etilmadi.', 'За этот период удержания не зафиксированы.')}
                 </p>
               </div>
-              <Badge variant={detail.penalties.length > 0 ? 'danger' : 'outline'}>
+              <Badge variant={detail.penalties.length > 0 ? 'danger' : 'secondary'}>
                 {detail.penalties.length}
               </Badge>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-2.5">
               {detail.penalties.length > 0 ? detail.penalties.map((item) => (
-                <div key={item.id} className="rounded-xl border border-rose-500/16 bg-white px-4 py-3 dark:bg-black/20">
+                <div key={item.id} className="rounded-[14px] bg-[var(--surface)] px-4 py-3.5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-rose-600 dark:text-rose-200">{item.title}</p>
-                      <p className="mt-1 text-xs text-[var(--muted-strong)]">{item.description ?? tr('No reason provided.', 'Sabab ko‘rsatilmagan.', 'Причина не указана.')}</p>
+                      <p className="text-sm font-semibold text-[var(--danger-text)]">{item.title}</p>
+                      <p className="mt-1 text-[12.5px] text-[var(--muted)]">{item.description ?? tr('No reason provided.', 'Sabab ko‘rsatilmagan.', 'Причина не указана.')}</p>
                     </div>
-                    <p className="text-sm font-semibold text-rose-600 dark:text-rose-300">{formatDetailDate(item.createdAt)}</p>
+                    <p className="shrink-0 text-[12.5px] font-medium text-[var(--muted)]">{formatDetailDate(item.createdAt)}</p>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{formatAmount(item.amount)}</Badge>
+                    <Badge variant="danger">{formatAmount(item.amount)}</Badge>
                   </div>
                 </div>
               )) : (
-                <div className="rounded-xl border border-dashed border-rose-500/18 bg-rose-500/5 px-4 py-5 text-sm text-[var(--muted-strong)] dark:bg-black/10">
+                <div className="rounded-[14px] bg-[var(--surface)] px-4 py-5 text-[13px] text-[var(--muted)]">
                   {tr('No deduction line-items were returned for the selected month.', 'Tanlangan oy uchun ayirma yozuvlari qaytmadi.', 'За выбранный месяц не вернулись записи удержаний.')}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-soft)] p-4 dark:bg-[var(--success-dim)]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--success-text)]">{tr('Bonus history', 'Bonus tarixi', 'История бонусов')}</p>
-                <p className="mt-1 text-sm text-[var(--muted-strong)]">
+          <div className="rounded-[18px] bg-[var(--muted-surface)] p-[18px]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-[var(--foreground)]">{tr('Bonus history', 'Bonus tarixi', 'История бонусов')}</p>
+                <p className="mt-1 text-[12.5px] text-[var(--muted)]">
                   {detail.bonuses.length > 0 ? `${detail.bonuses.length} ${lt('entries')}` : tr('No bonus records returned.', 'Bonus yozuvlari qaytmadi.', 'Записи бонусов не вернулись.')}
                 </p>
               </div>
-              <Badge variant={detail.bonuses.length > 0 ? 'success' : 'outline'}>
+              <Badge variant={detail.bonuses.length > 0 ? 'success' : 'secondary'}>
                 {detail.bonuses.length}
               </Badge>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-2.5">
               {detail.bonuses.length > 0 ? detail.bonuses.map((item) => (
-                <div key={item.id} className="rounded-xl border border-[var(--success-border)] bg-white px-4 py-3 dark:bg-black/20">
+                <div key={item.id} className="rounded-[14px] bg-[var(--surface)] px-4 py-3.5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-[var(--success-text)]">{item.title}</p>
-                      <p className="mt-1 text-xs text-[var(--muted-strong)]">{item.description ?? tr('No reason provided.', 'Sabab ko‘rsatilmagan.', 'Причина не указана.')}</p>
+                      <p className="mt-1 text-[12.5px] text-[var(--muted)]">{item.description ?? tr('No reason provided.', 'Sabab ko‘rsatilmagan.', 'Причина не указана.')}</p>
                     </div>
-                    <p className="text-sm font-semibold text-[var(--success-text)]">{formatDetailDate(item.createdAt)}</p>
+                    <p className="shrink-0 text-[12.5px] font-medium text-[var(--muted)]">{formatDetailDate(item.createdAt)}</p>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Badge variant="success">{formatAmount(item.amount)}</Badge>
                   </div>
                 </div>
               )) : (
-                <div className="rounded-xl border border-dashed border-[var(--success-border)] bg-[var(--success-soft)] px-4 py-5 text-sm text-[var(--muted-strong)] dark:bg-black/10">
+                <div className="rounded-[14px] bg-[var(--surface)] px-4 py-5 text-[13px] text-[var(--muted)]">
                   {tr('No bonus line-items were returned for the selected month.', 'Tanlangan oy uchun bonus yozuvlari qaytmadi.', 'За выбранный месяц не вернулись записи бонусов.')}
                 </div>
               )}
@@ -726,74 +688,71 @@ export function MemberDashboardPage() {
 
       <CompensationPolicyPanel policy={detail.compensationPolicy} />
 
-      <Card noPadding className="overflow-hidden rounded-xl">
+      <Card noPadding className="overflow-hidden">
         <MistakeIncidentSection items={detail.mistakes} />
         <DeliveryBonusSection items={detail.deliveryBonuses} />
       </Card>
 
       {/* Developer KPI Section */}
-      <Card className="rounded-xl border-[var(--border)] bg-[var(--card)] p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--blue-text)]">{lt('Developer KPI')}</p>
-            <h2 className="mt-1 text-lg font-black tracking-tight text-[var(--foreground)]">{lt('KPI Score Breakdown')}</h2>
-          </div>
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle eyebrow={lt('Developer KPI')} title={lt('KPI Score Breakdown')} />
           {kpiEstimate ? (
             <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">{lt('Final KPI')}</p>
-              <p className="text-2xl font-black text-[var(--blue-text)]">{kpiEstimate.scores.final_kpi.toFixed(1)}%</p>
+              <p className="ui-card-label">{lt('Final KPI')}</p>
+              <p className="mt-1.5 text-[28px] font-bold tracking-[-0.03em] tabular-nums text-[var(--primary)]" data-ui-number="true">
+                {kpiEstimate.scores.final_kpi.toFixed(1)}%
+              </p>
             </div>
           ) : null}
         </div>
 
         {kpiQuery.isLoading || kpiQuery.status === 'idle' ? (
-          <div className="space-y-3">
-            {[1,2,3,4,5].map(i => <div key={i} className="h-8 animate-pulse rounded-xl bg-[var(--surface-elevated)]" />)}
+          <div className="mt-[18px] space-y-3">
+            {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-8" rounded="lg" />)}
           </div>
         ) : kpiQuery.isError ? (
-          <p className="text-sm text-[var(--muted-strong)]">{lt('KPI data unavailable for this period.')}</p>
+          <p className="mt-[18px] text-sm text-[var(--muted-strong)]">{lt('KPI data unavailable for this period.')}</p>
         ) : kpiEstimate ? (
           <>
-            <div className="space-y-3">
+            <div className="mt-[18px] space-y-3.5">
               {([
-                { key: 'delivery', label: lt('Delivery'), color: 'bg-blue-500' },
-                { key: 'deadline', label: lt('Deadline'), color: 'bg-violet-500' },
-                { key: 'quality', label: lt('Quality'), color: 'bg-emerald-500' },
-                { key: 'team', label: lt('Team'), color: 'bg-amber-500' },
-                { key: 'discipline', label: lt('Discipline'), color: 'bg-cyan-500' },
-              ] as const).map(({ key, label, color }) => {
+                { key: 'delivery', label: lt('Delivery'), tone: 'blue' },
+                { key: 'deadline', label: lt('Deadline'), tone: 'violet' },
+                { key: 'quality', label: lt('Quality'), tone: 'success' },
+                { key: 'team', label: lt('Team'), tone: 'warning' },
+                { key: 'discipline', label: lt('Discipline'), tone: 'lime' },
+              ] as const).map(({ key, label, tone }) => {
                 const score = kpiEstimate.scores[key]
                 return (
                   <div key={key}>
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs font-bold text-[var(--muted-strong)] uppercase tracking-wider">{label}</span>
-                      <span className="text-xs font-black text-[var(--foreground)]">{score.toFixed(1)}%</span>
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <span className="text-[13px] font-medium text-[var(--muted-strong)]">{label}</span>
+                      <span className="text-[13px] font-semibold tabular-nums text-[var(--foreground)]">{score.toFixed(1)}%</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-elevated)]">
-                      <div className={`h-full rounded-full transition-[width] duration-500 ${color}`} style={{ width: `${Math.min(100, Math.max(0, score))}%` }} />
-                    </div>
+                    <Progress value={score} tone={tone} />
                   </div>
                 )
               })}
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{lt('KPI Expected Salary')}</p>
-                <p className="mt-1 text-base font-black text-[var(--foreground)]">{kpiEstimate.salary.expected_salary.toLocaleString()}</p>
+            <div className="mt-[22px] grid grid-cols-2 gap-[18px] sm:grid-cols-3">
+              <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+                <p className="ui-card-label">{lt('KPI Expected Salary')}</p>
+                <p className="mt-1.5 text-[17px] font-bold tracking-[-0.02em] tabular-nums text-[var(--foreground)]">{kpiEstimate.salary.expected_salary.toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{lt('KPI Bonus')}</p>
-                <p className="mt-1 text-base font-black text-blue-400">+{kpiEstimate.salary.kpi_bonus.toLocaleString()}</p>
+              <div className="rounded-[18px] bg-[var(--blue-dim)] px-4 py-3.5">
+                <p className="ui-card-label">{lt('KPI Bonus')}</p>
+                <p className="mt-1.5 text-[17px] font-bold tracking-[-0.02em] tabular-nums text-[var(--blue-text)]">+{kpiEstimate.salary.kpi_bonus.toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{lt('Deductions')}</p>
-                <p className="mt-1 text-base font-black text-rose-400">-{kpiEstimate.salary.approved_deductions.toLocaleString()}</p>
+              <div className="rounded-[18px] bg-[var(--danger-dim)] px-4 py-3.5">
+                <p className="ui-card-label">{lt('Deductions')}</p>
+                <p className="mt-1.5 text-[17px] font-bold tracking-[-0.02em] tabular-nums text-[var(--danger-text)]">-{kpiEstimate.salary.approved_deductions.toLocaleString()}</p>
               </div>
             </div>
           </>
         ) : (
-          <p className="text-sm text-[var(--muted-strong)]">{lt('No KPI data available for this period.')}</p>
+          <p className="mt-[18px] text-sm text-[var(--muted-strong)]">{lt('No KPI data available for this period.')}</p>
         )}
       </Card>
 

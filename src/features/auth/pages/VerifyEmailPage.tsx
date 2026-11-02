@@ -107,13 +107,13 @@ export function VerifyEmailPage() {
       description={t('auth.verify.description', 'We sent a verification code to your email. Enter it below before the timer expires.')}
       footerLinks={[{ label: t('auth.verify.login_link', 'Login'), to: '/auth/login' }]}
     >
-      <form className="grid gap-4" onSubmit={handleSubmit}>
+      <form className="grid gap-[18px]" onSubmit={handleSubmit}>
         <AuthFeedback tone="success" message={statusMessage} />
         <AuthFeedback tone="error" message={submitError} />
 
-        <div className="flex items-center justify-center gap-2 text-xs text-[var(--muted)]">
+        <div className="flex items-center justify-center gap-2 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3 text-[12.5px] text-[var(--muted)]">
           <span>{t('auth.verify.expires_in', 'Code expires in')}</span>
-          <span className="rounded-md border border-[var(--border)] bg-[var(--muted-surface)] px-2.5 py-1 font-mono text-[var(--muted-strong)]">
+          <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 font-mono text-xs font-semibold tabular-nums text-[var(--foreground)]">
             {isExpired ? t('auth.verify.expired', 'Expired') : `${minutes}:${seconds}`}
           </span>
         </div>
@@ -134,7 +134,7 @@ export function VerifyEmailPage() {
           placeholder={t('auth.reset.code_placeholder', 'Code from email')}
           value={values.code}
           error={errors.code}
-          className="min-h-12 text-center font-mono tracking-[0.35em] uppercase"
+          className="min-h-12 text-center font-mono text-base font-semibold tracking-[0.35em] uppercase"
           onChange={(event) => setValues((current) => ({ ...current, code: event.target.value }))}
         />
 
@@ -142,7 +142,7 @@ export function VerifyEmailPage() {
           <Button size="lg" type="submit" disabled={isSubmitting || isExpired} className="flex-1">
             {isSubmitting ? t('auth.verify.verifying', 'Verifying...') : t('auth.verify.button', 'Verify email')}
           </Button>
-          <Button type="button" variant="secondary" disabled={isResending} onClick={handleResend} className="flex-1">
+          <Button size="lg" type="button" variant="secondary" disabled={isResending} onClick={handleResend} className="flex-1">
             {isResending ? t('auth.verify.resending', 'Resending...') : t('auth.verify.resend', 'Resend code')}
           </Button>
         </div>

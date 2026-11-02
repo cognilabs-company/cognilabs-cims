@@ -69,7 +69,7 @@ export function LoginPage() {
       description={t('auth.login.description', 'Enter your email below to login to your account.')}
       footerLinks={[]}
     >
-      <form className="grid gap-4" onSubmit={handleSubmit}>
+      <form className="grid gap-[18px]" onSubmit={handleSubmit}>
         <AuthFeedback tone="success" message={statusMessage} />
         <AuthFeedback tone="error" message={submitError} />
 
@@ -81,7 +81,6 @@ export function LoginPage() {
           placeholder="user@example.com"
           value={values.username}
           error={errors.username}
-          className="min-h-11"
           onChange={(event) =>
             setValues((current) => ({
               ...current,
@@ -92,8 +91,11 @@ export function LoginPage() {
 
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-bold text-[var(--foreground)] tracking-tight">{t('auth.password', 'Password')}</span>
-            <Link className="text-xs text-[var(--muted)] transition hover:text-[var(--foreground)]" to="/auth/forgot-password">
+            <span className="ui-input-label">{t('auth.password', 'Password')}</span>
+            <Link
+              className="text-[12.5px] font-semibold text-[var(--primary)] transition-colors hover:text-[var(--primary-hover)]"
+              to="/auth/forgot-password"
+            >
               {t('auth.forgot_password', 'Forgot password?')}
             </Link>
           </div>
@@ -105,7 +107,6 @@ export function LoginPage() {
             placeholder={t('auth.password.enter', 'Enter your password')}
             value={values.password}
             error={errors.password}
-            className="min-h-11"
             onChange={(event) =>
               setValues((current) => ({
                 ...current,
@@ -119,9 +120,12 @@ export function LoginPage() {
           {isSubmitting ? t('auth.signing_in', 'Signing in...') : t('auth.login_button', 'Login')}
         </Button>
 
-        <div className="text-center text-xs text-[var(--muted)]">
+        <div className="text-center text-[12.5px] text-[var(--muted)]">
           {t('auth.verify_prompt', 'Email not verified?')}{' '}
-          <Link className="underline underline-offset-4 transition hover:text-[var(--foreground)]" to="/auth/verify-email">
+          <Link
+            className="font-semibold text-[var(--primary)] transition-colors hover:text-[var(--primary-hover)]"
+            to="/auth/verify-email"
+          >
             {t('auth.verify_email', 'Verify email')}
           </Link>
         </div>

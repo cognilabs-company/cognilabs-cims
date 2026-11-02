@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useTheme } from '../../../app/hooks/useTheme'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
+import { Card } from '../../../shared/ui/card'
+import { IconButton } from '../../../shared/ui/icon-button'
+import { Progress } from '../../../shared/ui/progress'
 import { DetailStatTile } from './SalaryEstimatePrimitives'
 import {
   type EmployeeSalaryReport,
@@ -31,8 +33,6 @@ export function SalaryEstimateDrawer({
   onOpenDetail: () => void
   onAddDeliveryBonus: () => void
 }) {
-  const { theme } = useTheme()
-  const isLight = theme === 'light'
   const lt = translateCurrentLiteral
   const locale = getIntlLocale()
   const tr = (key: string, uzFallback: string, ruFallback: string) => {
@@ -83,231 +83,169 @@ export function SalaryEstimateDrawer({
   const productivityProgress = Math.min(100, Math.max(0, Number.isFinite(report.productivityPercentage) ? report.productivityPercentage : 0))
 
   return createPortal(
-    <div
-      className={cn('fixed inset-0 z-[90] salary-estimate-drawer', isLight ? 'text-[var(--foreground)]' : 'text-[var(--foreground)]')}
-      data-theme={theme}
-      style={{ colorScheme: isLight ? 'light' : 'dark' }}
-    >
+    <div className="fixed inset-0 z-[90] salary-estimate-drawer text-[var(--foreground)]">
       <button
         type="button"
         aria-label={lt('Close salary detail drawer')}
-        className={cn(
-          'absolute inset-0 backdrop-blur-md',
-          isLight
-            ? 'bg-[radial-gradient(circle_at_right,rgba(59,130,246,0.08),transparent_24%),rgba(248,250,252,0.78)]'
-            : 'bg-[radial-gradient(circle_at_right,rgba(59,130,246,0.10),transparent_24%),rgba(0,0,0,0.62)]',
-        )}
+        className="dialog-backdrop absolute inset-0"
         onClick={onClose}
       />
 
       <div className="absolute inset-y-0 right-0 w-full md:w-[min(50vw,760px)] xl:w-[min(46vw,780px)]">
-        <div
-          className={cn(
-            'sheet-enter flex h-full flex-col border-l border-[var(--border)]',
-            isLight
-              ? 'bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,1))]'
-              : 'bg-[linear-gradient(180deg,rgba(10,12,18,0.98),rgba(8,9,14,1))]',
-          )}
-        >
-          <div
-            className={cn(
-              'flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 sm:px-6',
-              isLight ? 'bg-white/95' : 'bg-transparent',
-            )}
-          >
+        <div className="sheet-enter flex h-full flex-col overflow-hidden rounded-l-[24px] bg-[var(--surface)] shadow-[var(--elev-xl)]">
+          <div className="flex items-start justify-between gap-4 bg-[var(--surface)] px-5 py-[18px] sm:px-6">
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--blue-text)]">
+              <p className="ui-eyebrow">
                 {tr('Salary estimate', 'Maosh hisobi', 'Оценка зарплаты')}
               </p>
-              <h2 className="mt-1 truncate text-lg font-semibold tracking-tight text-[var(--foreground)]">
+              <h2 className="mt-1.5 truncate text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">
                 {report.fullName}
               </h2>
-              <p className="mt-1 text-xs text-[var(--muted-strong)]">
+              <p className="mt-1 text-[12.5px] text-[var(--muted)]">
                 {getMonthName(month)} {year} {lt('snapshot')}
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className={cn(
-                'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] transition',
-                isLight
-                  ? 'bg-[var(--surface-elevated)] text-[var(--foreground)] hover:border-[var(--border-hover)] hover:bg-[var(--card-hover)]'
-                  : 'bg-white/[0.03] text-white/72 hover:border-white/16 hover:bg-white/[0.06] hover:text-white',
-              )}
-              aria-label={lt('Close salary drawer')}
-            >
+            <IconButton size="lg" label={lt('Close salary drawer')} onClick={onClose}>
               <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
               </svg>
-            </button>
+            </IconButton>
           </div>
 
-          <div className={cn('min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6', isLight ? 'bg-white' : 'bg-transparent')}>
-            <div
-              className={cn(
-                'rounded-xl border border-[var(--border)] p-5',
-                isLight
-                  ? 'bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))]'
-                  : 'bg-white/[0.03]',
-              )}
-            >
+          <div className="min-h-0 flex-1 space-y-[18px] overflow-y-auto bg-[var(--app-canvas)] px-5 py-[18px] sm:px-6">
+            <Card>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <p className="text-sm text-[var(--muted-strong)]">{report.label}</p>
-                  <h3 className="mt-2 text-[1.8rem] font-semibold tracking-tight text-[var(--foreground)]">{report.fullName}</h3>
+                <div className="min-w-0">
+                  <p className="text-sm text-[var(--muted)]">{report.label}</p>
+                  <h3 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[var(--foreground)]">{report.fullName}</h3>
                   <p className="mt-1 text-sm text-[var(--muted)]">{report.roleLabel}</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={report.hasPenalty ? 'danger' : 'outline'}>
+                  <Badge variant={report.hasPenalty ? 'danger' : 'secondary'}>
                     {report.hasPenalty ? lt('Has deduction') : lt('Clean')}
                   </Badge>
-                  <Badge variant={report.hasBonus ? 'success' : 'outline'}>
+                  <Badge variant={report.hasBonus ? 'success' : 'secondary'}>
                     {report.hasBonus ? lt('Has bonus') : lt('No bonus')}
                   </Badge>
-                  <Badge variant={report.qualifiesProductivityBonus ? 'success' : 'outline'}>
+                  <Badge variant={report.qualifiesProductivityBonus ? 'success' : 'secondary'}>
                     {report.qualifiesProductivityBonus ? lt('Productivity qualified') : lt('Productivity pending')}
                   </Badge>
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Button variant="ghost" size="sm" className="rounded-xl" onClick={onOpenDetail}>
+              <div className="mt-[18px] flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" onClick={onOpenDetail}>
                   {lt('Open full detail')}
                 </Button>
-                <Button variant="success" size="sm" className="rounded-xl" onClick={onAddDeliveryBonus}>
+                <Button variant="success" size="sm" onClick={onAddDeliveryBonus}>
                   {lt('Add delivery bonus')}
                 </Button>
               </div>
-            </div>
+            </Card>
 
-            {/* Formula and Breakdown */}
             {(report.formulaText || report.calculationBreakdown) && (
-              <div className="mt-6 space-y-4">
+              <Card className="space-y-[18px]">
                 {report.formulaText && (
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-5">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--muted-strong)]">Calculation Formula</p>
-                    <p className="font-mono text-xs leading-relaxed text-[var(--foreground)] sm:text-sm">{report.formulaText}</p>
+                  <div className="rounded-[18px] bg-[var(--muted-surface)] p-[18px]">
+                    <p className="ui-card-label mb-2">Calculation Formula</p>
+                    <p className="font-mono text-[13px] leading-relaxed text-[var(--foreground)] sm:text-sm">{report.formulaText}</p>
                   </div>
                 )}
 
                 {report.calculationBreakdown && (
                   <div className="grid gap-2.5">
                     {report.calculationBreakdown.bonus_lines.map((line, index) => (
-                      <div key={`bonus-${index}`} className="flex items-center justify-between rounded-xl border border-blue-500/18 bg-blue-500/5 p-4">
+                      <div key={`bonus-${index}`} className="flex items-center justify-between gap-3 rounded-[18px] bg-[var(--blue-dim)] p-4">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="shrink-0 rounded-md bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-blue-500">Bonus</span>
-                            <h4 className="truncate text-[13px] font-bold text-[var(--foreground)]">{line.label}</h4>
+                            <Badge variant="blue" size="sm" className="shrink-0 bg-[var(--surface)]">Bonus</Badge>
+                            <h4 className="truncate text-[13.5px] font-semibold text-[var(--foreground)]">{line.label}</h4>
                           </div>
-                          {line.reason && <p className="mt-1 text-[11px] text-[var(--muted-strong)]">{line.reason}</p>}
+                          {line.reason && <p className="mt-1.5 text-[12px] text-[var(--muted-strong)]">{line.reason}</p>}
                         </div>
-                        <div className="pl-3 text-right">
-                          <p className="text-[14px] font-black text-blue-500">+{formatAmount(line.amount)}</p>
-                          <p className="text-[10px] font-bold text-blue-400">{line.percent}%</p>
+                        <div className="shrink-0 pl-3 text-right">
+                          <p className="text-[15px] font-bold tabular-nums text-[var(--blue-text)]">+{formatAmount(line.amount)}</p>
+                          <p className="text-[11.5px] font-semibold tabular-nums text-[var(--muted-strong)]">{line.percent}%</p>
                         </div>
                       </div>
                     ))}
 
                     {report.calculationBreakdown.deduction_lines.map((line, index) => (
-                      <div key={`deduction-${index}`} className="flex items-center justify-between rounded-xl border border-rose-500/18 bg-rose-500/5 p-4">
+                      <div key={`deduction-${index}`} className="flex items-center justify-between gap-3 rounded-[18px] bg-[var(--danger-dim)] p-4">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="shrink-0 rounded-md bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-rose-500">Deduction</span>
-                            <h4 className="truncate text-[13px] font-bold text-[var(--foreground)]">{line.label}</h4>
+                            <Badge variant="danger" size="sm" className="shrink-0 bg-[var(--surface)]">Deduction</Badge>
+                            <h4 className="truncate text-[13.5px] font-semibold text-[var(--foreground)]">{line.label}</h4>
                           </div>
-                          {line.reason && <p className="mt-1 text-[11px] text-[var(--muted-strong)]">{line.reason}</p>}
+                          {line.reason && <p className="mt-1.5 text-[12px] text-[var(--muted-strong)]">{line.reason}</p>}
                         </div>
-                        <div className="pl-3 text-right">
-                          <p className="text-[14px] font-black text-rose-500">-{formatAmount(line.amount)}</p>
-                          <p className="text-[10px] font-bold text-rose-400">{line.percent}%</p>
+                        <div className="shrink-0 pl-3 text-right">
+                          <p className="text-[15px] font-bold tabular-nums text-[var(--danger-text)]">-{formatAmount(line.amount)}</p>
+                          <p className="text-[11.5px] font-semibold tabular-nums text-[var(--muted-strong)]">{line.percent}%</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
+              </Card>
             )}
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
-              <DetailStatTile label={lt('Final salary')} value={formatAmount(report.finalSalary)} theme={theme} />
-              <DetailStatTile label={lt('Estimated salary')} value={formatAmount(report.estimatedSalary)} theme={theme} />
-              <DetailStatTile label={lt('Base salary')} value={formatAmount(report.baseSalary)} theme={theme} />
-              <DetailStatTile label={tr('After deduction', 'Ayirmadan keyin', 'После удержания')} value={formatAmount(report.afterPenalty)} theme={theme} />
-              <DetailStatTile label={lt('Deduction')} value={formatAmount(report.deductionAmount)} tone="danger" theme={theme} />
-              <DetailStatTile label={lt('Bonus amount')} value={formatAmount(report.bonusAmount)} tone="success" theme={theme} />
-              <DetailStatTile label={lt('Bonus %')} value={formatPercent(report.totalBonusPercent)} tone="success" theme={theme} />
-              <DetailStatTile label={tr('Deduction %', 'Ayirma %', 'Удержание %')} value={formatPercent(report.penaltyPercentage)} tone="danger" theme={theme} />
-              <DetailStatTile label={lt('Mistakes')} value={formatCount(report.mistakesCount)} tone="danger" theme={theme} />
-              <DetailStatTile label={lt('Delivery bonuses')} value={formatCount(report.deliveryBonusCount)} tone="success" theme={theme} />
-              <DetailStatTile label={lt('Working days')} value={formatCount(report.workingDays)} theme={theme} />
-              <DetailStatTile label={lt('Update days')} value={formatCount(report.updateDays)} theme={theme} />
-              <DetailStatTile
-                label={lt('Productivity')}
-                value={Number.isFinite(report.productivityPercentage)
-                  ? `${formatCount(report.updateDays)}/${formatCount(report.workingDays)} / ${formatPercent(report.productivityPercentage)}`
-                  : '-'}
-                tone={report.qualifiesProductivityBonus ? 'success' : 'default'}
-                theme={theme}
-              />
-            </div>
+            <Card>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DetailStatTile label={lt('Final salary')} value={formatAmount(report.finalSalary)} />
+                <DetailStatTile label={lt('Estimated salary')} value={formatAmount(report.estimatedSalary)} />
+                <DetailStatTile label={lt('Base salary')} value={formatAmount(report.baseSalary)} />
+                <DetailStatTile label={tr('After deduction', 'Ayirmadan keyin', 'После удержания')} value={formatAmount(report.afterPenalty)} />
+                <DetailStatTile label={lt('Deduction')} value={formatAmount(report.deductionAmount)} tone="danger" />
+                <DetailStatTile label={lt('Bonus amount')} value={formatAmount(report.bonusAmount)} tone="success" />
+                <DetailStatTile label={lt('Bonus %')} value={formatPercent(report.totalBonusPercent)} tone="success" />
+                <DetailStatTile label={tr('Deduction %', 'Ayirma %', 'Удержание %')} value={formatPercent(report.penaltyPercentage)} tone="danger" />
+                <DetailStatTile label={lt('Mistakes')} value={formatCount(report.mistakesCount)} tone="danger" />
+                <DetailStatTile label={lt('Delivery bonuses')} value={formatCount(report.deliveryBonusCount)} tone="success" />
+                <DetailStatTile label={lt('Working days')} value={formatCount(report.workingDays)} />
+                <DetailStatTile label={lt('Update days')} value={formatCount(report.updateDays)} />
+                <DetailStatTile
+                  label={lt('Productivity')}
+                  value={Number.isFinite(report.productivityPercentage)
+                    ? `${formatCount(report.updateDays)}/${formatCount(report.workingDays)} / ${formatPercent(report.productivityPercentage)}`
+                    : '-'}
+                  tone={report.qualifiesProductivityBonus ? 'success' : 'default'}
+                />
+              </div>
+            </Card>
 
-            <div className="mt-5 grid gap-4">
-              <div
-                className={cn(
-                  'rounded-xl border px-5 py-4',
-                  isLight
-                    ? 'border-rose-500/18 bg-rose-50'
-                    : 'border-[var(--danger-border)] bg-[var(--danger-dim)]',
-                )}
-              >
+            <div className="grid gap-[18px] md:grid-cols-2">
+              <Card>
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className={cn(isLight ? 'text-rose-600' : 'text-[var(--danger-text)]')}>{tr('deduction impact', 'ayirma ta\'siri', 'влияние удержания')}</span>
-                  <span className={cn('font-semibold', penaltyProgress > 0 ? (isLight ? 'text-rose-600' : 'text-[var(--danger-text)]') : 'text-[var(--foreground)]')}>
+                  <span className="font-medium text-[var(--muted-strong)]">{tr('deduction impact', 'ayirma ta\'siri', 'влияние удержания')}</span>
+                  <span className={cn('font-semibold tabular-nums', penaltyProgress > 0 ? 'text-[var(--danger-text)]' : 'text-[var(--foreground)]')}>
                     {formatPercent(report.penaltyPercentage)}
                   </span>
                 </div>
-                <div className={cn('mt-3 h-2 rounded-full', isLight ? 'bg-rose-100' : 'bg-white/7')}>
-                  <div
-                    className="h-full rounded-full bg-rose-500 transition-[width] duration-300"
-                    style={{ width: `${penaltyProgress}%` }}
-                  />
-                </div>
-                <p className="mt-3 text-xs leading-6 text-[var(--muted)]">
+                <Progress className="mt-3.5" value={penaltyProgress} tone="danger" />
+                <p className="mt-3.5 text-[12.5px] leading-6 text-[var(--muted)]">
                   {report.deductionAmount > 0
                     ? `${formatAmount(report.deductionAmount)} ${tr('deducted in this period.', 'shu davrda ayirilgan.', 'удержано за этот период.')}`
                     : tr('No deductions were recorded for this period.', 'Bu davr uchun ayirma qayd etilmadi.', 'За этот период удержания не зафиксированы.')}
                 </p>
-              </div>
+              </Card>
 
-              <div
-                className={cn(
-                  'rounded-xl border px-5 py-4 border-[var(--success-border)]',
-                  isLight
-                    ? 'bg-[var(--success-soft)]'
-                    : 'bg-[var(--success-dim)]',
-                )}
-              >
+              <Card>
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-[var(--success-text)]">{lt('Productivity performance')}</span>
-                  <span className={cn('font-semibold', report.qualifiesProductivityBonus ? 'text-[var(--success-text)]' : 'text-[var(--foreground)]')}>
+                  <span className="font-medium text-[var(--muted-strong)]">{lt('Productivity performance')}</span>
+                  <span className={cn('font-semibold tabular-nums', report.qualifiesProductivityBonus ? 'text-[var(--success-text)]' : 'text-[var(--foreground)]')}>
                     {Number.isFinite(report.productivityPercentage) ? formatPercent(report.productivityPercentage) : '-'}
                   </span>
                 </div>
-                <div className={cn('mt-3 h-2 rounded-full', isLight ? 'bg-[var(--success-strong)]' : 'bg-white/7')}>
-                  <div
-                    className="h-full rounded-full transition-[width] duration-300"
-                    style={{ width: `${productivityProgress}%`, background: 'var(--success-text)' }}
-                  />
-                </div>
-                <p className="mt-3 text-xs leading-6 text-[var(--muted)]">
+                <Progress className="mt-3.5" value={productivityProgress} tone="success" />
+                <p className="mt-3.5 text-[12.5px] leading-6 text-[var(--muted)]">
                   {report.qualifiesProductivityBonus
                     ? lt('Productivity bonus qualified for this period.')
                     : lt('Productivity bonus did not qualify for this period.')}
                 </p>
-              </div>
+              </Card>
             </div>
           </div>
         </div>

@@ -20,8 +20,10 @@ import { DataTable } from '../../../shared/ui/data-table'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
 import { MemberAvatar as SharedMemberAvatar } from '../../../shared/ui/member-avatar'
+import { PageHeader } from '../../../shared/ui/page-header'
 import { SelectField } from '../../../shared/ui/select-field'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
+import { tonePill, type Tone } from '../../../shared/ui/tone'
 
 const now = new Date()
 const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -221,7 +223,7 @@ function ActivityStrip({ employee, month, year }: { employee: EmployeeMonthlySta
   const statuses = buildMonthlyActivityStatuses(employee, month, year)
 
   if (!statuses || statuses.length === 0) {
-    return <span className="text-xs text-(--muted)">-</span>
+    return <span className="text-xs text-[var(--muted)]">-</span>
   }
 
   const weeks = splitStatusesIntoWeeks(statuses)
@@ -276,13 +278,13 @@ function TrackBadge({ pct }: { pct: number }) {
 }
 
 function CompletionPill({ pct }: { pct: number }) {
-  const color =
-    pct >= 90 ? 'bg-emerald-500 text-white' :
-    pct >= 75 ? 'bg-amber-400/90 text-black' :
-    'bg-rose-500 text-white'
+  const tone: Tone =
+    pct >= 90 ? 'success' :
+    pct >= 75 ? 'warning' :
+    'danger'
 
   return (
-    <span className={cn('inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold tabular-nums', color)}>
+    <span className={cn('inline-block rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums', tonePill(tone))}>
       {pct.toFixed(1)}%
     </span>
   )
@@ -297,7 +299,6 @@ function EmployeeAvatar({ name, imageUrl }: { name: string; imageUrl?: string | 
       surname={surnameParts.join(' ')}
       imageUrl={imageUrl}
       size="md"
-      className="shadow-md"
       title={name}
     />
   )
@@ -1845,66 +1846,56 @@ export function CeoTeamUpdatesPage() {
   const selectedMonthName = getMonthName(month)
 
   return (
-    <section className="space-y-4 page-enter">
-      <Card variant="glass" noPadding className="overflow-hidden rounded-xl border-white/8">
-        <div className="relative overflow-hidden px-6 py-6 sm:px-8 sm:py-7">
-          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-[1.75rem]">
-                {lt('Team Monthly Updates')}
-              </h1>
+    <section className="space-y-[18px] page-enter">
+      <PageHeader
+        title={lt('Team Monthly Updates')}
+        actions={(
+          <>
+            <p className="text-[13px] font-medium text-[var(--muted)]">
+              {lt('Showing')} {employees.length} {lt('of')} {totalEmployees} {lt('Employees')}
+            </p>
+
+            <div className="flex h-11 cursor-default items-center gap-2 rounded-[14px] bg-[var(--accent-soft)] px-3">
+              <Label className="cursor-default text-[12.5px] text-[var(--muted)]">{lt('Year')}</Label>
+              <Input
+                type="number"
+                min="2020"
+                max="2050"
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value) || now.getFullYear())}
+                className="h-8 min-h-0 w-[72px] rounded-[9px] bg-transparent px-1.5 text-sm font-semibold hover:bg-transparent focus:bg-[var(--surface)]"
+              />
             </div>
-            
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm font-semibold text-(--muted-strong)">
-                {lt('Showing')} {employees.length} {lt('of')} {totalEmployees} {lt('Employees')}
-              </p>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-1.5 h-10 cursor-default">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-(--muted) cursor-default">{lt('Year')}</Label>
-                  <Input
-                    type="number"
-                    min="2020"
-                    max="2050"
-                    value={year}
-                    onChange={(e) => setYear(Number(e.target.value) || now.getFullYear())}
-                    className="h-7 w-16 border-transparent bg-transparent text-sm font-semibold text-[var(--foreground)] cursor-default hover:border-transparent hover:bg-transparent"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-1.5 h-10 cursor-default">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-(--muted) cursor-default">{lt('Month')}</Label>
-                  <SelectField
-                    value={String(month)}
-                    options={monthOptions}
-                    onValueChange={(value) => setMonth(Number(value))}
-                    className="h-7 min-w-[100px] border-transparent bg-transparent text-sm font-semibold text-[var(--foreground)] cursor-default hover:border-transparent hover:bg-transparent"
-                  />
-                </div>
-
-                <Button
-                  variant="secondary"
-                  className="h-10 px-4 rounded-xl font-bold uppercase tracking-widest text-[11px]"
-                  onClick={() => void handleRefresh()}
-                >
-                  {lt('Refresh')}
-                </Button>
-              </div>
+            <div className="flex h-11 cursor-default items-center gap-2 rounded-[14px] bg-[var(--accent-soft)] px-3">
+              <Label className="cursor-default text-[12.5px] text-[var(--muted)]">{lt('Month')}</Label>
+              <SelectField
+                value={String(month)}
+                options={monthOptions}
+                onValueChange={(value) => setMonth(Number(value))}
+                className="h-8 min-h-0 min-w-[108px] rounded-[9px] bg-transparent px-1.5 text-sm font-semibold hover:bg-transparent"
+              />
             </div>
-          </div>
-        </div>
-      </Card>
 
-      <Card noPadding className="border-[var(--border)] overflow-hidden">
-        <CardContent className="pt-6">
-          <div className="mb-6 grid gap-3 sm:grid-cols-3">
+            <Button
+              variant="secondary"
+              onClick={() => void handleRefresh()}
+            >
+              {lt('Refresh')}
+            </Button>
+          </>
+        )}
+      />
+
+      <Card noPadding className="overflow-hidden">
+        <CardContent className="pt-[22px]">
+          <div className="mb-[18px] grid gap-[18px] sm:grid-cols-3">
             <div>
-              <Label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-(--muted)">
+              <Label className="mb-2 block">
                 {translateCurrentLiteral('Search employee')}
               </Label>
               <div className="relative">
-                <svg className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-(--muted)" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <circle cx="7" cy="7" r="4.5" />
                   <path d="M10.5 10.5l3 3" />
                 </svg>
@@ -1912,13 +1903,13 @@ export function CeoTeamUpdatesPage() {
                   placeholder={translateCurrentLiteral('Search by name')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8"
+                  className="pl-10"
                 />
               </div>
             </div>
 
             <div>
-              <Label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-(--muted)">
+              <Label className="mb-2 block">
                 {translateCurrentLiteral('Sort by')}
               </Label>
               <SelectField
@@ -1929,7 +1920,7 @@ export function CeoTeamUpdatesPage() {
             </div>
 
             <div>
-              <Label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-(--muted)">
+              <Label className="mb-2 block">
                 {translateCurrentLiteral('Status')}
               </Label>
               <SelectField
@@ -1948,9 +1939,12 @@ export function CeoTeamUpdatesPage() {
             zebra
             emptyState={
               <EmptyStateBlock
+                eyebrow={''}
                 title={search || statusFilter !== 'all'
                   ? translateCurrentLiteral('No employees match the current filters.')
-                  : `${translateCurrentLiteral('No data for')} ${selectedMonthName} ${year}.`} eyebrow={''}              />
+                  : `${translateCurrentLiteral('No data for')} ${selectedMonthName} ${year}.`}
+                className="bg-[var(--accent-soft)]"
+              />
             }
             columns={[
               {
@@ -1976,7 +1970,7 @@ export function CeoTeamUpdatesPage() {
                 key: 'missing',
                 header: lt('Missing'),
                 render: (emp) => (
-                  <span className="text-sm font-semibold tabular-nums text-rose-300" data-ui-number="true" data-keep-color="true">
+                  <span className="text-sm font-semibold tabular-nums text-[var(--danger-text)]" data-ui-number="true" data-keep-color="true">
                     {emp.missing_count}
                   </span>
                 ),
@@ -1990,7 +1984,7 @@ export function CeoTeamUpdatesPage() {
                 key: 'last_update',
                 header: lt('Last Update'),
                 render: (emp) => (
-                  <span className="whitespace-nowrap text-sm text-(--muted-strong)">
+                  <span className="text-sm whitespace-nowrap text-[var(--muted-strong)]">
                     {emp.last_update_date ? formatShortDate(emp.last_update_date) : '-'}
                   </span>
                 ),
@@ -2016,7 +2010,7 @@ export function CeoTeamUpdatesPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="whitespace-nowrap rounded-lg"
+                    className="whitespace-nowrap"
                     onClick={(event) => {
                       event.stopPropagation()
                       openMemberDetail(emp)
@@ -2032,15 +2026,15 @@ export function CeoTeamUpdatesPage() {
         </CardContent>
 
         {employees.length > 0 && (
-          <CardFooter className="flex items-center justify-between bg-(--muted-surface) px-4 py-2.5">
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-(--muted)" data-i18n-skip="true" data-activity-legend="true">
+          <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t-0 bg-[var(--muted-surface)] px-[22px] py-3.5">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-[var(--muted)]" data-i18n-skip="true" data-activity-legend="true">
               <ActivityLegendItem status="submitted" label="Active month" />
               <ActivityLegendItem status="missing" label="No reports" />
               <ActivityLegendItem status="sunday" label="Weekend / off day" />
               <ActivityLegendItem status="neutral" label="No data" />
               <ActivityLegendItem status="future" label="Future month" />
             </div>
-            <p className="text-[11px] text-(--muted)">
+            <p className="text-[12px] text-[var(--muted)]">
               {selectedMonthName} {year}
             </p>
           </CardFooter>

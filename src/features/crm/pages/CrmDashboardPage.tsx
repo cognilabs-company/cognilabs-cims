@@ -22,10 +22,12 @@ import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { DataTable } from '../../../shared/ui/data-table'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
+import { Tabs } from '../../../shared/ui/tabs'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
@@ -200,7 +202,10 @@ function renderRecallTime(value?: string | null) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-sm border px-2.5 py-1 text-[13px] font-medium leading-none ${getRecallTimeToneClasses(tone)}`}
+      className={cn(
+        'inline-flex items-center rounded-full px-2.5 py-1 text-xs leading-none font-semibold',
+        getRecallTimeToneClasses(tone),
+      )}
       title={toneLabels[tone]}
     >
       {formatted}
@@ -421,11 +426,10 @@ function StatusBadge({
 
   return (
     <span
-      className="inline-flex items-center rounded-md border px-2.5 py-1 text-[13px] font-medium capitalize"
+      className="inline-flex items-center rounded-full px-2.5 py-1 text-xs leading-none font-semibold capitalize"
       style={{
-        borderColor: meta?.color ?? 'var(--border)',
-        color: meta?.color ?? 'var(--foreground)',
-        backgroundColor: meta?.color ? `${meta.color}18` : 'var(--muted-surface)',
+        color: meta?.color ?? 'var(--muted-strong)',
+        backgroundColor: meta?.color ? `${meta.color}1F` : 'var(--muted-surface)',
       }}
     >
       {meta?.label ?? status}
@@ -449,11 +453,11 @@ function TableAudioControl({
       <button
         type="button"
         onClick={() => onOpenPlayer(src, customerName)}
-        className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--border-hover)] hover:bg-[var(--input-surface-hover)]"
+        className="inline-flex h-9 items-center gap-2 rounded-[11px] bg-[var(--input-surface)] px-3 text-xs font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface-hover)]"
         aria-label={t('common.play', 'Play')}
       >
-        <span className="grid h-5 w-5 place-items-center rounded-full bg-white/8">
-          <svg viewBox="0 0 16 16" className="ml-0.5 h-3.5 w-3.5 fill-current" aria-hidden="true">
+        <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--blue-dim)] text-[var(--blue-text)]">
+          <svg viewBox="0 0 16 16" className="ml-0.5 h-3 w-3 fill-current" aria-hidden="true">
             <path d="M5 3.8v8.4a.6.6 0 0 0 .93.5l6.2-4.2a.6.6 0 0 0 0-1L5.93 3.3A.6.6 0 0 0 5 3.8Z" />
           </svg>
         </span>
@@ -685,13 +689,13 @@ export function CrmDashboardPage() {
     // 2. All status_choices from dashboard response — includes newly added statuses
     for (const choice of (dashboardQuery.data?.status_choices ?? [])) {
       const meta = statusMetaMap.get(normalizeStatusKey(choice.value))
-      add(choice.value, choice.label, meta?.color ?? '#94a3b8')
+      add(choice.value, choice.label, meta?.color ?? '#8A90A2')
     }
 
     // 3. Actual customer statuses as final fallback
     for (const c of baseCustomers) {
       const meta = statusMetaMap.get(normalizeStatusKey(c.status))
-      add(c.status, meta?.label ?? c.status, meta?.color ?? '#94a3b8')
+      add(c.status, meta?.label ?? c.status, meta?.color ?? '#8A90A2')
     }
 
     return result
@@ -1049,27 +1053,10 @@ export function CrmDashboardPage() {
   ].filter((value) => Boolean(value)).length
 
   return (
-    <section className="flex min-h-[calc(100vh-10rem)] flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="flex min-h-[var(--page-h)] flex-col gap-[18px]">
+      <div className="flex flex-wrap items-center justify-between gap-[18px]">
         <div className="flex flex-wrap items-center gap-2">
-          {periodOptions.map((option) => {
-            const isActive = selectedPeriod === option.value
-            return (
-              <button
-                key={option.value || 'all'}
-                type="button"
-                onClick={() => setSelectedPeriod(option.value)}
-                className={cn(
-                  'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
-                  isActive
-                    ? 'border-(--blue-border) bg-(--blue-soft) text-(--blue-text)'
-                    : 'border-(--border) bg-(--surface-elevated) text-(--muted-strong) hover:border-(--border-hover) hover:text-(--foreground)',
-                )}
-              >
-                {option.label}
-              </button>
-            )
-          })}
+          <Tabs items={periodOptions} value={selectedPeriod} onChange={setSelectedPeriod} className="max-w-full flex-wrap" />
           {selectedPeriod && periodReportQuery.data ? (
             <Badge variant="blue" dot>
               {t('customers.period.range', '{{from}} → {{to}}', {
@@ -1097,22 +1084,25 @@ export function CrmDashboardPage() {
       </div>
 
       {allChipStatuses.length > 0 && (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
           {/* All clients card */}
           <button
             type="button"
             onClick={() => setStatusFilters([])}
             className={cn(
-              'flex flex-col justify-between rounded-xl border p-4 text-left transition-all min-h-24',
+              'flex min-h-[96px] flex-col justify-between rounded-[18px] p-4 text-left transition-colors',
               statusFilters.length === 0
-                ? 'border-(--blue-border) bg-(--blue-soft) shadow-sm'
-                : 'border-(--border) bg-(--surface-elevated) hover:border-(--border-hover) hover:bg-(--surface)',
+                ? 'bg-[var(--blue-dim)]'
+                : 'bg-[var(--card)] hover:bg-[var(--card-hover)]',
             )}
           >
-            <p className={cn('text-[10px] font-bold uppercase tracking-widest', statusFilters.length === 0 ? 'text-(--blue-text)' : 'text-(--muted)')}>
+            <p className={cn('truncate text-[11px] font-semibold tracking-[0.08em] uppercase', statusFilters.length === 0 ? 'text-[var(--blue-text)]' : 'text-[var(--caption)]')}>
               Barchasi
             </p>
-            <p className={cn('mt-3 text-2xl font-semibold leading-none tracking-tight', statusFilters.length === 0 ? 'text-(--blue-text)' : 'text-(--foreground)')}>
+            <p
+              className={cn('mt-3 text-[28px] leading-none font-bold tracking-[-0.03em] tabular-nums', statusFilters.length === 0 ? 'text-[var(--blue-text)]' : 'text-[var(--foreground)]')}
+              data-ui-number="true"
+            >
               {baseCustomers.length}
             </p>
           </button>
@@ -1132,23 +1122,23 @@ export function CrmDashboardPage() {
                   )
                 }}
                 className={cn(
-                  'flex flex-col justify-between rounded-xl border p-4 text-left transition-all min-h-24',
-                  isActive ? 'shadow-sm' : 'border-(--border) bg-(--surface-elevated) hover:border-(--border-hover) hover:bg-(--surface)',
+                  'flex min-h-[96px] flex-col justify-between rounded-[18px] p-4 text-left transition-colors',
+                  !isActive && 'bg-[var(--card)] hover:bg-[var(--card-hover)]',
                 )}
                 style={isActive ? {
-                  borderColor: option.color,
-                  backgroundColor: `${option.color}12`,
+                  backgroundColor: `${option.color}1F`,
                 } : undefined}
               >
                 <p
-                  className={cn('text-[10px] font-bold uppercase tracking-widest truncate', !isActive && 'text-(--muted)')}
+                  className={cn('truncate text-[11px] font-semibold tracking-[0.08em] uppercase', !isActive && 'text-[var(--caption)]')}
                   style={isActive ? { color: option.color } : undefined}
                 >
                   {option.label}
                 </p>
                 <p
-                  className={cn('mt-3 text-2xl font-semibold leading-none tracking-tight', !isActive && 'text-(--foreground)')}
+                  className={cn('mt-3 text-[28px] leading-none font-bold tracking-[-0.03em] tabular-nums', !isActive && 'text-[var(--foreground)]')}
                   style={isActive ? { color: option.color } : undefined}
+                  data-ui-number="true"
                 >
                   {count}
                 </p>
@@ -1161,109 +1151,103 @@ export function CrmDashboardPage() {
       <Card noPadding className="flex flex-1 flex-col overflow-hidden">
         <div
           className={cn(
-            'flex flex-wrap items-center justify-between gap-3 border-b border-(--border) py-5',
-            isSidebarCollapsed ? 'px-4 xl:px-5' : 'px-6',
+            'flex flex-wrap items-center justify-between gap-3 pt-[22px] pb-4',
+            isSidebarCollapsed ? 'px-4 xl:px-[22px]' : 'px-[22px]',
           )}
         >
-          <div>
-            <h2 className="text-lg font-semibold text-white">{t('customers.section.list.title', 'Customers')}</h2>
-          </div>
+          <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{t('customers.section.list.title', 'Customers')}</h2>
           <div className="flex items-center gap-2">
             <Badge variant="blue" dot>
               {t('customers.section.list.visible_badge', '{{count}} visible', { count: displayedCustomers.length })}
             </Badge>
-            <Badge variant={activeFilterCount > 0 ? 'warning' : 'outline'} dot={activeFilterCount > 0}>
+            <Badge variant={activeFilterCount > 0 ? 'warning' : 'secondary'} dot={activeFilterCount > 0}>
               {t('customers.section.list.filters_badge', '{{count}} filters', { count: activeFilterCount })}
             </Badge>
           </div>
         </div>
 
 
-        <div
-          className={cn(
-            'border-b border-(--border) bg-(--muted-surface)/40 py-4',
-            isSidebarCollapsed ? 'px-4 xl:px-5' : 'px-6',
-          )}
-        >
-          <div className="mb-3 flex items-center justify-end">
+        <div className={cn(isSidebarCollapsed ? 'px-4 xl:px-[22px]' : 'px-[22px]')}>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
             {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-7 px-2 text-xs">
-                {t('common.clear', 'Clear')}
-              </Button>
+              <div className="mb-3.5 flex items-center justify-end">
+                <Button variant="ghost" size="sm" onClick={resetFilters}>
+                  {t('common.clear', 'Clear')}
+                </Button>
+              </div>
             )}
-          </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-(--muted)">
-                {t('customers.filters.search_label', 'Search')}
-              </Label>
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t('customers.filters.search_placeholder', 'Name, username, note, or phone')}
-                className="h-9"
-              />
-            </div>
+            <div className="grid gap-x-[18px] gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="flex flex-col gap-1.5">
+                <Label>
+                  {t('customers.filters.search_label', 'Search')}
+                </Label>
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t('customers.filters.search_placeholder', 'Name, username, note, or phone')}
+                />
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-(--muted)">
-                {t('customers.filters.status_label', 'Status')}
-              </Label>
-              <SelectField
-                value={statusFilters[0] ?? ''}
-                values={statusFilters}
-                multiple
-                options={statusFilterOptions}
-                onValuesChange={setStatusFilters}
-                placeholder={t('customers.filters.all_statuses', 'All statuses')}
-              />
-            </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>
+                  {t('customers.filters.status_label', 'Status')}
+                </Label>
+                <SelectField
+                  value={statusFilters[0] ?? ''}
+                  values={statusFilters}
+                  multiple
+                  options={statusFilterOptions}
+                  onValuesChange={setStatusFilters}
+                  placeholder={t('customers.filters.all_statuses', 'All statuses')}
+                />
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-(--muted)">
-                {t('customers.filters.platform_label', 'Platform')}
-              </Label>
-              <SelectField
-                key={`crm-platform-filter-${platformFilter || 'all'}`}
-                value={platformFilter}
-                options={platformFilterOptions}
-                onValueChange={setPlatformFilter}
-              />
-            </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>
+                  {t('customers.filters.platform_label', 'Platform')}
+                </Label>
+                <SelectField
+                  key={`crm-platform-filter-${platformFilter || 'all'}`}
+                  value={platformFilter}
+                  options={platformFilterOptions}
+                  onValueChange={setPlatformFilter}
+                />
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-(--muted)">
-                {t('customers.filters.start_date_label', 'Start date')}
-              </Label>
-              <Input type="date" value={dateStart} onChange={(event) => setDateStart(event.target.value)} className="h-9" />
-            </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>
+                  {t('customers.filters.start_date_label', 'Start date')}
+                </Label>
+                <Input type="date" value={dateStart} onChange={(event) => setDateStart(event.target.value)} />
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-(--muted)">
-                {t('customers.filters.end_date_label', 'End date')}
-              </Label>
-              <Input type="date" value={dateEnd} onChange={(event) => setDateEnd(event.target.value)} className="h-9" />
-            </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>
+                  {t('customers.filters.end_date_label', 'End date')}
+                </Label>
+                <Input type="date" value={dateEnd} onChange={(event) => setDateEnd(event.target.value)} />
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-(--muted)">
-                {t('customers.filters.pagination_label', 'Pagination')}
-              </Label>
-              <SelectField
-                key={`crm-page-size-${pageSize}`}
-                value={pageSize}
-                options={pageSizeOptions}
-                onValueChange={setPageSize}
-              />
+              <div className="flex flex-col gap-1.5">
+                <Label>
+                  {t('customers.filters.pagination_label', 'Pagination')}
+                </Label>
+                <SelectField
+                  key={`crm-page-size-${pageSize}`}
+                  value={pageSize}
+                  options={pageSizeOptions}
+                  onValueChange={setPageSize}
+                />
+              </div>
             </div>
           </div>
         </div>
 
         <div
           className={cn(
-            'flex min-h-0 flex-1 flex-col py-5',
-            isSidebarCollapsed ? 'px-2 xl:px-3' : 'px-0',
+            'flex min-h-0 flex-1 flex-col py-[18px]',
+            isSidebarCollapsed ? 'px-4 xl:px-[22px]' : 'px-[22px]',
           )}
         >
           <DataTable
@@ -1278,7 +1262,6 @@ export function CrmDashboardPage() {
             onRowClick={openCustomerDrawer}
             onPageChange={setTablePage}
             disableAutoResetPage={shouldRestoreReturnState}
-            className="rounded-none border-x-0 border-b-0"
             emptyState={
               <EmptyStateBlock
                 eyebrow={crmKind === 'outbound' ? t('outbound_crm.page.eyebrow', 'Outbound CRM workspace') : t('customers.page.eyebrow', 'CRM workspace')}
@@ -1301,7 +1284,7 @@ export function CrmDashboardPage() {
                           event.stopPropagation()
                           openCustomerDrawer(row)
                         }}
-                        className="block truncate text-left text-sm font-semibold text-white transition hover:text-zinc-300 sm:text-[15px]"
+                        className="block truncate text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
                       >
                         {displayName}
                       </button>
@@ -1323,24 +1306,24 @@ export function CrmDashboardPage() {
                     {row.lead_response_metrics && (
                       <div className="flex flex-wrap gap-1">
                         {!row.lead_response_metrics.status_changed && (
-                          <span className="inline-flex items-center rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0 text-[9px] font-semibold text-amber-400">
+                          <Badge variant="warning" size="sm">
                             Hali bog'lanilmagan
-                          </span>
+                          </Badge>
                         )}
                         {row.lead_response_metrics.status_changed && !row.lead_response_metrics.is_late_response && (
-                          <span className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0 text-[9px] font-semibold text-emerald-400">
+                          <Badge variant="success" size="sm">
                             ✓ O'z vaqtida
-                          </span>
+                          </Badge>
                         )}
                         {row.lead_response_metrics.is_late_response && (
-                          <span className="inline-flex items-center rounded-md border border-red-500/20 bg-red-500/10 px-1.5 py-0 text-[9px] font-semibold text-red-400">
+                          <Badge variant="danger" size="sm">
                             Kech {row.lead_response_metrics.late_human ?? ''}
-                          </span>
+                          </Badge>
                         )}
                         {row.lead_response_metrics.status_changed_without_note && (
-                          <span className="inline-flex items-center rounded-md border border-orange-500/20 bg-orange-500/10 px-1.5 py-0 text-[9px] font-semibold text-orange-400">
+                          <Badge variant="warning" size="sm">
                             Note yo'q
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     )}
@@ -1352,12 +1335,12 @@ export function CrmDashboardPage() {
                 header: t('customers.table.actions', 'Actions'),
                 render: (row) => (
                   <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
-                    <button type="button" title={t('customers.actions.edit', 'Edit')} onClick={() => openEditModal(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                    <button type="button" title={t('customers.actions.delete', 'Delete')} onClick={() => void handleDeleteCustomer(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </button>
+                    <IconButton size="sm" label={t('customers.actions.edit', 'Edit')} onClick={() => openEditModal(row)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </IconButton>
+                    <IconButton size="sm" tone="danger" label={t('customers.actions.delete', 'Delete')} onClick={() => void handleDeleteCustomer(row)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </IconButton>
                   </div>
                 ),
               },
@@ -1391,7 +1374,7 @@ export function CrmDashboardPage() {
                 header: t('customers.table.notes', 'Notes'),
                 width: '320px',
                 render: (row) => (
-                  <span className="block max-w-[320px] truncate text-sm text-(--muted-strong) sm:text-[15px]" title={row.notes ?? undefined}>
+                  <span className="block max-w-[320px] truncate text-[13.5px] text-[var(--muted-strong)]" title={row.notes ?? undefined}>
                     {summarizeCustomerNotes(row.notes)}
                   </span>
                 ),

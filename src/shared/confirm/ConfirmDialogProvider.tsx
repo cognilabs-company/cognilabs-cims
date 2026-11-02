@@ -9,8 +9,8 @@ import { Dialog } from '../ui/dialog'
 
 function DangerHeaderIcon() {
   return (
-    <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-red-500/30 bg-[linear-gradient(180deg,rgba(127,29,29,0.92),rgba(69,10,10,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_16px_32px_rgba(127,29,29,0.28)]">
-      <span className="ui-dialog-title font-bold leading-none text-red-400">!</span>
+    <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-[var(--danger-dim)]">
+      <span className="ui-dialog-title font-bold leading-none text-[var(--danger-text)]">!</span>
     </div>
   )
 }
@@ -51,11 +51,7 @@ export function ConfirmDialogProvider({ children }: PropsWithChildren) {
             </Button>
             <Button
               variant={options?.tone === 'danger' ? 'danger' : 'primary'}
-              className={
-                options?.tone === 'danger'
-                  ? 'min-w-[156px] border-red-500/40 bg-[linear-gradient(180deg,#dc2626,#b91c1c)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_12px_24px_rgba(127,29,29,0.28)] hover:border-red-400/60 hover:bg-[linear-gradient(180deg,#ef4444,#dc2626)] hover:text-white'
-                  : 'min-w-[132px]'
-              }
+              className={options?.tone === 'danger' ? 'min-w-[156px]' : 'min-w-[132px]'}
               onClick={() => closeWith(true)}
             >
               {translateCurrentLiteral(options?.confirmLabel ?? 'Confirm')}

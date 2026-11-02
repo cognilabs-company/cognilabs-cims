@@ -1,15 +1,8 @@
 import { cn } from '../../../../shared/lib/cn'
 import { Button } from '../../../../shared/ui/button'
 import { SelectField } from '../../../../shared/ui/select-field'
+import { ChevronIcon } from './icons'
 import { getVisiblePages, useCommentAutomationT } from './shared'
-
-function ChevronIcon({ direction }: { direction: 'left' | 'right' }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-      <path d={direction === 'left' ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} />
-    </svg>
-  )
-}
 
 export function PaginationBar({
   page,
@@ -40,7 +33,7 @@ export function PaginationBar({
 
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-3', className)}>
-      <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
+      <div className="flex flex-wrap items-center gap-3 text-[12.5px] text-[var(--muted)]">
         <span data-ui-number="true">
           {totalItems === null
             ? tx('pagination.page', 'Page {{page}}', { page })
@@ -53,7 +46,7 @@ export function PaginationBar({
               value={String(pageSize)}
               options={pageSizeOptions.map((option) => ({ value: String(option), label: String(option) }))}
               onValueChange={(value) => onPageSizeChange(Number(value))}
-              className="min-h-0 h-8 w-20 text-xs"
+              className="h-9 min-h-9 w-[80px] rounded-[11px] bg-[var(--muted-surface)] px-3 text-[12.5px]"
             />
           </div>
         )}
@@ -64,29 +57,31 @@ export function PaginationBar({
           <Button
             variant="secondary"
             size="sm"
-            className="h-8 px-2"
+            className="gap-1.5 px-3"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
           >
-            <ChevronIcon direction="left" />
-            <span className="text-xs font-medium">{tx('pagination.prev', 'Prev')}</span>
+            <ChevronIcon direction="left" className="h-3.5 w-3.5" />
+            <span className="text-[12.5px] font-semibold">{tx('pagination.prev', 'Prev')}</span>
           </Button>
 
           {totalPages !== null && (
             <div className="flex items-center gap-1" data-ui-number="true">
               {getVisiblePages(page, totalPages).map((item, index) =>
                 item === 'ellipsis' ? (
-                  <span key={`ellipsis-${index}`} className="inline-flex h-8 w-6 items-center justify-center text-xs text-[var(--muted)]">
+                  <span key={`ellipsis-${index}`} className="inline-flex h-9 w-6 items-center justify-center text-[12.5px] text-[var(--muted)]">
                     ...
                   </span>
                 ) : (
                   <Button
                     key={item}
-                    variant={item === page ? 'secondary' : 'ghost'}
+                    variant="ghost"
                     size="sm"
                     className={cn(
-                      'h-8 min-w-8 px-2 text-xs font-medium',
-                      item === page && 'border border-[var(--border)] bg-[var(--accent-soft)]',
+                      'h-9 min-h-9 min-w-9 rounded-[11px] px-0 text-[12.5px] font-semibold',
+                      item === page
+                        ? 'bg-[var(--surface-inverse)] text-white hover:bg-[var(--surface-inverse)] hover:text-white'
+                        : 'text-[var(--muted)]',
                     )}
                     onClick={() => onPageChange(item)}
                   >
@@ -100,12 +95,12 @@ export function PaginationBar({
           <Button
             variant="secondary"
             size="sm"
-            className="h-8 px-2"
+            className="gap-1.5 px-3"
             disabled={!canGoNext}
             onClick={() => onPageChange(page + 1)}
           >
-            <span className="text-xs font-medium">{tx('pagination.next', 'Next')}</span>
-            <ChevronIcon direction="right" />
+            <span className="text-[12.5px] font-semibold">{tx('pagination.next', 'Next')}</span>
+            <ChevronIcon direction="right" className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}

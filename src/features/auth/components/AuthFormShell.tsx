@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Card } from '../../../shared/ui/card'
 
 type FooterLink = {
   label: string
@@ -18,36 +17,33 @@ type AuthFormShellProps = {
 export function AuthFormShell({
   eyebrow,
   title,
-  description: _description,
+  description,
   footerLinks = [],
   children,
 }: AuthFormShellProps) {
   return (
-    <Card className="auth-login-shell overflow-hidden border-[var(--border)] bg-[var(--card)] p-0 shadow-sm">
-      <div className="border-b border-[var(--border)] px-6 py-6 sm:px-7">
-        <div className="space-y-2">
-          <p className="ui-eyebrow text-[var(--muted)]">{eyebrow}</p>
-          <h2 className="ui-dialog-title text-[var(--foreground)]">{title}</h2>
-        </div>
+    <div className="w-full">
+      <div className="space-y-2">
+        <p className="ui-eyebrow text-[var(--primary)]">{eyebrow}</p>
+        <h2 className="ui-page-title text-[var(--foreground)]">{title}</h2>
+        {description ? <p className="text-sm text-[var(--muted)]">{description}</p> : null}
       </div>
 
-      <div className="px-6 py-6 sm:px-7">{children}</div>
+      <div className="mt-[22px]">{children}</div>
 
       {footerLinks.length > 0 ? (
-        <div className="border-t border-[var(--border)] px-6 py-4 sm:px-7">
-          <div className="flex flex-wrap gap-3">
+        <div className="mt-[18px] flex flex-wrap gap-4">
           {footerLinks.map((link) => (
             <Link
               key={link.to}
               to={link.to}
-              className="ui-helper font-medium text-[var(--muted)] transition hover:text-[var(--foreground)]"
+              className="text-[12.5px] font-semibold text-[var(--primary)] transition-colors hover:text-[var(--primary-hover)]"
             >
               {link.label}
             </Link>
           ))}
-          </div>
         </div>
       ) : null}
-    </Card>
+    </div>
   )
 }

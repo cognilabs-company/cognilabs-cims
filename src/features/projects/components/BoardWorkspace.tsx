@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
+import { Skeleton } from '../../../shared/ui/skeleton'
 import { StateBlock } from '../../../shared/ui/state-block'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -431,15 +432,16 @@ export function BoardWorkspace({
 
   if (boardQuery.isLoading) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="h-14 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]" />
-        <div className="flex gap-4 overflow-hidden">
+      <div className="flex flex-col gap-[18px] p-[18px] sm:p-[22px]">
+        <Skeleton rounded="lg" className="h-14 w-full max-w-sm" />
+        <div className="flex gap-[18px] overflow-hidden">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div
+            <Skeleton
               key={index}
+              rounded="xl"
               className={isEmbedded
-                ? 'h-[520px] w-72 shrink-0 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]'
-                : 'h-[calc(100vh-200px)] w-72 shrink-0 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]'}
+                ? 'h-[520px] w-[280px] shrink-0'
+                : 'h-[calc(100vh-242px)] w-[280px] shrink-0'}
             />
           ))}
         </div>
@@ -461,14 +463,14 @@ export function BoardWorkspace({
   }
 
   const header = (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--shell-header-bg)] px-4 py-3 backdrop-blur-xl sm:px-6">
-      <div className="min-w-0 flex flex-col gap-0.5">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface)] px-[18px] py-4 sm:px-[22px]">
+      <div className="min-w-0 flex flex-col gap-1">
         {!isEmbedded ? (
           <Link
             to={`/projects/${board.project_id}`}
-            className="inline-flex w-fit items-center gap-1 text-[10px] text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
+            className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
           >
-            <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M10 4L6 8l4 4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             {lt('Back to project')}
@@ -476,7 +478,7 @@ export function BoardWorkspace({
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className={isEmbedded ? 'text-base font-semibold tracking-tight text-[var(--foreground)]' : 'text-sm font-semibold tracking-tight text-[var(--foreground)]'}>
+          <h2 className={isEmbedded ? 'text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]' : 'text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]'}>
             {board.name}
           </h2>
           {board.is_archived ? (
@@ -486,15 +488,15 @@ export function BoardWorkspace({
           ) : null}
         </div>
 
-        <p className="text-[10px] text-[var(--muted)]">
+        <p className="text-[12.5px] tabular-nums text-[var(--muted)]">
           {`${boardStats.columnCount} ${lt('columns')} · ${boardStats.cardCount} ${lt('cards')}`}
         </p>
       </div>
 
       {!isReadOnlyBoard ? (
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2.5">
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             onClick={() => setIsAddColumnOpen(true)}
             leftIcon={(
@@ -517,7 +519,7 @@ export function BoardWorkspace({
   )
 
   const content = board.columns.length === 0 ? (
-    <div className={isEmbedded ? 'p-6' : 'flex flex-1 items-center justify-center'}>
+    <div className={isEmbedded ? 'p-[22px]' : 'flex flex-1 items-center justify-center p-[22px]'}>
       <StateBlock
         tone="empty"
         eyebrow={lt('No boards')}
@@ -534,7 +536,7 @@ export function BoardWorkspace({
   ) : (
     <div
       className={isEmbedded ? 'flex-1 min-h-0 overflow-hidden boards-section' : 'overflow-hidden boards-section'}
-      style={!isEmbedded ? { height: 'calc(100vh - 162px)' } : undefined}
+      style={!isEmbedded ? { height: 'calc(100vh - 204px)' } : undefined}
     >
       <KanbanBoard
         columns={board.columns}
@@ -560,7 +562,7 @@ export function BoardWorkspace({
           {content}
         </div>
       ) : (
-        <div className="flex flex-col md:-mx-6 lg:-mx-8">
+        <div className="flex flex-col -mx-7 bg-[var(--surface)]">
           {header}
           {content}
         </div>

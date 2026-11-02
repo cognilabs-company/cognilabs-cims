@@ -1,4 +1,5 @@
 import { Button } from '../../../shared/ui/button'
+import { Checkbox } from '../../../shared/ui/checkbox'
 import { Label } from '../../../shared/ui/label'
 import { Input } from '../../../shared/ui/input'
 import { Modal } from '../../../shared/ui/modal'
@@ -53,18 +54,18 @@ export function PaymentFormModal({
         </>
       }
     >
-      <div className="grid gap-4">
+      <div className="grid gap-[18px]">
         <Label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('ceo.payments.form.project')}</span>
+          <span className="ui-input-label">{t('ceo.payments.form.project')}</span>
           <Input value={values.project} onChange={(event) => onChange('project', event.target.value)} />
         </Label>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-[18px] md:grid-cols-2">
           <Label className="grid gap-2">
-            <span className="text-xs font-medium text-[var(--foreground)]">{t('ceo.payments.form.date')}</span>
+            <span className="ui-input-label">{t('ceo.payments.form.date')}</span>
             <Input type="date" value={values.date} onChange={(event) => onChange('date', event.target.value)} />
           </Label>
           <Label className="grid gap-2">
-            <span className="text-xs font-medium text-[var(--foreground)]">{t('ceo.payments.form.amount')}</span>
+            <span className="ui-input-label">{t('ceo.payments.form.amount')}</span>
             <Input
               type="number"
               min="0"
@@ -73,14 +74,13 @@ export function PaymentFormModal({
             />
           </Label>
         </div>
-        <Label className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-hover)] hover:bg-[var(--input-surface-hover)]">
-          <input
-            type="checkbox"
+        <Label className="flex cursor-pointer items-center gap-3 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5 transition-colors hover:bg-[var(--blue-dim)]">
+          <Checkbox
+            size="sm"
             checked={values.payment}
             onChange={(event) => onChange('payment', event.target.checked)}
-            className="h-4 w-4 rounded border border-[var(--border)] accent-blue-500 dark:border-white/10"
           />
-          <span className="text-xs text-[var(--muted-strong)]">{t('ceo.payments.form.already_paid')}</span>
+          <span className="text-sm font-medium text-[var(--foreground)]">{t('ceo.payments.form.already_paid')}</span>
         </Label>
       </div>
     </Modal>

@@ -227,7 +227,7 @@ export function KanbanBoard({
     >
       {/* Horizontal + vertical scroll canvas — Trello-like */}
       <div className="h-full w-full overflow-x-auto overflow-y-auto horizontal-scrollbar-visible">
-        <div className="flex min-h-full items-start gap-3 sm:gap-4 px-3 py-3 sm:px-8 sm:py-5">
+        <div className="flex min-h-full items-start gap-[18px] p-[18px] sm:p-[22px]">
           <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
             {localColumns.map((col) => (
               <div key={col.id} className="shrink-0 self-start">
@@ -250,7 +250,7 @@ export function KanbanBoard({
             <button
               type="button"
               onClick={onAddColumn}
-              className="flex h-10 w-64 shrink-0 items-center gap-2 self-start rounded-xl border border-dashed border-white/10 bg-white/5 px-4 text-xs font-medium text-white/40 transition hover:border-white/20 hover:bg-white/8 hover:text-white/70"
+              className="flex min-h-11 w-[280px] shrink-0 items-center gap-2 self-start rounded-[18px] border border-dashed border-[var(--border-hover)] bg-[var(--muted-surface)] px-4 text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]"
             >
               <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M8 3v10M3 8h10" strokeLinecap="round" />

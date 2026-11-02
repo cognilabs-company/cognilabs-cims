@@ -150,12 +150,12 @@ export function SelectField({
           }
         }}
         className={cn(
-          'flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-3.5 py-2 text-sm text-[var(--foreground)] sm:text-[15px]',
-          'shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)] outline-none',
+          'flex min-h-11 w-full items-center justify-between gap-3 rounded-[14px] border border-transparent bg-[var(--input-surface)] px-3.5 py-2 text-sm text-[var(--foreground)]',
+          'outline-none',
           'transition-[border-color,box-shadow,background-color,transform] duration-150',
-          'hover:border-[var(--border-hover)] hover:bg-[var(--input-surface-hover)]',
-          'focus-visible:border-[var(--border-focus)] focus-visible:bg-[var(--input-surface-hover)]',
-          'focus-visible:ring-0 focus-visible:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),0_0_0_3px_rgba(59,130,246,0.12)]',
+          'hover:bg-[var(--input-surface-hover)]',
+          'focus-visible:border-[var(--primary)] focus-visible:bg-[var(--surface)]',
+          'focus-visible:ring-0 focus-visible:shadow-[0_0_0_3px_rgba(43,89,255,0.12)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}
@@ -184,22 +184,22 @@ export function SelectField({
       {isOpen && typeof document !== 'undefined'
         ? createPortal(
             <>
-              <div className="fixed inset-0 z-[90]" onClick={() => setIsOpen(false)} aria-hidden="true" />
+              <div className="fixed inset-0 z-[119]" onClick={() => setIsOpen(false)} aria-hidden="true" />
               <div
                 data-ui-surface="true"
-                className="fixed z-[100] max-h-72 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-1.5 text-[var(--foreground)] shadow-[var(--shadow-xl)] backdrop-blur-xl"
+                className="fixed z-[120] max-h-72 overflow-y-auto rounded-[14px] bg-[var(--surface)] p-1.5 text-[var(--foreground)] shadow-[var(--elev-lg)] ring-1 ring-[var(--border)]"
                 style={position}
                 role="listbox"
                 aria-multiselectable={isMultiple || undefined}
               >
                 {searchable ? (
-                  <div className="sticky top-0 z-10 bg-[var(--surface-elevated)] p-1 pb-2">
+                  <div className="sticky top-0 z-10 bg-[var(--surface)] p-1 pb-2">
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       placeholder={searchPlaceholder}
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--input-surface)] px-3 py-2 text-sm text-[var(--foreground)] outline-none transition-[border-color,box-shadow] focus-visible:border-[var(--border-focus)] focus-visible:shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                      className="w-full rounded-[11px] border border-transparent bg-[var(--input-surface)] px-3 py-2 text-sm text-[var(--foreground)] outline-none transition-[border-color,box-shadow] focus-visible:border-[var(--primary)] focus-visible:shadow-[0_0_0_3px_rgba(43,89,255,0.12)]"
                     />
                   </div>
                 ) : null}
@@ -243,17 +243,17 @@ export function SelectField({
                         onValueChange?.(option.value)
                       }}
                       className={cn(
-                        'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                        'flex w-full items-center justify-between gap-3 rounded-[11px] px-3 py-2.5 text-sm font-medium transition-colors',
                         isSelected
-                          ? 'border border-[var(--blue-border)] bg-[var(--blue-dim)] text-[var(--foreground)]'
-                          : 'border border-transparent text-[var(--foreground)] hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]',
+                          ? 'border border-transparent bg-[var(--blue-dim)] text-[var(--blue-text)]'
+                          : 'border border-transparent text-[var(--foreground)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]',
                       )}
                     >
                       <span className="flex items-center gap-2 truncate">
                         <span
                           className={cn(
                             'inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--muted)]/40',
-                            isSelected && 'bg-[var(--blue-text)] shadow-[0_0_8px_var(--blue-glow)]',
+                            isSelected && 'bg-[var(--blue-text)]',
                           )}
                         />
                         <span className="truncate">{option.label}</span>
@@ -272,10 +272,10 @@ export function SelectField({
                 })}
 
                 {isMultiple ? (
-                  <div className="sticky bottom-0 mt-1 flex items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--surface-elevated)] p-2">
+                  <div className="sticky bottom-0 mt-1 flex items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--surface)] p-2">
                     <button
                       type="button"
-                      className="rounded-md border border-[var(--border)] px-2.5 py-1 text-xs font-medium text-[var(--muted-strong)] transition hover:border-[var(--border-hover)] hover:text-[var(--foreground)]"
+                      className="rounded-full bg-[var(--input-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--muted-strong)] transition hover:text-[var(--foreground)]"
                       onClick={() => {
                         onValuesChange?.([])
                         setIsOpen(false)
@@ -285,7 +285,7 @@ export function SelectField({
                     </button>
                     <button
                       type="button"
-                      className="rounded-md border border-[var(--blue-border)] bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-medium text-[var(--blue-text)] transition hover:bg-[var(--blue-soft)]"
+                      className="rounded-full bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-semibold text-[var(--blue-text)] transition hover:bg-[var(--blue-soft)]"
                       onClick={() => setIsOpen(false)}
                     >
                       Done

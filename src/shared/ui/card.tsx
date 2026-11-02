@@ -10,22 +10,22 @@ type CardProps = HTMLAttributes<HTMLDivElement> & {
 
 const variantClasses: Record<CardVariant, string> = {
   default:
-    'border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-sm',
+    'bg-[var(--card)] text-[var(--foreground)]',
 
   elevated:
-    'border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-md',
+    'bg-[var(--card)] text-[var(--foreground)] shadow-[var(--elev-md)]',
 
   glass:
-    'border border-[var(--border)] bg-white/5 backdrop-blur-xl text-[var(--foreground)] shadow-lg',
+    'bg-[var(--card)] text-[var(--foreground)]',
 
   metric:
-    'border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-sm hover:shadow-md transition-shadow',
+    'bg-[var(--card)] text-[var(--foreground)] transition-shadow hover:shadow-[var(--elev-md)]',
 
   glow:
-    'border border-blue-500/20 bg-[var(--card)] text-[var(--foreground)] shadow-[0_0_15px_rgba(59,130,246,0.1)]',
+    'bg-[var(--card)] text-[var(--foreground)] ring-1 ring-[var(--blue-border)]',
 
   inset:
-    'border border-[var(--border)] bg-[var(--accent-soft)]/20 text-[var(--foreground)]',
+    'bg-[var(--accent-soft)] text-[var(--foreground)]',
 }
 
 export function Card({
@@ -38,9 +38,9 @@ export function Card({
     <div
       data-slot="card"
       className={cn(
-        'rounded-xl',
+        'rounded-[24px]',
         variantClasses[variant],
-        !noPadding && 'p-4',
+        !noPadding && 'p-[22px]',
         className,
       )}
       {...props}
@@ -48,13 +48,12 @@ export function Card({
   )
 }
 
-/* ─── Compound sub-components ─────────────────────────── */
 export function CardHeader({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div data-slot="card-header" className={cn('flex flex-col space-y-1 p-4', className)} {...props} />
+    <div data-slot="card-header" className={cn('flex flex-col space-y-1 p-[22px]', className)} {...props} />
   )
 }
 
@@ -65,7 +64,7 @@ export function CardTitle({
   return (
     <h3
       data-slot="card-title"
-      className={cn('text-lg font-semibold leading-none tracking-tight text-(--foreground)', className)}
+      className={cn('text-[17px] leading-none font-semibold tracking-[-0.01em] text-[var(--foreground)]', className)}
       {...props}
     />
   )
@@ -78,7 +77,7 @@ export function CardDescription({
   return (
     <p
       data-slot="card-description"
-      className={cn('text-sm text-(--muted)', className)}
+      className={cn('text-[13px] text-[var(--muted)]', className)}
       {...props}
     />
   )
@@ -88,7 +87,7 @@ export function CardContent({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div data-slot="card-content" className={cn('p-4 pt-0', className)} {...props} />
+  return <div data-slot="card-content" className={cn('p-[22px] pt-0', className)} {...props} />
 }
 
 export function CardBody({
@@ -96,7 +95,7 @@ export function CardBody({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div data-slot="card-body" className={cn('px-4 py-4', className)} {...props} />
+    <div data-slot="card-body" className={cn('p-[22px]', className)} {...props} />
   )
 }
 
@@ -108,7 +107,7 @@ export function CardFooter({
     <div
       data-slot="card-footer"
       className={cn(
-        'border-t border-(--border) px-4 py-3',
+        'border-t border-[var(--border)] px-[22px] py-4',
         className,
       )}
       {...props}
@@ -116,13 +115,6 @@ export function CardFooter({
   )
 }
 
-/**
- * CardSection — a divider-separated panel inside a single Card.
- *
- * Use this to flatten "card-in-card-in-card" layouts: stack multiple sections
- * inside ONE Card (with `noPadding`) and let the section borders render the
- * visual seams instead of nesting bordered boxes.
- */
 type CardSectionProps = HTMLAttributes<HTMLElement> & {
   title?: ReactNode
   eyebrow?: ReactNode
@@ -136,20 +128,20 @@ export function CardSection({
   className,
   title,
   eyebrow,
-  description: _description,
+  description,
   headerAction,
   bleed = false,
   divider = true,
   children,
   ...props
 }: CardSectionProps) {
-  const hasHeader = Boolean(title || eyebrow || headerAction)
+  const hasHeader = Boolean(title || eyebrow || headerAction || description)
 
   return (
     <section
       className={cn(
-        divider && 'border-t border-(--border) first:border-t-0',
-        !bleed && 'px-4 py-4 sm:px-5 sm:py-5',
+        divider && 'border-t border-[var(--border)] first:border-t-0',
+        !bleed && 'p-[22px]',
         className,
       )}
       {...props}
@@ -158,14 +150,15 @@ export function CardSection({
         <header className={cn('flex flex-wrap items-start justify-between gap-3', !bleed && 'mb-4')}>
           <div className="min-w-0">
             {eyebrow ? (
-              <p className="ui-eyebrow text-(--muted)">
-                {eyebrow}
-              </p>
+              <p className="ui-eyebrow">{eyebrow}</p>
             ) : null}
             {title ? (
-              <h3 className={cn('ui-section-title text-(--foreground)', Boolean(eyebrow) && 'mt-1')}>
+              <h3 className={cn('ui-section-title text-[var(--foreground)]', Boolean(eyebrow) && 'mt-1')}>
                 {title}
               </h3>
+            ) : null}
+            {description ? (
+              <p className="mt-1 text-[13px] text-[var(--muted)]">{description}</p>
             ) : null}
           </div>
           {headerAction ? <div className="flex flex-wrap items-center gap-2">{headerAction}</div> : null}
@@ -176,12 +169,6 @@ export function CardSection({
   )
 }
 
-/**
- * CardMetric — borderless inline metric for stat grids inside a Card.
- *
- * Replaces the bordered DetailStatTile when used inside a Card section.
- * A vertical accent rule on the left provides separation without nesting.
- */
 type CardMetricTone = 'default' | 'success' | 'danger' | 'blue' | 'warning'
 
 type CardMetricProps = {
@@ -193,37 +180,35 @@ type CardMetricProps = {
 }
 
 const cardMetricToneText: Record<CardMetricTone, string> = {
-  default: 'text-(--foreground)',
-  success: 'text-(--success-text)',
-  danger: 'text-(--danger-text)',
-  blue: 'text-(--blue-text)',
-  warning: 'text-(--warning-text)',
+  default: 'text-[var(--foreground)]',
+  success: 'text-[var(--success-text)]',
+  danger: 'text-[var(--danger-text)]',
+  blue: 'text-[var(--blue-text)]',
+  warning: 'text-[var(--warning-text)]',
 }
 
 const cardMetricToneRule: Record<CardMetricTone, string> = {
-  default: 'before:bg-(--border)',
-  success: 'before:bg-(--success-text)',
-  danger: 'before:bg-(--danger-text)',
-  blue: 'before:bg-(--blue-text)',
-  warning: 'before:bg-(--warning-text)',
+  default: 'before:bg-[var(--border-hover)]',
+  success: 'before:bg-[var(--success-text)]',
+  danger: 'before:bg-[var(--danger-text)]',
+  blue: 'before:bg-[var(--blue-text)]',
+  warning: 'before:bg-[var(--warning-text)]',
 }
 
 export function CardMetric({ label, value, hint, tone = 'default', className }: CardMetricProps) {
   return (
     <div
       className={cn(
-        'relative pl-3 before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full',
+        'relative pl-3 before:absolute before:top-1 before:bottom-1 before:left-0 before:w-[2px] before:rounded-full',
         cardMetricToneRule[tone],
         className,
       )}
     >
-      <p className="ui-card-label text-(--muted)">
-        {label}
-      </p>
-      <p className={cn('mt-1.5 text-[1.125rem] font-semibold tracking-tight tabular-nums', cardMetricToneText[tone])}>
+      <p className="ui-card-label">{label}</p>
+      <p className={cn('mt-1.5 text-[1.125rem] font-bold tracking-[-0.02em] tabular-nums', cardMetricToneText[tone])}>
         {value}
       </p>
-      {hint ? <p className="ui-helper mt-1 text-(--muted-strong)">{hint}</p> : null}
+      {hint ? <p className="ui-helper mt-1">{hint}</p> : null}
     </div>
   )
 }

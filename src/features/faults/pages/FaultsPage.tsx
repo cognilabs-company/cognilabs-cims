@@ -11,16 +11,21 @@ import { cn } from '../../../shared/lib/cn'
 import { useToast } from '../../../shared/toast/useToast'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
+import { Checkbox } from '../../../shared/ui/checkbox'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
 import { MemberAvatar } from '../../../shared/ui/member-avatar'
 import { SelectField } from '../../../shared/ui/select-field'
+import { StatCard } from '../../../shared/ui/stat-card'
+import { tonePill } from '../../../shared/ui/tone'
 import { AsyncContentLoader } from '../../../shared/ui/async-content-loader'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useAuth } from '../../auth/hooks/useAuth'
-import { DetailStatTile, RefreshIcon } from '../components/SalaryEstimatePrimitives'
+import { RefreshIcon } from '../components/SalaryEstimatePrimitives'
 import {
   buildEmployeeCompensationPolicy,
   buildEmployeeReports,
@@ -73,11 +78,100 @@ function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
 
-const successPillClassName =
-  'inline-flex items-center rounded-full border border-[rgba(50,168,82,0.26)] bg-[rgba(50,168,82,0.10)] px-2.5 py-1 font-semibold text-[#32a852] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] dark:bg-[rgba(50,168,82,0.12)] dark:text-[#32a852] dark:shadow-none'
+const numberPillClassName = 'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold'
 
-const neutralPillClassName =
-  'inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] px-2.5 py-1 font-semibold text-[var(--foreground)]'
+const successPillClassName = cn(numberPillClassName, tonePill('success'))
+
+const neutralPillClassName = cn(numberPillClassName, tonePill('neutral'))
+
+function TeamIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15.5 19.5V18a3.8 3.8 0 0 0-3.8-3.8H6.3A3.8 3.8 0 0 0 2.5 18v1.5" />
+      <circle cx="9" cy="7.2" r="3.3" />
+      <path d="M21.5 19.5V18a3.8 3.8 0 0 0-2.9-3.7" />
+      <path d="M16.2 4.3a3.3 3.3 0 0 1 0 5.8" />
+    </svg>
+  )
+}
+
+function WalletIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2.5" y="5.5" width="19" height="13" rx="3.2" />
+      <path d="M2.5 10.5h19" />
+      <path d="M16.5 14.8h2" />
+    </svg>
+  )
+}
+
+function DeductionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20.5 7.5 12 16l-4-4-4.5 4.5" />
+      <path d="M14.5 7.5h6v6" />
+    </svg>
+  )
+}
+
+function BonusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="9" width="18" height="11.5" rx="2.4" />
+      <path d="M3 13.2h18M12 9v11.5" />
+      <path d="M8.6 9a2.6 2.6 0 1 1 1.9-4.4L12 6.1l1.5-1.5A2.6 2.6 0 1 1 15.4 9" />
+    </svg>
+  )
+}
+
+function EstimateIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4.5" y="2.8" width="15" height="18.4" rx="3" />
+      <path d="M8.5 7.2h7" />
+      <path d="M8.8 11.8h.01M12 11.8h.01M15.2 11.8h.01M8.8 16.2h.01M12 16.2h.01M15.2 16.2h.01" strokeWidth="2.4" />
+    </svg>
+  )
+}
+
+function PayoutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9.2" />
+      <path d="M14.6 9.1a2.9 2.9 0 0 0-2.6-1.4c-1.6 0-2.7.9-2.7 2.1 0 1.3 1.1 1.8 2.7 2.1 1.6.3 2.8.8 2.8 2.2 0 1.3-1.2 2.2-2.8 2.2a3 3 0 0 1-2.7-1.5" />
+      <path d="M12 6v12" />
+    </svg>
+  )
+}
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+function AlertIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  )
+}
+
+function PlusCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="16" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+  )
+}
 
 function parsePeriodNumber(value: string | null, fallback: number, min: number, max: number) {
   if (!value?.trim()) {
@@ -689,7 +783,7 @@ export function FaultsPage() {
   }
 
   return (
-    <section className="space-y-4 page-enter">
+    <section className="space-y-[18px] page-enter">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <SelectField
@@ -703,26 +797,54 @@ export function FaultsPage() {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="secondary"
-            size="lg"
             leftIcon={<RefreshIcon />}
             onClick={() => void handleRefresh()}
-            className="rounded-xl"
           >
             {lt('Refresh')}
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <DetailStatTile label={tr('Employees', 'Xodimlar', 'Сотрудники')} value={formatCount(apiSummary.totalEmployees)} />
-        <DetailStatTile label={tr('Base salary total', 'Jami asosiy maosh', 'Сумма базовой зарплаты')} value={formatAmount(apiSummary.totalBaseSalary ?? 0)} />
-        <DetailStatTile label={tr('Applied deductions', "Qo'llangan ayirmalar", 'Примененные удержания')} value={formatAmount(apiSummary.totalDeductionAmount ?? 0)} tone="danger" />
-        <DetailStatTile label={tr('Bonus total', 'Jami bonus', 'Сумма бонусов')} value={formatAmount(apiSummary.totalBonusAmount ?? 0)} tone="success" />
-        <DetailStatTile label={tr('Estimated total', 'Jami taxminiy maosh', 'Сумма оценки')} value={formatAmount(apiSummary.totalEstimatedSalary ?? 0)} />
-        <DetailStatTile label={tr('Final salary total', 'Jami yakuniy maosh', 'Итоговая сумма зарплаты')} value={formatAmount(apiSummary.totalFinalSalary ?? apiSummary.totalSalaryAmount ?? 0)} tone="success" />
+      <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          label={tr('Employees', 'Xodimlar', 'Сотрудники')}
+          value={formatCount(apiSummary.totalEmployees)}
+          icon={<TeamIcon />}
+          iconTone="blue"
+        />
+        <StatCard
+          label={tr('Base salary total', 'Jami asosiy maosh', 'Сумма базовой зарплаты')}
+          value={formatAmount(apiSummary.totalBaseSalary ?? 0)}
+          icon={<WalletIcon />}
+          iconTone="neutral"
+        />
+        <StatCard
+          label={tr('Applied deductions', "Qo'llangan ayirmalar", 'Примененные удержания')}
+          value={formatAmount(apiSummary.totalDeductionAmount ?? 0)}
+          icon={<DeductionIcon />}
+          iconTone="danger"
+        />
+        <StatCard
+          label={tr('Bonus total', 'Jami bonus', 'Сумма бонусов')}
+          value={formatAmount(apiSummary.totalBonusAmount ?? 0)}
+          icon={<BonusIcon />}
+          iconTone="success"
+        />
+        <StatCard
+          label={tr('Estimated total', 'Jami taxminiy maosh', 'Сумма оценки')}
+          value={formatAmount(apiSummary.totalEstimatedSalary ?? 0)}
+          icon={<EstimateIcon />}
+          iconTone="violet"
+        />
+        <StatCard
+          solid
+          label={tr('Final salary total', 'Jami yakuniy maosh', 'Итоговая сумма зарплаты')}
+          value={formatAmount(apiSummary.totalFinalSalary ?? apiSummary.totalSalaryAmount ?? 0)}
+          icon={<PayoutIcon />}
+        />
       </div>
 
-      <Card className="rounded-xl border-[var(--border)] p-6">
+      <Card>
         <DataTable
           caption={lt('Salary estimate breakdown')}
           rows={reports}
@@ -743,7 +865,7 @@ export function FaultsPage() {
                   <button
                     type="button"
                     onClick={() => openReportDrawer(row)}
-                    className="flex items-center gap-3 text-left transition hover:opacity-90"
+                    className="group flex items-center gap-3 text-left"
                   >
                     <MemberAvatar
                       name={rosterUser?.name ?? row.fullName}
@@ -753,8 +875,8 @@ export function FaultsPage() {
                       title={row.fullName}
                     />
                     <span className="min-w-0">
-                      <p className="truncate font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--blue-text)]">{row.fullName}</p>
-                      <p className="truncate text-xs text-[var(--muted)]">{row.label}</p>
+                      <p className="truncate text-sm font-semibold text-[var(--foreground)] transition-colors group-hover:text-[var(--blue-text)]">{row.fullName}</p>
+                      <p className="truncate text-[12.5px] text-[var(--muted)]">{row.label}</p>
                     </span>
                   </button>
                 )
@@ -766,14 +888,14 @@ export function FaultsPage() {
               header: tr('Base', 'Asosiy', 'База'),
               align: 'right',
               minWidth: '120px',
-              render: (row) => formatAmount(row.baseSalary),
+              render: (row) => <span data-ui-number="true">{formatAmount(row.baseSalary)}</span>,
             },
             {
               key: 'afterPenalty',
               header: lt('After penalty'),
               align: 'right',
               minWidth: '140px',
-              render: (row) => formatAmount(row.afterPenalty),
+              render: (row) => <span data-ui-number="true">{formatAmount(row.afterPenalty)}</span>,
             },
             {
               key: 'bonusAmount',
@@ -781,7 +903,7 @@ export function FaultsPage() {
               align: 'right',
               minWidth: '130px',
               render: (row) => (
-                <span className={successPillClassName}>
+                <span className={successPillClassName} data-ui-number="true">
                   {formatAmount(row.bonusAmount)}
                 </span>
               ),
@@ -793,12 +915,8 @@ export function FaultsPage() {
               minWidth: '110px',
               render: (row) => (
                 <span
-                  className={cn(
-                    'inline-flex items-center rounded-full px-2.5 py-1 font-semibold',
-                    row.totalBonusPercent > 0
-                      ? successPillClassName
-                      : neutralPillClassName,
-                  )}
+                  className={row.totalBonusPercent > 0 ? successPillClassName : neutralPillClassName}
+                  data-ui-number="true"
                 >
                   {formatPercent(row.totalBonusPercent)}
                 </span>
@@ -811,12 +929,8 @@ export function FaultsPage() {
               minWidth: '180px',
               render: (row) => (
                 <span
-                  className={cn(
-                    'inline-flex items-center rounded-full px-2.5 py-1 font-semibold',
-                    row.qualifiesProductivityBonus
-                      ? successPillClassName
-                      : neutralPillClassName,
-                  )}
+                  className={row.qualifiesProductivityBonus ? successPillClassName : neutralPillClassName}
+                  data-ui-number="true"
                 >
                   {Number.isFinite(row.productivityPercentage)
                     ? `${formatCount(row.updateDays)}/${formatCount(row.workingDays)} / ${formatPercent(row.productivityPercentage)}`
@@ -830,7 +944,10 @@ export function FaultsPage() {
               align: 'right',
               minWidth: '130px',
               render: (row) => (
-                <span className={cn('font-semibold', row.finalSalary > row.afterPenalty ? 'text-[#32a852]' : 'text-[var(--foreground)]')}>
+                <span
+                  className={cn('font-semibold', row.finalSalary > row.afterPenalty ? 'text-[var(--success-text)]' : 'text-[var(--foreground)]')}
+                  data-ui-number="true"
+                >
                   {formatAmount(row.finalSalary)}
                 </span>
               ),
@@ -839,18 +956,28 @@ export function FaultsPage() {
               key: 'actions',
               header: tr('Actions', 'Amallar', 'Действия'),
               align: 'right',
-              minWidth: '88px',
+              minWidth: '124px',
               render: (row) => (
-                <div className="flex justify-end items-center gap-1" onClick={(event) => event.stopPropagation()}>
-                  <button type="button" title={lt('View details')} onClick={() => openDetailPage(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  </button>
-                  <button type="button" title={tr('Add mistake', "Xato qo'shish", 'Добавить ошибку')} onClick={() => openMistakeDialog(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  </button>
-                  <button type="button" title={tr('Add delivery bonus', "Topshirish bonusini qo'shish", 'Добавить бонус за сдачу')} onClick={() => openDeliveryBonusDialog(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                  </button>
+                <div className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+                  <IconButton size="sm" label={lt('View details')} onClick={() => openDetailPage(row)}>
+                    <EyeIcon />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    tone="danger"
+                    label={tr('Add mistake', "Xato qo'shish", 'Добавить ошибку')}
+                    onClick={() => openMistakeDialog(row)}
+                  >
+                    <AlertIcon />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    label={tr('Add delivery bonus', "Topshirish bonusini qo'shish", 'Добавить бонус за сдачу')}
+                    onClick={() => openDeliveryBonusDialog(row)}
+                    className="text-[var(--success-text)] hover:bg-[var(--success-dim)] hover:text-[var(--success-text)]"
+                  >
+                    <PlusCircleIcon />
+                  </IconButton>
                 </div>
               ),
             },
@@ -914,21 +1041,20 @@ export function FaultsPage() {
           </>
         }
       >
-        <div className="grid gap-4">
-          <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
-            <p className="text-xs text-[var(--muted-strong)]">{tr('Employee', 'Xodim', 'Сотрудник')}</p>
-            <p className="mt-2 text-base font-semibold text-[var(--foreground)] dark:text-white">{mistakeTarget?.fullName ?? '-'}</p>
+        <div className="grid gap-[18px]">
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+            <p className="text-xs font-medium text-[var(--muted)]">{tr('Employee', 'Xodim', 'Сотрудник')}</p>
+            <p className="mt-1.5 text-[15px] font-semibold text-[var(--foreground)]">{mistakeTarget?.fullName ?? '-'}</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-[18px] md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Reviewer', "Ko'rib chiquvchi", 'Проверяющий')}</label>
+              <Label className="mb-2 block">{tr('Reviewer', "Ko'rib chiquvchi", 'Проверяющий')}</Label>
               {reviewerOptions.length > 0 ? (
                 <SelectField
                   value={mistakeDraft.reviewerId}
                   options={reviewerOptions}
                   onValueChange={(value) => setMistakeDraft((current) => ({ ...current, reviewerId: value }))}
-                  className="rounded-xl"
                 />
               ) : (
                   <Input
@@ -942,13 +1068,12 @@ export function FaultsPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Project', 'Loyiha', 'Проект')}</label>
+              <Label className="mb-2 block">{tr('Project', 'Loyiha', 'Проект')}</Label>
               {projectOptions.length > 1 ? (
                 <SelectField
                   value={mistakeDraft.projectId}
                   options={projectOptions}
                   onValueChange={(value) => setMistakeDraft((current) => ({ ...current, projectId: value }))}
-                  className="rounded-xl"
                 />
               ) : (
                   <Input
@@ -962,15 +1087,14 @@ export function FaultsPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-[18px] md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Category', 'Kategoriya', 'Категория')}</label>
+              <Label className="mb-2 block">{tr('Category', 'Kategoriya', 'Категория')}</Label>
               {mistakeCategoryOptions.length > 0 ? (
                 <SelectField
                   value={mistakeDraft.category}
                   options={mistakeCategoryOptions}
                   onValueChange={(value) => setMistakeDraft((current) => ({ ...current, category: value }))}
-                  className="rounded-xl"
                 />
               ) : (
                 <Input
@@ -982,13 +1106,12 @@ export function FaultsPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Severity', 'Daraja', 'Степень')}</label>
+              <Label className="mb-2 block">{tr('Severity', 'Daraja', 'Степень')}</Label>
               {severityOptions.length > 0 ? (
                 <SelectField
                   value={mistakeDraft.severity}
                   options={severityOptions}
                   onValueChange={(value) => setMistakeDraft((current) => ({ ...current, severity: value }))}
-                  className="rounded-xl"
                 />
               ) : (
                 <Input
@@ -1000,9 +1123,9 @@ export function FaultsPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+          <div className="grid gap-[18px] md:grid-cols-[1fr_180px]">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Title', 'Sarlavha', 'Название')}</label>
+              <Label className="mb-2 block">{tr('Title', 'Sarlavha', 'Название')}</Label>
               <Input
                 value={mistakeDraft.title}
                 onChange={(event) => setMistakeDraft((current) => ({ ...current, title: event.target.value }))}
@@ -1011,7 +1134,7 @@ export function FaultsPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Incident date', "Sodir bo'lgan sana", 'Дата инцидента')}</label>
+              <Label className="mb-2 block">{tr('Incident date', "Sodir bo'lgan sana", 'Дата инцидента')}</Label>
               <Input
                 type="date"
                 value={mistakeDraft.incidentDate}
@@ -1021,7 +1144,7 @@ export function FaultsPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Description', 'Tavsif', 'Описание')}</label>
+            <Label className="mb-2 block">{tr('Description', 'Tavsif', 'Описание')}</Label>
             <Textarea
               value={mistakeDraft.description}
               onChange={(event) => setMistakeDraft((current) => ({ ...current, description: event.target.value }))}
@@ -1030,22 +1153,20 @@ export function FaultsPage() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--foreground)] dark:border-white/10 dark:bg-white/[0.03] dark:text-white/84">
-              <input
-                type="checkbox"
+            <label className="flex min-h-11 items-center gap-3 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--foreground)]">
+              <Checkbox
+                size="sm"
                 checked={mistakeDraft.reachedClient}
                 onChange={(event) => setMistakeDraft((current) => ({ ...current, reachedClient: event.target.checked }))}
-                className="h-4 w-4 rounded border border-[var(--border)] bg-[var(--input-surface)] accent-blue-500 dark:border-white/15 dark:bg-transparent"
               />
               {tr('Reached client', 'Mijozga yetib borgan', 'Дошло до клиента')}
             </label>
 
-            <label className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--foreground)] dark:border-white/10 dark:bg-white/[0.03] dark:text-white/84">
-              <input
-                type="checkbox"
+            <label className="flex min-h-11 items-center gap-3 rounded-[14px] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--foreground)]">
+              <Checkbox
+                size="sm"
                 checked={mistakeDraft.unclearTask}
                 onChange={(event) => setMistakeDraft((current) => ({ ...current, unclearTask: event.target.checked }))}
-                className="h-4 w-4 rounded border border-[var(--border)] bg-[var(--input-surface)] accent-blue-500 dark:border-white/15 dark:bg-transparent"
               />
               {tr('Unclear task', 'Vazifa noaniq', 'Неясная задача')}
             </label>
@@ -1085,21 +1206,20 @@ export function FaultsPage() {
           </>
         }
       >
-        <div className="grid gap-4">
-          <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
-            <p className="text-xs text-[var(--muted-strong)]">{tr('Employee', 'Xodim', 'Сотрудник')}</p>
-            <p className="mt-2 text-base font-semibold text-[var(--foreground)] dark:text-white">{deliveryBonusTarget?.fullName ?? '-'}</p>
+        <div className="grid gap-[18px]">
+          <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5">
+            <p className="text-xs font-medium text-[var(--muted)]">{tr('Employee', 'Xodim', 'Сотрудник')}</p>
+            <p className="mt-1.5 text-[15px] font-semibold text-[var(--foreground)]">{deliveryBonusTarget?.fullName ?? '-'}</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-[18px] md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Bonus type', 'Bonus turi', 'Тип бонуса')}</label>
+              <Label className="mb-2 block">{tr('Bonus type', 'Bonus turi', 'Тип бонуса')}</Label>
               {deliveryBonusTypeOptions.length > 0 ? (
                 <SelectField
                   value={deliveryBonusDraft.bonusType}
                   options={deliveryBonusTypeOptions}
                   onValueChange={(value) => setDeliveryBonusDraft((current) => ({ ...current, bonusType: value }))}
-                  className="rounded-xl"
                 />
               ) : (
                 <Input
@@ -1111,7 +1231,7 @@ export function FaultsPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Award date', 'Berilgan sana', 'Дата выдачи')}</label>
+              <Label className="mb-2 block">{tr('Award date', 'Berilgan sana', 'Дата выдачи')}</Label>
               <Input
                 type="date"
                 value={deliveryBonusDraft.awardDate}
@@ -1121,7 +1241,7 @@ export function FaultsPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Title', 'Sarlavha', 'Название')}</label>
+            <Label className="mb-2 block">{tr('Title', 'Sarlavha', 'Название')}</Label>
             <Input
               value={deliveryBonusDraft.title}
               onChange={(event) => setDeliveryBonusDraft((current) => ({ ...current, title: event.target.value }))}
@@ -1130,13 +1250,12 @@ export function FaultsPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Project', 'Loyiha', 'Проект')}</label>
+            <Label className="mb-2 block">{tr('Project', 'Loyiha', 'Проект')}</Label>
             {projectOptions.length > 1 ? (
               <SelectField
                 value={deliveryBonusDraft.projectId}
                 options={projectOptions}
                 onValueChange={(value) => setDeliveryBonusDraft((current) => ({ ...current, projectId: value }))}
-                className="rounded-xl"
               />
             ) : (
               <Input
@@ -1150,7 +1269,7 @@ export function FaultsPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-[var(--foreground)] dark:text-white">{tr('Description', 'Tavsif', 'Описание')}</label>
+            <Label className="mb-2 block">{tr('Description', 'Tavsif', 'Описание')}</Label>
             <Textarea
               value={deliveryBonusDraft.description}
               onChange={(event) => setDeliveryBonusDraft((current) => ({ ...current, description: event.target.value }))}

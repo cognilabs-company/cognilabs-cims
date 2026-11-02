@@ -12,6 +12,7 @@ import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import { formatShortDate } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Dialog } from '../../../shared/ui/dialog'
@@ -20,6 +21,8 @@ import { Label } from '../../../shared/ui/label'
 import { MemberAvatar as SharedMemberAvatar } from '../../../shared/ui/member-avatar'
 import { SelectField } from '../../../shared/ui/select-field'
 import { Textarea } from '../../../shared/ui/textarea'
+import { tonePill } from '../../../shared/ui/tone'
+import { getOverrideTypeLabel, getTypeBadgeVariant, normalizeDayType } from '../lib/workdayOverride'
 
 const lt = translateCurrentLiteral
 
@@ -44,19 +47,6 @@ function formatDateInput(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
-}
-
-export function normalizeDayType(value: string | null | undefined): WorkdayOverrideDayType {
-  const normalized = value?.trim().toLowerCase().replace(/\s+/g, '_')
-  return normalized === 'short_day' ? 'short_day' : 'holiday'
-}
-
-export function getOverrideTypeLabel(dayType: string | null | undefined) {
-  return normalizeDayType(dayType) === 'short_day' ? lt('Short Day') : lt('Holiday')
-}
-
-export function getTypeBadgeVariant(dayType: string | null | undefined) {
-  return normalizeDayType(dayType) === 'short_day' ? 'blue' : 'warning'
 }
 
 function createDefaultFormState(month: number, year: number): OverrideFormState {
@@ -85,6 +75,10 @@ function createFormStateFromOverride(item: WorkdayOverrideRecord): OverrideFormS
   }
 }
 
+const selectionCardBase = 'rounded-[18px] px-4 py-3.5 text-left transition-colors'
+const selectionCardIdle = 'bg-[var(--muted-surface)] text-[var(--muted-strong)] hover:bg-[var(--input-surface)]'
+const selectionCardHint = 'mt-1 text-[12.5px] text-[var(--muted)]'
+
 function MemberAvatar({ member }: { member: WorkdayOverrideMemberOption }) {
   return (
     <SharedMemberAvatar
@@ -92,7 +86,6 @@ function MemberAvatar({ member }: { member: WorkdayOverrideMemberOption }) {
       surname={member.surname}
       imageUrl={member.profile_image}
       size="sm"
-      className="shadow-md"
       title={member.full_name || `${member.name} ${member.surname}`}
     />
   )
@@ -143,7 +136,7 @@ function MemberPicker({
               key={`chip-${member.id}`}
               type="button"
               onClick={() => toggle(member.id)}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-2.5 py-1 text-[11px] text-[var(--foreground)] transition hover:border-[var(--border-hover)] hover:bg-[var(--card-hover)] dark:border-white/10 dark:bg-white/[0.05] dark:text-white/78 dark:hover:border-white/15 dark:hover:bg-white/[0.08]"
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--blue-dim)] py-1 pr-3 pl-1 text-xs font-semibold text-[var(--blue-text)] transition-colors hover:bg-[var(--blue-soft)]"
             >
               <MemberAvatar member={member} />
               <span>{member.full_name || `${member.name} ${member.surname}`}</span>
@@ -158,7 +151,7 @@ function MemberPicker({
         placeholder={multiple ? lt('Search members to include') : lt('Search member')}
       />
 
-      <div className="max-h-56 overflow-y-auto rounded-xl border border-[var(--border)] bg-white dark:border-white/10 dark:bg-black/20">
+      <div className="max-h-56 overflow-y-auto rounded-[18px] bg-[var(--muted-surface)]">
         {filteredMembers.length > 0 ? filteredMembers.map((member) => {
           const selected = selectedIds.includes(member.id)
           return (
@@ -167,16 +160,16 @@ function MemberPicker({
               type="button"
               onClick={() => toggle(member.id)}
               className={cn(
-                'flex w-full items-center gap-3 border-b border-white/6 px-3 py-2.5 text-left transition last:border-b-0',
-                selected ? 'bg-blue-50 dark:bg-blue-500/10' : 'hover:bg-[var(--card-hover)] dark:hover:bg-white/[0.04]',
+                'flex w-full items-center gap-3 border-b border-[var(--border-subtle)] px-3.5 py-2.5 text-left transition-colors last:border-b-0',
+                selected ? 'bg-[var(--blue-dim)]' : 'hover:bg-[var(--surface)]',
               )}
             >
               <MemberAvatar member={member} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-[var(--foreground)] dark:text-white">
+                <p className="truncate text-sm font-medium text-[var(--foreground)]">
                   {member.full_name || `${member.name} ${member.surname}`}
                 </p>
-                <p className="truncate text-[11px] text-[var(--muted)]">
+                <p className="truncate text-[12.5px] text-[var(--muted)]">
                   {member.role || lt('Member')}
                   {member.telegram_id ? ` | @${member.telegram_id}` : ''}
                 </p>
@@ -363,7 +356,7 @@ export function WorkdayOverrideFormDialog({
             {t('common.cancel')}
           </Button>
           <Button
-            variant={editingOverride ? 'secondary' : 'success'}
+            variant="primary"
             onClick={() => void handleSubmit()}
             loading={isSubmitting}
           >
@@ -372,11 +365,11 @@ export function WorkdayOverrideFormDialog({
         </>
       )}
     >
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-[18px] xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="space-y-[18px]">
+          <div className="grid gap-[18px] sm:grid-cols-2">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)]">{tx('common.date', 'Date')}</Label>
+              <Label className="mb-2 block">{tx('common.date', 'Date')}</Label>
               <Input
                 type="date"
                 value={formState.specialDate}
@@ -384,7 +377,7 @@ export function WorkdayOverrideFormDialog({
               />
             </div>
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)]">{tx('common.type', 'Type')}</Label>
+              <Label className="mb-2 block">{tx('common.type', 'Type')}</Label>
               <SelectField
                 value={String(formState.dayType)}
                 options={DAY_TYPE_OPTIONS.map((option) => ({ ...option, label: lt(option.label) }))}
@@ -394,7 +387,7 @@ export function WorkdayOverrideFormDialog({
           </div>
 
           <div>
-            <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)]">{tx('common.title', 'Title')}</Label>
+            <Label className="mb-2 block">{tx('common.title', 'Title')}</Label>
             <Input
               value={formState.title}
               onChange={(event) => setForm({ title: event.target.value })}
@@ -405,7 +398,7 @@ export function WorkdayOverrideFormDialog({
           </div>
 
           <div>
-            <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)]">{tx('common.note', 'Note')}</Label>
+            <Label className="mb-2 block">{tx('common.note', 'Note')}</Label>
             <Textarea
               value={formState.note}
               onChange={(event) => setForm({ note: event.target.value })}
@@ -415,7 +408,7 @@ export function WorkdayOverrideFormDialog({
 
           {formState.dayType === 'short_day' ? (
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-[var(--foreground)]">{tx('ceo.workday.form.workday_hours', 'Workday hours')}</Label>
+              <Label className="mb-2 block">{tx('ceo.workday.form.workday_hours', 'Workday hours')}</Label>
               <Input
                 type="number"
                 min="1"
@@ -428,67 +421,59 @@ export function WorkdayOverrideFormDialog({
           ) : null}
 
           <div>
-            <p className="mb-2 text-sm font-semibold text-[var(--foreground)]">{tx('ceo.workday.form.update_rule', 'Update rule')}</p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <p className="mb-2 text-[13px] font-medium text-[var(--muted-strong)]">{tx('ceo.workday.form.update_rule', 'Update rule')}</p>
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => setForm({ updateRequired: false })}
                 className={cn(
-                  'rounded-xl border px-4 py-3 text-left transition',
-                  !formState.updateRequired
-                    ? 'border-amber-400/35 bg-amber-500/[0.10] text-white'
-                    : 'border-white/8 bg-white/[0.03] text-white/72 hover:border-white/12 hover:bg-white/[0.05]',
+                  selectionCardBase,
+                  !formState.updateRequired ? tonePill('warning') : selectionCardIdle,
                 )}
               >
                 <p className="text-sm font-semibold">{tx('ceo.workday.form.no_update_required', 'No update required')}</p>
-                <p className="mt-1 text-xs text-[var(--muted-strong)]">{tx('ceo.workday.form.no_update_required_hint', 'Use this for holidays or shortened days with no reporting.')}</p>
+                <p className={selectionCardHint}>{tx('ceo.workday.form.no_update_required_hint', 'Use this for holidays or shortened days with no reporting.')}</p>
               </button>
               <button
                 type="button"
                 onClick={() => setForm({ updateRequired: true })}
                 className={cn(
-                  'rounded-xl border px-4 py-3 text-left transition',
-                  formState.updateRequired
-                    ? 'border-emerald-400/35 bg-emerald-500/[0.10] text-white'
-                    : 'border-white/8 bg-white/[0.03] text-white/72 hover:border-white/12 hover:bg-white/[0.05]',
+                  selectionCardBase,
+                  formState.updateRequired ? tonePill('success') : selectionCardIdle,
                 )}
               >
                 <p className="text-sm font-semibold">{tx('ceo.workday.form.update_required', 'Update still required')}</p>
-                <p className="mt-1 text-xs text-[var(--muted-strong)]">{tx('ceo.workday.form.update_required_hint', 'Use this when the day is shortened but reporting should still happen.')}</p>
+                <p className={selectionCardHint}>{tx('ceo.workday.form.update_required_hint', 'Use this when the day is shortened but reporting should still happen.')}</p>
               </button>
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-[18px]">
           <div>
-            <p className="mb-2 text-sm font-semibold text-[var(--foreground)]">{tx('ceo.workday.form.target_scope', 'Target scope')}</p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <p className="mb-2 text-[13px] font-medium text-[var(--muted-strong)]">{tx('ceo.workday.form.target_scope', 'Target scope')}</p>
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => setForm({ appliesToAll: true, memberIds: [] })}
                 className={cn(
-                  'rounded-xl border px-4 py-3 text-left transition',
-                  formState.appliesToAll
-                    ? 'border-blue-400/35 bg-blue-500/[0.10] text-white'
-                    : 'border-white/8 bg-white/[0.03] text-white/72 hover:border-white/12 hover:bg-white/[0.05]',
+                  selectionCardBase,
+                  formState.appliesToAll ? tonePill('blue') : selectionCardIdle,
                 )}
               >
                 <p className="text-sm font-semibold">{tx('ceo.workday.form.all_members', 'All members')}</p>
-                <p className="mt-1 text-xs text-[var(--muted-strong)]">{tx('ceo.workday.form.all_members_hint', 'Company-wide holiday or short day.')}</p>
+                <p className={selectionCardHint}>{tx('ceo.workday.form.all_members_hint', 'Company-wide holiday or short day.')}</p>
               </button>
               <button
                 type="button"
                 onClick={() => setForm({ appliesToAll: false })}
                 className={cn(
-                  'rounded-xl border px-4 py-3 text-left transition',
-                  !formState.appliesToAll
-                    ? 'border-violet-400/35 bg-violet-500/[0.10] text-white'
-                    : 'border-white/8 bg-white/[0.03] text-white/72 hover:border-white/12 hover:bg-white/[0.05]',
+                  selectionCardBase,
+                  !formState.appliesToAll ? tonePill('violet') : selectionCardIdle,
                 )}
               >
                 <p className="text-sm font-semibold">{tx('ceo.workday.form.selected_members', 'Selected members')}</p>
-                <p className="mt-1 text-xs text-[var(--muted-strong)]">{tx('ceo.workday.form.selected_members_hint', 'Apply only to specific employees.')}</p>
+                <p className={selectionCardHint}>{tx('ceo.workday.form.selected_members_hint', 'Apply only to specific employees.')}</p>
               </button>
             </div>
           </div>
@@ -496,7 +481,7 @@ export function WorkdayOverrideFormDialog({
           {!formState.appliesToAll ? (
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <Label className="text-sm font-semibold text-[var(--foreground)]">
+                <Label>
                   {editingOverride ? tx('common.member', 'Member') : tx('common.members', 'Members')}
                 </Label>
                 <Badge variant="secondary">
@@ -505,7 +490,7 @@ export function WorkdayOverrideFormDialog({
               </div>
 
               {memberOptionsQuery.isLoading && memberOptions.length === 0 ? (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-6 text-sm text-[var(--muted)]">
+                <div className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-6 text-sm text-[var(--muted)]">
                   {tx('ceo.workday.form.loading_members', 'Loading member options...')}
                 </div>
               ) : (
@@ -518,13 +503,13 @@ export function WorkdayOverrideFormDialog({
               )}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-5 text-sm text-[var(--muted-strong)]">
+            <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-5 text-sm text-[var(--muted-strong)]">
               {tx('ceo.workday.form.applies_to_all', 'This override will apply to every member in the company.')}
             </div>
           )}
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--muted)]">{tx('common.preview', 'Preview')}</p>
+          <div className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
+            <p className="ui-eyebrow">{tx('common.preview', 'Preview')}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge variant={getTypeBadgeVariant(formState.dayType)}>
                 {getOverrideTypeLabel(formState.dayType)}
@@ -543,18 +528,18 @@ export function WorkdayOverrideFormDialog({
                 <Badge variant="blue">{formState.workdayHours}h</Badge>
               ) : null}
             </div>
-            <p className="mt-3 text-sm text-[var(--foreground)]/80">
+            <p className="mt-3.5 text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
               {formState.title.trim() || tx('ceo.workday.form.preview_title_placeholder', 'Override title will appear here.')}
             </p>
-            <p className="mt-2 text-xs text-[var(--muted)]">
+            <p className="mt-1.5 text-[12.5px] text-[var(--muted)]">
               {formState.specialDate ? formatShortDate(formState.specialDate) : tx('ceo.workday.form.no_date', 'No date selected')}
             </p>
           </div>
 
           {memberOptionsQuery.isError ? (
-            <div className="rounded-xl border border-amber-500/25 bg-amber-50 px-4 py-4 text-sm text-amber-700 dark:bg-amber-500/8 dark:text-amber-100/80">
+            <Alert tone="warning">
               {tx('ceo.workday.guide.member_options_error', 'Member options could not be loaded. You can still review existing overrides, but creating member-specific entries may fail until this list reloads.')}
-            </div>
+            </Alert>
           ) : null}
         </div>
       </div>

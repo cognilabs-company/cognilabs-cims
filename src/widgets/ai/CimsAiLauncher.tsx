@@ -74,10 +74,10 @@ export function CimsAiLauncher() {
         aria-label={translateCurrentLiteral('Close CIMS AI backdrop')}
         onClick={() => setIsOpen(false)}
         className={cn(
-          'fixed inset-0 z-[64] transition-all duration-200',
+          'dialog-backdrop fixed inset-0 z-[64] transition-opacity duration-200',
           isOpen
-            ? 'pointer-events-auto bg-[radial-gradient(circle_at_right,rgba(59,130,246,0.12),transparent_30%),rgba(3,6,14,0.42)] opacity-100 backdrop-blur-[10px]'
-            : 'pointer-events-none opacity-0 backdrop-blur-0',
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0',
         )}
       />
 
@@ -90,7 +90,7 @@ export function CimsAiLauncher() {
             : 'pointer-events-none translate-y-3 opacity-0',
         )}
       >
-        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[linear-gradient(180deg,var(--surface-elevated),var(--surface))] shadow-[var(--shadow-xl)] backdrop-blur-2xl">
+        <div data-ui-surface="true" className="overflow-hidden rounded-[24px] bg-[var(--surface)] shadow-[var(--elev-xl)]">
           <div className="h-[min(84vh,780px)]">
             {isOpen ? (
               <Suspense fallback={<AsyncContentLoader variant="dialog" />}>
@@ -115,10 +115,10 @@ export function CimsAiLauncher() {
 
           setIsOpen((current) => !current)
         }}
-        className="fixed bottom-6 right-4 z-[66] grid h-14 w-14 place-items-center rounded-xl border border-blue-400/22 bg-[radial-gradient(circle_at_top,rgba(96,165,250,0.28),rgba(15,23,42,0.98))] text-white shadow-[0_18px_60px_rgba(37,99,235,0.24)] transition hover:scale-[1.02] hover:border-blue-300/35 hover:shadow-[0_24px_70px_rgba(37,99,235,0.34)] sm:right-6"
+        className="fixed bottom-6 right-4 z-[66] grid h-14 w-14 place-items-center rounded-[18px] bg-[var(--primary)] text-white shadow-[var(--elev-primary)] transition-[background-color,transform,box-shadow] duration-150 hover:scale-[1.02] hover:bg-[var(--primary-hover)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 focus-visible:outline-none sm:right-6"
         aria-label={isOpen ? translateCurrentLiteral('Close CIMS AI launcher') : translateCurrentLiteral('Open CIMS AI launcher')}
       >
-        <NavGlyph name="ai" className="h-6 w-6" aria-hidden="true" />
+        <NavGlyph name="ai" className="h-6 w-6 text-current" aria-hidden="true" />
       </button>
     </>
   )

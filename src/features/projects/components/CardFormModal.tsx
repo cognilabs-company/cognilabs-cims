@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocale } from '../../../app/hooks/useLocale'
+import { cn } from '../../../shared/lib/cn'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Button } from '../../../shared/ui/button'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
 import { Textarea } from '../../../shared/ui/textarea'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import type {
@@ -269,11 +272,11 @@ export function CardFormModal({
         </>
       )}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
-            {t('projects.card_title', 'Title')} <span className="text-red-400">*</span>
-          </label>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+        <div className="flex flex-col gap-2">
+          <Label>
+            {t('projects.card_title', 'Title')} <span className="text-[var(--danger-text)]">*</span>
+          </Label>
           <Input
             value={values.title}
             onChange={(event) => set('title', event.target.value)}
@@ -283,10 +286,10 @@ export function CardFormModal({
           {titleError ? <p className="text-xs text-[var(--danger-text)]">{titleError}</p> : null}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="flex flex-col gap-2">
+          <Label>
             {t('projects.description', 'Description')}
-          </label>
+          </Label>
           <Textarea
             value={values.description}
             onChange={(event) => set('description', event.target.value)}
@@ -295,12 +298,12 @@ export function CardFormModal({
           />
         </div>
 
-        <div className={`grid gap-3 ${showPriority ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <div className={cn('grid gap-[18px]', showPriority ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
           {showPriority ? (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+            <div className="flex flex-col gap-2">
+              <Label>
                 {t('projects.priority', 'Priority')}
-              </label>
+              </Label>
               <SelectField
                 value={values.priority}
                 options={priorityOptions}
@@ -310,10 +313,10 @@ export function CardFormModal({
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+          <div className="flex flex-col gap-2">
+            <Label>
               {t('projects.assignees', 'Assignees')}
-            </label>
+            </Label>
             <MemberSelector
               allUsers={members}
               selectedIds={values.assignee_ids}
@@ -322,28 +325,27 @@ export function CardFormModal({
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="flex flex-col gap-2">
+          <Label>
             {t('projects.due_date_time', 'Due Date & Time')}
-          </label>
+          </Label>
           <Input
             type="datetime-local"
             value={values.due_date}
             onChange={(event) => set('due_date', event.target.value)}
             step="60"
-            className="text-sm"
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="flex flex-col gap-2.5">
+          <Label>
             {t('projects.attachments', 'Attachments')}
-          </label>
+          </Label>
 
           {imagePreviews.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {imagePreviews.map((url, index) => (
-                <div key={`${url}-${index}`} className="group relative h-16 w-16 overflow-hidden rounded-xl border border-[var(--border)]">
+                <div key={`${url}-${index}`} className="group relative h-[72px] w-[72px] overflow-hidden rounded-[14px] bg-[var(--muted-surface)]">
                   <img
                     src={url}
                     alt={t('projects.attachment', 'Attachment')}
@@ -352,30 +354,31 @@ export function CardFormModal({
                   <button
                     type="button"
                     onClick={() => openImagePreview(url)}
-                    className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity group-hover:bg-black/35 group-hover:opacity-100"
+                    className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:bg-[var(--surface-inverse)]/45 group-hover:opacity-100"
                     aria-label={t('projects.preview_image', 'Preview image')}
                   >
-                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-white drop-shadow" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-white" fill="none" stroke="currentColor" strokeWidth="1.8">
                       <path d="M2.25 12c1.9-4.82 6.07-8 9.75-8s7.85 3.18 9.75 8c-1.9 4.82-6.07 8-9.75 8s-7.85-3.18-9.75-8Z" />
                       <circle cx="12" cy="12" r="3.5" />
                     </svg>
                   </button>
-                  <button
-                    type="button"
+                  <IconButton
+                    label={t('projects.remove', 'Remove')}
+                    tone="inverse"
+                    size="sm"
                     onClick={() => removeImage(index)}
-                    className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/65 text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-rose-500"
-                    aria-label={t('projects.remove', 'Remove')}
+                    className="absolute top-1 right-1 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100"
                   >
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
                     </svg>
-                  </button>
+                  </IconButton>
                 </div>
               ))}
             </div>
           ) : null}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Button
               type="button"
               variant="secondary"
@@ -405,9 +408,9 @@ export function CardFormModal({
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-3">
+        <div className="flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-4">
           {(Object.entries(priorityConfig) as [string, { label: string; color: string }][]).map(([key, value]) => (
-            <span key={key} className="inline-flex items-center gap-1 text-[10px] text-[var(--muted)]">
+            <span key={key} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--muted)]">
               <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: value.color }} />
               {value.label}
             </span>
@@ -418,24 +421,25 @@ export function CardFormModal({
       {previewImageUrl && typeof document !== 'undefined'
         ? createPortal(
             <div
-              className="fixed inset-0 z-220 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+              className="dialog-backdrop fixed inset-0 z-220 flex items-center justify-center p-4"
               onClick={closeImagePreview}
               aria-hidden="true"
             >
               <div
-                className="relative max-h-[90vh] max-w-[92vw] overflow-hidden rounded-2xl border border-white/10 bg-(--surface-elevated) shadow-2xl"
+                className="relative max-h-[90vh] max-w-[92vw] overflow-hidden rounded-[24px] bg-[var(--surface)] shadow-[var(--elev-xl)]"
                 onClick={(event) => event.stopPropagation()}
               >
-                <button
-                  type="button"
+                <IconButton
+                  label={t('projects.close_preview', 'Close preview')}
+                  tone="inverse"
+                  size="lg"
                   onClick={closeImagePreview}
-                  className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
-                  aria-label={t('projects.close_preview', 'Close preview')}
+                  className="absolute top-3 right-3 rounded-full"
                 >
-                  <svg viewBox="0 0 16 16" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
                   </svg>
-                </button>
+                </IconButton>
                 <img
                   src={previewImageUrl}
                   alt={t('projects.preview_image', 'Preview image')}

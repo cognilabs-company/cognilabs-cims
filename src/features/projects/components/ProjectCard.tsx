@@ -2,6 +2,9 @@ import { Link } from 'react-router-dom'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { Badge } from '../../../shared/ui/badge'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
+import { Skeleton } from '../../../shared/ui/skeleton'
+import { toneByIndex, tonePill } from '../../../shared/ui/tone'
+import { cn } from '../../../shared/lib/cn'
 import type { ProjectRecord } from '../../../shared/api/services/projects.service'
 import { Avatar, AvatarGroup } from './Avatar'
 import { formatProjectDateTime, formatRelativeDate, isDueDateOverdue } from '../lib/format'
@@ -19,9 +22,10 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
   const boardCount = project.boards_count ?? 0
   const memberCount = (project.members ?? []).length
   const isDeadlineOverdue = project.deadline ? isDueDateOverdue(project.deadline) : false
+  const placeholderTone = toneByIndex(project.project_name.charCodeAt(0) || 0)
 
   return (
-    <div data-slot="card" className="group relative flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[0_2px_8px_rgba(0,0,0,0.14)] transition-shadow hover:shadow-[0_8px_28px_rgba(0,0,0,0.24)] hover:border-[var(--border-hover)]">
+    <div data-slot="card" className="group relative flex flex-col overflow-hidden rounded-[24px] bg-[var(--card)] transition-shadow duration-150 hover:shadow-[var(--elev-md)]">
       {/* Image / placeholder */}
       <div className="relative h-36 w-full overflow-hidden bg-[var(--muted-surface)]">
         {project.image ? (
@@ -33,24 +37,22 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <div
-              className="flex h-16 w-16 items-center justify-center rounded-xl text-2xl font-bold"
-              style={{
-                background: `hsl(${project.project_name.charCodeAt(0) * 7 % 360}, 45%, 18%)`,
-                color: `hsl(${project.project_name.charCodeAt(0) * 7 % 360}, 65%, 65%)`,
-              }}
+              className={cn(
+                'grid h-16 w-16 place-items-center rounded-[18px] text-2xl font-bold tracking-[-0.02em]',
+                tonePill(placeholderTone),
+              )}
             >
               {project.project_name.charAt(0).toUpperCase()}
             </div>
           </div>
         )}
-        {/* Gradient overlay */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--surface-elevated)]/60 to-transparent" />
 
         {/* Actions menu overlay */}
         {canManage ? (
-          <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="absolute top-3 right-3 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
             <ActionsMenu
               label={t('projects.project_actions', 'Project actions')}
+              className="bg-[var(--surface)] shadow-[var(--elev-sm)]"
               items={[
                 { label: t('projects.edit_project_action', 'Edit project'), onSelect: () => onEdit(project) },
                 { label: t('projects.delete_project_action', 'Delete project'), tone: 'danger', onSelect: () => onDelete(project) },
@@ -61,12 +63,12 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col gap-3 p-4">
+      <div className="flex flex-1 flex-col gap-3 p-[18px]">
         {/* Title */}
         <div>
           <Link
             to={`/projects/${project.id}`}
-            className="text-sm font-semibold text-[var(--foreground)] hover:text-white transition-colors line-clamp-1"
+            className="line-clamp-1 text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
           >
             {project.project_name}
           </Link>
@@ -78,7 +80,7 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
             href={project.project_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors truncate"
+            className="inline-flex items-center gap-1 truncate text-[11.5px] font-medium text-[var(--blue-text)] transition-colors hover:text-[var(--primary-hover)]"
             onClick={(e) => e.stopPropagation()}
           >
             <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -89,14 +91,14 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
         )}
 
         {/* Stats row */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" size="sm">
             {boardCount === 1
               ? t('projects.board_count_short', '{count} board', { count: boardCount })
               : t('projects.board_count_plural', '{count} boards', { count: boardCount })}
           </Badge>
           {memberCount > 0 && (
-            <Badge variant="outline" size="sm">
+            <Badge variant="secondary" size="sm">
               {memberCount === 1
                 ? t('projects.member_count_short', '{count} member', { count: memberCount })
                 : t('projects.member_count_plural', '{count} members', { count: memberCount })}
@@ -104,15 +106,15 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
           )}
           {project.team ? <Badge variant="blue" size="sm">{project.team.name}</Badge> : null}
           {project.deadline ? (
-            <Badge variant={isDeadlineOverdue ? 'danger' : 'outline'} size="sm">
+            <Badge variant={isDeadlineOverdue ? 'danger' : 'secondary'} size="sm">
               {formatProjectDateTime(project.deadline)}
             </Badge>
           ) : null}
         </div>
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-2 border-t border-[var(--border)]">
-          <div className="flex items-center gap-2">
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-3">
+          <div className="flex min-w-0 items-center gap-2">
             {project.created_by ? (
               <>
                 <Avatar
@@ -124,18 +126,18 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
                     name: `${project.created_by.name} ${project.created_by.surname}`,
                   })}
                 />
-                <span className="text-[10px] text-[var(--muted)] truncate max-w-[100px]">
+                <span className="max-w-[100px] truncate text-[11.5px] text-[var(--muted)]">
                   {project.created_by.name}
                 </span>
               </>
             ) : null}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {(project.members ?? []).length > 0 && (
               <AvatarGroup users={project.members} max={3} size="xs" />
             )}
-            <span className="text-[10px] text-[var(--muted)]">
+            <span className="text-[11.5px] text-[var(--caption)]">
               {project.updated_at ? formatRelativeDate(project.updated_at) : ''}
             </span>
           </div>
@@ -156,15 +158,15 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
 /** Skeleton placeholder while loading */
 export function ProjectCardSkeleton() {
   return (
-    <div data-slot="card" className="flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)]">
-      <div className="h-36 animate-pulse bg-[var(--muted-surface)]" />
-      <div className="flex flex-col gap-3 p-4">
-        <div className="h-4 w-3/4 animate-pulse rounded-lg bg-[var(--muted-surface)]" />
-        <div className="h-3 w-full animate-pulse rounded-lg bg-[var(--muted-surface)]" />
-        <div className="h-3 w-2/3 animate-pulse rounded-lg bg-[var(--muted-surface)]" />
-        <div className="flex gap-2 mt-1">
-          <div className="h-5 w-16 animate-pulse rounded-lg bg-[var(--muted-surface)]" />
-          <div className="h-5 w-20 animate-pulse rounded-lg bg-[var(--muted-surface)]" />
+    <div data-slot="card" className="flex flex-col overflow-hidden rounded-[24px] bg-[var(--card)]">
+      <Skeleton className="h-36 rounded-none" />
+      <div className="flex flex-col gap-3 p-[18px]">
+        <Skeleton rounded="full" className="h-4 w-3/4" />
+        <Skeleton rounded="full" className="h-3 w-full" />
+        <Skeleton rounded="full" className="h-3 w-2/3" />
+        <div className="mt-1 flex gap-2">
+          <Skeleton rounded="full" className="h-5 w-16" />
+          <Skeleton rounded="full" className="h-5 w-20" />
         </div>
       </div>
     </div>

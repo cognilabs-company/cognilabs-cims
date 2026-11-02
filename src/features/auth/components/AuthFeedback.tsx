@@ -1,14 +1,15 @@
-import { cn } from '../../../shared/lib/cn'
+import { Alert } from '../../../shared/ui/alert'
+import type { Tone } from '../../../shared/ui/tone'
 
 type AuthFeedbackProps = {
   tone?: 'error' | 'success' | 'info'
   message?: string | null
 }
 
-const toneClasses = {
-  error: 'border-red-500/20 bg-red-500/10 text-red-300',
-  success: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
-  info: 'border-white/10 bg-white/5 text-[var(--muted-strong)]',
+const alertTones: Record<NonNullable<AuthFeedbackProps['tone']>, Tone> = {
+  error: 'danger',
+  success: 'success',
+  info: 'blue',
 }
 
 export function AuthFeedback({ tone = 'info', message }: AuthFeedbackProps) {
@@ -17,8 +18,8 @@ export function AuthFeedback({ tone = 'info', message }: AuthFeedbackProps) {
   }
 
   return (
-    <div className={cn('rounded-md border px-3 py-2.5 text-xs', toneClasses[tone])}>
+    <Alert tone={alertTones[tone]} className="p-3.5">
       {message}
-    </div>
+    </Alert>
   )
 }

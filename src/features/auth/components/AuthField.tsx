@@ -15,22 +15,22 @@ export function AuthField({ label, error, hint, id, className, leadingIcon, ...p
 
   return (
     <Label className="grid gap-2" htmlFor={inputId}>
-      <span className="text-xs font-bold text-[var(--foreground)] tracking-tight">{label}</span>
+      <span className="ui-input-label">{label}</span>
       <div className="relative">
         {leadingIcon ? (
-          <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]">
+          <span className="pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-[var(--muted)]">
             {leadingIcon}
           </span>
         ) : null}
 
         <Input
           id={inputId}
-          className={cn(leadingIcon ? 'pl-10' : null, className)}
+          className={cn(leadingIcon ? 'pl-11' : null, className)}
           {...props}
         />
       </div>
-      {error ? <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider">{error}</span> : null}
-      {!error && hint ? <span className="text-[11px] font-medium text-zinc-500">{hint}</span> : null}
+      {error ? <span className="text-[12.5px] font-medium text-[var(--danger-text)]">{error}</span> : null}
+      {!error && hint ? <span className="text-[12.5px] text-[var(--muted)]">{hint}</span> : null}
     </Label>
   )
 }

@@ -2,9 +2,13 @@ import { useState } from 'react'
 import { attendanceService } from '../../../shared/api/services/attendance.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { Card } from '../../../shared/ui/card'
+import { PageHeader } from '../../../shared/ui/page-header'
 import { SectionTitle } from '../../../shared/ui/section-title'
-import { LoadingStateBlock, ErrorStateBlock } from '../../../shared/ui/state-block'
+import { LoadingStateBlock, ErrorStateBlock, EmptyStateBlock } from '../../../shared/ui/state-block'
 import { Badge } from '../../../shared/ui/badge'
+import { IconButton } from '../../../shared/ui/icon-button'
+import { StatCard } from '../../../shared/ui/stat-card'
+import { cn } from '../../../shared/lib/cn'
 
 type NormalizedDay = {
   date: string
@@ -26,6 +30,28 @@ type NormalizedOfficeTime = {
   totalWorkedHours: number
   weeks: NormalizedWeek[]
 }
+
+const headCellClass = 'bg-[var(--muted-surface)] px-3 py-2.5 text-left align-middle text-xs font-medium whitespace-nowrap text-[var(--muted)]'
+const bodyCellClass = 'border-b border-[var(--border-subtle)] px-3 py-3.5 align-middle'
+
+const totalHoursIcon = (
+  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5.3l3.4 2" />
+  </svg>
+)
+
+const chevronLeftIcon = (
+  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M14.5 5.5 8 12l6.5 6.5" />
+  </svg>
+)
+
+const chevronRightIcon = (
+  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9.5 5.5 16 12l-6.5 6.5" />
+  </svg>
+)
 
 function resolveHours(
   obj: Record<string, unknown>,
@@ -199,100 +225,96 @@ export function PersonalAttendancePage() {
   )
 
   return (
-    <div className="page-enter space-y-4">
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Member / Attendance</p>
-        <h1 className="text-2xl font-bold text-[var(--foreground)] sm:text-3xl">My Attendance</h1>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={prevMonth}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-strong)] transition hover:bg-[var(--accent-soft)]"
-          >
-            ←
-          </button>
-          <h2 className="min-w-[148px] text-center text-xl font-bold text-[var(--foreground)]">
-            {MONTHS[date.month - 1]} {date.year}
-          </h2>
-          <button
-            onClick={nextMonth}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-strong)] transition hover:bg-[var(--accent-soft)]"
-          >
-            →
-          </button>
-        </div>
-
-        {data && (
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-6 py-3 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Total Hours</p>
-            <p className="text-2xl font-black text-blue-500">{data.totalWorkedHours.toFixed(1)}h</p>
+    <section className="page-enter space-y-[18px]">
+      <PageHeader
+        eyebrow="Member / Attendance"
+        title="My Attendance"
+        actions={(
+          <div className="flex items-center gap-1 rounded-[14px] bg-[var(--accent-soft)] p-1.5">
+            <IconButton label="Previous month" onClick={prevMonth} className="bg-[var(--surface)] text-[var(--muted-strong)] hover:bg-[var(--surface)] hover:text-[var(--primary)]">
+              {chevronLeftIcon}
+            </IconButton>
+            <span className="min-w-[148px] px-1 text-center text-sm font-semibold tracking-[-0.01em] text-[var(--foreground)]">
+              {MONTHS[date.month - 1]} {date.year}
+            </span>
+            <IconButton label="Next month" onClick={nextMonth} className="bg-[var(--surface)] text-[var(--muted-strong)] hover:bg-[var(--surface)] hover:text-[var(--primary)]">
+              {chevronRightIcon}
+            </IconButton>
           </div>
         )}
-      </div>
+      />
+
+      {data && (
+        <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Total Hours"
+            value={`${data.totalWorkedHours.toFixed(1)}h`}
+            icon={totalHoursIcon}
+            solid
+          />
+        </div>
+      )}
 
       {query.isLoading ? (
         <LoadingStateBlock eyebrow="Attendance" title="Loading attendance..." description="Please wait while we fetch your records." />
       ) : query.isError ? (
         <ErrorStateBlock eyebrow="Attendance" title="Failed to load attendance" description="There was an error retrieving your records." />
       ) : !data || data.weeks.length === 0 ? (
-        <Card className="px-6 py-10 text-center text-sm text-[var(--muted-strong)]">
-          No attendance data found for this period.
-        </Card>
+        <EmptyStateBlock eyebrow="Attendance" title="No attendance data found for this period." />
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-[18px]">
           {data.weeks.map(week => (
-            <Card key={week.weekNumber} className="overflow-hidden rounded-xl border-[var(--border)]">
-              <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--muted-surface)]/30 px-6 py-4">
+            <Card key={week.weekNumber} className="space-y-[18px]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <SectionTitle
                   title={`Week ${week.weekNumber}`}
                   description="Daily breakdown for this week"
                 />
-                <Badge variant="blue" className="px-3 py-1">{week.workedHours.toFixed(1)}h</Badge>
+                <Badge variant="blue">{week.workedHours.toFixed(1)}h</Badge>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
+              <div className="custom-scrollbar-visible overflow-x-auto">
+                <table className="w-full min-w-[620px] border-separate border-spacing-0 text-left">
                   <thead>
-                    <tr className="border-b border-[var(--border)] bg-[var(--muted-surface)]/10 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Check In</th>
-                      <th className="px-6 py-4">Check Out</th>
-                      <th className="px-6 py-4 text-right">Worked Hours</th>
+                    <tr>
+                      <th className={cn(headCellClass, 'rounded-l-[12px] pl-3.5')}>Date</th>
+                      <th className={headCellClass}>Status</th>
+                      <th className={headCellClass}>Check In</th>
+                      <th className={headCellClass}>Check Out</th>
+                      <th className={cn(headCellClass, 'rounded-r-[12px] pr-3.5 text-right')}>Worked Hours</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--border)]">
+                  <tbody>
                     {week.days.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-4 text-center text-xs text-[var(--muted-strong)]">No days recorded.</td>
+                        <td colSpan={5} className={cn(bodyCellClass, 'text-center text-[13px] text-[var(--muted)]')}>No days recorded.</td>
                       </tr>
                     ) : week.days.map((day, i) => (
-                      <tr key={day.date || i} className="group transition-colors hover:bg-[var(--accent-soft)]/5">
-                        <td className="px-6 py-4 text-sm font-medium text-[var(--foreground)]">
+                      <tr key={day.date || i} className="transition-colors hover:bg-[var(--card-hover)]">
+                        <td className={cn(bodyCellClass, 'pl-3.5 text-[13.5px] font-medium text-[var(--foreground)]')}>
                           {day.date
                             ? new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
                             : '—'}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className={bodyCellClass}>
                           <Badge
                             variant={day.status === 'present' ? 'success' : day.status === 'absent' ? 'danger' : 'secondary'}
+                            dot
                             className="capitalize"
                           >
                             {day.status}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 text-sm text-[var(--muted-strong)]">
+                        <td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>
                           {day.checkIn
                             ? (() => { try { return new Date(day.checkIn!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) } catch { return day.checkIn } })()
                             : '—'}
                         </td>
-                        <td className="px-6 py-4 text-sm text-[var(--muted-strong)]">
+                        <td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>
                           {day.checkOut
                             ? (() => { try { return new Date(day.checkOut!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) } catch { return day.checkOut } })()
                             : '—'}
                         </td>
-                        <td className="px-6 py-4 text-right text-sm font-bold text-[var(--foreground)]">
+                        <td className={cn(bodyCellClass, 'pr-3.5 text-right text-[13.5px] font-semibold tabular-nums text-[var(--foreground)]')}>
                           {day.workedHours > 0 ? `${day.workedHours.toFixed(1)}h` : '—'}
                         </td>
                       </tr>
@@ -304,6 +326,6 @@ export function PersonalAttendancePage() {
           ))}
         </div>
       )}
-    </div>
+    </section>
   )
 }

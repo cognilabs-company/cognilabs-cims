@@ -1,12 +1,14 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useState } from 'react'
-import { useTheme } from '../../../app/hooks/useTheme'
 import type { DayStatus } from '../../../shared/api/types'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
 import { formatShortMonthDayTime, getLocalizedMonthName } from '../../../shared/lib/format'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
+import { IconButton } from '../../../shared/ui/icon-button'
+import { Progress } from '../../../shared/ui/progress'
+import { toneDot, tonePill, toneSurface, toneText, type Tone } from '../../../shared/ui/tone'
 import type { DailyRecord } from '../../../shared/api/services/attendance.service'
 import type {
   MemberMonthlyUpdateCalendar,
@@ -46,52 +48,12 @@ const tr = (key: string, uzFallback: string, ruFallback: string) => {
   return uzFallback
 }
 
-const dayStyle: Record<DayStatus, string> = {
-  submitted: 'cal-day-submitted',
-  missing:   'cal-day-missing',
-  sunday:    'cal-day-sunday',
-  future:    'cal-day-future',
-  neutral:   'cal-day-neutral',
-}
-
-const dayAccentStyle: Record<DayStatus, string> = {
-  submitted: 'cal-accent-submitted',
-  missing:   'cal-accent-missing',
-  sunday:    'cal-accent-sunday',
-  future:    'cal-accent-future',
-  neutral:   'cal-accent-neutral',
-}
-
-const dayPillStyle: Record<DayStatus, string> = {
-  submitted: 'cal-pill-submitted',
-  missing:   'cal-pill-missing',
-  sunday:    'cal-pill-sunday',
-  future:    'cal-pill-future',
-  neutral:   'cal-pill-neutral',
-}
-
-const dayDotStyle: Record<DayStatus, string> = {
-  submitted: 'cal-dot-submitted',
-  missing:   'cal-dot-missing',
-  sunday:    'cal-dot-sunday',
-  future:    'cal-dot-future',
-  neutral:   'cal-dot-neutral',
-}
-
-const dayStatusTextStyle: Record<DayStatus, string> = {
-  submitted: 'cal-text-submitted',
-  missing:   'cal-text-missing',
-  sunday:    'cal-text-sunday',
-  future:    'cal-text-future',
-  neutral:   'cal-text-neutral',
-}
-
-const dayFocusStyle: Record<DayStatus, string> = {
-  submitted: 'cal-focus-submitted',
-  missing:   'cal-focus-missing',
-  sunday:    'cal-focus-sunday',
-  future:    'cal-focus-future',
-  neutral:   'cal-focus-neutral',
+const dayStatusTone: Record<DayStatus, Tone> = {
+  submitted: 'success',
+  missing:   'danger',
+  sunday:    'warning',
+  future:    'neutral',
+  neutral:   'neutral',
 }
 
 function getLocalizedLongWeekdayName(dayIndex: number) {
@@ -247,56 +209,24 @@ function isHolidayDay(day: MemberMonthlyUpdateDay | null | undefined) {
   return day?.status === 'sunday' && day.workdayOverride?.day_type === 'holiday'
 }
 
-function getDaySurfaceClass(day: MemberMonthlyUpdateDay) {
-  if (isHolidayDay(day)) {
-    return 'cal-day-holiday'
-  }
-
-  return dayStyle[day.status]
-}
-
-function getDayAccentClass(day: MemberMonthlyUpdateDay) {
-  if (isHolidayDay(day)) {
-    return 'cal-accent-holiday'
-  }
-
-  return dayAccentStyle[day.status]
-}
-
-function getDayPillClass(day: MemberMonthlyUpdateDay) {
-  if (isHolidayDay(day)) {
-    return 'cal-pill-holiday'
-  }
-
-  return dayPillStyle[day.status]
-}
-
-function getDayDotClass(day: MemberMonthlyUpdateDay) {
-  if (isHolidayDay(day)) {
-    return 'cal-dot-holiday'
-  }
-
-  return dayDotStyle[day.status]
-}
-
-function getDayTextClass(day: MemberMonthlyUpdateDay) {
-  if (isHolidayDay(day)) {
-    return 'cal-text-holiday'
-  }
-
-  return dayStatusTextStyle[day.status]
-}
-
-function getDayFocusClass(day: MemberMonthlyUpdateDay | null) {
+function getDayTone(day: MemberMonthlyUpdateDay | null | undefined): Tone {
   if (!day) {
-    return dayFocusStyle.neutral
+    return 'neutral'
   }
 
   if (isHolidayDay(day)) {
-    return 'cal-focus-holiday'
+    return 'blue'
   }
 
-  return dayFocusStyle[day.status]
+  return dayStatusTone[day.status]
+}
+
+function getDayPillClass(tone: Tone) {
+  if (tone === 'neutral') {
+    return 'bg-[var(--surface)] text-[var(--muted-strong)]'
+  }
+
+  return tonePill(tone)
 }
 
 function getStatusLabel(status: DayStatus, day?: MemberMonthlyUpdateDay | null) {
@@ -437,13 +367,9 @@ function formatWorkedTime(totalMinutes: number): string {
 }
 
 function CompletionBar({ pct }: { pct: number }) {
-  const color = pct >= 90 ? 'bg-emerald-500' : pct >= 75 ? 'bg-amber-400' : 'bg-rose-500'
+  const tone: Tone = pct >= 90 ? 'success' : pct >= 75 ? 'warning' : 'danger'
 
-  return (
-    <div className="h-1.5 w-full rounded-full bg-white/8">
-      <div className={cn('h-full rounded-full transition-all duration-500', color)} style={{ width: `${Math.min(pct, 100)}%` }} />
-    </div>
-  )
+  return <Progress value={pct} tone={tone} size="xs" />
 }
 
 type MemberMonthlyUpdateCalendarBoardProps = {
@@ -470,8 +396,6 @@ export function MemberMonthlyUpdateCalendarBoard({
   onJumpToToday,
   attendanceRecords,
 }: MemberMonthlyUpdateCalendarBoardProps) {
-  const { theme } = useTheme()
-  const isLight = theme === 'light'
   const todayKey = getTodayKey()
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [isFocusPanelOpen, setIsFocusPanelOpen] = useState(false)
@@ -609,83 +533,49 @@ export function MemberMonthlyUpdateCalendarBoard({
 
   const selectedDayDrawer = isFocusPanelOpen && selectedDay && typeof document !== 'undefined'
     ? createPortal(
-      <div
-        className="fixed inset-0 z-[95] calendar-focus-drawer text-[var(--foreground)]"
-        data-theme={theme}
-        style={{ colorScheme: isLight ? 'light' : 'dark' }}
-      >
+      <div className="fixed inset-0 z-[95] calendar-focus-drawer text-[var(--foreground)]">
         <button
           type="button"
           aria-label={lt('Close focus day panel')}
-          className={cn(
-            'absolute inset-0 backdrop-blur-md',
-            isLight
-              ? 'bg-[radial-gradient(circle_at_right,rgba(59,130,246,0.08),transparent_24%),rgba(248,250,252,0.78)]'
-              : 'bg-[radial-gradient(circle_at_right,rgba(59,130,246,0.10),transparent_24%),rgba(0,0,0,0.62)]',
-          )}
+          className="dialog-backdrop absolute inset-0"
           onClick={() => setIsFocusPanelOpen(false)}
         />
 
         <div className="absolute inset-y-0 right-0 w-full sm:w-[min(88vw,430px)] xl:w-[min(34vw,480px)]">
-          <div
-            className={cn(
-              'sheet-enter flex h-full flex-col overflow-hidden border-l border-[var(--border)] text-[var(--foreground)]',
-              isLight
-                ? 'bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,1))]'
-                : 'bg-[linear-gradient(180deg,rgba(10,12,18,0.98),rgba(8,9,14,1))]',
-            )}
-          >
-            <div
-              className={cn(
-                'flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 sm:px-6',
-                isLight ? 'bg-white/95' : 'bg-transparent',
-              )}
-            >
+          <div className="sheet-enter flex h-full flex-col overflow-hidden bg-[var(--surface)] text-[var(--foreground)]">
+            <div className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 sm:px-6">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--blue-text)]">
+                <p className="ui-eyebrow text-[var(--blue-text)]">
                   {tr('Focus Day', 'Fokus kuni', 'Фокусный день')}
                 </p>
-                <h3 className="mt-1 truncate text-lg font-semibold tracking-tight text-[var(--foreground)]">
+                <h3 className="mt-1 truncate text-[20px] font-bold tracking-[-0.02em] text-[var(--foreground)]">
                   {selectedLabel}
                 </h3>
-                <p className="mt-1 text-xs text-[var(--muted-strong)]">
+                <p className="mt-1 text-[12.5px] text-[var(--muted)]">
                   {selectedDay ? getDaySummary(selectedDay) : tr('Pick a date from the month grid to inspect details.', 'Tafsilotlarni korish uchun oy setkasidan sana tanlang.', 'Выберите дату из сетки месяца, чтобы посмотреть детали.')}
                 </p>
               </div>
 
-              <button
-                type="button"
+              <IconButton
+                size="lg"
+                label={lt('Close focus day panel')}
                 onClick={() => setIsFocusPanelOpen(false)}
-                className={cn(
-                  'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] transition',
-                  isLight
-                    ? 'bg-[var(--surface-elevated)] text-[var(--foreground)] hover:border-[var(--border-hover)] hover:bg-[var(--card-hover)]'
-                    : 'bg-white/[0.03] text-white hover:border-white/16 hover:bg-white/[0.06]',
-                )}
-                aria-label={lt('Close focus day panel')}
               >
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                   <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
                 </svg>
-              </button>
+              </IconButton>
             </div>
 
-            <div
-              className={cn(
-                'min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6',
-                isLight
-                  ? 'bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.98))]'
-                  : 'bg-transparent',
-              )}
-            >
+            <div className="min-h-0 flex-1 space-y-[18px] overflow-y-auto bg-[var(--surface)] px-5 py-5 sm:px-6">
               <div
                 className={cn(
-                  'rounded-xl border p-5',
-                  getDayFocusClass(selectedDay),
+                  'rounded-[18px] p-[18px]',
+                  toneSurface[getDayTone(selectedDay)],
                 )}
               >
                 <div className="flex items-start gap-4">
-                  <div className="grid h-18 w-18 shrink-0 place-items-center rounded-xl border border-current/20 bg-white/65 text-[1.75rem] font-semibold tabular-nums dark:bg-black/10 dark:text-white">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[14px] bg-[var(--surface)] text-[28px] font-bold tracking-[-0.03em] tabular-nums text-[var(--foreground)]">
                     {selectedDay.day}
                   </div>
 
@@ -710,33 +600,33 @@ export function MemberMonthlyUpdateCalendarBoard({
                       ) : null}
                     </div>
 
-                    <p className="mt-3 text-sm leading-6 text-[var(--foreground)] dark:text-white">
+                    <p className="mt-3 text-sm leading-6 text-[var(--foreground)]">
                       {getDaySummary(selectedDay)}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] px-3 py-3 text-[12px] text-[var(--muted)]">
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <div className="rounded-[14px] bg-[var(--muted-surface)] px-3.5 py-3 text-[12.5px] text-[var(--muted)]">
                   <p>{tr('Status', 'Holat', 'Статус')}</p>
-                  <p className="mt-1 font-medium text-[var(--foreground)]">
+                  <p className="mt-1 text-[13px] font-semibold text-[var(--foreground)]">
                     {getStatusLabel(selectedDay.status, selectedDay)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] px-3 py-3 text-[12px] text-[var(--muted)]">
+                <div className="rounded-[14px] bg-[var(--muted-surface)] px-3.5 py-3 text-[12.5px] text-[var(--muted)]">
                   <p>{tr('Submission', 'Yuborish', 'Отправка')}</p>
-                  <p className="mt-1 font-medium text-[var(--foreground)]">
+                  <p className="mt-1 text-[13px] font-semibold text-[var(--foreground)]">
                     {selectedDay.hasUpdate ? tr('Available', 'Mavjud', 'Доступно') : tr('None', "Yo'q", 'Нет')}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] px-3 py-3 text-[12px] text-[var(--muted)]">
+                <div className="rounded-[14px] bg-[var(--muted-surface)] px-3.5 py-3 text-[12.5px] text-[var(--muted)]">
                   <p>{tr('Validation', 'Validatsiya', 'Валидация')}</p>
                   <p
                     className={cn(
-                      'mt-1 font-medium',
+                      'mt-1 text-[13px] font-semibold',
                       selectedDay.isValid === false
-                        ? 'text-amber-600 dark:text-amber-300'
+                        ? 'text-[var(--warning-text)]'
                         : selectedDay.isValid === true
                           ? 'text-[var(--success-text)]'
                           : 'text-[var(--foreground)]',
@@ -745,34 +635,34 @@ export function MemberMonthlyUpdateCalendarBoard({
                     {selectedDay.isValid === false ? lt('Needs review') : selectedDay.isValid === true ? lt('Valid') : lt('N/A')}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] px-3 py-3 text-[12px] text-[var(--muted)]">
+                <div className="rounded-[14px] bg-[var(--muted-surface)] px-3.5 py-3 text-[12.5px] text-[var(--muted)]">
                   <p>{tr('Entries', 'Yozuvlar', 'Записи')}</p>
-                  <p className="mt-1 font-medium text-[var(--foreground)]">
+                  <p className="mt-1 text-[13px] font-semibold tabular-nums text-[var(--foreground)]">
                     {getEntryCount(selectedDay)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] px-3 py-3 text-[12px] text-[var(--muted)]">
+                <div className="rounded-[14px] bg-[var(--muted-surface)] px-3.5 py-3 text-[12.5px] text-[var(--muted)]">
                   <p>{tr('Check in time', 'Kirish vaqti', 'Время входа')}</p>
-                  <p className="mt-1 font-medium text-[var(--foreground)]">
+                  <p className="mt-1 text-[13px] font-semibold tabular-nums text-[var(--foreground)]">
                     {formatWorkTime(selectedDay.checkInTime)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] px-3 py-3 text-[12px] text-[var(--muted)]">
+                <div className="rounded-[14px] bg-[var(--muted-surface)] px-3.5 py-3 text-[12.5px] text-[var(--muted)]">
                   <p>{tr('Check out time', 'Chiqish vaqti', 'Время выхода')}</p>
-                  <p className="mt-1 font-medium text-[var(--foreground)]">
+                  <p className="mt-1 text-[13px] font-semibold tabular-nums text-[var(--foreground)]">
                     {formatWorkTime(selectedDay.checkOutTime)}
                   </p>
                 </div>
               </div>
 
               {shouldShowFocusContent ? (
-                <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                <div className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--muted)]">
+                      <p className="ui-eyebrow">
                         {selectedDay.hasUpdate ? lt('Update Content') : lt('Special Day')}
                       </p>
-                      <h4 className="mt-2 text-base font-semibold tracking-tight text-[var(--foreground)]">
+                      <h4 className="mt-2 text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
                         {selectedDay.hasUpdate
                           ? tr('Returned content for this date', 'Bu sana uchun qaytgan kontent', 'Контент, возвращённый для этой даты')
                           : tr('Details for this date', 'Bu sana uchun tafsilotlar', 'Детали для этой даты')}
@@ -787,14 +677,14 @@ export function MemberMonthlyUpdateCalendarBoard({
                     ) : null}
                   </div>
 
-                  <div className="mt-4 max-h-[320px] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--muted-surface)] p-4">
-                    <p className="whitespace-pre-wrap text-[13px] leading-6 text-[var(--foreground)]">
+                  <div className="mt-4 max-h-[320px] overflow-y-auto rounded-[14px] bg-[var(--surface)] p-4">
+                    <p className="whitespace-pre-wrap text-[13px] leading-6 text-[var(--muted-strong)]">
                       {focusDetailText}
                     </p>
                   </div>
 
                   {selectedDay.isValid === false ? (
-                    <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">
+                    <p className="mt-3 text-xs text-[var(--warning-text)]">
                       {tr('This update was returned with an invalid flag by the API.', "Bu update API dan noto'g'ri flag bilan qaytdi.", 'Это обновление было возвращено API с некорректным флагом.')}
                     </p>
                   ) : null}
@@ -811,9 +701,9 @@ export function MemberMonthlyUpdateCalendarBoard({
   return (
     <>
       <div className={cn('w-full', className)}>
-        <div className="overflow-hidden">
-          <div className="flex flex-col gap-3 pb-4 lg:flex-row lg:items-start lg:justify-between">
-            <h3 className="text-[1.55rem] font-semibold tracking-tight text-[var(--foreground)] dark:text-white">
+        <div className="space-y-[18px] overflow-hidden">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
               {stableMonthPeriod} {tr('Calendar', 'Kalendar', 'Календарь')}
             </h3>
 
@@ -829,91 +719,73 @@ export function MemberMonthlyUpdateCalendarBoard({
             </div>
           </div>
 
-          <div>
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(290px,330px)] lg:items-center">
+          <div className="space-y-[18px]">
+              <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_auto_minmax(290px,330px)] lg:items-center">
                 <div className="min-w-0 max-w-2xl">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h4
-                      className={cn(
-                        'text-[1.45rem] font-semibold tracking-tight sm:text-[1.65rem]',
-                        isLight ? 'text-[var(--foreground)]' : 'text-white',
-                      )}
-                    >
+                    <h4 className="text-[26px] font-bold tracking-[-0.03em] text-[var(--foreground)]">
                       {stableMonthPeriod}
                     </h4>
-                    <Badge
-                      variant="violet"
-                      className="rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                    >
+                    <Badge variant="violet">
                       {monthProgressPct.toFixed(0)}{lt('% pace')}
                     </Badge>
                   </div>
                 </div>
 
                 <div className="flex justify-center lg:justify-self-center">
-                  <div
-                    className={cn(
-                      'grid w-fit grid-cols-[44px_auto_44px] items-center gap-2 rounded-xl border p-1.5',
-                      isLight
-                        ? 'border-[var(--success-border)] bg-white'
-                        : 'border-[var(--border)] bg-white dark:border-white/10 dark:bg-black/18',
-                    )}
-                  >
-                    <Button
-                      variant="secondary"
-                      size="sm"
+                  <div className="grid w-fit grid-cols-[44px_auto_44px] items-center gap-1.5 rounded-[18px] bg-[var(--muted-surface)] p-1.5">
+                    <IconButton
+                      size="lg"
+                      label={tr('Previous month', 'Oldingi oy', 'Предыдущий месяц')}
                       onClick={() => onMonthShift?.(-1)}
                       disabled={!onMonthShift}
-                      className="min-h-11 min-w-11 rounded-xl border-[var(--border)] bg-[var(--surface-elevated)] px-0 text-[var(--foreground)] hover:border-[var(--border-hover)] hover:bg-[var(--card-hover)] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-white"
+                      className="bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]"
                     >
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M10 3.5 5.5 8 10 12.5" />
                       </svg>
-                    </Button>
-                    <button
-                      type="button"
+                    </IconButton>
+                    <Button
+                      variant="secondary"
                       onClick={() => onJumpToToday?.()}
                       aria-disabled={!canJumpToToday}
                       className={cn(
-                        'inline-flex min-h-11 min-w-[144px] items-center justify-center rounded-xl border px-5 text-sm font-bold tracking-[0.01em] transition-none text-[var(--success-text)]',
-                        isLight
-                          ? 'border-[var(--success-border)] bg-[var(--success-soft)]'
-                          : 'border-[var(--success-border)] bg-[var(--success-dim)]',
+                        'min-w-[144px] border-transparent bg-[var(--surface)] px-5 font-bold text-[var(--foreground)]',
                         canJumpToToday ? 'cursor-pointer' : 'cursor-default',
                       )}
                     >
                       {stableMonthPeriod}
-                    </button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
+                    </Button>
+                    <IconButton
+                      size="lg"
+                      label={tr('Next month', 'Keyingi oy', 'Следующий месяц')}
                       onClick={() => onMonthShift?.(1)}
                       disabled={!onMonthShift}
-                      className="min-h-11 min-w-11 rounded-xl border-[var(--border)] bg-[var(--surface-elevated)] px-0 text-[var(--foreground)] hover:border-[var(--border-hover)] hover:bg-[var(--card-hover)] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-white"
+                      className="bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]"
                     >
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M6 3.5 10.5 8 6 12.5" />
                       </svg>
-                    </Button>
+                    </IconButton>
                   </div>
                 </div>
 
-                <div className="hidden rounded-xl border border-[var(--success-border)] bg-[var(--success-soft)] px-4 py-3 lg:block dark:border-[var(--success-border)] dark:bg-[var(--success-dim)]">
+                <div className="hidden rounded-[18px] bg-[var(--accent-soft)] p-[18px] lg:block">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="ui-card-label text-[var(--success-text)] dark:text-white">
+                      <p className="ui-card-label">
                         {lt('Completion To Date')}
                       </p>
-                      <p className="mt-2 text-sm font-medium text-[var(--foreground)] dark:text-white">
+                      <p className="mt-2 text-[13px] font-medium text-[var(--muted-strong)]">
                         {completionSummaryText}
                       </p>
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <p className="text-[11px] font-semibold tabular-nums text-[var(--success-text)] dark:text-white">
+                      <p className="text-[11px] font-semibold tabular-nums text-[var(--muted)]">
                         {counts.submitted}/{elapsedWorkingDays || 0}
                       </p>
-                      <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--success-text)]">
+                      <p className="mt-1 text-[22px] font-bold tracking-[-0.03em] tabular-nums text-[var(--foreground)]">
                         {monthProgressPct.toFixed(0)}%
                       </p>
                     </div>
@@ -925,38 +797,38 @@ export function MemberMonthlyUpdateCalendarBoard({
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(290px,330px)] lg:items-start">
+              <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_minmax(290px,330px)] lg:items-start">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-                  <Badge variant="success" dot className="w-full justify-start rounded-xl px-3.5 py-2 text-[10px] uppercase tracking-[0.18em] sm:w-auto">
+                  <Badge variant="success" dot className="w-full justify-start sm:w-auto">
                     {counts.submitted} {tr('Updated', 'Yangilangan', 'Обновлено')}
                   </Badge>
-                  <Badge variant="danger" dot className="w-full justify-start rounded-xl px-3.5 py-2 text-[10px] uppercase tracking-[0.18em] sm:w-auto">
+                  <Badge variant="danger" dot className="w-full justify-start sm:w-auto">
                     {counts.missing} {tr('Missed', 'Otib yuborilgan', 'Пропущено')}
                   </Badge>
-                  <Badge variant="secondary" className="w-full justify-start rounded-xl px-3.5 py-2 text-[10px] uppercase tracking-[0.18em] sm:w-auto">
+                  <Badge variant="secondary" className="w-full justify-start sm:w-auto">
                     {attentionDays} {tr('Attention', "E'tibor", 'Внимание')}
                   </Badge>
-                  <Badge variant="secondary" className="col-span-2 w-full justify-start rounded-xl px-3.5 py-2 text-[10px] uppercase tracking-[0.18em] sm:col-span-1 sm:w-auto">
+                  <Badge variant="secondary" className="col-span-2 w-full min-w-0 justify-start sm:col-span-1 sm:w-auto">
                     <span className="truncate">{tr('Next', 'Keyingi', 'Следующий')}: {nextDayLabel}</span>
                   </Badge>
                 </div>
 
-                <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-soft)] px-4 py-3 lg:hidden dark:border-[var(--success-border)] dark:bg-[var(--success-dim)]">
+                <div className="rounded-[18px] bg-[var(--accent-soft)] p-[18px] lg:hidden">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="ui-card-label text-[var(--success-text)] dark:text-white">
+                      <p className="ui-card-label">
                         {lt('Completion To Date')}
                       </p>
-                      <p className="mt-2 text-sm font-medium text-[var(--foreground)] dark:text-white">
+                      <p className="mt-2 text-[13px] font-medium text-[var(--muted-strong)]">
                         {completionSummaryText}
                       </p>
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <p className="text-[11px] font-semibold tabular-nums text-[var(--success-text)] dark:text-white">
+                      <p className="text-[11px] font-semibold tabular-nums text-[var(--muted)]">
                         {counts.submitted}/{elapsedWorkingDays || 0}
                       </p>
-                      <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--success-text)]">
+                      <p className="mt-1 text-[22px] font-bold tracking-[-0.03em] tabular-nums text-[var(--foreground)]">
                         {monthProgressPct.toFixed(0)}%
                       </p>
                     </div>
@@ -969,13 +841,13 @@ export function MemberMonthlyUpdateCalendarBoard({
               </div>
             </div>
 
-            <div className="calendar-board-scroll mt-4 -mx-2 px-2 pb-3 sm:mx-0 sm:px-0 sm:pb-1">
+            <div className="calendar-board-scroll -mx-2 px-2 pb-3 sm:mx-0 sm:px-0 sm:pb-1">
               <div className="min-w-[736px] pr-1 sm:min-w-[768px]">
                 <div className="grid grid-cols-7 gap-2">
                   {weekdayLabels.map((label) => (
                     <div
                       key={label}
-                      className="cal-weekday-header rounded-full border px-3 py-3 text-center text-[10px] font-bold uppercase tracking-[0.26em]"
+                      className="rounded-[11px] bg-[var(--muted-surface)] px-3 py-2.5 text-center text-xs font-medium text-[var(--muted)]"
                     >
                       {lt(label)}
                     </div>
@@ -990,13 +862,14 @@ export function MemberMonthlyUpdateCalendarBoard({
                           return (
                             <div
                               key={`empty-${weekIndex}-${dayIndex}`}
-                              className="cal-day-neutral min-h-28.5 rounded-xl border border-dashed opacity-40"
+                              className="min-h-[152px] rounded-[18px] bg-[var(--border-subtle)] opacity-60"
                               aria-hidden="true"
                             />
                           )
                         }
 
                         const entryCount = getEntryCount(day)
+                        const dayTone = getDayTone(day)
                         const isSelected = selectedKey === day.date
                         const isToday = day.date === todayKey
                         const attendanceRec = attendanceByDate.get(day.date)
@@ -1018,28 +891,27 @@ export function MemberMonthlyUpdateCalendarBoard({
                             }}
                             aria-pressed={isSelected}
                             className={cn(
-                              'group relative flex min-h-[152px] min-w-0 flex-col overflow-hidden rounded-xl border px-3 py-2.5 text-left transition-all duration-200',
+                              'group relative flex min-h-[152px] min-w-0 flex-col overflow-hidden rounded-[18px] px-3 py-3 text-left transition-all duration-200',
                               showTimePanel && 'min-h-[164px]',
-                              getDaySurfaceClass(day),
+                              toneSurface[dayTone],
+                              isToday && !isSelected && 'bg-[var(--blue-dim)]',
                               isSelected
-                                ? 'border-violet-400/65 ring-2 ring-violet-400/55 ring-offset-2 ring-offset-[var(--background)]'
-                                : 'hover:-translate-y-[1px] hover:border-white/14',
-                              isToday && !isSelected && 'border-sky-400 bg-[linear-gradient(180deg,rgba(239,246,255,0.98),rgba(219,234,254,0.92))] dark:border-[var(--border)] dark:bg-transparent',
+                                ? 'ring-2 ring-[var(--violet-text)] ring-offset-2 ring-offset-[var(--surface)]'
+                                : 'hover:-translate-y-[1px] hover:shadow-[var(--elev-sm)]',
                             )}
                             title={`${isSelected ? `${tr('Selected', 'Tanlangan', 'Выбрано')}: ` : ''}${formatLongDate(day.date)}: ${getStatusLabel(day.status, day)}`}
                           >
-                            <span className={cn('absolute inset-x-3.5 top-0 h-[2px] rounded-full', getDayAccentClass(day))} />
-                            <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),transparent_42%)] opacity-0 transition group-hover:opacity-100" />
+                            <span className={cn('absolute inset-x-4 top-0 h-[3px] rounded-b-full', toneDot[dayTone])} />
 
                             <div className="relative flex items-start justify-between gap-3">
                               <div>
-                                <p className={cn('text-[10px] font-bold uppercase tracking-[0.24em] opacity-60 dark:opacity-100', getDayTextClass(day))}>
+                                <p className={cn('text-[11px] font-semibold uppercase tracking-[0.06em]', toneText[dayTone])}>
                                   {getBoardWeekday(day)}
                                 </p>
                                 <p
                                   className={cn(
-                                    'mt-1.5 text-[1.5rem] font-semibold leading-none tabular-nums tracking-tight dark:text-white',
-                                    day.status === 'submitted' || day.status === 'missing' ? 'text-[var(--foreground)]' : 'text-[var(--foreground)]/82',
+                                    'mt-1.5 text-[24px] font-bold leading-none tabular-nums tracking-[-0.03em]',
+                                    day.status === 'submitted' || day.status === 'missing' ? 'text-[var(--foreground)]' : 'text-[var(--muted-strong)]',
                                   )}
                                 >
                                   {day.day}
@@ -1048,13 +920,13 @@ export function MemberMonthlyUpdateCalendarBoard({
 
                               <div className="flex flex-col items-end gap-1.5">
                                 {entryCount > 0 ? (
-                                  <span className="ui-card-label inline-flex min-w-7 items-center justify-center rounded-full border border-[var(--border)] bg-white/80 px-2 py-0.75 tabular-nums text-[var(--muted-strong)] dark:border-white/10 dark:bg-white/[0.06] dark:text-white">
+                                  <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-[var(--surface)] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[var(--muted-strong)]">
                                     {entryCount}x
                                   </span>
                                 ) : null}
                                 {isToday ? (
-                                  <span className="grid h-6 w-6 place-items-center rounded-full border border-sky-400 bg-white dark:border-sky-400/30 dark:bg-sky-500/10">
-                                    <span className="h-2.5 w-2.5 rounded-full bg-sky-500 dark:h-2 dark:w-2 dark:bg-sky-300" />
+                                  <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--surface)]">
+                                    <span className="h-2 w-2 rounded-full bg-[var(--blue-text)]" />
                                   </span>
                                 ) : null}
                               </div>
@@ -1063,16 +935,16 @@ export function MemberMonthlyUpdateCalendarBoard({
                             {showTimePanel ? (
                               <div className="relative mt-3 w-full max-w-[112px] self-center space-y-1.5 text-center">
                                 <div className="grid grid-cols-2 gap-1.5">
-                                  <div className="rounded-xl border border-[var(--border)] bg-white/85 px-2 py-1.5 dark:border-white/10 dark:bg-white/[0.04]">
-                                    <p className="ui-card-label text-[var(--muted)] dark:text-white">
+                                  <div className="rounded-[11px] bg-[var(--surface)] px-2 py-1.5">
+                                    <p className="ui-card-label text-[var(--muted)]">
                                       {tr('In', 'Kirish', 'Вход')}
                                     </p>
-                                    <p className="mt-1 text-[11px] font-semibold tabular-nums text-[var(--foreground)] dark:text-white">
+                                    <p className="mt-1 text-[11px] font-semibold tabular-nums text-[var(--foreground)]">
                                       {formatWorkTime(effectiveCheckIn)}
                                     </p>
                                   </div>
-                                  <div className="rounded-xl border border-[var(--border)] bg-white/85 px-2 py-1.5 dark:border-white/10 dark:bg-white/[0.04]">
-                                    <p className="ui-card-label flex items-center justify-center gap-1 text-[var(--muted)] dark:text-white">
+                                  <div className="rounded-[11px] bg-[var(--surface)] px-2 py-1.5">
+                                    <p className="ui-card-label flex items-center justify-center gap-1 text-[var(--muted)]">
                                       <span>{tr('Out', 'Chiqish', 'Выход')}</span>
                                     </p>
                                     {isCheckoutMissing ? (
@@ -1084,13 +956,13 @@ export function MemberMonthlyUpdateCalendarBoard({
                                         🚷
                                       </p>
                                     ) : (
-                                      <p className="mt-1 text-[11px] font-semibold tabular-nums text-[var(--foreground)] dark:text-white">
+                                      <p className="mt-1 text-[11px] font-semibold tabular-nums text-[var(--foreground)]">
                                         {formatWorkTime(effectiveCheckOut)}
                                       </p>
                                     )}
                                   </div>
                                 </div>
-                                <p className="ui-helper font-medium uppercase tracking-[0.12em] text-[var(--muted-strong)] dark:text-white">
+                                <p className="text-[11px] font-semibold tabular-nums text-[var(--muted-strong)]">
                                   {getWorkedDurationLabel(effectiveDay)}
                                 </p>
                               </div>
@@ -1099,15 +971,15 @@ export function MemberMonthlyUpdateCalendarBoard({
                             <div className={cn('relative mt-auto pt-2', showTimePanel && 'flex flex-col items-center text-center')}>
                               <span
                                 className={cn(
-                                  'ui-card-label inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-0.75 tracking-[0.14em]',
+                                  'inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
                                   showTimePanel && 'justify-center',
-                                  getDayPillClass(day),
+                                  getDayPillClass(dayTone),
                                 )}
                               >
-                                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', getDayDotClass(day))} />
+                                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', toneDot[dayTone])} />
                                 {getCalendarCellStatusLabel(day.status, day)}
                               </span>
-                              <p className={cn('ui-table-meta mt-1.5 text-[var(--muted-strong)] dark:text-white', showTimePanel && 'max-w-[112px] text-center')}>
+                              <p className={cn('mt-1.5 text-[11.5px] leading-[1.35] text-[var(--muted-strong)]', showTimePanel && 'max-w-[112px] text-center')}>
                                 {getCalendarCellHint(day)}
                               </p>
                             </div>
@@ -1120,25 +992,25 @@ export function MemberMonthlyUpdateCalendarBoard({
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-[var(--muted)]">
+            <div className="flex flex-wrap items-center gap-3 text-[12px] text-[var(--muted)]">
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-violet-400" />
+                <span className="h-2 w-2 rounded-full bg-[var(--violet-text)]" />
                 {tr('Selected', 'Tanlangan', 'Выбрано')}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-sky-300" />
+                <span className="h-2 w-2 rounded-full bg-[var(--blue-text)]" />
                 {tr('Today', 'Bugun', 'Сегодня')}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm border border-[var(--success-border)] bg-[var(--success-text)]" />
+                <span className="h-2 w-2 rounded-full bg-[var(--success-text)]" />
                 {tr('Updated', 'Yangilangan', 'Обновлено')}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm border border-rose-500/30 bg-rose-500/20" />
+                <span className="h-2 w-2 rounded-full bg-[var(--danger-text)]" />
                 {tr('Missed', 'Otib yuborilgan', 'Пропущено')}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm border border-[var(--border)] bg-white dark:border-white/10 dark:bg-white/4" />
+                <span className="h-2 w-2 rounded-full bg-[var(--border-hover)]" />
                 {tr('Open or upcoming', 'Ochiq yoki yaqinlashayotgan', 'Открыто или скоро')}
               </span>
             </div>

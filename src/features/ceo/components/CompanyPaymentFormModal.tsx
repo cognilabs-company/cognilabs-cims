@@ -1,7 +1,9 @@
 import { Button } from '../../../shared/ui/button'
+import { Checkbox } from '../../../shared/ui/checkbox'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
 import { Modal } from '../../../shared/ui/modal'
+import { Textarea } from '../../../shared/ui/textarea'
 import { useTranslation } from 'react-i18next'
 
 export type CompanyPaymentFormValues = {
@@ -57,15 +59,15 @@ export function CompanyPaymentFormModal({
         </>
       }
     >
-      <div className="grid gap-4">
+      <div className="grid gap-[18px]">
         <Label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('ceo.recurring.form.title')}</span>
+          <span className="ui-input-label">{t('ceo.recurring.form.title')}</span>
           <Input value={values.title} onChange={(event) => onChange('title', event.target.value)} />
         </Label>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-[18px] md:grid-cols-3">
           <Label className="grid gap-2">
-            <span className="text-xs font-medium text-[var(--foreground)]">{t('ceo.recurring.form.amount')}</span>
+            <span className="ui-input-label">{t('ceo.recurring.form.amount')}</span>
             <Input
               type="number"
               min="0"
@@ -75,7 +77,7 @@ export function CompanyPaymentFormModal({
           </Label>
 
           <Label className="grid gap-2">
-            <span className="text-xs font-medium text-[var(--foreground)]">{t('ceo.recurring.form.payment_day')}</span>
+            <span className="ui-input-label">{t('ceo.recurring.form.payment_day')}</span>
             <Input
               type="number"
               min="1"
@@ -86,7 +88,7 @@ export function CompanyPaymentFormModal({
           </Label>
 
           <Label className="grid gap-2">
-            <span className="text-xs font-medium text-[var(--foreground)]">{t('ceo.recurring.form.payment_time')}</span>
+            <span className="ui-input-label">{t('ceo.recurring.form.payment_time')}</span>
             <Input
               type="time"
               value={values.paymentTime}
@@ -96,23 +98,21 @@ export function CompanyPaymentFormModal({
         </div>
 
         <Label className="grid gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)]">{t('ceo.recurring.form.note')}</span>
-          <textarea
+          <span className="ui-input-label">{t('ceo.recurring.form.note')}</span>
+          <Textarea
             value={values.note}
             onChange={(event) => onChange('note', event.target.value)}
             rows={4}
-            className="min-h-24 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3 text-sm text-[var(--foreground)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)] outline-none transition focus:border-[var(--border-hover)] focus:bg-[var(--input-surface-hover)]"
           />
         </Label>
 
-        <Label className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--input-surface)] px-4 py-3 shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-hover)] hover:bg-[var(--input-surface-hover)]">
-          <input
-            type="checkbox"
+        <Label className="flex cursor-pointer items-center gap-3 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5 transition-colors hover:bg-[var(--blue-dim)]">
+          <Checkbox
+            size="sm"
             checked={values.isActive}
             onChange={(event) => onChange('isActive', event.target.checked)}
-            className="h-4 w-4 rounded border border-[var(--border)] accent-blue-500 dark:border-white/10"
           />
-          <span className="text-xs text-[var(--muted-strong)]">{t('ceo.recurring.form.active')}</span>
+          <span className="text-sm font-medium text-[var(--foreground)]">{t('ceo.recurring.form.active')}</span>
         </Label>
       </div>
     </Modal>

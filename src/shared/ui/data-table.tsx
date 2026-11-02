@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { translateCurrent, translateCurrentLiteral } from '../i18n/translations'
 import { cn } from '../lib/cn'
-import { Button } from './button'
 
 type Column<T> = {
   key: string
@@ -47,12 +46,21 @@ function getColumnStyle<T>(column: Column<T>) {
   }
 }
 
-function getVisiblePageItems(totalPages: number) {
-  if (totalPages <= 6) {
+function getVisiblePageItems(totalPages: number, currentPage: number) {
+  if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1)
   }
 
-  return [1, 2, 3, 'ellipsis', totalPages - 1, totalPages] as const
+  const items: Array<number | 'ellipsis'> = [1]
+  const start = Math.max(2, currentPage - 1)
+  const end = Math.min(totalPages - 1, currentPage + 1)
+
+  if (start > 2) items.push('ellipsis')
+  for (let page = start; page <= end; page += 1) items.push(page)
+  if (end < totalPages - 1) items.push('ellipsis')
+  items.push(totalPages)
+
+  return items
 }
 
 function ChevronLeft() {
@@ -71,6 +79,9 @@ function ChevronRight() {
   )
 }
 
+const pagerButton =
+  'inline-flex h-9 items-center justify-center gap-1 rounded-[11px] px-3 text-[13px] font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40'
+
 export function DataTable<T>({
   caption,
   columns,
@@ -80,6 +91,7 @@ export function DataTable<T>({
   pageSize = 75,
   initialPage = 1,
   zebra = false,
+  compact = false,
   onRowClick,
   onPageChange,
   disableAutoResetPage = false,
@@ -120,7 +132,10 @@ export function DataTable<T>({
   const startIndex = (currentPage - 1) * effectivePageSize
   const endIndex = Math.min(startIndex + effectivePageSize, rows.length)
   const visibleRows = useMemo(() => rows.slice(startIndex, endIndex), [endIndex, rows, startIndex])
-  const visiblePageItems = useMemo(() => getVisiblePageItems(totalPages), [totalPages])
+  const visiblePageItems = useMemo(
+    () => getVisiblePageItems(totalPages, currentPage),
+    [totalPages, currentPage],
+  )
 
   if (rows.length === 0) {
     return <>{emptyState ?? null}</>
@@ -136,18 +151,20 @@ export function DataTable<T>({
         className,
       )}
     >
-      <div className={cn('overflow-x-auto custom-scrollbar-visible', fillHeight && 'flex-1')}>
-        <table className="w-full min-w-max border-collapse text-sm">
+      <div className={cn('custom-scrollbar-visible overflow-x-auto', fillHeight && 'flex-1')}>
+        <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
           {localizedCaption ? <caption className="sr-only">{localizedCaption}</caption> : null}
 
           <thead>
-            <tr className="border-b border-[var(--border)] transition-colors">
-              {columns.map((col) => (
+            <tr>
+              {columns.map((col, index) => (
                 <th
                   key={col.key}
                   style={getColumnStyle(col)}
                   className={cn(
-                    'h-12 px-4 text-left align-middle font-bold text-[11px] uppercase tracking-[0.12em] text-[var(--muted-strong)] whitespace-nowrap',
+                    'bg-[var(--muted-surface)] px-3 py-2.5 text-left align-middle text-xs font-medium whitespace-nowrap text-[var(--muted)]',
+                    index === 0 && 'rounded-l-[12px] pl-3.5',
+                    index === columns.length - 1 && 'rounded-r-[12px] pr-3.5',
                     alignClassName[col.align ?? 'left'],
                   )}
                 >
@@ -157,7 +174,7 @@ export function DataTable<T>({
             </tr>
           </thead>
 
-          <tbody className="[&_tr:last-child]:border-0">
+          <tbody>
             {visibleRows.map((row, rowIndex) => {
               const isEven = rowIndex % 2 === 0
 
@@ -167,8 +184,8 @@ export function DataTable<T>({
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   data-row-key={getRowKey(row)}
                   className={cn(
-                    'border-b border-[var(--border)] transition-colors hover:bg-[var(--accent-soft)]',
-                    zebra && isEven && 'bg-white/[0.012]',
+                    'transition-colors hover:bg-[var(--card-hover)]',
+                    zebra && isEven && 'bg-[var(--muted-surface)]/60',
                     onRowClick && 'cursor-pointer',
                   )}
                 >
@@ -177,7 +194,8 @@ export function DataTable<T>({
                       key={col.key}
                       style={getColumnStyle(col)}
                       className={cn(
-                        'p-4 align-middle text-[var(--foreground)]',
+                        'border-b border-[var(--border-subtle)] px-3 align-middle text-[13.5px] text-[var(--foreground)]',
+                        compact ? 'py-2' : 'py-3',
                         alignClassName[col.align ?? 'left'],
                       )}
                     >
@@ -192,8 +210,8 @@ export function DataTable<T>({
       </div>
 
       {totalPages > 1 ? (
-        <div className="flex items-center justify-end space-x-2 py-4 px-2">
-          <div className="flex-1 text-xs text-[var(--muted)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-4">
+          <div className="text-xs text-[var(--muted)]">
             {translateCurrent('common.results_range', '{{start}}-{{end}} of {{total}} results', {
               start: startIndex + 1,
               end: endIndex,
@@ -201,58 +219,51 @@ export function DataTable<T>({
             })}
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="secondary"
-              size="sm"
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
-              className="h-8 px-2"
+              className={cn(pagerButton, 'text-[var(--muted-strong)] hover:bg-[var(--input-surface)]')}
             >
               <ChevronLeft />
-              <span className="ml-1 text-xs font-medium">Prev</span>
-            </Button>
+              {translateCurrent('common.prev', 'Prev')}
+            </button>
 
-            <div className="flex items-center gap-1">
-              {visiblePageItems.map((item, index) => {
-                if (item === 'ellipsis') {
-                  return (
-                    <span
-                      key={`ellipsis-${index}`}
-                      className="inline-flex h-8 w-8 items-center justify-center text-xs text-[var(--muted)]"
-                    >
-                      ...
-                    </span>
-                  )
-                }
+            {visiblePageItems.map((item, index) =>
+              item === 'ellipsis' ? (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="inline-flex h-9 w-9 items-center justify-center text-xs text-[var(--muted)]"
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setCurrentPage(item)}
+                  className={cn(
+                    'inline-flex h-9 w-9 items-center justify-center rounded-[11px] text-[13px] font-semibold transition-colors',
+                    item === currentPage
+                      ? 'bg-[var(--primary)] text-white'
+                      : 'text-[var(--muted-strong)] hover:bg-[var(--input-surface)]',
+                  )}
+                >
+                  {item}
+                </button>
+              ),
+            )}
 
-                return (
-                  <Button
-                    key={item}
-                    variant={item === currentPage ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className={cn(
-                      'h-8 w-8 p-0 text-xs font-medium',
-                      item === currentPage && 'border border-[var(--border)] bg-[var(--accent-soft)]',
-                    )}
-                    onClick={() => setCurrentPage(item)}
-                  >
-                    {item}
-                  </Button>
-                )
-              })}
-            </div>
-
-            <Button
-              variant="secondary"
-              size="sm"
+            <button
+              type="button"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
-              className="h-8 px-2"
+              className={cn(pagerButton, 'text-[var(--muted-strong)] hover:bg-[var(--input-surface)]')}
             >
-              <span className="mr-1 text-xs font-medium">Next</span>
+              {translateCurrent('common.next', 'Next')}
               <ChevronRight />
-            </Button>
+            </button>
           </div>
         </div>
       ) : null}

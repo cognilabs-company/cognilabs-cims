@@ -13,6 +13,8 @@ import {
 } from '@/components/ai-elements/audio-player'
 import { cn } from '@/shared/lib/cn'
 import { getAccessToken } from '@/shared/lib/session'
+import { IconButton } from '@/shared/ui/icon-button'
+import { Progress } from '@/shared/ui/progress'
 
 interface AudioPlayerCardProps {
   src: string
@@ -20,7 +22,7 @@ interface AudioPlayerCardProps {
 }
 
 const seekBtnClass =
-  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-(--muted-strong) transition hover:bg-(--muted-surface) hover:text-(--foreground) active:scale-95 disabled:opacity-40 disabled:pointer-events-none'
+  'rounded-full text-[var(--muted-strong)] transition-[color,background-color,transform] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)] active:scale-95'
 
 export function AudioPlayerCard({ src, name }: AudioPlayerCardProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -86,70 +88,65 @@ export function AudioPlayerCard({ src, name }: AudioPlayerCardProps) {
   }
 
   return (
-    <div className="rounded-2xl bg-(--surface-elevated) ring-1 ring-white/8">
+    <div className="rounded-[18px] bg-[var(--accent-soft)] p-[14px]">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-(--border) px-5 py-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-(--muted-surface)">
-          <MusicNotesIcon className="h-4 w-4 text-(--muted-strong)" weight="fill" />
+      <div className="flex items-center gap-3 pb-[14px]">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[var(--blue-dim)]">
+          <MusicNotesIcon className="h-4 w-4 text-[var(--blue-text)]" weight="fill" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold leading-snug text-(--foreground)" title={name}>
+          <p className="truncate text-sm leading-snug font-semibold text-[var(--foreground)]" title={name}>
             {name}
           </p>
-          <p className="text-[11px] text-(--muted)">Audio recording</p>
+          <p className="text-[12.5px] text-[var(--muted)]">Audio recording</p>
         </div>
       </div>
 
       {/* Player */}
-      <div className="px-4 py-4">
+      <div className="rounded-[14px] bg-[var(--surface)] px-2.5 py-1.5">
         {isLoading ? (
-          <div className="flex items-center gap-3 py-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-(--muted-surface)">
-              <div
-                className={cn(
-                  'h-full rounded-full bg-(--foreground) transition-all duration-200',
-                  loadProgress === 0 && 'animate-pulse',
-                )}
-                style={{ width: `${Math.max(4, loadProgress)}%` }}
-              />
-            </div>
-            <span className="min-w-10 text-right text-[11px] tabular-nums text-(--muted)">
+          <div className="flex items-center gap-3 px-1 py-3">
+            <Progress
+              value={Math.max(4, loadProgress)}
+              tone="blue"
+              size="xs"
+              className={cn('flex-1', loadProgress === 0 && 'animate-pulse')}
+            />
+            <span className="min-w-10 text-right text-[11.5px] tabular-nums text-[var(--muted)]">
               {loadProgress > 0 ? `${loadProgress}%` : '…'}
             </span>
           </div>
         ) : loadError ? (
-          <p className="py-2 text-[13px] text-(--danger-text)">{loadError}</p>
+          <p className="px-1 py-3 text-sm font-medium text-[var(--danger-text)]">{loadError}</p>
         ) : (
           <AudioPlayer>
             <AudioPlayerElement src={blobUrl!} ref={audioRef} preload="auto" />
             <AudioPlayerControlBar>
               <AudioPlayerPlayButton />
 
-              <button
-                type="button"
-                onClick={() => seek(-10)}
-                className={seekBtnClass}
-                aria-label="10 soniya orqaga"
+              <IconButton
+                label="10 soniya orqaga"
                 title="-10s"
+                className={seekBtnClass}
+                onClick={() => seek(-10)}
               >
                 <span className="relative flex items-center justify-center">
                   <ArrowCounterClockwiseIcon className="h-5 w-5" weight="bold" />
                   <span className="absolute text-[8px] font-bold leading-none" style={{ marginTop: 1 }}>10</span>
                 </span>
-              </button>
+              </IconButton>
 
-              <button
-                type="button"
-                onClick={() => seek(10)}
-                className={seekBtnClass}
-                aria-label="10 soniya oldinga"
+              <IconButton
+                label="10 soniya oldinga"
                 title="+10s"
+                className={seekBtnClass}
+                onClick={() => seek(10)}
               >
                 <span className="relative flex items-center justify-center">
                   <ArrowClockwiseIcon className="h-5 w-5" weight="bold" />
                   <span className="absolute text-[8px] font-bold leading-none" style={{ marginTop: 1 }}>10</span>
                 </span>
-              </button>
+              </IconButton>
 
               <AudioPlayerTimeDisplay />
               <AudioPlayerTimeRange />

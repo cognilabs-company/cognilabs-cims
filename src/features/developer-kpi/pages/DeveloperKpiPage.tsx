@@ -11,6 +11,7 @@ import {
   type BlockedPeriod,
   type Deduction,
   type QualityEvent,
+  type SalaryEstimate,
   type Snapshot,
   type WorkSchedule,
 } from '../../../shared/api/services/developer-kpi.service'
@@ -22,13 +23,20 @@ import { canReadManagedProjects } from '../../../shared/lib/permissions'
 import { useToast } from '../../../shared/toast/useToast'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
-import { Card } from '../../../shared/ui/card'
+import { Card, CardTitle } from '../../../shared/ui/card'
+import { Checkbox } from '../../../shared/ui/checkbox'
+import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
+import { PageHeader } from '../../../shared/ui/page-header'
+import { Progress } from '../../../shared/ui/progress'
 import { SelectField } from '../../../shared/ui/select-field'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
+import { Tabs } from '../../../shared/ui/tabs'
 import { Textarea } from '../../../shared/ui/textarea'
+import { resolveTone, toneText } from '../../../shared/ui/tone'
 
 const TABS = [
   'salary_estimates',
@@ -63,6 +71,24 @@ const now = new Date()
 const DEFAULT_YEAR = now.getFullYear()
 const DEFAULT_MONTH = now.getMonth() + 1
 
+const FILTER_SELECT = 'min-h-9 rounded-[11px] px-3 text-[13px]'
+const DATA_CELL = 'text-[var(--muted-strong)]'
+const PANEL = 'rounded-[18px] bg-[var(--accent-soft)] p-4'
+const CHECK_ROW = 'flex cursor-pointer items-center gap-2.5 text-sm'
+const CHECK_PANEL = 'flex flex-wrap items-center gap-4 rounded-[18px] bg-[var(--muted-surface)] p-3.5'
+
+type StatusVariant = 'secondary' | 'blue' | 'success' | 'warning' | 'danger' | 'violet' | 'lime'
+type KpiTone = 'blue' | 'success' | 'warning' | 'danger'
+
+function statusVariant(status?: string | null): StatusVariant {
+  const tone = resolveTone(status, 'warning')
+  return tone === 'neutral' ? 'secondary' : tone
+}
+
+function kpiTone(score: number): KpiTone {
+  return score >= 90 ? 'success' : score >= 70 ? 'blue' : score >= 50 ? 'warning' : 'danger'
+}
+
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
@@ -71,35 +97,78 @@ function formatKpi(score: number) {
   return `${score.toFixed(1)}%`
 }
 
+function IconWallet() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="6" width="18" height="12" rx="3.5" />
+      <path d="M16.5 12H18" />
+    </svg>
+  )
+}
+
+function IconTrendUp() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 16.5l5.5-5.5 3.5 3.5L20 7.5" />
+      <path d="M20 12V7.5h-4.5" />
+    </svg>
+  )
+}
+
+function IconTrendDown() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 7.5l5.5 5.5 3.5-3.5L20 16.5" />
+      <path d="M20 12v4.5h-4.5" />
+    </svg>
+  )
+}
+
+function IconTarget() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+function IconReceipt() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8z" />
+      <path d="M9.5 9h5M9.5 13h3" />
+    </svg>
+  )
+}
+
 function KpiBadge({ score }: { score: number }) {
-  const variant = score >= 90 ? 'success' : score >= 70 ? 'blue' : score >= 50 ? 'warning' : 'danger'
-  return <Badge variant={variant}>{formatKpi(score)}</Badge>
+  return <Badge variant={kpiTone(score)}>{formatKpi(score)}</Badge>
 }
 
 function KpiBar({ label, score, weight }: { label: string; score: number; weight: string }) {
   const pct = Math.max(0, Math.min(100, score))
-  const color = pct >= 90 ? '#22c55e' : pct >= 70 ? '#3b82f6' : pct >= 50 ? '#f59e0b' : '#ef4444'
+  const tone = kpiTone(pct)
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-(--muted)">{label} <span className="text-(--caption)">({weight})</span></span>
-        <span className="font-semibold" style={{ color }}>{pct.toFixed(1)}%</span>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-[12.5px]">
+        <span className="text-[var(--muted)]">{label} <span className="text-[var(--caption)]">({weight})</span></span>
+        <span className={cn('font-semibold tabular-nums', toneText[tone])}>{pct.toFixed(1)}%</span>
       </div>
-      <div className="h-1.5 rounded-full bg-(--accent-soft) overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-      </div>
+      <Progress value={pct} tone={tone} size="xs" />
     </div>
   )
 }
 
+const FEATURE_STATUS_META: Record<string, { label: string; variant: StatusVariant }> = {
+  planned: { label: 'Planned', variant: 'secondary' },
+  in_progress: { label: 'In Progress', variant: 'blue' },
+  completed: { label: 'Completed', variant: 'warning' },
+  accepted: { label: 'Accepted', variant: 'success' },
+}
+
 function FeatureStatusBadge({ status }: { status: FeatureStatus | string }) {
-  const map: Record<string, { label: string; variant: 'outline' | 'blue' | 'success' | 'warning' | 'danger' }> = {
-    planned: { label: 'Planned', variant: 'outline' },
-    in_progress: { label: 'In Progress', variant: 'blue' },
-    completed: { label: 'Completed', variant: 'warning' },
-    accepted: { label: 'Accepted', variant: 'success' },
-  }
-  const cfg = map[status] ?? { label: status, variant: 'outline' }
+  const cfg = FEATURE_STATUS_META[status] ?? { label: status, variant: 'secondary' as const }
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>
 }
 
@@ -107,10 +176,12 @@ function SeverityBadge({ severity }: { severity: string }) {
   const danger = ['critical_prod_incident', 'critical', 'major_prod_bug'].includes(severity)
   const warning = ['major', 'major_qa_reopen', 'prod_bug'].includes(severity)
   const label = QUALITY_SEVERITY_OPTIONS.find((o) => o.value === severity)?.label ?? severity
-  return <Badge variant={danger ? 'danger' : warning ? 'warning' : 'outline'}>{label}</Badge>
+  return <Badge variant={danger ? 'danger' : warning ? 'warning' : 'secondary'}>{label}</Badge>
 }
 
 // ─── SalaryEstimatesTab ──────────────────────────────────────────────────────
+
+type EstimateRow = { est: SalaryEstimate; userId: number }
 
 function SalaryEstimatesTab({
   year,
@@ -149,16 +220,18 @@ function SalaryEstimatesTab({
 
   const estimate = singleQuery.data
   const list = Array.isArray(estimatesQuery.data) ? estimatesQuery.data : []
+  const estimateRows: EstimateRow[] = list.map((est, index) => ({ est, userId: est.employee_id ?? index }))
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-[18px]">
+      <div className="flex flex-wrap items-center gap-2.5">
         {(isCeo || users.length > 0) && (
           <div className="w-52">
             <SelectField
               value={selectedUserId != null ? String(selectedUserId) : ''}
               onValueChange={(v) => setSelectedUserId(v ? Number(v) : null)}
               options={userOptions}
+              className={FILTER_SELECT}
             />
           </div>
         )}
@@ -166,57 +239,38 @@ function SalaryEstimatesTab({
 
       {/* Single employee detail */}
       {selectedUserId != null && (
-        <div className="space-y-4">
+        <div className="space-y-[18px]">
           {singleQuery.isLoading && <LoadingStateBlock eyebrow="KPI" title="Loading estimate..." />}
           {singleQuery.isError && <ErrorStateBlock eyebrow="Error" title={getApiErrorMessage(singleQuery.error)} />}
           {estimate && (
-            <div className="space-y-4">
+            <div className="space-y-[18px]">
               {/* Salary summary */}
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="grid gap-[18px] sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                 {[
-                  { label: 'Base Salary', value: formatCurrency(estimate.salary.base_salary), tone: 'default' },
-                  { label: 'KPI Bonus', value: formatCurrency(estimate.salary.kpi_bonus), tone: 'success' },
-                  { label: 'Max KPI Fund', value: formatCurrency(estimate.salary.max_kpi_fund), tone: 'default' },
-                  { label: 'Deductions', value: `-${formatCurrency(estimate.salary.approved_deductions)}`, tone: estimate.salary.approved_deductions > 0 ? 'danger' : 'default' },
-                  { label: 'Expected Salary', value: formatCurrency(estimate.salary.expected_salary), tone: 'primary' },
+                  { label: 'Base Salary', value: formatCurrency(estimate.salary.base_salary), icon: <IconWallet />, iconTone: 'blue' as const, solid: false },
+                  { label: 'KPI Bonus', value: formatCurrency(estimate.salary.kpi_bonus), icon: <IconTrendUp />, iconTone: 'success' as const, solid: false },
+                  { label: 'Max KPI Fund', value: formatCurrency(estimate.salary.max_kpi_fund), icon: <IconTarget />, iconTone: 'violet' as const, solid: false },
+                  { label: 'Deductions', value: `-${formatCurrency(estimate.salary.approved_deductions)}`, icon: <IconTrendDown />, iconTone: estimate.salary.approved_deductions > 0 ? ('danger' as const) : ('neutral' as const), solid: false },
+                  { label: 'Expected Salary', value: formatCurrency(estimate.salary.expected_salary), icon: <IconReceipt />, iconTone: 'blue' as const, solid: true },
                 ].map((item) => (
-                  <div
+                  <StatCard
                     key={item.label}
-                    className={cn(
-                      'rounded-xl border p-4 space-y-1',
-                      item.tone === 'primary' ? 'border-(--blue-border) bg-(--blue-soft)' :
-                      item.tone === 'success' ? 'border-emerald-500/20 bg-emerald-500/8' :
-                      item.tone === 'danger' ? 'border-rose-500/20 bg-rose-500/8' :
-                      'border-(--border) bg-(--surface-elevated)',
-                    )}
-                  >
-                    <p className={cn('text-[10px] font-bold uppercase tracking-widest',
-                      item.tone === 'primary' ? 'text-(--blue-text)' :
-                      item.tone === 'success' ? 'text-emerald-400' :
-                      item.tone === 'danger' ? 'text-rose-400' :
-                      'text-(--muted)'
-                    )}>
-                      {item.label}
-                    </p>
-                    <p className={cn('text-xl font-semibold tracking-tight',
-                      item.tone === 'primary' ? 'text-(--blue-text)' :
-                      item.tone === 'success' ? 'text-emerald-400' :
-                      item.tone === 'danger' ? 'text-rose-400' :
-                      'text-(--foreground)'
-                    )}>
-                      {item.value}
-                    </p>
-                  </div>
+                    label={item.label}
+                    value={item.value}
+                    icon={item.icon}
+                    iconTone={item.iconTone}
+                    solid={item.solid}
+                  />
                 ))}
               </div>
 
               {/* KPI breakdown */}
-              <Card className="p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-(--foreground)">KPI Breakdown</h3>
+              <Card className="space-y-[18px]">
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle>KPI Breakdown</CardTitle>
                   <KpiBadge score={estimate.scores.final_kpi} />
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3.5 rounded-[18px] bg-[var(--muted-surface)] p-[18px]">
                   <KpiBar label="Delivery" score={estimate.scores.delivery} weight="35%" />
                   <KpiBar label="Deadline" score={estimate.scores.deadline} weight="20%" />
                   <KpiBar label="Quality" score={estimate.scores.quality} weight="20%" />
@@ -236,44 +290,33 @@ function SalaryEstimatesTab({
           {estimatesQuery.isError && <ErrorStateBlock eyebrow="Error" title={getApiErrorMessage(estimatesQuery.error)} />}
           {estimatesQuery.isSuccess && list.length === 0 && <EmptyStateBlock eyebrow="Empty" title="No salary estimates for this period." />}
           {estimatesQuery.isSuccess && list.length > 0 && (
-            <Card noPadding className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-(--border) text-left">
-                      {['Employee', 'Final KPI', 'Base', 'KPI Bonus', 'Deductions', 'Expected', 'Delivery', 'Deadline', 'Quality', 'Team', 'Discipline'].map((h) => (
-                        <th key={h} className="px-4 py-3 text-[11px] font-semibold text-(--muted) uppercase tracking-wide whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((est, i) => {
-                      const userId = est.employee_id ?? i
-                      const user = users.find((u) => u.id === userId)
-                      const name = est.employee_name ?? (user ? `${user.name} ${user.surname}` : `#${userId}`)
-                      return (
-                        <tr
-                          key={userId}
-                          className="border-b border-(--border) hover:bg-(--surface) transition-colors cursor-pointer"
-                          onClick={() => setSelectedUserId(userId)}
-                        >
-                          <td className="px-4 py-3 font-medium text-(--foreground) whitespace-nowrap">{name}</td>
-                          <td className="px-4 py-3"><KpiBadge score={est.scores.final_kpi} /></td>
-                          <td className="px-4 py-3 text-(--muted)">{formatCurrency(est.salary.base_salary)}</td>
-                          <td className="px-4 py-3 text-emerald-400 font-medium">+{formatCurrency(est.salary.kpi_bonus)}</td>
-                          <td className="px-4 py-3 text-rose-400">{est.salary.approved_deductions > 0 ? `-${formatCurrency(est.salary.approved_deductions)}` : '—'}</td>
-                          <td className="px-4 py-3 font-semibold text-(--foreground)">{formatCurrency(est.salary.expected_salary)}</td>
-                          <td className="px-4 py-3 text-(--muted)">{formatKpi(est.scores.delivery)}</td>
-                          <td className="px-4 py-3 text-(--muted)">{formatKpi(est.scores.deadline)}</td>
-                          <td className="px-4 py-3 text-(--muted)">{formatKpi(est.scores.quality)}</td>
-                          <td className="px-4 py-3 text-(--muted)">{formatKpi(est.scores.team)}</td>
-                          <td className="px-4 py-3 text-(--muted)">{formatKpi(est.scores.discipline)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+            <Card>
+              <DataTable
+                rows={estimateRows}
+                getRowKey={(row: EstimateRow) => String(row.userId)}
+                onRowClick={(row: EstimateRow) => setSelectedUserId(row.userId)}
+                columns={[
+                  {
+                    key: 'employee',
+                    header: 'Employee',
+                    render: (row: EstimateRow) => {
+                      const user = users.find((u) => u.id === row.userId)
+                      const name = row.est.employee_name ?? (user ? `${user.name} ${user.surname}` : `#${row.userId}`)
+                      return <span className="font-medium whitespace-nowrap text-[var(--foreground)]">{name}</span>
+                    },
+                  },
+                  { key: 'final_kpi', header: 'Final KPI', render: (row: EstimateRow) => <KpiBadge score={row.est.scores.final_kpi} /> },
+                  { key: 'base', header: 'Base', render: (row: EstimateRow) => <span className={cn('tabular-nums', DATA_CELL)}>{formatCurrency(row.est.salary.base_salary)}</span> },
+                  { key: 'kpi_bonus', header: 'KPI Bonus', render: (row: EstimateRow) => <span className="font-semibold tabular-nums text-[var(--success-text)]">+{formatCurrency(row.est.salary.kpi_bonus)}</span> },
+                  { key: 'deductions', header: 'Deductions', render: (row: EstimateRow) => <span className="tabular-nums text-[var(--danger-text)]">{row.est.salary.approved_deductions > 0 ? `-${formatCurrency(row.est.salary.approved_deductions)}` : '—'}</span> },
+                  { key: 'expected', header: 'Expected', render: (row: EstimateRow) => <span className="font-semibold tabular-nums text-[var(--foreground)]">{formatCurrency(row.est.salary.expected_salary)}</span> },
+                  { key: 'delivery', header: 'Delivery', render: (row: EstimateRow) => <span className={cn('tabular-nums', DATA_CELL)}>{formatKpi(row.est.scores.delivery)}</span> },
+                  { key: 'deadline', header: 'Deadline', render: (row: EstimateRow) => <span className={cn('tabular-nums', DATA_CELL)}>{formatKpi(row.est.scores.deadline)}</span> },
+                  { key: 'quality', header: 'Quality', render: (row: EstimateRow) => <span className={cn('tabular-nums', DATA_CELL)}>{formatKpi(row.est.scores.quality)}</span> },
+                  { key: 'team', header: 'Team', render: (row: EstimateRow) => <span className={cn('tabular-nums', DATA_CELL)}>{formatKpi(row.est.scores.team)}</span> },
+                  { key: 'discipline', header: 'Discipline', render: (row: EstimateRow) => <span className={cn('tabular-nums', DATA_CELL)}>{formatKpi(row.est.scores.discipline)}</span> },
+                ]}
+              />
             </Card>
           )}
         </div>
@@ -384,15 +427,15 @@ function FeaturesTab({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-[18px]">
+      <div className="flex flex-wrap items-center gap-2.5">
         <div className="w-48">
-          <SelectField value={ownerFilter} onValueChange={setOwnerFilter} options={userOptions} />
+          <SelectField value={ownerFilter} onValueChange={setOwnerFilter} options={userOptions} className={FILTER_SELECT} />
         </div>
         {isCeo && (
-          <Button onClick={() => setShowCreate(true)}>+ New Feature</Button>
+          <Button size="sm" onClick={() => setShowCreate(true)}>+ New Feature</Button>
         )}
-        <Button variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
+        <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
       </div>
 
       {featuresQuery.isLoading && <LoadingStateBlock eyebrow="Features" title="Loading features..." />}
@@ -400,56 +443,67 @@ function FeaturesTab({
       {!featuresQuery.isLoading && features.length === 0 && <EmptyStateBlock eyebrow="Empty" title="No features for this period." />}
 
       {features.length > 0 && (
-        <Card noPadding className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-(--border) text-left">
-                  {['Title', 'Points', 'Owner', 'Status', 'Due Date', 'FE%', 'BE%', 'Locked', 'Actions'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-[11px] font-semibold text-(--muted) uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {features.map((f) => {
+        <Card>
+          <DataTable
+            rows={features}
+            getRowKey={(f: Feature) => String(f.id)}
+            columns={[
+              {
+                key: 'title',
+                header: 'Title',
+                render: (f: Feature) => (
+                  <div className="min-w-0">
+                    <div className="max-w-48 truncate font-medium text-[var(--foreground)]">{f.title}</div>
+                    {f.is_mandatory && <Badge variant="warning" className="mt-1.5">Mandatory</Badge>}
+                  </div>
+                ),
+              },
+              {
+                key: 'points',
+                header: 'Points',
+                render: (f: Feature) => (
+                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-[9px] bg-[var(--blue-dim)] px-1.5 text-xs font-bold tabular-nums text-[var(--blue-text)]">{f.points}</span>
+                ),
+              },
+              {
+                key: 'owner',
+                header: 'Owner',
+                render: (f: Feature) => {
                   const owner = users.find((u) => u.id === f.owner_id)
-                  return (
-                    <tr key={f.id} className="border-b border-(--border) hover:bg-(--surface) transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-(--foreground) max-w-48 truncate">{f.title}</div>
-                        {f.is_mandatory && <span className="text-[10px] text-amber-400 font-semibold">Mandatory</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-(--accent-soft) text-xs font-bold text-(--foreground)">{f.points}</span>
-                      </td>
-                      <td className="px-4 py-3 text-(--muted) whitespace-nowrap">{owner ? `${owner.name} ${owner.surname}` : `#${f.owner_id}`}</td>
-                      <td className="px-4 py-3"><FeatureStatusBadge status={f.status} /></td>
-                      <td className="px-4 py-3 text-(--muted) whitespace-nowrap">{f.due_date ?? '—'}</td>
-                      <td className="px-4 py-3 text-(--muted)">{f.frontend_percent}%</td>
-                      <td className="px-4 py-3 text-(--muted)">{f.backend_percent}%</td>
-                      <td className="px-4 py-3">
-                        {f.is_locked
-                          ? <Badge variant="warning">Locked</Badge>
-                          : <span className="text-(--muted) text-xs">No</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isCeo && f.status !== 'accepted' && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void handleAccept(f)}
-                            disabled={acceptingId === f.id}
-                          >
-                            {acceptingId === f.id ? '...' : 'Accept'}
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                  return <span className={cn('whitespace-nowrap', DATA_CELL)}>{owner ? `${owner.name} ${owner.surname}` : `#${f.owner_id}`}</span>
+                },
+              },
+              { key: 'status', header: 'Status', render: (f: Feature) => <FeatureStatusBadge status={f.status} /> },
+              { key: 'due_date', header: 'Due Date', render: (f: Feature) => <span className={cn('whitespace-nowrap tabular-nums', DATA_CELL)}>{f.due_date ?? '—'}</span> },
+              { key: 'frontend_percent', header: 'FE%', render: (f: Feature) => <span className={cn('tabular-nums', DATA_CELL)}>{f.frontend_percent}%</span> },
+              { key: 'backend_percent', header: 'BE%', render: (f: Feature) => <span className={cn('tabular-nums', DATA_CELL)}>{f.backend_percent}%</span> },
+              {
+                key: 'locked',
+                header: 'Locked',
+                render: (f: Feature) => (
+                  f.is_locked
+                    ? <Badge variant="warning">Locked</Badge>
+                    : <span className="text-xs text-[var(--muted)]">No</span>
+                ),
+              },
+              {
+                key: 'actions',
+                header: 'Actions',
+                render: (f: Feature) => (
+                  isCeo && f.status !== 'accepted' ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void handleAccept(f)}
+                      disabled={acceptingId === f.id}
+                    >
+                      {acceptingId === f.id ? '...' : 'Accept'}
+                    </Button>
+                  ) : null
+                ),
+              },
+            ]}
+          />
         </Card>
       )}
 
@@ -523,14 +577,14 @@ function FeaturesTab({
               />
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={form.is_mandatory} onChange={(e) => setForm((f) => ({ ...f, is_mandatory: e.target.checked }))} />
-              <span className="text-(--foreground)">Mandatory</span>
+          <div className={CHECK_PANEL}>
+            <label className={CHECK_ROW}>
+              <Checkbox size="sm" checked={form.is_mandatory} onChange={(e) => setForm((f) => ({ ...f, is_mandatory: e.target.checked }))} />
+              <span className="text-[var(--foreground)]">Mandatory</span>
             </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={form.lock_now} onChange={(e) => setForm((f) => ({ ...f, lock_now: e.target.checked }))} />
-              <span className="text-(--foreground)">Lock immediately</span>
+            <label className={CHECK_ROW}>
+              <Checkbox size="sm" checked={form.lock_now} onChange={(e) => setForm((f) => ({ ...f, lock_now: e.target.checked }))} />
+              <span className="text-[var(--foreground)]">Lock immediately</span>
             </label>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -592,13 +646,13 @@ function DeductionsTab({
   )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-[18px]">
       {isCeo && (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="w-48">
-            <SelectField value={employeeFilter} onValueChange={setEmployeeFilter} options={userOptions} />
+            <SelectField value={employeeFilter} onValueChange={setEmployeeFilter} options={userOptions} className={FILTER_SELECT} />
           </div>
-          <Button variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
+          <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
         </div>
       )}
 
@@ -607,47 +661,40 @@ function DeductionsTab({
       {!deductionsQuery.isLoading && deductions.length === 0 && <EmptyStateBlock eyebrow="Empty" title="No deductions for this period." />}
 
       {deductions.length > 0 && (
-        <Card noPadding className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-(--border) text-left">
-                  {['Employee', 'Type', 'Amount', 'Reason', 'Status', ...(isCeo ? ['Actions'] : [])].map((h) => (
-                    <th key={h} className="px-4 py-3 text-[11px] font-semibold text-(--muted) uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {deductions.map((d) => {
+        <Card>
+          <DataTable
+            rows={deductions}
+            getRowKey={(d: Deduction) => String(d.id)}
+            columns={[
+              {
+                key: 'employee',
+                header: 'Employee',
+                render: (d: Deduction) => {
                   const user = users.find((u) => u.id === d.employee_id)
                   const name = user ? `${user.name} ${user.surname}` : `#${d.employee_id}`
-                  return (
-                    <tr key={d.id} className="border-b border-(--border) hover:bg-(--surface) transition-colors">
-                      <td className="px-4 py-3 font-medium text-(--foreground) whitespace-nowrap">{name}</td>
-                      <td className="px-4 py-3 text-(--muted)">{d.type.replace(/_/g, ' ')}</td>
-                      <td className="px-4 py-3 font-semibold text-rose-400">-{formatCurrency(d.amount)}</td>
-                      <td className="px-4 py-3 text-(--muted) max-w-48 truncate">{d.reason ?? '—'}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={d.status === 'approved' ? 'success' : d.status === 'rejected' ? 'danger' : 'warning'}>
-                          {d.status}
-                        </Badge>
-                      </td>
-                      {isCeo && (
-                        <td className="px-4 py-3">
-                          {d.status === 'pending' && (
-                            <div className="flex gap-1.5">
-                              <Button size="sm" onClick={() => void handleApprove(d, 'approved')}>Approve</Button>
-                              <Button size="sm" variant="secondary" onClick={() => void handleApprove(d, 'rejected')}>Reject</Button>
-                            </div>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                  return <span className="font-medium whitespace-nowrap text-[var(--foreground)]">{name}</span>
+                },
+              },
+              { key: 'type', header: 'Type', render: (d: Deduction) => <span className={DATA_CELL}>{d.type.replace(/_/g, ' ')}</span> },
+              { key: 'amount', header: 'Amount', render: (d: Deduction) => <span className="font-semibold tabular-nums text-[var(--danger-text)]">-{formatCurrency(d.amount)}</span> },
+              { key: 'reason', header: 'Reason', render: (d: Deduction) => <span className={cn('block max-w-48 truncate', DATA_CELL)}>{d.reason ?? '—'}</span> },
+              { key: 'status', header: 'Status', render: (d: Deduction) => <Badge variant={statusVariant(d.status)}>{d.status}</Badge> },
+              ...(isCeo
+                ? [{
+                    key: 'actions',
+                    header: 'Actions',
+                    render: (d: Deduction) => (
+                      d.status === 'pending' ? (
+                        <div className="flex gap-1.5">
+                          <Button size="sm" variant="success" onClick={() => void handleApprove(d, 'approved')}>Approve</Button>
+                          <Button size="sm" variant="danger" onClick={() => void handleApprove(d, 'rejected')}>Reject</Button>
+                        </div>
+                      ) : null
+                    ),
+                  }]
+                : []),
+            ]}
+          />
         </Card>
       )}
     </div>
@@ -697,17 +744,17 @@ function SnapshotsTab({
   )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-[18px]">
       {isCeo && (
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="w-48">
-            <SelectField value={freezeUserId} onValueChange={setFreezeUserId} options={userOptions} />
+            <SelectField value={freezeUserId} onValueChange={setFreezeUserId} options={userOptions} className={FILTER_SELECT} />
           </div>
-          <Button onClick={() => void handleFreeze()}>
+          <Button size="sm" onClick={() => void handleFreeze()}>
             Freeze Snapshot
           </Button>
-          <Button variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
-          <span className="text-xs text-(--muted)">Auto-freeze: last day of month at 23:55</span>
+          <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
+          <span className="text-[12.5px] text-[var(--muted)]">Auto-freeze: last day of month at 23:55</span>
         </div>
       )}
 
@@ -716,35 +763,28 @@ function SnapshotsTab({
       {!snapshotsQuery.isLoading && snapshots.length === 0 && <EmptyStateBlock eyebrow="Empty" title="No frozen snapshots for this period." />}
 
       {snapshots.length > 0 && (
-        <Card noPadding className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-(--border) text-left">
-                  {['Employee', 'Final KPI', 'Base', 'KPI Bonus', 'Deductions', 'Expected', 'Frozen At'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-[11px] font-semibold text-(--muted) uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {snapshots.map((s) => {
+        <Card>
+          <DataTable
+            rows={snapshots}
+            getRowKey={(s: Snapshot) => String(s.id)}
+            columns={[
+              {
+                key: 'employee',
+                header: 'Employee',
+                render: (s: Snapshot) => {
                   const user = users.find((u) => u.id === s.employee_id)
                   const name = user ? `${user.name} ${user.surname}` : `#${s.employee_id}`
-                  return (
-                    <tr key={s.id} className="border-b border-(--border) hover:bg-(--surface) transition-colors">
-                      <td className="px-4 py-3 font-medium text-(--foreground) whitespace-nowrap">{name}</td>
-                      <td className="px-4 py-3"><KpiBadge score={s.final_kpi} /></td>
-                      <td className="px-4 py-3 text-(--muted)">{formatCurrency(s.base_salary)}</td>
-                      <td className="px-4 py-3 text-emerald-400">+{formatCurrency(s.kpi_bonus)}</td>
-                      <td className="px-4 py-3 text-rose-400">{s.approved_deductions > 0 ? `-${formatCurrency(s.approved_deductions)}` : '—'}</td>
-                      <td className="px-4 py-3 font-semibold text-(--foreground)">{formatCurrency(s.expected_salary)}</td>
-                      <td className="px-4 py-3 text-(--muted) text-xs whitespace-nowrap">{new Date(s.frozen_at).toLocaleString()}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                  return <span className="font-medium whitespace-nowrap text-[var(--foreground)]">{name}</span>
+                },
+              },
+              { key: 'final_kpi', header: 'Final KPI', render: (s: Snapshot) => <KpiBadge score={s.final_kpi} /> },
+              { key: 'base', header: 'Base', render: (s: Snapshot) => <span className={cn('tabular-nums', DATA_CELL)}>{formatCurrency(s.base_salary)}</span> },
+              { key: 'kpi_bonus', header: 'KPI Bonus', render: (s: Snapshot) => <span className="font-semibold tabular-nums text-[var(--success-text)]">+{formatCurrency(s.kpi_bonus)}</span> },
+              { key: 'deductions', header: 'Deductions', render: (s: Snapshot) => <span className="tabular-nums text-[var(--danger-text)]">{s.approved_deductions > 0 ? `-${formatCurrency(s.approved_deductions)}` : '—'}</span> },
+              { key: 'expected', header: 'Expected', render: (s: Snapshot) => <span className="font-semibold tabular-nums text-[var(--foreground)]">{formatCurrency(s.expected_salary)}</span> },
+              { key: 'frozen_at', header: 'Frozen At', render: (s: Snapshot) => <span className="text-xs whitespace-nowrap tabular-nums text-[var(--muted)]">{new Date(s.frozen_at).toLocaleString()}</span> },
+            ]}
+          />
         </Card>
       )}
     </div>
@@ -835,13 +875,13 @@ function QualityEventsTab({
   )
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-[18px]">
+      <div className="flex flex-wrap items-center gap-2.5">
         <div className="w-48">
-          <SelectField value={employeeFilter} onValueChange={setEmployeeFilter} options={userOptions} />
+          <SelectField value={employeeFilter} onValueChange={setEmployeeFilter} options={userOptions} className={FILTER_SELECT} />
         </div>
-        {isCeo && <Button onClick={() => setShowCreate(true)}>+ New Event</Button>}
-        <Button variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
+        {isCeo && <Button size="sm" onClick={() => setShowCreate(true)}>+ New Event</Button>}
+        <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
       </div>
 
       {eventsQuery.isLoading && <LoadingStateBlock eyebrow="Quality" title="Loading quality events..." />}
@@ -849,36 +889,29 @@ function QualityEventsTab({
       {!eventsQuery.isLoading && events.length === 0 && <EmptyStateBlock eyebrow="Empty" title="No quality events for this period." />}
 
       {events.length > 0 && (
-        <Card noPadding className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-(--border) text-left">
-                  {['Title', 'Employee', 'Severity', 'Source', 'Date', 'Confirmed', 'Duplicate', 'External'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-[11px] font-semibold text-(--muted) uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev) => {
+        <Card>
+          <DataTable
+            rows={events}
+            getRowKey={(ev: QualityEvent) => String(ev.id)}
+            columns={[
+              { key: 'title', header: 'Title', render: (ev: QualityEvent) => <span className="block max-w-48 truncate font-medium text-[var(--foreground)]">{ev.title}</span> },
+              {
+                key: 'employee',
+                header: 'Employee',
+                render: (ev: QualityEvent) => {
                   const user = users.find((u) => u.id === ev.employee_id)
                   const name = user ? `${user.name} ${user.surname}` : `#${ev.employee_id}`
-                  return (
-                    <tr key={ev.id} className="border-b border-(--border) hover:bg-(--surface) transition-colors">
-                      <td className="px-4 py-3 font-medium text-(--foreground) max-w-48 truncate">{ev.title}</td>
-                      <td className="px-4 py-3 text-(--muted) whitespace-nowrap">{name}</td>
-                      <td className="px-4 py-3"><SeverityBadge severity={ev.severity} /></td>
-                      <td className="px-4 py-3"><Badge variant={ev.source === 'automatic' ? 'warning' : 'outline'}>{ev.source}</Badge></td>
-                      <td className="px-4 py-3 text-(--muted) whitespace-nowrap">{ev.event_date}</td>
-                      <td className="px-4 py-3">{ev.confirmed ? <Badge variant="success">Yes</Badge> : <Badge variant="outline">No</Badge>}</td>
-                      <td className="px-4 py-3">{ev.is_duplicate ? <Badge variant="warning">Yes</Badge> : '—'}</td>
-                      <td className="px-4 py-3">{ev.external_cause ? <Badge variant="blue">Yes</Badge> : '—'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                  return <span className={cn('whitespace-nowrap', DATA_CELL)}>{name}</span>
+                },
+              },
+              { key: 'severity', header: 'Severity', render: (ev: QualityEvent) => <SeverityBadge severity={ev.severity} /> },
+              { key: 'source', header: 'Source', render: (ev: QualityEvent) => <Badge variant={ev.source === 'automatic' ? 'warning' : 'secondary'}>{ev.source}</Badge> },
+              { key: 'event_date', header: 'Date', render: (ev: QualityEvent) => <span className={cn('whitespace-nowrap tabular-nums', DATA_CELL)}>{ev.event_date}</span> },
+              { key: 'confirmed', header: 'Confirmed', render: (ev: QualityEvent) => (ev.confirmed ? <Badge variant="success">Yes</Badge> : <Badge variant="secondary">No</Badge>) },
+              { key: 'is_duplicate', header: 'Duplicate', render: (ev: QualityEvent) => (ev.is_duplicate ? <Badge variant="warning">Yes</Badge> : '—') },
+              { key: 'external_cause', header: 'External', render: (ev: QualityEvent) => (ev.external_cause ? <Badge variant="blue">Yes</Badge> : '—') },
+            ]}
+          />
         </Card>
       )}
 
@@ -895,7 +928,7 @@ function QualityEventsTab({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Feature ID <span className="text-(--muted)">(optional)</span></Label>
+              <Label>Feature ID <span className="text-[var(--muted)]">(optional)</span></Label>
               <Input type="number" value={form.feature_id} onChange={(e) => setForm((f) => ({ ...f, feature_id: e.target.value }))} />
             </div>
           </div>
@@ -927,13 +960,13 @@ function QualityEventsTab({
             <Label>Event Date</Label>
             <Input type="date" value={form.event_date} onChange={(e) => setForm((f) => ({ ...f, event_date: e.target.value }))} required />
           </div>
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={form.confirmed} onChange={(e) => setForm((f) => ({ ...f, confirmed: e.target.checked }))} />
+          <div className={CHECK_PANEL}>
+            <label className={CHECK_ROW}>
+              <Checkbox size="sm" checked={form.confirmed} onChange={(e) => setForm((f) => ({ ...f, confirmed: e.target.checked }))} />
               <span>Confirmed</span>
             </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={form.external_cause} onChange={(e) => setForm((f) => ({ ...f, external_cause: e.target.checked }))} />
+            <label className={CHECK_ROW}>
+              <Checkbox size="sm" checked={form.external_cause} onChange={(e) => setForm((f) => ({ ...f, external_cause: e.target.checked }))} />
               <span>External cause</span>
             </label>
           </div>
@@ -1031,13 +1064,13 @@ function BlockedPeriodsTab({
   )
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-[18px]">
+      <div className="flex flex-wrap items-center gap-2.5">
         <div className="w-48">
-          <SelectField value={employeeFilter} onValueChange={setEmployeeFilter} options={userOptions} />
+          <SelectField value={employeeFilter} onValueChange={setEmployeeFilter} options={userOptions} className={FILTER_SELECT} />
         </div>
-        <Button onClick={() => setShowCreate(true)}>+ New Period</Button>
-        <Button variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
+        <Button size="sm" onClick={() => setShowCreate(true)}>+ New Period</Button>
+        <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
       </div>
 
       {periodsQuery.isLoading && <LoadingStateBlock eyebrow="Blocked Periods" title="Loading blocked periods..." />}
@@ -1045,49 +1078,42 @@ function BlockedPeriodsTab({
       {!periodsQuery.isLoading && periods.length === 0 && <EmptyStateBlock eyebrow="Empty" title="No blocked periods." />}
 
       {periods.length > 0 && (
-        <Card noPadding className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-(--border) text-left">
-                  {['Employee', 'Reason', 'Started', 'Ended', 'Dependency', 'External', 'Status', ...(isCeo ? ['Actions'] : [])].map((h) => (
-                    <th key={h} className="px-4 py-3 text-[11px] font-semibold text-(--muted) uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {periods.map((p) => {
+        <Card>
+          <DataTable
+            rows={periods}
+            getRowKey={(p: BlockedPeriod) => String(p.id)}
+            columns={[
+              {
+                key: 'employee',
+                header: 'Employee',
+                render: (p: BlockedPeriod) => {
                   const user = users.find((u) => u.id === p.employee_id)
                   const name = user ? `${user.name} ${user.surname}` : `#${p.employee_id}`
-                  return (
-                    <tr key={p.id} className="border-b border-(--border) hover:bg-(--surface) transition-colors">
-                      <td className="px-4 py-3 font-medium text-(--foreground) whitespace-nowrap">{name}</td>
-                      <td className="px-4 py-3 text-(--muted) max-w-40 truncate">{p.reason}</td>
-                      <td className="px-4 py-3 text-(--muted) whitespace-nowrap">{new Date(p.started_at).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 text-(--muted) whitespace-nowrap">{p.ended_at ? new Date(p.ended_at).toLocaleDateString() : '—'}</td>
-                      <td className="px-4 py-3 text-(--muted)">{p.dependency ?? '—'}</td>
-                      <td className="px-4 py-3">{p.is_external ? <Badge variant="blue">External</Badge> : '—'}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={p.approval_status === 'approved' ? 'success' : p.approval_status === 'rejected' ? 'danger' : 'warning'}>
-                          {p.approval_status}
-                        </Badge>
-                      </td>
-                      {isCeo && (
-                        <td className="px-4 py-3">
-                          {p.approval_status === 'pending' && (
-                            <div className="flex gap-1.5">
-                              <Button size="sm" onClick={() => void handleApprove(p.id, 'approved')}>Approve</Button>
-                              <Button size="sm" variant="secondary" onClick={() => void handleApprove(p.id, 'rejected')}>Reject</Button>
-                            </div>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                  return <span className="font-medium whitespace-nowrap text-[var(--foreground)]">{name}</span>
+                },
+              },
+              { key: 'reason', header: 'Reason', render: (p: BlockedPeriod) => <span className={cn('block max-w-40 truncate', DATA_CELL)}>{p.reason}</span> },
+              { key: 'started_at', header: 'Started', render: (p: BlockedPeriod) => <span className={cn('whitespace-nowrap tabular-nums', DATA_CELL)}>{new Date(p.started_at).toLocaleDateString()}</span> },
+              { key: 'ended_at', header: 'Ended', render: (p: BlockedPeriod) => <span className={cn('whitespace-nowrap tabular-nums', DATA_CELL)}>{p.ended_at ? new Date(p.ended_at).toLocaleDateString() : '—'}</span> },
+              { key: 'dependency', header: 'Dependency', render: (p: BlockedPeriod) => <span className={DATA_CELL}>{p.dependency ?? '—'}</span> },
+              { key: 'is_external', header: 'External', render: (p: BlockedPeriod) => (p.is_external ? <Badge variant="blue">External</Badge> : '—') },
+              { key: 'status', header: 'Status', render: (p: BlockedPeriod) => <Badge variant={statusVariant(p.approval_status)}>{p.approval_status}</Badge> },
+              ...(isCeo
+                ? [{
+                    key: 'actions',
+                    header: 'Actions',
+                    render: (p: BlockedPeriod) => (
+                      p.approval_status === 'pending' ? (
+                        <div className="flex gap-1.5">
+                          <Button size="sm" variant="success" onClick={() => void handleApprove(p.id, 'approved')}>Approve</Button>
+                          <Button size="sm" variant="danger" onClick={() => void handleApprove(p.id, 'rejected')}>Reject</Button>
+                        </div>
+                      ) : null
+                    ),
+                  }]
+                : []),
+            ]}
+          />
         </Card>
       )}
 
@@ -1104,7 +1130,7 @@ function BlockedPeriodsTab({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Feature ID <span className="text-(--muted)">(optional)</span></Label>
+              <Label>Feature ID <span className="text-[var(--muted)]">(optional)</span></Label>
               <Input type="number" value={form.feature_id} onChange={(e) => setForm((f) => ({ ...f, feature_id: e.target.value }))} />
             </div>
           </div>
@@ -1126,7 +1152,7 @@ function BlockedPeriodsTab({
               <Input type="datetime-local" value={form.started_at} onChange={(e) => setForm((f) => ({ ...f, started_at: e.target.value }))} required />
             </div>
             <div className="space-y-1.5">
-              <Label>Ended At <span className="text-(--muted)">(optional)</span></Label>
+              <Label>Ended At <span className="text-[var(--muted)]">(optional)</span></Label>
               <Input type="datetime-local" value={form.ended_at} onChange={(e) => setForm((f) => ({ ...f, ended_at: e.target.value }))} />
             </div>
           </div>
@@ -1135,11 +1161,11 @@ function BlockedPeriodsTab({
             <Input value={form.dependency} onChange={(e) => setForm((f) => ({ ...f, dependency: e.target.value }))} placeholder="Client, Third-party, etc." />
           </div>
           <div className="space-y-1.5">
-            <Label>Evidence URL <span className="text-(--muted)">(optional)</span></Label>
+            <Label>Evidence URL <span className="text-[var(--muted)]">(optional)</span></Label>
             <Input type="url" value={form.evidence_url} onChange={(e) => setForm((f) => ({ ...f, evidence_url: e.target.value }))} />
           </div>
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={form.is_external} onChange={(e) => setForm((f) => ({ ...f, is_external: e.target.checked }))} />
+          <label className={cn(CHECK_ROW, 'rounded-[18px] bg-[var(--muted-surface)] p-3.5')}>
+            <Checkbox size="sm" checked={form.is_external} onChange={(e) => setForm((f) => ({ ...f, is_external: e.target.checked }))} />
             <span>External blocker (counts toward approved blocked days)</span>
           </label>
           <div className="flex justify-end gap-2 pt-2">
@@ -1214,13 +1240,13 @@ function WorkSchedulesTab({
   )
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-[18px]">
+      <div className="flex flex-wrap items-center gap-2.5">
         <div className="w-48">
-          <SelectField value={userFilter} onValueChange={setUserFilter} options={userOptions} />
+          <SelectField value={userFilter} onValueChange={setUserFilter} options={userOptions} className={FILTER_SELECT} />
         </div>
-        {isCeo && <Button onClick={() => setShowCreate(true)}>+ New Schedule</Button>}
-        <Button variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
+        {isCeo && <Button size="sm" onClick={() => setShowCreate(true)}>+ New Schedule</Button>}
+        <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
       </div>
 
       {schedulesQuery.isLoading && <LoadingStateBlock eyebrow="Schedules" title="Loading work schedules..." />}
@@ -1228,33 +1254,33 @@ function WorkSchedulesTab({
       {!schedulesQuery.isLoading && schedules.length === 0 && <EmptyStateBlock eyebrow="Empty" title="No work schedules." />}
 
       {schedules.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-3">
           {schedules.map((s) => {
             const user = users.find((u) => u.id === s.user_id)
             const name = user ? `${user.name} ${user.surname}` : `User #${s.user_id}`
             return (
-              <Card key={s.id} className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-(--foreground) text-sm">{name}</span>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{WEEKDAY_LABELS[s.weekday] ?? `Day ${s.weekday}`}</Badge>
+              <Card key={s.id} className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2.5">
+                  <span className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="secondary">{WEEKDAY_LABELS[s.weekday] ?? `Day ${s.weekday}`}</Badge>
                     {s.is_active ? <Badge variant="success">Active</Badge> : <Badge variant="danger">Inactive</Badge>}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-2.5 rounded-[18px] bg-[var(--accent-soft)] p-3.5 text-[12.5px]">
                   <div>
-                    <span className="text-(--muted)">Work: </span>
-                    <span className="text-(--foreground) font-medium">{s.work_start_time} – {s.work_end_time}</span>
+                    <span className="text-[var(--muted)]">Work: </span>
+                    <span className="font-semibold tabular-nums text-[var(--foreground)]">{s.work_start_time} – {s.work_end_time}</span>
                   </div>
                   {s.free_start_time && s.free_end_time && (
                     <div>
-                      <span className="text-(--muted)">Break: </span>
-                      <span className="text-(--foreground) font-medium">{s.free_start_time} – {s.free_end_time}</span>
+                      <span className="text-[var(--muted)]">Break: </span>
+                      <span className="font-semibold tabular-nums text-[var(--foreground)]">{s.free_start_time} – {s.free_end_time}</span>
                     </div>
                   )}
                   <div>
-                    <span className="text-(--muted)">Grace: </span>
-                    <span className="text-(--foreground) font-medium">{s.late_grace_minutes} min</span>
+                    <span className="text-[var(--muted)]">Grace: </span>
+                    <span className="font-semibold tabular-nums text-[var(--foreground)]">{s.late_grace_minutes} min</span>
                   </div>
                 </div>
               </Card>
@@ -1293,11 +1319,11 @@ function WorkSchedulesTab({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Break Start <span className="text-(--muted)">(optional)</span></Label>
+              <Label>Break Start <span className="text-[var(--muted)]">(optional)</span></Label>
               <Input type="time" step="1" value={form.free_start_time} onChange={(e) => setForm((f) => ({ ...f, free_start_time: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label>Break End <span className="text-(--muted)">(optional)</span></Label>
+              <Label>Break End <span className="text-[var(--muted)]">(optional)</span></Label>
               <Input type="time" step="1" value={form.free_end_time} onChange={(e) => setForm((f) => ({ ...f, free_end_time: e.target.value }))} />
             </div>
           </div>
@@ -1305,8 +1331,8 @@ function WorkSchedulesTab({
             <Label>Grace minutes (late)</Label>
             <Input type="number" min="0" max="60" value={form.late_grace_minutes} onChange={(e) => setForm((f) => ({ ...f, late_grace_minutes: e.target.value }))} />
           </div>
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
+          <label className={cn(CHECK_ROW, 'rounded-[18px] bg-[var(--muted-surface)] p-3.5')}>
+            <Checkbox size="sm" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
             <span>Active</span>
           </label>
           <div className="flex justify-end gap-2 pt-2">
@@ -1374,73 +1400,75 @@ function ProjectDeliveryTab({ isCeo, projects }: { isCeo: boolean; projects: Arr
   )
 
   return (
-    <div className="space-y-5 max-w-xl">
-      <p className="text-sm text-(--muted)">
-        Set the actual delivery date for a project. Backend calculates real delay days (Sunday-off) and creates deduction candidates if delay exceeds 3 business days.
-      </p>
+    <div className="max-w-2xl space-y-[18px]">
+      <Card className="space-y-[18px]">
+        <p className="text-sm text-[var(--muted)]">
+          Set the actual delivery date for a project. Backend calculates real delay days (Sunday-off) and creates deduction candidates if delay exceeds 3 business days.
+        </p>
 
-      <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>Project</Label>
-          <SelectField
-            value={projectId}
-            onValueChange={setProjectId}
-            options={projectOptions}
-            searchable
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Actual Delivery Date</Label>
-          <Input
-            type="date"
-            value={form.actual_delivery_date}
-            onChange={(e) => setForm((f) => ({ ...f, actual_delivery_date: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Delivery Status</Label>
-          <SelectField
-            value={form.delivery_status}
-            onValueChange={(v) => setForm((f) => ({ ...f, delivery_status: v as DeliveryStatus }))}
-            options={DELIVERY_STATUS_OPTIONS}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Approved Blocked Days</Label>
-          <Input
-            type="number"
-            min="0"
-            value={form.approved_blocked_days}
-            onChange={(e) => setForm((f) => ({ ...f, approved_blocked_days: e.target.value }))}
-          />
-          <p className="text-xs text-(--muted)">Approved external blocked business days removed from delay calculation.</p>
-        </div>
-        {isCeo && (
-          <Button type="submit" disabled={saving || !projectId}>
-            {saving ? 'Saving...' : 'Update Delivery'}
-          </Button>
-        )}
-      </form>
+        <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Project</Label>
+            <SelectField
+              value={projectId}
+              onValueChange={setProjectId}
+              options={projectOptions}
+              searchable
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Actual Delivery Date</Label>
+            <Input
+              type="date"
+              value={form.actual_delivery_date}
+              onChange={(e) => setForm((f) => ({ ...f, actual_delivery_date: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Delivery Status</Label>
+            <SelectField
+              value={form.delivery_status}
+              onValueChange={(v) => setForm((f) => ({ ...f, delivery_status: v as DeliveryStatus }))}
+              options={DELIVERY_STATUS_OPTIONS}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Approved Blocked Days</Label>
+            <Input
+              type="number"
+              min="0"
+              value={form.approved_blocked_days}
+              onChange={(e) => setForm((f) => ({ ...f, approved_blocked_days: e.target.value }))}
+            />
+            <p className="text-xs text-[var(--muted)]">Approved external blocked business days removed from delay calculation.</p>
+          </div>
+          {isCeo && (
+            <Button type="submit" disabled={saving || !projectId}>
+              {saving ? 'Saving...' : 'Update Delivery'}
+            </Button>
+          )}
+        </form>
+      </Card>
 
       {result && (
-        <Card className="p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-(--foreground)">Result</h3>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-(--muted) text-xs uppercase tracking-wide font-semibold">Delivery Date</p>
-              <p className="text-(--foreground) font-medium mt-0.5">{result.actual_delivery_date ?? '—'}</p>
+        <Card className="space-y-4">
+          <CardTitle>Result</CardTitle>
+          <div className="grid grid-cols-2 gap-[18px]">
+            <div className={PANEL}>
+              <p className="ui-card-label">Delivery Date</p>
+              <p className="mt-2 text-sm font-semibold tabular-nums text-[var(--foreground)]">{result.actual_delivery_date ?? '—'}</p>
             </div>
-            <div>
-              <p className="text-(--muted) text-xs uppercase tracking-wide font-semibold">Status</p>
-              <p className="text-(--foreground) font-medium mt-0.5">{result.delivery_status ?? '—'}</p>
+            <div className={PANEL}>
+              <p className="ui-card-label">Status</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{result.delivery_status ?? '—'}</p>
             </div>
-            <div>
-              <p className="text-(--muted) text-xs uppercase tracking-wide font-semibold">Approved Blocked Days</p>
-              <p className="text-(--foreground) font-medium mt-0.5">{result.approved_blocked_days}</p>
+            <div className={PANEL}>
+              <p className="ui-card-label">Approved Blocked Days</p>
+              <p className="mt-2 text-sm font-semibold tabular-nums text-[var(--foreground)]">{result.approved_blocked_days}</p>
             </div>
-            <div>
-              <p className="text-(--muted) text-xs uppercase tracking-wide font-semibold">Real Delay Days</p>
-              <p className={cn('font-semibold mt-0.5', result.real_delay_days > 3 ? 'text-rose-400' : 'text-emerald-400')}>
+            <div className={PANEL}>
+              <p className="ui-card-label">Real Delay Days</p>
+              <p className={cn('mt-2 text-sm font-semibold tabular-nums', result.real_delay_days > 3 ? 'text-[var(--danger-text)]' : 'text-[var(--success-text)]')}>
                 {result.real_delay_days} {result.real_delay_days > 3 && '⚠ deduction candidate'}
               </p>
             </div>
@@ -1488,60 +1516,50 @@ export function DeveloperKpiPage() {
   const tabsWithPeriod: Tab[] = ['salary_estimates', 'features', 'deductions', 'snapshots', 'quality_events', 'blocked_periods']
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <section className="page-enter space-y-[18px]">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-(--foreground)">Developer KPI</h1>
-          <p className="mt-0.5 text-sm text-(--muted)">
-            KPI scoring · salary estimates · quality tracking
-          </p>
-        </div>
-
-        {/* Period picker */}
-        {tabsWithPeriod.includes(activeTab) && (
-          <div className="flex items-center gap-2">
-            <div className="w-28">
-              <SelectField value={String(month)} onValueChange={(v) => setMonth(Number(v))} options={monthOptions} />
+      <PageHeader
+        title="Developer KPI"
+        description="KPI scoring · salary estimates · quality tracking"
+        actions={
+          tabsWithPeriod.includes(activeTab) ? (
+            <div className="flex items-center gap-2">
+              {/* Period picker */}
+              <div className="w-32">
+                <SelectField value={String(month)} onValueChange={(v) => setMonth(Number(v))} options={monthOptions} className={FILTER_SELECT} />
+              </div>
+              <div className="w-24">
+                <SelectField value={String(year)} onValueChange={(v) => setYear(Number(v))} options={yearOptions} className={FILTER_SELECT} />
+              </div>
             </div>
-            <div className="w-24">
-              <SelectField value={String(year)} onValueChange={(v) => setYear(Number(v))} options={yearOptions} />
-            </div>
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+      />
 
       {/* Formula card */}
-      <Card className="p-4">
-        <div className="flex flex-wrap gap-6 text-xs">
-          <div>
-            <span className="text-(--muted) uppercase tracking-wider font-semibold">KPI Formula </span>
-            <span className="text-(--foreground) font-mono">Delivery×35% + Deadline×20% + Quality×20% + Team×15% + Discipline×10%</span>
+      <Card>
+        <div className="grid gap-[18px] sm:grid-cols-2">
+          <div className={PANEL}>
+            <p className="ui-card-label">KPI Formula </p>
+            <p className="mt-2 font-mono text-[12.5px] leading-relaxed text-[var(--foreground)]">Delivery×35% + Deadline×20% + Quality×20% + Team×15% + Discipline×10%</p>
           </div>
-          <div>
-            <span className="text-(--muted) uppercase tracking-wider font-semibold">Salary </span>
-            <span className="text-(--foreground) font-mono">Base + Base×15%×KPI/100 − Deductions</span>
+          <div className={PANEL}>
+            <p className="ui-card-label">Salary </p>
+            <p className="mt-2 font-mono text-[12.5px] leading-relaxed text-[var(--foreground)]">Base + Base×15%×KPI/100 − Deductions</p>
           </div>
         </div>
       </Card>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-(--border)">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
-              activeTab === tab
-                ? 'border-(--blue-border) text-(--blue-text)'
-                : 'border-transparent text-(--muted) hover:text-(--foreground)',
-            )}
-          >
-            {TAB_LABELS[tab]}
-          </button>
-        ))}
+      <div className="custom-scrollbar-visible overflow-x-auto">
+        <Tabs
+          items={TABS.map((tab) => ({ value: tab, label: TAB_LABELS[tab] }))}
+          value={activeTab}
+          onChange={setActiveTab}
+          variant="underline"
+          ariaLabel="Developer KPI"
+          className="min-w-max"
+        />
       </div>
 
       {/* Tab content */}
@@ -1571,6 +1589,6 @@ export function DeveloperKpiPage() {
           <WorkSchedulesTab users={users} isCeo={isCeo} />
         )}
       </div>
-    </div>
+    </section>
   )
 }

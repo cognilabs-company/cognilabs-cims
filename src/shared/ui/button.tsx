@@ -23,55 +23,44 @@ type ButtonProps = SharedButtonProps & Omit<ButtonHTMLAttributes<HTMLButtonEleme
 
 const variants = {
   primary:
-    'btn-shimmer border border-blue-500/30 bg-blue-600 text-[rgb(255,255,255)] ' +
-    'shadow-[0_1px_2px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.12)] ' +
-    'hover:bg-blue-500 hover:shadow-[0_4px_12px_rgba(59,130,246,0.25)] ' +
-    'active:bg-blue-700',
+    'bg-[var(--primary)] text-white shadow-[var(--elev-primary)] ' +
+    'hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]',
 
   secondary:
-    'border border-(--border) bg-(--surface) text-(--foreground) ' +
-    'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ' +
-    'hover:border-(--border-hover) hover:bg-(--accent-soft) ' +
-    'hover:text-(--foreground) active:bg-(--accent-hover)',
+    'border border-[var(--border-hover)] bg-[var(--surface)] text-[var(--foreground)] ' +
+    'hover:bg-[var(--input-surface)] active:bg-[var(--accent-hover)]',
 
   ghost:
-    'border border-transparent bg-transparent text-[var(--muted-strong)] ' +
-    'hover:border-[var(--border)] hover:bg-[var(--accent-soft)] ' +
-    'hover:text-[var(--foreground)]',
+    'bg-transparent text-[var(--muted-strong)] ' +
+    'hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]',
 
   danger:
-    'btn-shimmer border border-[var(--danger-border)] ' +
     'bg-[var(--danger-dim)] text-[var(--danger-text)] ' +
-    'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ' +
-    'hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-300',
+    'hover:bg-[#FADFDF] active:bg-[#F7D2D2]',
 
   success:
-    'btn-shimmer border border-[var(--success-border)] ' +
     'bg-[var(--success-dim)] text-[var(--success-text)] ' +
-    'hover:bg-emerald-500/20 hover:text-emerald-300',
+    'hover:bg-[#DBF3E2] active:bg-[#CFEED8]',
 }
 
 const sizes = {
-  sm: 'min-h-7 px-2.5 py-1 rounded-md gap-1.5',
-  md: 'min-h-8 px-3 py-1.5 rounded-lg gap-2',
-  lg: 'min-h-9 px-4 py-1.5 rounded-xl gap-2',
+  sm: 'min-h-9 gap-2 rounded-[11px] px-3.5 text-[13px]',
+  md: 'min-h-11 gap-2 rounded-[14px] px-4 text-sm',
+  lg: 'min-h-12 gap-2.5 rounded-[14px] px-5 text-[15px]',
 }
 
 const baseClassName =
-  'ui-button-text inline-flex items-center justify-center tracking-[0.01em] ' +
-  'transition-[color,box-shadow,background-color,border-color,transform,opacity] ' +
-  'duration-150 active:translate-y-px ' +
+  'inline-flex items-center justify-center font-semibold whitespace-nowrap ' +
+  'transition-[color,box-shadow,background-color,border-color,opacity] duration-150 ' +
   'disabled:pointer-events-none disabled:opacity-40 ' +
-  'focus-visible:outline-none focus-visible:ring-2 ' +
-  'focus-visible:ring-white/15 focus-visible:ring-offset-2 ' +
-  'focus-visible:ring-offset-[var(--background)]'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
 
 function Spinner({ size }: { size: 'sm' | 'md' | 'lg' }) {
-  const dim = size === 'sm' ? 'h-3 w-3' : size === 'lg' ? 'h-4 w-4' : 'h-3.5 w-3.5'
+  const dim = size === 'sm' ? 'h-3.5 w-3.5' : size === 'lg' ? 'h-4.5 w-4.5' : 'h-4 w-4'
 
   return (
     <svg
-      className={cn(dim, 'animate-spin shrink-0')}
+      className={cn(dim, 'shrink-0 animate-spin')}
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"

@@ -91,17 +91,19 @@ export function CustomerDetailPage() {
   }
 
   return (
-    <section className="space-y-4 page-enter">
+    <section className="space-y-[18px] page-enter">
       <div className="flex items-center">
         <Button
-          variant="ghost"
+          type="button"
+          variant="secondary"
           size="sm"
           onClick={() => navigate(routeBasePath)}
-          className="min-h-8 rounded-xl border border-white/8 bg-white/[0.03] px-3 text-[11px] text-white/78 hover:border-white/12 hover:bg-white/[0.05] hover:text-white"
+          leftIcon={
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M10 3.5 5.5 8 10 12.5" />
+            </svg>
+          }
         >
-          <svg viewBox="0 0 16 16" className="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M10 3.5 5.5 8 10 12.5" />
-          </svg>
           {t('customers.detail.back_to', 'Back to {{title}}', { title })}
         </Button>
       </div>

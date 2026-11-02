@@ -11,6 +11,8 @@
   "common.search": "Поиск",
   "common.previous_page": "Предыдущая страница",
   "common.next_page": "Следующая страница",
+  "common.prev": "Назад",
+  "common.next": "Вперёд",
   "common.results_range": "{{start}}-{{end}} из {{total}} результатов",
   "common.per_page": "{{count}} на странице",
   "common.play": "Воспроизвести",

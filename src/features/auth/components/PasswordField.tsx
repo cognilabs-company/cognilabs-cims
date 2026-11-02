@@ -2,6 +2,7 @@ import type { InputHTMLAttributes, ReactNode } from 'react'
 import { useState } from 'react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
 
@@ -19,28 +20,24 @@ export function PasswordField({ label, error, hint, id, className, leadingIcon, 
 
   return (
     <Label className="grid gap-2" htmlFor={inputId}>
-      {label ? <span className="text-xs font-bold text-[var(--foreground)] tracking-tight">{label}</span> : null}
-      <div className="relative group">
+      {label ? <span className="ui-input-label">{label}</span> : null}
+      <div className="relative">
         {leadingIcon ? (
-          <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]">
+          <span className="pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-[var(--muted)]">
             {leadingIcon}
           </span>
         ) : null}
         <Input
           id={inputId}
           type={visible ? 'text' : 'password'}
-          className={cn('pr-14', leadingIcon ? 'pl-10' : null, className)}
+          className={cn('pr-12', leadingIcon ? 'pl-11' : null, className)}
           {...props}
         />
-        <button
-          type="button"
+        <IconButton
+          label={visible ? t('auth.password.hide', 'Hide password') : t('auth.password.show', 'Show password')}
           onClick={() => setVisible((current) => !current)}
-          aria-label={visible ? t('auth.password.hide', 'Hide password') : t('auth.password.show', 'Show password')}
           aria-pressed={visible}
-          className={cn(
-            'absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 transition-all',
-            'hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]',
-          )}
+          className="absolute top-1/2 right-2 -translate-y-1/2 hover:bg-[var(--border-hover)]"
         >
           <svg
             aria-hidden="true"
@@ -54,11 +51,12 @@ export function PasswordField({ label, error, hint, id, className, leadingIcon, 
           >
             <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" />
             <circle cx="12" cy="12" r="2.75" />
+            {visible ? <path d="m3.5 3.5 17 17" /> : null}
           </svg>
-        </button>
+        </IconButton>
       </div>
-      {error ? <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider">{error}</span> : null}
-      {!error && hint ? <span className="text-[11px] font-medium text-zinc-500">{hint}</span> : null}
+      {error ? <span className="text-[12.5px] font-medium text-[var(--danger-text)]">{error}</span> : null}
+      {!error && hint ? <span className="text-[12.5px] text-[var(--muted)]">{hint}</span> : null}
     </Label>
   )
 }

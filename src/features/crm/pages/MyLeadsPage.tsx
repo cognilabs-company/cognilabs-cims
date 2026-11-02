@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArchiveIcon, ListChecksIcon, TrendUpIcon, UsersThreeIcon } from '@phosphor-icons/react'
 import { crmService, type SalesManagerLead, type SalesManagerStatusStat } from '../../../shared/api/services/crm.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -7,8 +8,14 @@ import { cn } from '../../../shared/lib/cn'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
+import { Checkbox } from '../../../shared/ui/checkbox'
 import { Input } from '../../../shared/ui/input'
+import { PageHeader } from '../../../shared/ui/page-header'
+import { SelectField } from '../../../shared/ui/select-field'
+import { Skeleton } from '../../../shared/ui/skeleton'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
+import { resolveTone, tonePill } from '../../../shared/ui/tone'
 
 const PRIORITY_LABEL: Record<string, string> = {
   low: 'Low',
@@ -17,30 +24,34 @@ const PRIORITY_LABEL: Record<string, string> = {
   critical: 'Critical',
 }
 
-const PRIORITY_COLOR: Record<string, string> = {
-  low: 'text-emerald-400',
-  medium: 'text-yellow-400',
-  high: 'text-orange-400',
-  critical: 'text-red-400',
+const PRIORITY_VARIANT: Record<string, 'secondary' | 'blue' | 'warning' | 'danger'> = {
+  low: 'secondary',
+  medium: 'blue',
+  high: 'warning',
+  critical: 'danger',
 }
+
+const PRIORITY_OPTIONS = [
+  { value: '', label: 'All priorities' },
+  { value: 'critical', label: 'Critical' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+]
+
+const headCell =
+  'bg-[var(--muted-surface)] px-4 py-3 text-left text-xs font-medium whitespace-nowrap text-[var(--muted)]'
+
+const bodyCell = 'border-b border-[var(--border-subtle)] px-4 py-3 align-middle'
+
+const statChip =
+  'inline-flex h-[30px] items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold transition-colors'
+
+const statusPill = 'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap'
 
 function formatDate(value: string | null) {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-function StatCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-  return (
-    <div className={cn(
-      'flex flex-col gap-1 rounded-xl border p-4',
-      accent
-        ? 'border-(--blue-border) bg-(--blue-dim) text-(--blue-text)'
-        : 'border-(--border) bg-(--surface-elevated)',
-    )}>
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-(--muted)">{label}</p>
-      <p className="text-2xl font-black tracking-tight text-(--foreground)">{value}</p>
-    </div>
-  )
 }
 
 export function MyLeadsPage() {
@@ -89,40 +100,59 @@ export function MyLeadsPage() {
   }, [leads, deferredSearch])
 
   return (
-    <div className="flex flex-col gap-6 page-enter">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-(--muted)">CRM</p>
-          <h1 className="text-2xl font-bold tracking-tight text-(--foreground)">My Leads</h1>
-        </div>
-        <label className="flex items-center gap-2 text-xs font-semibold text-(--muted-strong) cursor-pointer">
-          <input
-            type="checkbox"
-            checked={includeArchived}
-            onChange={(e) => { setIncludeArchived(e.target.checked); setPage(1) }}
-            className="h-4 w-4 rounded border-(--border)"
-          />
-          Include archived
-        </label>
-      </div>
+    <div className="page-enter space-y-[18px]">
+      <PageHeader
+        eyebrow="CRM"
+        title="My Leads"
+        actions={
+          <label className="flex cursor-pointer items-center gap-2.5 text-[13px] font-medium text-[var(--muted-strong)]">
+            <Checkbox
+              size="sm"
+              checked={includeArchived}
+              onChange={(e) => { setIncludeArchived(e.target.checked); setPage(1) }}
+            />
+            Include archived
+          </label>
+        }
+      />
 
       {statsQuery.isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl border border-(--border) bg-(--surface-elevated)" />
+            <Skeleton key={i} className="h-[168px] rounded-[24px]" />
           ))}
         </div>
       ) : summary ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Total Assigned" value={summary.total_assigned} accent />
-          <StatCard label="Active Leads" value={summary.active_leads} />
-          <StatCard label="Archived" value={summary.archived_leads} />
-          <StatCard label="Counted" value={summary.counted_leads} />
+        <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            solid
+            label="Total Assigned"
+            value={summary.total_assigned}
+            icon={<UsersThreeIcon className="h-[18px] w-[18px]" weight="bold" />}
+          />
+          <StatCard
+            label="Active Leads"
+            value={summary.active_leads}
+            iconTone="success"
+            icon={<TrendUpIcon className="h-[18px] w-[18px]" weight="bold" />}
+          />
+          <StatCard
+            label="Archived"
+            value={summary.archived_leads}
+            iconTone="neutral"
+            icon={<ArchiveIcon className="h-[18px] w-[18px]" weight="bold" />}
+          />
+          <StatCard
+            label="Counted"
+            value={summary.counted_leads}
+            iconTone="violet"
+            icon={<ListChecksIcon className="h-[18px] w-[18px]" weight="bold" />}
+          />
         </div>
       ) : null}
 
       {statusStats.length > 0 && (
-        <Card className="flex flex-wrap gap-2 p-4">
+        <Card className="flex flex-wrap gap-2">
           {statusStats.map((stat) => (
             <button
               key={stat.status}
@@ -132,14 +162,14 @@ export function MyLeadsPage() {
                 setPage(1)
               }}
               className={cn(
-                'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all',
+                statChip,
                 statusFilter === stat.status
-                  ? 'border-(--blue-border) bg-(--blue-soft) text-(--blue-text)'
-                  : 'border-(--border) bg-(--surface) text-(--muted-strong) hover:border-(--border-hover) hover:text-(--foreground)',
+                  ? 'bg-[var(--blue-soft)] text-[var(--blue-text)]'
+                  : 'bg-[var(--input-surface)] text-[var(--muted-strong)] hover:bg-[var(--input-surface-hover)] hover:text-[var(--foreground)]',
               )}
             >
               {stat.status}
-              <span className="rounded-full bg-(--accent-soft) px-1.5 py-0.5 text-[10px] font-bold">
+              <span className="rounded-full bg-[var(--surface)] px-1.5 py-0.5 text-[11px] font-bold tabular-nums">
                 {stat.count}
               </span>
             </button>
@@ -148,7 +178,7 @@ export function MyLeadsPage() {
             <button
               type="button"
               onClick={() => { setStatusFilter(''); setPage(1) }}
-              className="rounded-lg border border-(--border) px-3 py-1.5 text-xs font-semibold text-(--muted) hover:text-(--foreground) transition-all"
+              className={cn(statChip, 'text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]')}
             >
               Clear filter
             </button>
@@ -156,26 +186,21 @@ export function MyLeadsPage() {
         </Card>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2.5">
         <Input
           placeholder="Search by name, phone or username..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          className="h-9 w-full max-w-xs text-sm"
+          className="w-full sm:max-w-xs"
         />
-        <select
+        <SelectField
           value={priorityFilter}
-          onChange={(e) => { setPriorityFilter(e.target.value); setPage(1) }}
-          className="h-9 rounded-xl border border-(--border) bg-(--surface) px-3 text-xs font-semibold text-(--foreground) focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-        >
-          <option value="">All priorities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
+          options={PRIORITY_OPTIONS}
+          onValueChange={(value) => { setPriorityFilter(value); setPage(1) }}
+          className="w-full sm:w-44"
+        />
         {totalCount > 0 && (
-          <p className="ml-auto text-xs font-semibold text-(--muted)">
+          <p className="ml-auto text-[12.5px] font-medium text-[var(--muted)]">
             {totalCount} lead{totalCount !== 1 ? 's' : ''}
           </p>
         )}
@@ -199,61 +224,63 @@ export function MyLeadsPage() {
         />
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border border-(--border)">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-(--border) bg-(--muted-surface)">
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-(--muted)">Name</th>
-                  <th className="hidden px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-(--muted) sm:table-cell">Phone</th>
-                  <th className="hidden px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-(--muted) md:table-cell">Platform</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-(--muted)">Status</th>
-                  <th className="hidden px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-(--muted) lg:table-cell">Priority</th>
-                  <th className="hidden px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-(--muted) xl:table-cell">Assigned</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-(--border)">
-                {filteredLeads.map((lead: SalesManagerLead) => (
-                  <tr
-                    key={lead.id}
-                    onClick={() => navigate(`/crm/customers/${lead.id}`)}
-                    className="cursor-pointer transition-colors hover:bg-(--accent-soft)"
-                  >
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-semibold text-(--foreground)">{lead.full_name}</p>
-                        {lead.username && (
-                          <p className="text-xs text-(--muted)">{lead.username}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="hidden px-4 py-3 text-(--muted-strong) sm:table-cell">
-                      {lead.phone_number ?? '—'}
-                    </td>
-                    <td className="hidden px-4 py-3 md:table-cell">
-                      {lead.platform ? (
-                        <Badge variant="outline" className="text-xs">{lead.platform}</Badge>
-                      ) : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-lg border border-(--border) bg-(--surface) px-2 py-1 text-xs font-semibold text-(--muted-strong)">
-                        {lead.status_name || lead.status}
-                      </span>
-                    </td>
-                    <td className="hidden px-4 py-3 lg:table-cell">
-                      {lead.priority_level ? (
-                        <span className={cn('text-xs font-bold', PRIORITY_COLOR[lead.priority_level])}>
-                          {PRIORITY_LABEL[lead.priority_level]}
-                        </span>
-                      ) : '—'}
-                    </td>
-                    <td className="hidden px-4 py-3 text-xs text-(--muted) xl:table-cell">
-                      {formatDate(lead.assigned_at)}
-                    </td>
+          <Card noPadding className="overflow-hidden">
+            <div className="custom-scrollbar-visible overflow-x-auto">
+              <table className="w-full border-separate border-spacing-0 text-sm">
+                <thead>
+                  <tr>
+                    <th className={headCell}>Name</th>
+                    <th className={cn(headCell, 'hidden sm:table-cell')}>Phone</th>
+                    <th className={cn(headCell, 'hidden md:table-cell')}>Platform</th>
+                    <th className={headCell}>Status</th>
+                    <th className={cn(headCell, 'hidden lg:table-cell')}>Priority</th>
+                    <th className={cn(headCell, 'hidden xl:table-cell')}>Assigned</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredLeads.map((lead: SalesManagerLead) => (
+                    <tr
+                      key={lead.id}
+                      onClick={() => navigate(`/crm/customers/${lead.id}`)}
+                      className="cursor-pointer transition-colors hover:bg-[var(--card-hover)]"
+                    >
+                      <td className={bodyCell}>
+                        <div>
+                          <p className="font-semibold text-[var(--foreground)]">{lead.full_name}</p>
+                          {lead.username && (
+                            <p className="text-[12.5px] text-[var(--muted)]">{lead.username}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className={cn(bodyCell, 'hidden text-[var(--muted-strong)] sm:table-cell')}>
+                        {lead.phone_number ?? '—'}
+                      </td>
+                      <td className={cn(bodyCell, 'hidden md:table-cell')}>
+                        {lead.platform ? (
+                          <Badge variant="secondary">{lead.platform}</Badge>
+                        ) : '—'}
+                      </td>
+                      <td className={bodyCell}>
+                        <span className={cn(statusPill, tonePill(resolveTone(lead.status_name || lead.status)))}>
+                          {lead.status_name || lead.status}
+                        </span>
+                      </td>
+                      <td className={cn(bodyCell, 'hidden lg:table-cell')}>
+                        {lead.priority_level ? (
+                          <Badge variant={PRIORITY_VARIANT[lead.priority_level]}>
+                            {PRIORITY_LABEL[lead.priority_level]}
+                          </Badge>
+                        ) : '—'}
+                      </td>
+                      <td className={cn(bodyCell, 'hidden text-[12.5px] text-[var(--muted)] xl:table-cell')}>
+                        {formatDate(lead.assigned_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between gap-4">
@@ -265,7 +292,7 @@ export function MyLeadsPage() {
               >
                 Previous
               </Button>
-              <p className="text-xs font-semibold text-(--muted)">
+              <p className="text-[12.5px] font-medium text-[var(--muted)]">
                 Page {page} of {totalPages}
               </p>
               <Button

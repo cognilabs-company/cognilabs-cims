@@ -1,6 +1,7 @@
 import type { PermissionMap } from '../../../shared/api/types'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
+import { Checkbox } from '../../../shared/ui/checkbox'
 import { Label } from '../../../shared/ui/label'
 import { Modal } from '../../../shared/ui/modal'
 import { useTranslation } from 'react-i18next'
@@ -61,43 +62,43 @@ export function PermissionEditorModal({
         </>
       }
     >
-      <div className="flex flex-wrap gap-3">
-        <Badge className="border-blue-500/20 bg-blue-50 text-blue-600 dark:bg-blue-600/10 dark:text-blue-400">
+      <div className="flex flex-wrap gap-2.5">
+        <Badge variant="blue">
           {t('ceo.permissions.active_count', { count: activePermissionsCount })}
         </Badge>
-        <Badge className="border-[var(--border)] bg-white text-[var(--foreground)] dark:border-white/10 dark:bg-white/5 dark:text-white">
+        <Badge variant="secondary">
           {t('ceo.permissions.available_count', { count: totalAvailablePages })}
         </Badge>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="grid gap-3">
+      <div className="mt-[18px] grid gap-[18px] lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-2.5">
           {availablePermissions.map((permissionKey) => {
             const meta = getPermissionMeta(permissionKey)
 
             return (
               <Label
                 key={permissionKey}
-                className="flex cursor-pointer items-start gap-4 rounded-xl border border-[var(--border)] bg-white px-4 py-4 transition-colors hover:bg-[var(--card-hover)] dark:bg-white/5 dark:hover:bg-white/10"
+                className="flex cursor-pointer items-start gap-3.5 rounded-[18px] bg-[var(--accent-soft)] px-4 py-4 transition-colors hover:bg-[var(--input-surface-hover)]"
               >
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 accent-blue-500"
+                <Checkbox
+                  size="sm"
+                  className="mt-0.5"
                   checked={Boolean(permissions[permissionKey])}
                   onChange={(event) => onToggle(permissionKey, event.target.checked)}
                 />
-                <div>
-                  <p className="text-[15px] font-semibold text-[var(--foreground)] dark:text-white">{meta.label}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{meta.description}</p>
-                  <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-blue-500 opacity-70">{permissionKey}</p>
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold text-[var(--foreground)]">{meta.label}</p>
+                  <p className="mt-1 text-[13px] leading-[1.55] text-[var(--muted)]">{meta.description}</p>
+                  <Badge variant="blue" size="sm" className="mt-2.5">{permissionKey}</Badge>
                 </div>
               </Label>
             )
           })}
         </div>
 
-        <div className="sticky top-0 h-fit rounded-xl border border-[var(--border)] bg-white p-6 dark:bg-white/5">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-500">{t('ceo.permissions.active_now')}</p>
+        <div className="sticky top-0 h-fit rounded-[18px] bg-[var(--accent-soft)] p-[22px]">
+          <p className="text-[15px] font-semibold text-[var(--foreground)]">{t('ceo.permissions.active_now')}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {activePermissionKeys.length > 0 ? (
               activePermissionKeys.map((permissionKey) => (
@@ -105,13 +106,13 @@ export function PermissionEditorModal({
                   key={permissionKey}
                   type="button"
                   onClick={() => onRemovePermission(permissionKey)}
-                  className="rounded-full border border-blue-500/30 bg-blue-600/10 px-3 py-1.5 text-[13px] font-semibold text-blue-400 transition-all hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+                  className="inline-flex items-center rounded-full bg-[var(--blue-dim)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--blue-text)] transition-colors hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]"
                 >
                   {getPermissionMeta(permissionKey).label} <span className="ml-1 opacity-50">×</span>
                 </button>
               ))
             ) : (
-              <p className="text-sm text-(--muted)">{t('ceo.permissions.none_active')}</p>
+              <p className="text-[13px] text-[var(--muted)]">{t('ceo.permissions.none_active')}</p>
             )}
           </div>
         </div>

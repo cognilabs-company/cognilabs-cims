@@ -184,7 +184,7 @@ export function NavGlyph({ name, className, ...props }: NavGlyphProps) {
       strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={cn('h-4 w-4 shrink-0 text-[var(--sidebar-foreground)]', className)}
+      className={cn('h-4 w-4 shrink-0 text-current', className)}
       {...props}
     >
       {glyphPath(name)}

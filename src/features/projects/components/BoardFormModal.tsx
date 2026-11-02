@@ -3,6 +3,7 @@ import { useLocale } from '../../../app/hooks/useLocale'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
 import { Textarea } from '../../../shared/ui/textarea'
 import type { BoardRecord } from '../../../shared/api/services/projects.service'
 
@@ -87,24 +88,24 @@ export function BoardFormModal({
         </>
       )}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
-            {t('projects.board_name', 'Board Name')} <span className="text-red-400">*</span>
-          </label>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+        <div className="flex flex-col gap-2">
+          <Label>
+            {t('projects.board_name', 'Board Name')} <span className="text-[var(--danger-text)]">*</span>
+          </Label>
           <Input
             value={values.name}
             onChange={(event) => set('name', event.target.value)}
             placeholder={t('projects.board_name_placeholder', 'Sprint backlog, Design review...')}
             autoFocus
           />
-          {nameError ? <p className="text-xs text-[var(--danger-text)]">{nameError}</p> : null}
+          {nameError ? <p className="text-[12.5px] text-[var(--danger-text)]">{nameError}</p> : null}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-strong)]">
+        <div className="flex flex-col gap-2">
+          <Label>
             {t('projects.description', 'Description')}
-          </label>
+          </Label>
           <Textarea
             value={values.description}
             onChange={(event) => set('description', event.target.value)}

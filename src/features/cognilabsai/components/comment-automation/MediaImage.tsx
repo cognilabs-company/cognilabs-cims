@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { CommentAutomationMedia } from '../../../../shared/api/services/cognilabsai.service'
 import { cn } from '../../../../shared/lib/cn'
 import { InstagramGlyph } from './icons'
-import { INSTAGRAM_GRADIENT, getPreviewUrl } from './shared'
+import { getPreviewUrl } from './shared'
 
 function MediaImageContent({
   src,
@@ -17,8 +17,8 @@ function MediaImageContent({
 
   if (!src || hasFailed) {
     return (
-      <div className={cn('flex items-center justify-center', className)} style={{ background: INSTAGRAM_GRADIENT }}>
-        <InstagramGlyph className="h-1/4 max-h-12 w-1/4 max-w-12 text-white/90" data-keep-color="true" />
+      <div className={cn('flex items-center justify-center bg-[var(--muted-surface)]', className)}>
+        <InstagramGlyph className="h-1/4 max-h-12 w-1/4 max-w-12 text-[var(--caption)]" />
       </div>
     )
   }

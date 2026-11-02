@@ -4,8 +4,14 @@ import { useToast } from '../../../shared/toast/useToast'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import { LoadingStateBlock, ErrorStateBlock } from '../../../shared/ui/state-block'
+import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
+import { Card } from '../../../shared/ui/card'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
+import { Label } from '../../../shared/ui/label'
+import { PageHeader } from '../../../shared/ui/page-header'
+import { Tabs, type TabItem } from '../../../shared/ui/tabs'
 import { Textarea } from '../../../shared/ui/textarea'
 import { Switch } from '../../../shared/ui/switch'
 import {
@@ -119,6 +125,23 @@ const sections: Section[] = [
   },
 ]
 
+const SECTION_TABS: TabItem<string>[] = sections.map((section) => ({
+  value: section.id,
+  label: section.title,
+}))
+
+const TELEGRAM_TABS: TabItem<'telegram' | 'lead-bot'>[] = [
+  { value: 'telegram', label: 'Telegram' },
+  { value: 'lead-bot', label: 'Lead Bot' },
+]
+
+const TELEGRAM_FIELDS: FieldConfig[] = sections.find((s) => s.id === 'telegram')!.fields
+
+const LEAD_BOT_FIELDS: FieldConfig[] = [
+  { key: 'cognilabs_telegram_token', label: 'Bot Token', type: 'password' },
+  { key: 'cognilabs_channel_id', label: 'Channel ID', placeholder: 'e.g. -1001234567890' },
+]
+
 const emptyForm: IntegrationConfigPayload = {
   openai_api_key: null,
   openai_model: null,
@@ -148,6 +171,107 @@ function fieldValue(form: IntegrationConfigPayload, key: keyof IntegrationConfig
 
 function hasValue(form: IntegrationConfigPayload, sectionFields: FieldConfig[]) {
   return sectionFields.some((f) => Boolean(form[f.key]))
+}
+
+function RevealButton({ revealed, onClick }: { revealed: boolean; onClick: () => void }) {
+  return (
+    <IconButton
+      size="lg"
+      label="Toggle visibility"
+      onClick={onClick}
+      className="bg-[var(--input-surface)] hover:bg-[var(--input-surface-hover)]"
+    >
+      {revealed ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeLinecap="round" strokeLinejoin="round" />
+          <line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )}
+    </IconButton>
+  )
+}
+
+function FieldHint({ hint }: { hint: string }) {
+  return (
+    <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-[var(--muted)]">
+      <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--caption)]">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+      </svg>
+      {hint}
+    </p>
+  )
+}
+
+type IntegrationFieldProps = {
+  field: FieldConfig
+  value: string
+  revealed: boolean
+  onChange: (value: string) => void
+  onToggleReveal: () => void
+}
+
+function IntegrationField({ field, value, revealed, onChange, onToggleReveal }: IntegrationFieldProps) {
+  const isSecret = field.type === 'password'
+  const hasContent = Boolean(value)
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <Label className="font-semibold text-[var(--foreground)]">
+          {field.label}
+        </Label>
+        {field.required ? (
+          <Badge variant="blue" size="sm">
+            Required
+          </Badge>
+        ) : null}
+        {hasContent && !isSecret ? (
+          <Badge variant="success" size="sm">
+            Set
+          </Badge>
+        ) : hasContent && isSecret ? (
+          <Badge variant="success" size="sm">
+            Configured
+          </Badge>
+        ) : null}
+      </div>
+
+      {field.type === 'textarea' ? (
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          rows={8}
+          className="resize-y"
+        />
+      ) : isSecret ? (
+        <div className="flex gap-2">
+          <Input
+            type={revealed ? 'text' : 'password'}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder ?? '••••••••••••••••'}
+            className="flex-1 font-mono"
+          />
+          <RevealButton revealed={revealed} onClick={onToggleReveal} />
+        </div>
+      ) : (
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          className="font-mono"
+        />
+      )}
+
+      {field.hint ? <FieldHint hint={field.hint} /> : null}
+    </div>
+  )
 }
 
 export function CognilabsAIIntegrationsPage() {
@@ -295,152 +419,124 @@ export function CognilabsAIIntegrationsPage() {
   const currentSection = sections.find((s) => s.id === activeSection) ?? sections[0]
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-0">
+    <div className="flex h-full min-h-0 flex-col gap-[18px]">
       {/* Page header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-(--muted)">CognilabsAI</p>
-          <h1 className="text-2xl font-bold tracking-tight text-(--foreground)">Integrations</h1>
-        </div>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={isSaving}
-          className={cn(
-            'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all',
-            saveSuccess
-              ? 'border border-(--success-border,#22c55e40) bg-(--success-dim,#22c55e10) text-(--success-text,#16a34a)'
-              : 'border border-(--blue-border) bg-(--blue-soft) text-(--blue-text) hover:bg-(--blue-dim)',
-            isSaving && 'cursor-not-allowed opacity-60',
-          )}
-        >
-          {saveSuccess ? (
-            <>
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              Saved
-            </>
-          ) : isSaving ? (
-            <>
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Saving...
-            </>
-          ) : (
-            <>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-              </svg>
-              Save changes
-            </>
-          )}
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="CognilabsAI"
+        title="Integrations"
+        className="shrink-0"
+        actions={
+          <Button
+            onClick={() => void handleSave()}
+            disabled={isSaving}
+            loading={isSaving}
+            variant={saveSuccess ? 'success' : 'primary'}
+            leftIcon={
+              saveSuccess ? (
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                  <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+              )
+            }
+          >
+            {saveSuccess ? 'Saved' : isSaving ? 'Saving...' : 'Save changes'}
+          </Button>
+        }
+      />
 
       {/* Two-column layout */}
-      <div className="flex min-h-0 flex-1 gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-[18px] md:flex-row">
         {/* Sidebar */}
-        <nav className="hidden w-56 shrink-0 flex-col gap-1 md:flex">
-          {sections.map((section) => {
-            const isActive = activeSection === section.id
-            const filled = hasValue(form, section.fields)
-            return (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => setActiveSection(section.id)}
-                className={cn(
-                  'group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150',
-                  isActive
-                    ? 'bg-(--blue-soft) text-(--blue-text)'
-                    : 'text-(--muted-strong) hover:bg-(--accent-soft) hover:text-(--foreground)',
-                )}
-              >
-                <span
-                  className={cn(
-                    'grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors',
-                    isActive
-                      ? 'bg-(--blue-dim) text-(--blue-text)'
-                      : 'bg-(--muted-surface) text-(--muted) group-hover:text-(--foreground)',
-                  )}
-                >
-                  {section.icon}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className={cn('text-sm font-semibold', isActive ? 'text-(--blue-text)' : 'text-(--foreground)')}>{section.title}</p>
-                </div>
-                {filled ? (
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" title="Configured" />
-                ) : (
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-(--border)" />
-                )}
-              </button>
-            )
-          })}
+        <div className="hidden w-60 shrink-0 flex-col gap-[18px] md:flex">
+          <Card noPadding className="p-2.5">
+            <nav className="flex flex-col gap-1">
+              {sections.map((section) => {
+                const isActive = activeSection === section.id
+                const filled = hasValue(form, section.fields)
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => setActiveSection(section.id)}
+                    className={cn(
+                      'group flex w-full items-center gap-3 rounded-[14px] px-2.5 py-2 text-left transition-colors duration-150',
+                      isActive
+                        ? 'bg-[var(--blue-dim)]'
+                        : 'hover:bg-[var(--accent-soft)]',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'grid h-9 w-9 shrink-0 place-items-center rounded-[11px] transition-colors',
+                        isActive
+                          ? 'bg-[var(--blue-soft)] text-[var(--blue-text)]'
+                          : 'bg-[var(--muted-surface)] text-[var(--muted)] group-hover:text-[var(--foreground)]',
+                      )}
+                    >
+                      {section.icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={cn('text-sm font-semibold tracking-[-0.01em]', isActive ? 'text-[var(--blue-text)]' : 'text-[var(--foreground)]')}>{section.title}</p>
+                    </div>
+                    {filled ? (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--success-text)]" title="Configured" />
+                    ) : (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--border-hover)]" />
+                    )}
+                  </button>
+                )
+              })}
+            </nav>
+          </Card>
 
-          <div className="mt-auto pt-4">
-            <div className="rounded-xl border border-(--border) bg-(--muted-surface) p-3">
-              <p className="text-[11px] font-semibold text-(--muted)">Need help?</p>
-              <p className="mt-0.5 text-[11px] text-(--muted)">Configure each service to enable the corresponding channel.</p>
-            </div>
+          <div className="mt-auto rounded-[24px] bg-[var(--card)] p-[22px]">
+            <p className="text-[13px] font-semibold text-[var(--foreground)]">Need help?</p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--muted)]">Configure each service to enable the corresponding channel.</p>
           </div>
-        </nav>
+        </div>
 
         {/* Mobile section tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 md:hidden">
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => setActiveSection(section.id)}
-              className={cn(
-                'shrink-0 rounded-xl border px-4 py-2 text-xs font-semibold transition-all',
-                activeSection === section.id
-                  ? 'border-(--blue-border) bg-(--blue-soft) text-(--blue-text)'
-                  : 'border-(--border) bg-(--surface-elevated) text-(--muted) hover:text-(--foreground)',
-              )}
-            >
-              {section.title}
-            </button>
-          ))}
+        <div className="overflow-x-auto pb-1 md:hidden">
+          <Tabs items={SECTION_TABS} value={activeSection} onChange={setActiveSection} className="bg-[var(--card)]" />
         </div>
 
         {/* Main content */}
         <div className="min-w-0 flex-1 min-h-0 flex flex-col">
-          <div className="flex flex-col rounded-xl border border-(--border) bg-(--surface-elevated) overflow-hidden flex-1 min-h-0">
+          <Card noPadding className="flex flex-col overflow-hidden flex-1 min-h-0">
             {/* Section header */}
-            <div className="flex items-center gap-4 border-b border-(--border) px-6 py-5 shrink-0">
-              <div
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-(--blue-border) bg-(--blue-dim) text-(--blue-text)"
-              >
+            <div className="flex items-center gap-3.5 px-[22px] pt-[22px] pb-[18px] shrink-0">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[var(--blue-dim)] text-[var(--blue-text)]">
                 {currentSection.icon}
               </div>
-              <div>
-                <h2 className="text-base font-semibold text-(--foreground)">{currentSection.title}</h2>
-                <p className="text-xs text-(--muted)">{currentSection.description}</p>
+              <div className="min-w-0">
+                <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{currentSection.title}</h2>
+                {currentSection.description ? (
+                  <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">{currentSection.description}</p>
+                ) : null}
               </div>
             </div>
 
             {/* Fields */}
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-3 px-6 py-4">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-[18px] px-[22px] pb-[22px]">
               {activeSection === 'follow-up' ? (
-                <div className="flex flex-col gap-6">
-                  <div className="grid gap-4 lg:grid-cols-2">
+                <div className="flex flex-col gap-[18px]">
+                  <div className="grid gap-[18px] lg:grid-cols-2">
                   {(['instagram', 'telegram'] as const).map((channel) => {
                     const channelState = followUp[channel]
                     const label = channel === 'instagram' ? 'Instagram' : 'Telegram'
 
                     return (
-                      <div key={channel} className="rounded-xl border border-(--border) bg-(--surface) p-4 shadow-sm">
+                      <div key={channel} className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <h3 className="text-sm font-semibold text-(--foreground)">{label} follow-up</h3>
-                            <p className="mt-0.5 text-xs text-(--muted)">One-time static reminder message.</p>
+                            <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{label} follow-up</h3>
+                            <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">One-time static reminder message.</p>
                           </div>
                           <Switch
                             checked={channelState.enabled}
@@ -449,28 +545,28 @@ export function CognilabsAIIntegrationsPage() {
                           />
                         </div>
 
-                        <div className={cn('mt-4 space-y-3 transition-opacity duration-200', !channelState.enabled && 'opacity-40 pointer-events-none')}>
+                        <div className={cn('mt-[18px] space-y-3.5 transition-opacity duration-200', !channelState.enabled && 'opacity-40 pointer-events-none')}>
                           <div>
-                            <label className="mb-1 block text-xs font-semibold text-(--muted-strong)">
+                            <Label className="mb-2 block">
                               Delay (minutes)
-                            </label>
+                            </Label>
                             <Input
                               type="number"
                               value={channelState.delay_minutes}
                               onChange={(e) => updateFollowUpField(channel, 'delay_minutes', e.target.value)}
                               placeholder="e.g. 1440"
-                              className="h-9 w-24 text-sm"
+                              className="h-9 min-h-9 w-24 rounded-[11px] bg-[var(--surface)]"
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-semibold text-(--muted-strong)">
+                            <Label className="mb-2 block">
                               Follow-up message
-                            </label>
+                            </Label>
                             <Textarea
                               value={channelState.message}
                               onChange={(e) => updateFollowUpField(channel, 'message', e.target.value)}
                               placeholder="Hello! Let us know if you have any questions..."
-                              className="min-h-[100px] text-sm"
+                              className="min-h-[100px] bg-[var(--surface)]"
                             />
                           </div>
                         </div>
@@ -480,36 +576,36 @@ export function CognilabsAIIntegrationsPage() {
                   </div>
 
                   <div>
-                    <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-(--muted)">Instagram Default Follow-up Sequence</p>
-                    <div className="grid gap-4 lg:grid-cols-3">
+                    <p className="mb-3.5 text-[13px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">Instagram Default Follow-up Sequence</p>
+                    <div className="grid gap-[18px] lg:grid-cols-3">
                       {([0, 1, 2] as const).map((i) => (
-                        <div key={i} className="rounded-xl border border-(--border) bg-(--surface) p-4 shadow-sm">
-                          <div className="mb-3 flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-(--foreground)">Step {i + 1}</p>
+                        <div key={i} className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
+                          <div className="mb-[18px] flex items-center justify-between gap-2">
+                            <p className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">Step {i + 1}</p>
                             <Switch
                               checked={instagramDefaultSteps[i].enabled}
                               onChange={(v) => updateDefaultStep(i, 'enabled', v)}
                               label={`Step ${i + 1} enabled`}
                             />
                           </div>
-                          <div className={cn('space-y-3 transition-opacity duration-200', !instagramDefaultSteps[i].enabled && 'opacity-40 pointer-events-none')}>
+                          <div className={cn('space-y-3.5 transition-opacity duration-200', !instagramDefaultSteps[i].enabled && 'opacity-40 pointer-events-none')}>
                             <div>
-                              <label className="mb-1 block text-xs font-semibold text-(--muted-strong)">Delay (minutes)</label>
+                              <Label className="mb-2 block">Delay (minutes)</Label>
                               <Input
                                 type="number"
                                 value={instagramDefaultSteps[i].delay_minutes}
                                 onChange={(e) => updateDefaultStep(i, 'delay_minutes', e.target.value)}
                                 placeholder="e.g. 180"
-                                className="h-9 w-24 text-sm"
+                                className="h-9 min-h-9 w-24 rounded-[11px] bg-[var(--surface)]"
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs font-semibold text-(--muted-strong)">Message</label>
+                              <Label className="mb-2 block">Message</Label>
                               <Textarea
                                 value={instagramDefaultSteps[i].message}
                                 onChange={(e) => updateDefaultStep(i, 'message', e.target.value)}
                                 placeholder="Follow-up message..."
-                                className="min-h-[90px] text-sm"
+                                className="min-h-[90px] bg-[var(--surface)]"
                               />
                             </div>
                           </div>
@@ -519,252 +615,41 @@ export function CognilabsAIIntegrationsPage() {
                   </div>
                 </div>
               ) : activeSection === 'telegram' ? (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-[18px]">
                   {/* Tab switcher */}
-                  <div className="flex gap-1 rounded-xl border border-(--border) bg-(--surface) p-1 w-fit">
-                    <button
-                      type="button"
-                      onClick={() => setTelegramTab('telegram')}
-                      className={cn(
-                        'rounded-lg px-4 py-1.5 text-xs font-semibold transition-all',
-                        telegramTab === 'telegram'
-                          ? 'bg-(--blue-soft) text-(--blue-text) shadow-sm'
-                          : 'text-(--muted) hover:text-(--foreground)',
-                      )}
-                    >
-                      Telegram
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTelegramTab('lead-bot')}
-                      className={cn(
-                        'rounded-lg px-4 py-1.5 text-xs font-semibold transition-all',
-                        telegramTab === 'lead-bot'
-                          ? 'bg-(--blue-soft) text-(--blue-text) shadow-sm'
-                          : 'text-(--muted) hover:text-(--foreground)',
-                      )}
-                    >
-                      Lead Bot
-                    </button>
-                  </div>
+                  <Tabs items={TELEGRAM_TABS} value={telegramTab} onChange={setTelegramTab} className="self-start" />
 
                   {/* Tab content */}
-                  {telegramTab === 'telegram'
-                    ? sections.find((s) => s.id === 'telegram')!.fields.map((field) => {
-                        const value = fieldValue(form, field.key)
-                        const isSecret = field.type === 'password'
-                        const isRevealed = revealedKeys.has(field.key)
-                        const hasContent = Boolean(value)
-
-                        return (
-                          <div key={field.key}>
-                            <div className="mb-1 flex items-center gap-2">
-                              <label className="text-xs font-semibold text-(--foreground)">{field.label}</label>
-                              {field.required ? (
-                                <span className="rounded-md border border-(--blue-border) bg-(--blue-dim) px-1.5 py-0.5 text-[10px] font-semibold text-(--blue-text)">Required</span>
-                              ) : null}
-                              {hasContent && !isSecret ? (
-                                <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">Set</span>
-                              ) : hasContent && isSecret ? (
-                                <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">Configured</span>
-                              ) : null}
-                            </div>
-                            {isSecret ? (
-                              <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                  <Input
-                                    type={isRevealed ? 'text' : 'password'}
-                                    value={value}
-                                    onChange={(e) => updateField(field.key, e.target.value)}
-                                    placeholder={field.placeholder ?? '••••••••••••••••'}
-                                    className="w-full font-mono text-sm"
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleReveal(field.key)}
-                                  className="shrink-0 rounded-xl border border-(--border) bg-(--surface) px-3 text-xs font-semibold text-(--muted) transition hover:bg-(--accent-soft) hover:text-(--foreground)"
-                                >
-                                  {isRevealed ? (
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeLinecap="round" strokeLinejoin="round" />
-                                      <line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round" />
-                                    </svg>
-                                  ) : (
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                      <circle cx="12" cy="12" r="3" />
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
-                            ) : (
-                              <Input
-                                value={value}
-                                onChange={(e) => updateField(field.key, e.target.value)}
-                                placeholder={field.placeholder}
-                                className="font-mono text-sm"
-                              />
-                            )}
-                            {field.hint ? (
-                              <p className="mt-1.5 flex items-start gap-1 text-xs text-(--muted)">
-                                <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-60">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                                {field.hint}
-                              </p>
-                            ) : null}
-                          </div>
-                        )
-                      })
-                    : (
-                      <>
-                        <div>
-                          <div className="mb-1 flex items-center gap-2">
-                            <label className="text-xs font-semibold text-(--foreground)">Bot Token</label>
-                            {form.cognilabs_telegram_token ? (
-                              <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">Configured</span>
-                            ) : null}
-                          </div>
-                          <div className="flex gap-2">
-                            <div className="relative flex-1">
-                              <Input
-                                type={revealedKeys.has('cognilabs_telegram_token') ? 'text' : 'password'}
-                                value={form.cognilabs_telegram_token ?? ''}
-                                onChange={(e) => updateField('cognilabs_telegram_token', e.target.value)}
-                                placeholder="••••••••••••••••"
-                                className="w-full font-mono text-sm"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => toggleReveal('cognilabs_telegram_token')}
-                              className="shrink-0 rounded-xl border border-(--border) bg-(--surface) px-3 text-xs font-semibold text-(--muted) transition hover:bg-(--accent-soft) hover:text-(--foreground)"
-                            >
-                              {revealedKeys.has('cognilabs_telegram_token') ? (
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                                  <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeLinecap="round" strokeLinejoin="round" />
-                                  <line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round" />
-                                </svg>
-                              ) : (
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                  <circle cx="12" cy="12" r="3" />
-                                </svg>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="mb-1 flex items-center gap-2">
-                            <label className="text-xs font-semibold text-(--foreground)">Channel ID</label>
-                            {form.cognilabs_channel_id ? (
-                              <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">Set</span>
-                            ) : null}
-                          </div>
-                          <Input
-                            value={form.cognilabs_channel_id ?? ''}
-                            onChange={(e) => updateField('cognilabs_channel_id', e.target.value)}
-                            placeholder="e.g. -1001234567890"
-                            className="font-mono text-sm"
-                          />
-                        </div>
-                      </>
-                    )
-                  }
+                  <div className="space-y-[18px]">
+                    {(telegramTab === 'telegram' ? TELEGRAM_FIELDS : LEAD_BOT_FIELDS).map((field) => (
+                      <IntegrationField
+                        key={field.key}
+                        field={field}
+                        value={fieldValue(form, field.key)}
+                        revealed={revealedKeys.has(field.key)}
+                        onChange={(next) => updateField(field.key, next)}
+                        onToggleReveal={() => toggleReveal(field.key)}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : (
-                currentSection.fields.map((field) => {
-                  const value = fieldValue(form, field.key)
-                  const isSecret = field.type === 'password'
-                  const isRevealed = revealedKeys.has(field.key)
-                  const hasContent = Boolean(value)
-
-                  return (
-                    <div key={field.key}>
-                      <div className="mb-1 flex items-center gap-2">
-                        <label className="text-xs font-semibold text-(--foreground)">
-                          {field.label}
-                        </label>
-                        {field.required ? (
-                          <span className="rounded-md border border-(--blue-border) bg-(--blue-dim) px-1.5 py-0.5 text-[10px] font-semibold text-(--blue-text)">
-                            Required
-                          </span>
-                        ) : null}
-                        {hasContent && !isSecret ? (
-                          <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
-                            Set
-                          </span>
-                        ) : hasContent && isSecret ? (
-                          <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
-                            Configured
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {field.type === 'textarea' ? (
-                        <textarea
-                          value={value}
-                          onChange={(e) => updateField(field.key, e.target.value)}
-                          placeholder={field.placeholder}
-                          rows={8}
-                          className="w-full resize-y rounded-xl border border-(--border) bg-(--surface) px-3 py-2.5 text-sm text-(--foreground) placeholder:text-(--muted) focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-shadow"
-                        />
-                      ) : isSecret ? (
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <Input
-                              type={isRevealed ? 'text' : 'password'}
-                              value={value}
-                              onChange={(e) => updateField(field.key, e.target.value)}
-                              placeholder={field.placeholder ?? '••••••••••••••••'}
-                              className="w-full font-mono text-sm"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleReveal(field.key)}
-                            className="shrink-0 rounded-xl border border-(--border) bg-(--surface) px-3 text-xs font-semibold text-(--muted) transition hover:bg-(--accent-soft) hover:text-(--foreground)"
-                          >
-                            {isRevealed ? (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeLinecap="round" strokeLinejoin="round" />
-                                <line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round" />
-                              </svg>
-                            ) : (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                      ) : (
-                        <Input
-                          value={value}
-                          onChange={(e) => updateField(field.key, e.target.value)}
-                          placeholder={field.placeholder}
-                          className="font-mono text-sm"
-                        />
-                      )}
-
-                      {field.hint ? (
-                        <p className="mt-1.5 flex items-start gap-1 text-xs text-(--muted)">
-                          <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-60">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                          {field.hint}
-                        </p>
-                      ) : null}
-                    </div>
-                  )
-                })
+                currentSection.fields.map((field) => (
+                  <IntegrationField
+                    key={field.key}
+                    field={field}
+                    value={fieldValue(form, field.key)}
+                    revealed={revealedKeys.has(field.key)}
+                    onChange={(next) => updateField(field.key, next)}
+                    onToggleReveal={() => toggleReveal(field.key)}
+                  />
+                ))
               )}
             </div>
 
             {/* Section footer */}
-            <div className="flex items-center justify-between border-t border-(--border) bg-(--muted-surface)/40 px-6 py-4 shrink-0">
-              <p className="text-xs text-(--muted)">
+            <div className="flex items-center justify-between gap-3 bg-[var(--muted-surface)] px-[22px] py-4 shrink-0">
+              <p className="text-[12.5px] text-[var(--muted)]">
                 {activeSection === 'follow-up'
                   ? `${(Object.values(followUp) as FollowUpChannelState[]).filter(s => s.enabled).length} channels enabled`
                   : activeSection === 'telegram'
@@ -778,7 +663,7 @@ export function CognilabsAIIntegrationsPage() {
                 {isSaving ? 'Saving...' : 'Save'}
               </Button>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

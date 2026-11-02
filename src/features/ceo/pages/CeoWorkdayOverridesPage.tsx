@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   updateTrackingService,
@@ -8,24 +8,27 @@ import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
-import { cn } from '../../../shared/lib/cn'
 import { formatShortDate, formatShortDateTime, getLocalizedMonthName } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
+import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
+import { PageHeader } from '../../../shared/ui/page-header'
 import { SelectField } from '../../../shared/ui/select-field'
 import { SectionTitle } from '../../../shared/ui/section-title'
-import { ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
+import { StatCard } from '../../../shared/ui/stat-card'
+import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
+import type { Tone } from '../../../shared/ui/tone'
+import { WorkdayOverrideFormDialog } from '../components/WorkdayOverrideFormDialog'
 import {
-  WorkdayOverrideFormDialog,
   getOverrideTypeLabel,
   getTypeBadgeVariant,
   normalizeDayType,
-} from '../components/WorkdayOverrideFormDialog'
+} from '../lib/workdayOverride'
 
 const now = new Date()
 const lt = translateCurrentLiteral
@@ -46,36 +49,63 @@ function getOverrideTargetLabel(item: WorkdayOverrideRecord) {
   return item.member_name?.trim() || (item.member_id ? `${lt('Member')} #${item.member_id}` : lt('Specific member'))
 }
 
+type SummaryAccent = 'default' | 'warning' | 'blue' | 'success'
+
+const summaryIconTone: Record<SummaryAccent, Tone> = {
+  default: 'blue',
+  warning: 'warning',
+  blue: 'blue',
+  success: 'success',
+}
+
+const summaryIcons: Record<SummaryAccent, ReactNode> = {
+  default: (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="3.5" />
+      <path d="M8 3v4M16 3v4M3 11h18" />
+    </svg>
+  ),
+  warning: (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6" />
+    </svg>
+  ),
+  blue: (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5.3l3.4 2" />
+    </svg>
+  ),
+  success: (
+    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9.2" cy="8.4" r="3.4" />
+      <path d="M3 19.4c0-3.1 2.8-4.7 6.2-4.7s6.2 1.6 6.2 4.7" />
+      <path d="M16.4 6.1a3.2 3.2 0 0 1 0 5.9M21 19.4c0-2-1.2-3.3-3.3-3.9" />
+    </svg>
+  ),
+}
+
 function SummaryCard({
   label,
   value,
-  hint: _hint,
+  hint,
   accent = 'default',
 }: {
   label: string
   value: string | number
   hint?: string
-  accent?: 'default' | 'warning' | 'blue' | 'success'
+  accent?: SummaryAccent
 }) {
-  const accentClassName = {
-    default: 'border-[var(--border)] bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.76)] dark:border-white/8 dark:bg-white/[0.03] dark:shadow-none',
-    warning: 'border-[var(--warning-border)] bg-amber-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] dark:border-amber-500/18 dark:bg-amber-500/[0.06] dark:shadow-none',
-    blue: 'border-[var(--blue-border)] bg-[var(--blue-soft)] shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] dark:border-blue-500/18 dark:bg-blue-500/[0.06] dark:shadow-none',
-    success: 'border-[var(--success-border)] bg-emerald-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] dark:border-emerald-500/18 dark:bg-emerald-500/[0.06] dark:shadow-none',
-  } as const
-
-  const accentLabelClassName = {
-    default: 'text-[var(--blue-text)] dark:text-blue-200/82',
-    warning: 'text-[var(--warning-text)] dark:text-amber-200/82',
-    blue: 'text-[var(--blue-text)] dark:text-blue-200/82',
-    success: 'text-[#32a852] dark:text-emerald-200/82',
-  } as const
-
   return (
-    <div className={cn('rounded-xl border px-5 py-4', accentClassName[accent])}>
-      <p className={cn('text-[10px] font-bold uppercase tracking-[0.22em]', accentLabelClassName[accent])}>{label}</p>
-      <p className="mt-3 text-[1.75rem] font-semibold tracking-tight text-[var(--foreground)] dark:text-white">{value}</p>
-    </div>
+    <StatCard
+      label={label}
+      value={typeof value === 'number' ? value : <span className="text-[17px] font-semibold tracking-[-0.01em]">{value}</span>}
+      hint={hint}
+      icon={summaryIcons[accent]}
+      iconTone={summaryIconTone[accent]}
+      solid={accent === 'default'}
+    />
   )
 }
 
@@ -204,67 +234,52 @@ export function CeoWorkdayOverridesPage() {
   }
 
   return (
-    <section className="space-y-4 page-enter">
-      <Card variant="glass" noPadding className="overflow-hidden rounded-xl border-[var(--border)]">
-        <div className="relative overflow-hidden px-6 py-6 sm:px-8 sm:py-7">
-          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--blue-text)]">
-                {tx('ceo.workday.header.eyebrow', 'CEO Workspace')}
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-[1.75rem]">
-                {tx('ceo.workday.header.title', 'Workday Overrides')}
-              </h1>
-              <p className="mt-1.5 text-[13px] text-(--muted-strong)">
-                {tx('ceo.workday.header.description', 'Configure holidays and short working days that affect update expectations.')}
-              </p>
+    <section className="space-y-[18px] page-enter">
+      <PageHeader
+        eyebrow={tx('ceo.workday.header.eyebrow', 'CEO Workspace')}
+        title={tx('ceo.workday.header.title', 'Workday Overrides')}
+        description={tx('ceo.workday.header.description', 'Configure holidays and short working days that affect update expectations.')}
+        actions={(
+          <>
+            <div className="flex h-11 items-center gap-2 rounded-[14px] bg-[var(--accent-soft)] px-3">
+              <Label className="text-[12.5px] text-[var(--muted)]">{tx('common.year', 'Year')}</Label>
+              <Input
+                type="number"
+                min="2020"
+                max="2035"
+                value={year}
+                onChange={(event) => setYear(Number(event.target.value) || now.getFullYear())}
+                className="h-8 min-h-0 w-[72px] rounded-[9px] bg-transparent px-1.5 text-sm font-semibold hover:bg-transparent focus:bg-[var(--surface)]"
+              />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-(--muted)">{tx('common.year', 'Year')}</Label>
-                <Input
-                  type="number"
-                  min="2020"
-                  max="2035"
-                  value={year}
-                  onChange={(event) => setYear(Number(event.target.value) || now.getFullYear())}
-                  className="min-h-0 h-6 w-18 border-transparent bg-transparent px-2.5 text-sm text-[var(--foreground)]"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-(--muted)">{tx('common.month', 'Month')}</Label>
-                <SelectField
-                  value={String(month)}
-                  options={monthOptions}
-                  onValueChange={(value) => setMonth(Number(value))}
-                  className="min-h-0 h-9 min-w-28 border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--foreground)]"
-                />
-              </div>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void handleRefresh()}
-                className="min-h-9 rounded-xl"
-              >
-                {t('common.refresh')}
-              </Button>
-              <Button
-                variant="success"
-                size="sm"
-                onClick={openCreateDialog}
-                className="min-h-9 rounded-xl"
-              >
-                {tx('ceo.workday.actions.create', 'Create Override')}
-              </Button>
+            <div className="flex h-11 items-center gap-2 rounded-[14px] bg-[var(--accent-soft)] px-3">
+              <Label className="text-[12.5px] text-[var(--muted)]">{tx('common.month', 'Month')}</Label>
+              <SelectField
+                value={String(month)}
+                options={monthOptions}
+                onValueChange={(value) => setMonth(Number(value))}
+                className="h-8 min-h-0 min-w-28 rounded-[9px] bg-transparent px-1.5 text-sm font-semibold hover:bg-transparent"
+              />
             </div>
-          </div>
-        </div>
-      </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Button
+              variant="secondary"
+              onClick={() => void handleRefresh()}
+            >
+              {t('common.refresh')}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={openCreateDialog}
+            >
+              {tx('ceo.workday.actions.create', 'Create Override')}
+            </Button>
+          </>
+        )}
+      />
+
+      <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           label={tx('ceo.workday.summary.in_period', 'Overrides in period')}
           value={overrides.length}
@@ -293,9 +308,9 @@ export function CeoWorkdayOverridesPage() {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.85fr)]">
-        <Card variant="glass" className="p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="grid gap-[18px] xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.85fr)]">
+        <Card>
+          <div className="mb-[18px] flex items-start justify-between gap-3">
             <SectionTitle
               title={tx('ceo.workday.list.title', 'Overrides for {{month}} {{year}}', { month: getMonthName(month), year })}
               description={tx('ceo.workday.list.description', 'Each entry changes how update tracking treats a specific date.')}
@@ -304,16 +319,16 @@ export function CeoWorkdayOverridesPage() {
           </div>
 
           {overrides.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {overrides.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-white/8 bg-white/[0.03] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                  className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-semibold tracking-tight text-[var(--foreground)]">
+                        <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
                           {item.title}
                         </h3>
                         <Badge variant={getTypeBadgeVariant(item.day_type)}>
@@ -330,12 +345,12 @@ export function CeoWorkdayOverridesPage() {
                         ) : null}
                       </div>
 
-                      <p className="mt-2 text-sm text-[var(--muted-strong)]">
+                      <p className="mt-2 text-[12.5px] text-[var(--muted)]">
                         {formatShortDate(item.special_date)}
                       </p>
 
                       {item.note?.trim() ? (
-                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--foreground)]/80">
+                        <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-[var(--muted-strong)]">
                           {item.note}
                         </p>
                       ) : (
@@ -354,57 +369,46 @@ export function CeoWorkdayOverridesPage() {
                     />
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-[var(--muted)]">
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-[var(--muted)]">
                     <span>{tx('common.created', 'Created')}: {formatDateTime(item.created_at)}</span>
-                    <span className="opacity-35">|</span>
+                    <span className="text-[var(--border-hover)]">|</span>
                     <span>{tx('common.updated', 'Updated')}: {formatDateTime(item.updated_at)}</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-8 text-center">
-              <p className="text-base font-semibold text-[var(--foreground)]">
-                {tx('ceo.workday.empty.title', 'No overrides yet for {{month}} {{year}}', { month: getMonthName(month), year })}
-              </p>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                {tx('ceo.workday.empty.description', 'Create a holiday or short-day rule so calendars stop treating those dates as missing workdays.')}
-              </p>
-              <Button variant="success" size="sm" className="mt-5 rounded-xl" onClick={openCreateDialog}>
+            <EmptyStateBlock
+              eyebrow={''}
+              title={tx('ceo.workday.empty.title', 'No overrides yet for {{month}} {{year}}', { month: getMonthName(month), year })}
+              description={tx('ceo.workday.empty.description', 'Create a holiday or short-day rule so calendars stop treating those dates as missing workdays.')}
+              className="bg-[var(--accent-soft)]"
+            >
+              <Button variant="primary" size="sm" onClick={openCreateDialog}>
                 {tx('ceo.workday.empty.action', 'Create First Override')}
               </Button>
-            </div>
+            </EmptyStateBlock>
           )}
         </Card>
 
-        <Card variant="glass" className="p-5">
-          <div className="space-y-4">
+        <Card>
+          <div className="space-y-[18px]">
             <SectionTitle
               title={tx('ceo.workday.guide.title', 'How It Works')}
               description={tx('ceo.workday.guide.description', 'Use these rules to control whether updates are expected on a date.')}
             />
 
-            <div className="rounded-xl border border-[var(--warning-border)] bg-amber-50/90 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-amber-500/18 dark:bg-amber-500/[0.06] dark:shadow-none">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--warning-text)] dark:text-amber-200/82">{lt('Holiday')}</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--foreground)]/80">
-                {tx('ceo.workday.guide.holiday_description', 'Mark a date as a holiday when no update should be expected. Calendars should treat it as an off day instead of a missing day.')}
-              </p>
-            </div>
+            <Alert tone="warning" title={lt('Holiday')}>
+              {tx('ceo.workday.guide.holiday_description', 'Mark a date as a holiday when no update should be expected. Calendars should treat it as an off day instead of a missing day.')}
+            </Alert>
 
-            <div className="rounded-xl border border-[var(--blue-border)] bg-[var(--blue-soft)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-blue-500/18 dark:bg-blue-500/[0.06] dark:shadow-none">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)] dark:text-blue-200/82">{lt('Short Day')}</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--foreground)]/80">
-                {tx('ceo.workday.guide.short_day_description', 'Use a short day when working hours change. You can still require updates or turn them off for that shortened date.')}
-              </p>
-            </div>
+            <Alert tone="blue" title={lt('Short Day')}>
+              {tx('ceo.workday.guide.short_day_description', 'Use a short day when working hours change. You can still require updates or turn them off for that shortened date.')}
+            </Alert>
 
-            <div className="rounded-xl border border-[var(--blue-border)] bg-white px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-white/10 dark:bg-[var(--surface-elevated)] dark:shadow-none">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--blue-text)] dark:text-blue-200/82">{tx('ceo.workday.guide.member_targeting_title', 'Member Targeting')}</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--foreground)]/78">
-                {tx('ceo.workday.guide.member_targeting_description', 'Choose all members for company-wide holidays, or select one or more members when the override is specific to a subset of the team.')}
-              </p>
-            </div>
-
+            <Alert tone="neutral" title={tx('ceo.workday.guide.member_targeting_title', 'Member Targeting')}>
+              {tx('ceo.workday.guide.member_targeting_description', 'Choose all members for company-wide holidays, or select one or more members when the override is specific to a subset of the team.')}
+            </Alert>
           </div>
         </Card>
       </div>

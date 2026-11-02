@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { managementService } from '../../../shared/api/services/management.service'
 import type {
   ManagementImageCategory,
@@ -25,14 +25,19 @@ import { ActionsMenu } from '../../../shared/ui/actions-menu'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../shared/ui/card'
+import { Checkbox } from '../../../shared/ui/checkbox'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
+import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
 import { Label } from '../../../shared/ui/label'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
+import { Tabs } from '../../../shared/ui/tabs'
 import { Textarea } from '../../../shared/ui/textarea'
+import type { Tone } from '../../../shared/ui/tone'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
 
 type ManagementTab = 'pages' | 'statuses' | 'roles' | 'images'
@@ -117,32 +122,68 @@ const initialRoleForm: RoleFormState = {
   isSystem: false,
 }
 
-const managementStaticCardSurface =
-  'border-gray-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.25)]'
+function EditGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+  )
+}
 
-const managementStaticCardTopLine =
-  'bg-gray-200 dark:bg-white/10'
+function TrashGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
+  )
+}
 
-const managementStaticCardTitle = 'text-gray-500 dark:text-white/50'
-const managementStaticCardValue = 'text-gray-900 dark:text-white'
-const managementStaticCardHint = 'text-gray-500 dark:text-white/55'
+function ImagesGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3.5" /><circle cx="9" cy="9" r="1.6" /><path d="M21 15.5 16 10.5 5 21" /></svg>
+  )
+}
+
+function LinkGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true"><path d="M9.5 17H7.5a5 5 0 0 1 0-10h2" /><path d="M14.5 7h2a5 5 0 0 1 0 10h-2" /><path d="M8.5 12h7" /></svg>
+  )
+}
+
+function UnlinkGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true"><path d="M9.5 17H7.5a5 5 0 0 1-.9-9.9" /><path d="M14.5 7h2a5 5 0 0 1 3.9 8.1" /><path d="M4 4l16 16" /></svg>
+  )
+}
+
+function SelectGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4.5" /><path d="M8 12.4l2.9 2.9L16.5 9.6" /></svg>
+  )
+}
 
 function SummaryCard({
   label,
   value,
-  hint: _hint,
+  hint,
+  icon,
+  iconTone,
+  solid,
 }: {
   label: string
   value: string | number
   hint: string
+  icon?: ReactNode
+  iconTone?: Tone
+  solid?: boolean
 }) {
   const lt = translateCurrentLiteral
   return (
-    <div className={cn('relative overflow-hidden rounded-xl px-5 py-4', managementStaticCardSurface)}>
-      <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-[3px]', managementStaticCardTopLine)} />
-      <p className={cn('text-[12px] font-extrabold uppercase tracking-[0.24em]', managementStaticCardTitle)}>{lt(label)}</p>
-      <p className={cn('mt-2 text-[2rem] font-bold tracking-tight', managementStaticCardValue)}>{value}</p>
-    </div>
+    <StatCard
+      label={lt(label)}
+      value={value}
+      hint={hint}
+      icon={icon}
+      iconTone={iconTone}
+      solid={solid}
+      className={solid ? undefined : 'bg-[var(--accent-soft)]'}
+    />
   )
 }
 
@@ -210,10 +251,10 @@ function BooleanToggle({
         type="button"
         onClick={() => onChange(true)}
         className={cn(
-          'rounded-xl border px-4 py-3 text-left text-sm transition',
+          'min-h-11 rounded-[14px] px-4 py-3 text-left text-sm transition-colors',
           value
-            ? 'border-emerald-400/35 bg-emerald-500/[0.10] text-white'
-            : 'border-white/10 bg-white/[0.03] text-white/72 hover:border-white/16',
+            ? 'bg-[var(--success-dim)] font-semibold text-[var(--success-text)]'
+            : 'bg-[var(--input-surface)] font-medium text-[var(--muted-strong)] hover:bg-[var(--input-surface-hover)]',
         )}
       >
         {lt(trueLabel)}
@@ -222,10 +263,10 @@ function BooleanToggle({
         type="button"
         onClick={() => onChange(false)}
         className={cn(
-          'rounded-xl border px-4 py-3 text-left text-sm transition',
+          'min-h-11 rounded-[14px] px-4 py-3 text-left text-sm transition-colors',
           !value
-            ? 'border-amber-400/35 bg-amber-500/[0.10] text-white'
-            : 'border-white/10 bg-white/[0.03] text-white/72 hover:border-white/16',
+            ? 'bg-[var(--warning-dim)] font-semibold text-[var(--warning-text)]'
+            : 'bg-[var(--input-surface)] font-medium text-[var(--muted-strong)] hover:bg-[var(--input-surface-hover)]',
         )}
       >
         {lt(falseLabel)}
@@ -938,7 +979,7 @@ export function CeoManagementPage() {
   }
 
   return (
-    <section className="space-y-4 page-enter">
+    <section className="space-y-[18px] page-enter">
       <PageHeader
         title={lt('Management API')}
         actions={(
@@ -959,27 +1000,16 @@ export function CeoManagementPage() {
         )}
       />
 
-      <div className="grid gap-3 md:grid-cols-4">
-        {tabOptions.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'rounded-xl border px-4 py-4 text-left transition',
-              activeTab === tab.key
-                ? 'border-[#2576EF]/32 bg-[linear-gradient(180deg,rgba(37,118,239,0.18),rgba(255,255,255,0.98))] shadow-[inset_0_0_0_1px_rgba(37,118,239,0.08),0_18px_34px_rgba(37,118,239,0.12)] dark:border-blue-400/28 dark:bg-[linear-gradient(180deg,rgba(37,118,239,0.22),rgba(37,118,239,0.08))] dark:text-white dark:shadow-[0_0_0_1px_rgba(96,165,250,0.08),0_18px_36px_rgba(15,23,42,0.26)]'
-                : 'border-[#2576EF]/22 bg-[linear-gradient(180deg,rgba(37,118,239,0.10),rgba(255,255,255,1))] shadow-[inset_0_0_0_1px_rgba(37,118,239,0.05),0_12px_24px_rgba(37,118,239,0.07)] hover:border-[#2576EF]/30 hover:bg-[linear-gradient(180deg,rgba(37,118,239,0.14),rgba(255,255,255,1))] dark:border-blue-500/18 dark:bg-[linear-gradient(180deg,rgba(37,118,239,0.14),rgba(37,118,239,0.05))] dark:text-white/84 dark:shadow-[0_0_0_1px_rgba(96,165,250,0.06),0_16px_28px_rgba(15,23,42,0.24)] dark:hover:border-blue-400/26 dark:hover:bg-[linear-gradient(180deg,rgba(37,118,239,0.18),rgba(37,118,239,0.06))]',
-            )}
-          >
-            <p className={cn('text-sm font-bold', activeTab === tab.key ? managementStaticCardValue : managementStaticCardTitle)}>{lt(tab.label)}</p>
-          </button>
-        ))}
-      </div>
+      <Tabs
+        ariaLabel={lt('Management API')}
+        items={tabOptions.map((tab) => ({ value: tab.key, label: lt(tab.label) }))}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
 
       {activeTab === 'pages' ? (
         <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
             <div className="space-y-1">
               <CardTitle>{lt('Pages Registry')}</CardTitle>
               <CardDescription>{lt('Permission page catalog is managed from this table with create, edit, and delete actions.')}</CardDescription>
@@ -998,20 +1028,20 @@ export function CeoManagementPage() {
                   header: lt('Page'),
                   render: (row) => (
                     <div>
-                      <p className="font-semibold text-white">{row.display_name}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.14em] text-(--muted)">{row.name}</p>
+                      <p className="font-semibold text-[var(--foreground)]">{row.display_name}</p>
+                      <p className="mt-1 text-[12px] text-[var(--muted)]">{row.name}</p>
                     </div>
                   ),
                 },
                 {
                   key: 'route',
                   header: lt('Route'),
-                  render: (row) => <span className="text-sm text-white/75">{row.route_path}</span>,
+                  render: (row) => <span className="text-[13.5px] text-[var(--muted-strong)]">{row.route_path}</span>,
                 },
                 {
                   key: 'description',
                   header: lt('Description'),
-                  render: (row) => <span className="text-sm text-white/75">{row.description || lt('No description')}</span>,
+                  render: (row) => <span className="text-[13.5px] text-[var(--muted-strong)]">{row.description || lt('No description')}</span>,
                 },
                 {
                   key: 'order',
@@ -1043,12 +1073,12 @@ export function CeoManagementPage() {
                   header: lt('Actions'),
                   render: (row) => (
                     <div className="flex items-center gap-1">
-                      <button type="button" title={lt('Edit')} onClick={() => openEditPageDialog(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button type="button" title={lt('Delete')} onClick={() => void handleDeletePage(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                      </button>
+                      <IconButton size="sm" label={lt('Edit')} onClick={() => openEditPageDialog(row)}>
+                        <EditGlyph />
+                      </IconButton>
+                      <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeletePage(row)}>
+                        <TrashGlyph />
+                      </IconButton>
                     </div>
                   ),
                 },
@@ -1060,7 +1090,7 @@ export function CeoManagementPage() {
 
       {activeTab === 'statuses' ? (
         <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
             <CardTitle>{lt('Statuses')}</CardTitle>
             <Badge variant="success">{statuses.length} {lt('statuses')}</Badge>
           </CardHeader>
@@ -1077,10 +1107,10 @@ export function CeoManagementPage() {
                   render: (row) => (
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: row.color }} />
-                        <p className="font-semibold text-white">{row.display_name}</p>
+                        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+                        <p className="font-semibold text-[var(--foreground)]">{row.display_name}</p>
                       </div>
-                      <p className="mt-1 text-xs uppercase tracking-[0.14em] text-(--muted)">{row.name}</p>
+                      <p className="mt-1 text-[12px] text-[var(--muted)]">{row.name}</p>
                     </div>
                   ),
                 },
@@ -1088,7 +1118,7 @@ export function CeoManagementPage() {
                   key: 'description',
                   header: lt('Description'),
                   render: (row) => (
-                    <span className="text-sm text-white/75">{row.description || lt('No description')}</span>
+                    <span className="text-[13.5px] text-[var(--muted-strong)]">{row.description || lt('No description')}</span>
                   ),
                 },
                 {
@@ -1121,12 +1151,12 @@ export function CeoManagementPage() {
                   header: lt('Actions'),
                   render: (row) => (
                     <div className="flex items-center gap-1">
-                      <button type="button" title={lt('Edit')} onClick={() => openEditStatusDialog(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button type="button" title={lt('Delete')} onClick={() => void handleDeleteStatus(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                      </button>
+                      <IconButton size="sm" label={lt('Edit')} onClick={() => openEditStatusDialog(row)}>
+                        <EditGlyph />
+                      </IconButton>
+                      <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeleteStatus(row)}>
+                        <TrashGlyph />
+                      </IconButton>
                     </div>
                   ),
                 },
@@ -1138,7 +1168,7 @@ export function CeoManagementPage() {
 
       {activeTab === 'roles' ? (
         <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
             <div className="space-y-1">
               <CardTitle>{lt('Roles')}</CardTitle>
               <CardDescription>{lt('User role management follows the same CRUD workflow as the statuses section.')}</CardDescription>
@@ -1157,8 +1187,8 @@ export function CeoManagementPage() {
                   header: lt('Role'),
                   render: (row) => (
                     <div>
-                      <p className="font-semibold text-white">{row.display_name}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.14em] text-(--muted)">{row.name}</p>
+                      <p className="font-semibold text-[var(--foreground)]">{row.display_name}</p>
+                      <p className="mt-1 text-[12px] text-[var(--muted)]">{row.name}</p>
                     </div>
                   ),
                 },
@@ -1166,7 +1196,7 @@ export function CeoManagementPage() {
                   key: 'description',
                   header: lt('Description'),
                   render: (row) => (
-                    <span className="text-sm text-white/75">{row.description || lt('No description')}</span>
+                    <span className="text-[13.5px] text-[var(--muted-strong)]">{row.description || lt('No description')}</span>
                   ),
                 },
                 {
@@ -1193,12 +1223,12 @@ export function CeoManagementPage() {
                   header: lt('Actions'),
                   render: (row) => (
                     <div className="flex items-center gap-1">
-                      <button type="button" title={lt('Edit')} onClick={() => openEditRoleDialog(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button type="button" title={lt('Delete')} onClick={() => void handleDeleteRole(row)} className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                      </button>
+                      <IconButton size="sm" label={lt('Edit')} onClick={() => openEditRoleDialog(row)}>
+                        <EditGlyph />
+                      </IconButton>
+                      <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeleteRole(row)}>
+                        <TrashGlyph />
+                      </IconButton>
                     </div>
                   ),
                 },
@@ -1216,34 +1246,42 @@ export function CeoManagementPage() {
           </CardHeader>
           <CardContent>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-4">
             <SummaryCard
+              solid
+              icon={<ImagesGlyph />}
               label={tr('Images loaded', 'Yuklangan rasmlar', 'Zagruzhennye izobrazheniya')}
               value={imagesQuery.data?.total_count ?? imageItems.length}
               hint={tr('Current category and reference filters bilan yuklangan rasmlar.', 'Joriy kategoriya va boglanish filtrlari bilan yuklangan rasmlar.', 'Izobrazheniya, zagruzhennye s tekushchimi filtrami kategorii i ssylok.')}
             />
             <SummaryCard
+              icon={<LinkGlyph />}
+              iconTone="success"
               label={tr('Referenced', 'Boglangan', 'Svyazannye')}
               value={referencedImagesCount}
               hint={tr('DB ichida kamida bitta reference bor.', 'DB ichida kamida bitta boglanish bor.', 'V BD est khotya by odna svyaz.')}
             />
             <SummaryCard
+              icon={<UnlinkGlyph />}
+              iconTone="warning"
               label={tr('Unreferenced', 'Boglanmagan', 'Nesvyazannye')}
               value={unreferencedImagesCount}
               hint={tr('DB da ishlatilmayotgan rasmlar.', 'DB da ishlatilmayotgan rasmlar.', 'Izobrazheniya, kotorye ne ispolzuyutsya v BD.')}
             />
             <SummaryCard
+              icon={<SelectGlyph />}
+              iconTone="violet"
               label={tr('Selected', 'Tanlangan', 'Vybrannye')}
               value={selectedImagePaths.length}
               hint={tr('Bulk delete uchun tanlangan rasmlar.', 'Ommaviy ochirish uchun tanlangan rasmlar.', 'Izobrazheniya, vybrannye dlya massovogo udaleniya.')}
             />
           </div>
 
-            <div className={cn('mt-5 rounded-xl p-5', managementStaticCardSurface)}>
-              <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="mt-[18px] space-y-[18px]">
+              <div className="flex flex-wrap items-start justify-between gap-4 rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
                 <div>
-                  <p className={cn('text-sm font-semibold', managementStaticCardValue)}>{lt('Image library')}</p>
-                  <p className={cn('mt-1 text-xs leading-5', managementStaticCardHint)}>
+                  <p className="text-[15px] font-semibold text-[var(--foreground)]">{lt('Image library')}</p>
+                  <p className="mt-1 text-[12.5px] leading-5 text-[var(--muted)]">
                     {lt('GET /management/images and GET /management/images/detail are connected here.')}
                   </p>
                 </div>
@@ -1273,9 +1311,9 @@ export function CeoManagementPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.85fr_0.85fr]">
+            <div className="grid gap-[18px] lg:grid-cols-[1.2fr_0.85fr_0.85fr]">
               <div>
-                <Label className={cn('mb-2 block text-sm font-semibold', managementStaticCardTitle)}>{lt('Search')}</Label>
+                <Label className="mb-2 block">{lt('Search')}</Label>
                 <Input
                   value={imageSearch}
                   onChange={(event) => setImageSearch(event.target.value)}
@@ -1284,7 +1322,7 @@ export function CeoManagementPage() {
               </div>
 
               <div>
-                <Label className={cn('mb-2 block text-sm font-semibold', managementStaticCardTitle)}>{lt('Category')}</Label>
+                <Label className="mb-2 block">{lt('Category')}</Label>
                 <SelectField
                   value={imageCategoryFilter}
                   options={imageCategoryOptions.map((option) => ({
@@ -1307,7 +1345,7 @@ export function CeoManagementPage() {
               </div>
 
               <div>
-                <Label className={cn('mb-2 block text-sm font-semibold', managementStaticCardTitle)}>{tr('Reference filter', 'Boglanish filtri', 'Filtr svyazei')}</Label>
+                <Label className="mb-2 block">{tr('Reference filter', 'Boglanish filtri', 'Filtr svyazei')}</Label>
                 <SelectField
                   value={imageReferenceFilter}
                   options={imageReferenceFilterOptions.map((option) => ({
@@ -1326,7 +1364,7 @@ export function CeoManagementPage() {
               </div>
             </div>
 
-            <div className="mt-5">
+            <div>
               {imagesQuery.isLoading && !imagesQuery.data ? (
                 <LoadingStateBlock
                   eyebrow={lt('Management / Images')}
@@ -1349,7 +1387,7 @@ export function CeoManagementPage() {
                   pageSize={75}
                   zebra
                   emptyState={(
-                    <div className="rounded-xl border border-dashed border-white/10 bg-black/10 px-4 py-5 text-sm text-(--muted)">
+                    <div className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-5 text-[13.5px] text-[var(--muted)]">
                       {lt('Image list is empty for the current filters.')}
                     </div>
                   )}
@@ -1357,23 +1395,21 @@ export function CeoManagementPage() {
                     {
                       key: 'select',
                       header: (
-                        <input
-                          type="checkbox"
+                        <Checkbox
+                          size="sm"
                           checked={allFilteredImagesSelected}
                           onChange={(event) => toggleSelectAllFilteredImages(event.target.checked)}
                           aria-label={lt('Select all filtered images')}
-                          className="h-4 w-4 rounded border border-white/15 bg-black/20 accent-blue-500"
                         />
                       ),
                       width: '52px',
                       align: 'center',
                       render: (row) => (
-                        <input
-                          type="checkbox"
+                        <Checkbox
+                          size="sm"
                           checked={selectedImagePathSet.has(row.path)}
                           onChange={(event) => toggleImageSelection(row.path, event.target.checked)}
                           aria-label={`${lt('Select')} ${row.filename}`}
-                          className="h-4 w-4 rounded border border-white/15 bg-black/20 accent-blue-500"
                         />
                       ),
                     },
@@ -1386,23 +1422,23 @@ export function CeoManagementPage() {
                           <button
                             type="button"
                             onClick={() => openImageDetail(row)}
-                            className="overflow-hidden rounded-xl border border-white/10 bg-black/10"
+                            className="overflow-hidden rounded-[11px] bg-[var(--muted-surface)]"
                           >
                             <img
                               src={resolveMediaUrl(row.file_url) ?? row.file_url}
                               alt={row.filename}
-                              className="h-14 w-14 object-cover"
+                              className="h-11 w-11 object-cover"
                             />
                           </button>
                           <div className="min-w-0">
                             <button
                               type="button"
                               onClick={() => openImageDetail(row)}
-                              className="truncate text-left text-sm font-semibold text-white hover:text-blue-300"
+                              className="truncate text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
                             >
                               {row.filename}
                             </button>
-                            <p className="mt-1 break-all text-xs text-white/45">{row.path}</p>
+                            <p className="mt-1 break-all text-[12px] text-[var(--muted)]">{row.path}</p>
                           </div>
                         </div>
                       ),
@@ -1421,7 +1457,7 @@ export function CeoManagementPage() {
                           <Badge variant={row.is_referenced ? 'success' : 'outline'}>
                             {row.is_referenced ? lt('Referenced') : lt('Unused')}
                           </Badge>
-                          <span className="text-xs text-white/55">{row.reference_count} {lt('refs')}</span>
+                          <span className="text-[12px] text-[var(--muted)]">{row.reference_count} {lt('refs')}</span>
                         </div>
                       ),
                     },
@@ -1498,8 +1534,8 @@ export function CeoManagementPage() {
         )}
       >
         {activeImageDetail ? (
-          <div className="space-y-4">
-            <div className="overflow-hidden rounded-xl border border-white/10 bg-black/10">
+          <div className="space-y-[18px]">
+            <div className="overflow-hidden rounded-[18px] bg-[var(--muted-surface)]">
               <img
                 src={resolveMediaUrl(activeImageDetail.file_url) ?? activeImageDetail.file_url}
                 alt={activeImageDetail.filename}
@@ -1508,42 +1544,42 @@ export function CeoManagementPage() {
             </div>
 
             {imageDetailQuery.isLoading && imageDetailQuery.data?.path !== imageDetailPath ? (
-              <p className="text-sm text-(--muted)">{lt('Refreshing image detail...')}</p>
+              <p className="text-[13px] text-[var(--muted)]">{lt('Refreshing image detail...')}</p>
             ) : null}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-white/10 bg-black/10 px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-300/70">{lt('Category')}</p>
-                <p className="mt-2 text-sm font-semibold text-white">{lt(getImageCategoryLabel(activeImageDetail.category))}</p>
+            <div className="grid gap-[18px] sm:grid-cols-2">
+              <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+                <p className="ui-card-label">{lt('Category')}</p>
+                <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{lt(getImageCategoryLabel(activeImageDetail.category))}</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/10 px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-300/70">{lt('Size')}</p>
-                <p className="mt-2 text-sm font-semibold text-white">{formatBytes(activeImageDetail.size_bytes)}</p>
+              <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+                <p className="ui-card-label">{lt('Size')}</p>
+                <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{formatBytes(activeImageDetail.size_bytes)}</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/10 px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-300/70">{lt('References')}</p>
+              <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+                <p className="ui-card-label">{lt('References')}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge variant={activeImageDetail.is_referenced ? 'success' : 'outline'}>
                     {activeImageDetail.is_referenced ? lt('Referenced') : lt('Unused')}
                   </Badge>
-                  <span className="text-sm font-semibold text-white">{activeImageDetail.reference_count}</span>
+                  <span className="text-sm font-semibold text-[var(--foreground)]">{activeImageDetail.reference_count}</span>
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/10 px-4 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-300/70">{lt('Updated')}</p>
-                <p className="mt-2 text-sm font-semibold text-white">{formatShortDate(activeImageDetail.updated_at)}</p>
+              <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+                <p className="ui-card-label">{lt('Updated')}</p>
+                <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{formatShortDate(activeImageDetail.updated_at)}</p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-black/10 px-4 py-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-300/70">{lt('Path')}</p>
-              <p className="mt-2 break-all text-sm font-semibold text-white">{activeImageDetail.path}</p>
-              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-300/70">{lt('File URL')}</p>
-              <p className="mt-2 break-all text-sm text-white/72">{activeImageDetail.file_url}</p>
+            <div className="rounded-[18px] bg-[var(--accent-soft)] px-4 py-4">
+              <p className="ui-card-label">{lt('Path')}</p>
+              <p className="mt-2 break-all text-sm font-semibold text-[var(--foreground)]">{activeImageDetail.path}</p>
+              <p className="ui-card-label mt-4">{lt('File URL')}</p>
+              <p className="mt-2 break-all text-[13.5px] text-[var(--muted-strong)]">{activeImageDetail.file_url}</p>
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-white/10 bg-black/10 px-4 py-5 text-sm text-(--muted)">
+          <div className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-5 text-[13.5px] text-[var(--muted)]">
             {lt('Image detail not found.')}
           </div>
         )}
@@ -1566,10 +1602,10 @@ export function CeoManagementPage() {
           </>
         )}
       >
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-4">
+        <div className="grid gap-[18px] lg:grid-cols-2">
+          <div className="space-y-[18px]">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Name')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Name')}</Label>
               <Input
                 value={pageForm.name}
                 onChange={(event) => setPageForm((current) => ({ ...current, name: event.target.value }))}
@@ -1579,7 +1615,7 @@ export function CeoManagementPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Display name')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Display name')}</Label>
               <Input
                 value={pageForm.displayName}
                 onChange={(event) => setPageForm((current) => ({ ...current, displayName: event.target.value }))}
@@ -1588,7 +1624,7 @@ export function CeoManagementPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Description')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Description')}</Label>
               <Textarea
                 value={pageForm.description}
                 onChange={(event) => setPageForm((current) => ({ ...current, description: event.target.value }))}
@@ -1597,9 +1633,9 @@ export function CeoManagementPage() {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-[18px]">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Route path')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Route path')}</Label>
               <Input
                 value={pageForm.routePath}
                 onChange={(event) => setPageForm((current) => ({ ...current, routePath: event.target.value }))}
@@ -1608,7 +1644,7 @@ export function CeoManagementPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Order')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Order')}</Label>
               <Input
                 type="number"
                 value={pageForm.order}
@@ -1617,7 +1653,7 @@ export function CeoManagementPage() {
             </div>
 
             <div>
-              <p className="mb-2 block text-sm font-semibold text-white">{lt('Active state')}</p>
+              <p className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Active state')}</p>
               <BooleanToggle
                 value={pageForm.isActive}
                 onChange={(isActive) => setPageForm((current) => ({ ...current, isActive }))}
@@ -1628,7 +1664,7 @@ export function CeoManagementPage() {
 
             {pageDialogMode === 'create' ? (
               <div>
-                <p className="mb-2 block text-sm font-semibold text-white">{lt('System page')}</p>
+                <p className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('System page')}</p>
                 <BooleanToggle
                   value={pageForm.isSystem}
                   onChange={(isSystem) => setPageForm((current) => ({ ...current, isSystem }))}
@@ -1658,10 +1694,10 @@ export function CeoManagementPage() {
           </>
         )}
       >
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-4">
+        <div className="grid gap-[18px] lg:grid-cols-2">
+          <div className="space-y-[18px]">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Name')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Name')}</Label>
               <Input
                 value={statusForm.name}
                 onChange={(event) => setStatusForm((current) => ({ ...current, name: event.target.value }))}
@@ -1671,7 +1707,7 @@ export function CeoManagementPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Display name')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Display name')}</Label>
               <Input
                 value={statusForm.displayName}
                 onChange={(event) => setStatusForm((current) => ({ ...current, displayName: event.target.value }))}
@@ -1680,7 +1716,7 @@ export function CeoManagementPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Description')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Description')}</Label>
               <Textarea
                 value={statusForm.description}
                 onChange={(event) => setStatusForm((current) => ({ ...current, description: event.target.value }))}
@@ -1689,15 +1725,15 @@ export function CeoManagementPage() {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-[18px]">
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Color')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Color')}</Label>
               <div className="flex flex-wrap items-center gap-3">
                 <Input
                   type="color"
                   value={statusForm.color}
                   onChange={(event) => setStatusForm((current) => ({ ...current, color: event.target.value }))}
-                  className="h-12 w-18 rounded-xl border-white/10 bg-white/[0.03] p-2"
+                  className="h-11 w-16 rounded-[14px] p-1.5"
                 />
                 <div className="flex flex-wrap gap-2">
                   {statusColorPresets.map((color) => (
@@ -1706,8 +1742,8 @@ export function CeoManagementPage() {
                       type="button"
                       onClick={() => setStatusForm((current) => ({ ...current, color }))}
                       className={cn(
-                        'h-8 w-8 rounded-full border-2 transition',
-                        statusForm.color === color ? 'border-white' : 'border-transparent',
+                        'h-9 w-9 rounded-full border-2 transition-colors',
+                        statusForm.color === color ? 'border-[var(--foreground)]' : 'border-transparent',
                       )}
                       style={{ backgroundColor: color }}
                       aria-label={`Select ${color}`}
@@ -1718,7 +1754,7 @@ export function CeoManagementPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block text-sm font-semibold text-white">{lt('Order')}</Label>
+              <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Order')}</Label>
               <Input
                 type="number"
                 value={statusForm.order}
@@ -1727,7 +1763,7 @@ export function CeoManagementPage() {
             </div>
 
             <div>
-              <p className="mb-2 block text-sm font-semibold text-white">{lt('Active state')}</p>
+              <p className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Active state')}</p>
               <BooleanToggle
                 value={statusForm.isActive}
                 onChange={(isActive) => setStatusForm((current) => ({ ...current, isActive }))}
@@ -1738,7 +1774,7 @@ export function CeoManagementPage() {
 
             {statusDialogMode === 'create' ? (
               <div>
-                <p className="mb-2 block text-sm font-semibold text-white">{lt('System status')}</p>
+                <p className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('System status')}</p>
                 <BooleanToggle
                   value={statusForm.isSystem}
                   onChange={(isSystem) => setStatusForm((current) => ({ ...current, isSystem }))}
@@ -1768,9 +1804,9 @@ export function CeoManagementPage() {
           </>
         )}
       >
-        <div className="grid gap-4">
+        <div className="grid gap-[18px]">
           <div>
-            <Label className="mb-2 block text-sm font-semibold text-white">{lt('Name')}</Label>
+            <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Name')}</Label>
             <Input
               value={roleForm.name}
               onChange={(event) => setRoleForm((current) => ({ ...current, name: event.target.value }))}
@@ -1780,7 +1816,7 @@ export function CeoManagementPage() {
           </div>
 
           <div>
-            <Label className="mb-2 block text-sm font-semibold text-white">{lt('Display name')}</Label>
+            <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Display name')}</Label>
             <Input
               value={roleForm.displayName}
               onChange={(event) => setRoleForm((current) => ({ ...current, displayName: event.target.value }))}
@@ -1789,7 +1825,7 @@ export function CeoManagementPage() {
             </div>
 
           <div>
-            <Label className="mb-2 block text-sm font-semibold text-white">{lt('Description')}</Label>
+            <Label className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Description')}</Label>
             <Textarea
               value={roleForm.description}
               onChange={(event) => setRoleForm((current) => ({ ...current, description: event.target.value }))}
@@ -1798,7 +1834,7 @@ export function CeoManagementPage() {
           </div>
 
           <div>
-            <p className="mb-2 block text-sm font-semibold text-white">{lt('Active state')}</p>
+            <p className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('Active state')}</p>
             <BooleanToggle
               value={roleForm.isActive}
               onChange={(isActive) => setRoleForm((current) => ({ ...current, isActive }))}
@@ -1809,7 +1845,7 @@ export function CeoManagementPage() {
 
           {roleDialogMode === 'create' ? (
             <div>
-              <p className="mb-2 block text-sm font-semibold text-white">{lt('System role')}</p>
+              <p className="mb-2 block text-[13px] font-medium text-[var(--muted-strong)]">{lt('System role')}</p>
               <BooleanToggle
                 value={roleForm.isSystem}
                 onChange={(isSystem) => setRoleForm((current) => ({ ...current, isSystem }))}

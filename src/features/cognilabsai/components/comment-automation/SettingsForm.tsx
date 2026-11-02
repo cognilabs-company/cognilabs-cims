@@ -3,6 +3,7 @@ import type { CommentAutomationReplyMode } from '../../../../shared/api/services
 import { cn } from '../../../../shared/lib/cn'
 import { Label } from '../../../../shared/ui/label'
 import { Switch } from '../../../../shared/ui/switch'
+import { Tabs } from '../../../../shared/ui/tabs'
 import { Textarea } from '../../../../shared/ui/textarea'
 import { TEMPLATE_PLACEHOLDERS, useCommentAutomationT, type SettingsDraft } from './shared'
 
@@ -37,14 +38,14 @@ export function AutomationToggle({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors',
-        enabled ? 'border-[var(--success-border)] bg-[var(--success-dim)]' : 'border-[var(--border)] bg-[var(--muted-surface)]',
+        'flex items-center justify-between gap-3 rounded-[18px] px-4 py-3.5 transition-colors',
+        enabled ? 'bg-[var(--success-dim)]' : 'bg-[var(--muted-surface)]',
         className,
       )}
     >
       <div className="min-w-0">
-        <p className="text-[13px] font-semibold text-[var(--foreground)]">{tx('settings.automation', 'Auto reply')}</p>
-        <p className="text-[11px] text-[var(--caption)]">
+        <p className="text-sm font-semibold text-[var(--foreground)]">{tx('settings.automation', 'Auto reply')}</p>
+        <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">
           {enabled
             ? tx('settings.automation_on', 'On: new comments get replies')
             : tx('settings.automation_off', 'Off: nothing is sent')}
@@ -59,24 +60,14 @@ function ModeToggle({ value, onChange }: { value: CommentAutomationReplyMode; on
   const tx = useCommentAutomationT()
 
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--muted-surface)] p-0.5">
-      {(['ai', 'template'] as const).map((mode) => (
-        <button
-          key={mode}
-          type="button"
-          onClick={() => onChange(mode)}
-          aria-pressed={value === mode}
-          className={cn(
-            'rounded-md px-3 py-1 text-[11px] font-semibold transition-all',
-            value === mode
-              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-              : 'text-[var(--muted)] hover:text-[var(--foreground)]',
-          )}
-        >
-          {mode === 'ai' ? tx('settings.mode_ai', 'AI') : tx('settings.mode_template', 'Template')}
-        </button>
-      ))}
-    </div>
+    <Tabs<CommentAutomationReplyMode>
+      value={value}
+      onChange={onChange}
+      items={[
+        { value: 'ai', label: tx('settings.mode_ai', 'AI') },
+        { value: 'template', label: tx('settings.mode_template', 'Template') },
+      ]}
+    />
   )
 }
 
@@ -111,30 +102,30 @@ function ChannelSettings({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 rounded-xl border p-3 transition-colors',
-        enabled ? 'border-[var(--border)] bg-[var(--card)]' : 'border-dashed border-[var(--border)] bg-transparent',
+        'flex flex-col gap-3 rounded-[18px] p-4 transition-colors',
+        enabled ? 'bg-[var(--accent-soft)]' : 'bg-[var(--muted-surface)]',
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
           <span
             className={cn(
-              'mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
-              enabled ? 'bg-[var(--blue-soft)] text-[var(--blue-text)]' : 'bg-[var(--muted-surface)] text-[var(--muted)]',
+              'grid h-9 w-9 shrink-0 place-items-center rounded-[11px]',
+              enabled ? 'bg-[var(--blue-dim)] text-[var(--blue-text)]' : 'bg-[var(--surface)] text-[var(--muted)]',
             )}
           >
             {icon}
           </span>
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-[var(--foreground)]">{title}</p>
-            <p className="text-[11px] leading-snug text-[var(--caption)]">{description}</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">{title}</p>
+            <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--muted)]">{description}</p>
           </div>
         </div>
         <Switch checked={enabled} onChange={onEnabledChange} size="sm" tone="emerald" label={title} />
       </div>
 
       {enabled && (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           <ModeToggle value={mode} onChange={onModeChange} />
           {mode === 'template' ? (
             <>
@@ -144,26 +135,26 @@ function ChannelSettings({
                 value={template}
                 onChange={(event) => onTemplateChange(event.target.value)}
                 placeholder={templatePlaceholder}
-                className="min-h-[76px] text-[13px]"
+                className="min-h-[76px] bg-[var(--surface)] text-[13px]"
               />
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="text-[11px] text-[var(--caption)]">{tx('settings.insert', 'Insert:')}</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[12.5px] text-[var(--muted)]">{tx('settings.insert', 'Insert:')}</span>
                 {TEMPLATE_PLACEHOLDERS.map((placeholder) => (
                   <button
                     key={placeholder}
                     type="button"
                     data-i18n-skip="true"
                     onClick={() => onTemplateChange(`${template}${placeholder}`)}
-                    className="rounded-md border border-[var(--border)] bg-[var(--muted-surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted-strong)] transition-colors hover:border-[var(--border-hover)] hover:text-[var(--foreground)]"
+                    className="rounded-full bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] text-[var(--muted-strong)] transition-colors hover:text-[var(--foreground)]"
                   >
                     {placeholder}
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-[var(--caption)]">{tx('settings.template_hint', 'This exact text is sent; placeholders are filled in automatically.')}</p>
+              <p className="text-[12.5px] text-[var(--muted)]">{tx('settings.template_hint', 'This exact text is sent; placeholders are filled in automatically.')}</p>
             </>
           ) : (
-            <p className="text-[11px] text-[var(--caption)]">{tx('settings.ai_hint', 'AI writes a separate reply for each comment, so the exact text is not guaranteed.')}</p>
+            <p className="text-[12.5px] text-[var(--muted)]">{tx('settings.ai_hint', 'AI writes a separate reply for each comment, so the exact text is not guaranteed.')}</p>
           )}
         </div>
       )}
@@ -191,8 +182,8 @@ export function SettingsForm({
   }
 
   return (
-    <div className="space-y-3">
-      <div className={cn('grid gap-3', layout === 'columns' && 'md:grid-cols-2')}>
+    <div className="space-y-[18px]">
+      <div className={cn('grid gap-[18px]', layout === 'columns' && 'md:grid-cols-2')}>
         <ChannelSettings
           id={`${idPrefix}-public`}
           icon={<PublicReplyIcon />}
@@ -221,8 +212,8 @@ export function SettingsForm({
         />
       </div>
 
-      <div>
-        <Label htmlFor={aiInstructionsId} className="text-[12px] font-semibold text-[var(--foreground)]">
+      <div className="rounded-[18px] bg-[var(--accent-soft)] p-4">
+        <Label htmlFor={aiInstructionsId} className="text-[13px] font-semibold text-[var(--foreground)]">
           {tx('settings.ai_instructions', 'AI instructions')}
         </Label>
         <Textarea
@@ -230,9 +221,9 @@ export function SettingsForm({
           value={draft.ai_instructions}
           onChange={(event) => set('ai_instructions', event.target.value)}
           placeholder={tx('settings.ai_instructions_placeholder', 'Briefly describe the service in this post and invite them to reply.')}
-          className="mt-1 min-h-[60px] text-[13px]"
+          className="mt-2 min-h-[60px] bg-[var(--surface)] text-[13px]"
         />
-        <p className="mt-1 text-[11px] text-[var(--caption)]">
+        <p className="mt-2 text-[12.5px] text-[var(--muted)]">
           {usesAi
             ? tx('settings.ai_instructions_hint', 'Extra guidance for replies written in AI mode.')
             : tx('settings.ai_instructions_unused', 'Used only when a channel is in AI mode.')}

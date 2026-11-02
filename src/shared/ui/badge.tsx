@@ -11,6 +11,7 @@ type BadgeVariant =
   | 'warning'
   | 'danger'
   | 'violet'
+  | 'lime'
   | 'ghost'
 
 type BadgeSize = 'sm' | 'md'
@@ -25,48 +26,52 @@ type BadgeProps = PropsWithChildren<{
 
 const variants: Record<BadgeVariant, string> = {
   default:
-    'border-transparent bg-white/90 text-black',
+    'border-transparent bg-[var(--surface-inverse)] text-white',
 
   secondary:
-    'border-[var(--border)] bg-[var(--muted-surface)] text-[var(--muted-strong)]',
+    'border-transparent bg-[var(--input-surface)] text-[var(--muted-strong)]',
 
   outline:
-    'border-[var(--border)] bg-transparent text-[var(--muted-strong)]',
+    'border-[var(--border-hover)] bg-transparent text-[var(--muted-strong)]',
 
   blue:
-    'border-[var(--blue-border)] bg-[var(--blue-dim)] text-[var(--blue-text)]',
+    'border-transparent bg-[var(--blue-dim)] text-[var(--blue-text)]',
 
   success:
-    'border-[var(--success-border)] bg-[var(--success-dim)] text-[var(--success-text)]',
+    'border-transparent bg-[var(--success-dim)] text-[var(--success-text)]',
 
   warning:
-    'border-[var(--warning-border)] bg-[var(--warning-dim)] text-[var(--warning-text)]',
+    'border-transparent bg-[var(--warning-dim)] text-[var(--warning-text)]',
 
   danger:
-    'border-[var(--danger-border)] bg-[var(--danger-dim)] text-[var(--danger-text)]',
+    'border-transparent bg-[var(--danger-dim)] text-[var(--danger-text)]',
 
   violet:
-    'border-[var(--violet-border)] bg-[var(--violet-dim)] text-[var(--violet-text)]',
+    'border-transparent bg-[var(--violet-dim)] text-[var(--violet-text)]',
+
+  lime:
+    'border-transparent bg-[var(--lime)] text-[var(--lime-ink)]',
 
   ghost:
     'border-transparent bg-transparent text-[var(--muted)]',
 }
 
 const sizes: Record<BadgeSize, string> = {
-  sm: 'px-1.5 py-0.5 text-[11px] rounded-md gap-1 leading-none',
-  md: 'px-2 py-0.5 text-[12px] rounded-md gap-1.5 leading-none',
+  sm: 'gap-1 rounded-full px-2 py-1 text-[11.5px] leading-none',
+  md: 'gap-1.5 rounded-full px-2.5 py-1 text-xs leading-none',
 }
 
 const dotColors: Record<BadgeVariant, string> = {
-  default:  'bg-black',
-  secondary:'bg-[var(--muted)]',
-  outline:  'bg-[var(--muted)]',
-  blue:     'bg-[var(--blue-text)] shadow-[0_0_5px_rgba(96,165,250,0.6)]',
-  success:  'bg-[var(--success-text)] shadow-[0_0_5px_rgba(74,222,128,0.6)]',
-  warning:  'bg-[var(--warning-text)] shadow-[0_0_5px_rgba(251,191,36,0.6)]',
-  danger:   'bg-[var(--danger-text)] shadow-[0_0_5px_rgba(248,113,113,0.6)]',
-  violet:   'bg-[var(--violet-text)] shadow-[0_0_5px_rgba(167,139,250,0.6)]',
-  ghost:    'bg-[var(--muted)]',
+  default:   'bg-white',
+  secondary: 'bg-[var(--muted)]',
+  outline:   'bg-[var(--muted)]',
+  blue:      'bg-[var(--blue-text)]',
+  success:   'bg-[var(--success-text)]',
+  warning:   'bg-[var(--warning-text)]',
+  danger:    'bg-[var(--danger-text)]',
+  violet:    'bg-[var(--violet-text)]',
+  lime:      'bg-[var(--lime-ink)]',
+  ghost:     'bg-[var(--muted)]',
 }
 
 export function Badge({
@@ -83,7 +88,7 @@ export function Badge({
     <span
       data-ui-control="true"
       className={cn(
-        'inline-flex items-center justify-center border font-medium whitespace-nowrap',
+        'inline-flex items-center justify-center border font-semibold whitespace-nowrap',
         variants[variant],
         sizes[size],
         className,
@@ -104,7 +109,6 @@ export function Badge({
   )
 }
 
-/* ─── Preset semantic badges ──────────────────────────── */
 export function StatusBadge({
   status,
   className,

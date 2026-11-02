@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Eye, MousePointerClick, Radio, Users } from 'lucide-react'
 import { websiteStatsService, type WebsiteAnalyticsRow } from '../../../shared/api/services/website-stats.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -10,10 +11,11 @@ import { Button } from '../../../shared/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../shared/ui/card'
 import { DataTable } from '../../../shared/ui/data-table'
 import { PageHeader } from '../../../shared/ui/page-header'
+import { SectionTitle } from '../../../shared/ui/section-title'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { useAuth } from '../../auth/hooks/useAuth'
-import { MetricCard } from '../components/MetricCard'
 
 const analyticsRangeOptions: SelectFieldOption[] = [
   { value: '7', label: 'ceo.website.range.last_7_days' },
@@ -181,7 +183,7 @@ export function WebsiteStatsPage() {
   }
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-[18px]">
       <PageHeader
         eyebrow="CEO / Web"
         title={t('ceo.website.header.title')}
@@ -199,24 +201,6 @@ export function WebsiteStatsPage() {
             hint: `${analyticsWindow.startDate} to ${analyticsWindow.endDate}`,
             tone: 'neutral',
           },
-          {
-            label: t('ceo.website.meta.page_views'),
-            value: formatCompactNumber(pageViewsMetric),
-            hint: t('ceo.website.meta.page_views_hint'),
-            tone: 'blue',
-          },
-          {
-            label: t('ceo.website.meta.users'),
-            value: formatCompactNumber(totalUsersMetric),
-            hint: t('ceo.website.meta.users_hint'),
-            tone: 'success',
-          },
-          {
-            label: t('ceo.website.meta.realtime_active'),
-            value: formatCompactNumber(realtimeActiveUsersMetric),
-            hint: t('ceo.website.meta.realtime_active_hint'),
-            tone: 'warning',
-          },
         ]}
         actions={(
           <Button variant="secondary" onClick={() => void handleRefresh()}>
@@ -225,48 +209,49 @@ export function WebsiteStatsPage() {
         )}
       />
 
-      <Card noPadding>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>{t('ceo.website.section.analytics_title')}</CardTitle>
-          <div className="w-full max-w-[180px]">
-            <SelectField
-              value={analyticsRange}
-              options={analyticsRangeOptions.map((option) => ({ ...option, label: t(option.label) }))}
-              onValueChange={setAnalyticsRange}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label={t('ceo.website.metric.page_views')}
-            value={formatCompactNumber(pageViewsMetric)}
-            accent="blue"
-            sparkBars={[1, Math.max(pageViewsMetric * 0.35, 1), Math.max(pageViewsMetric * 0.58, 1), Math.max(pageViewsMetric * 0.82, 1), Math.max(pageViewsMetric, 1)]}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <SectionTitle title={t('ceo.website.section.analytics_title')} />
+        <div className="w-full max-w-[200px]">
+          <SelectField
+            value={analyticsRange}
+            options={analyticsRangeOptions.map((option) => ({ ...option, label: t(option.label) }))}
+            onValueChange={setAnalyticsRange}
           />
-          <MetricCard
-            label={t('ceo.website.metric.users')}
-            value={formatCompactNumber(totalUsersMetric)}
-            accent="success"
-            sparkBars={[1, Math.max(totalUsersMetric * 0.32, 1), Math.max(totalUsersMetric * 0.54, 1), Math.max(totalUsersMetric * 0.78, 1), Math.max(totalUsersMetric, 1)]}
-          />
-          <MetricCard
-            label={t('ceo.website.metric.sessions')}
-            value={formatCompactNumber(sessionsMetric)}
-            accent="violet"
-            sparkBars={[1, Math.max(sessionsMetric * 0.3, 1), Math.max(sessionsMetric * 0.56, 1), Math.max(sessionsMetric * 0.8, 1), Math.max(sessionsMetric, 1)]}
-          />
-          <MetricCard
-            label={t('ceo.website.metric.realtime_active')}
-            value={formatCompactNumber(realtimeActiveUsersMetric)}
-            accent="warning"
-            sparkBars={[1, Math.max(realtimeActiveUsersMetric * 0.4, 1), Math.max(realtimeActiveUsersMetric * 0.7, 1), Math.max(realtimeActiveUsersMetric, 1)]}
-          />
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label={t('ceo.website.metric.page_views')}
+          value={formatCompactNumber(pageViewsMetric)}
+          hint={t('ceo.website.meta.page_views_hint')}
+          icon={<Eye className="h-[18px] w-[18px]" />}
+          iconTone="blue"
+        />
+        <StatCard
+          label={t('ceo.website.metric.users')}
+          value={formatCompactNumber(totalUsersMetric)}
+          hint={t('ceo.website.metric.users_caption')}
+          icon={<Users className="h-[18px] w-[18px]" />}
+          iconTone="success"
+        />
+        <StatCard
+          label={t('ceo.website.metric.sessions')}
+          value={formatCompactNumber(sessionsMetric)}
+          hint={t('ceo.website.metric.sessions_caption')}
+          icon={<MousePointerClick className="h-[18px] w-[18px]" />}
+          iconTone="violet"
+        />
+        <StatCard
+          solid
+          label={t('ceo.website.metric.realtime_active')}
+          value={formatCompactNumber(realtimeActiveUsersMetric)}
+          hint={t('ceo.website.metric.realtime_caption')}
+          icon={<Radio className="h-[18px] w-[18px]" />}
+        />
+      </div>
+
+      <div className="grid gap-[18px] xl:grid-cols-[1.05fr_0.95fr]">
         <Card noPadding>
           <CardHeader>
             <CardTitle>{t('ceo.website.top_pages_title')}</CardTitle>
@@ -298,7 +283,6 @@ export function WebsiteStatsPage() {
                 rows={analyticsTopPages}
                 getRowKey={(row) => row.id}
                 pageSize={8}
-                zebra
                 emptyState={(
                   <EmptyStateBlock
                     eyebrow={t('ceo.website.section.analytics_eyebrow')}
@@ -313,7 +297,7 @@ export function WebsiteStatsPage() {
                     width: '320px',
                     render: (row) => (
                       <div className="max-w-[320px]">
-                        <p className="truncate font-semibold text-(--foreground)">{row.title}</p>
+                        <p className="truncate text-sm font-semibold text-[var(--foreground)]">{row.title}</p>
                       </div>
                     ),
                   },
@@ -321,19 +305,25 @@ export function WebsiteStatsPage() {
                     key: 'views',
                     header: t('ceo.website.table.views'),
                     align: 'right',
-                    render: (row) => formatCompactNumber(row.views),
+                    render: (row) => (
+                      <span data-ui-number="true" className="font-semibold">{formatCompactNumber(row.views)}</span>
+                    ),
                   },
                   {
                     key: 'users',
                     header: t('ceo.website.table.users'),
                     align: 'right',
-                    render: (row) => formatCompactNumber(row.users),
+                    render: (row) => (
+                      <span data-ui-number="true" className="text-[var(--muted-strong)]">{formatCompactNumber(row.users)}</span>
+                    ),
                   },
                   {
                     key: 'sessions',
                     header: t('ceo.website.table.sessions'),
                     align: 'right',
-                    render: (row) => formatCompactNumber(row.sessions),
+                    render: (row) => (
+                      <span data-ui-number="true" className="text-[var(--muted-strong)]">{formatCompactNumber(row.sessions)}</span>
+                    ),
                   },
                 ]}
               />
@@ -373,17 +363,17 @@ export function WebsiteStatsPage() {
                 description={t('ceo.website.realtime_empty_description')}
               />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {realtimeRows.map((row) => (
                   <div
                     key={row.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 px-4 py-4"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-(--foreground)">{row.label}</p>
+                      <p className="truncate text-sm font-semibold text-[var(--foreground)]">{row.label}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="warning" dot>
+                      <Badge variant="success" dot>
                         {t('ceo.website.badge.active', { count: formatCompactNumber(row.activeUsers) })}
                       </Badge>
                       <Badge variant="secondary">
