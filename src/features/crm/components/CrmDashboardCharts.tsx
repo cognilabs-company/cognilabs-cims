@@ -334,24 +334,31 @@ export function CrmDashboardCharts({
             icon={iconTotalLeads}
             label={t('crm.charts.metric.total_30d')}
             value={formatCompactNumber(summary.total_period_leads)}
+            hint={t('crm.charts.metric.today_hint', 'Today: {{count}}', { count: summary.today })}
+            delta={summary.yesterday > 0 ? formatPercent((summary.today / summary.yesterday) * 100 - 100) : undefined}
           />
           <StatCard
             icon={iconThisWeek}
             iconTone="blue"
             label={t('crm.charts.metric.this_week')}
             value={formatCompactNumber(summary.this_week)}
+            hint={t('crm.charts.metric.last_week_hint', 'Last week: {{count}}', { count: summary.last_week })}
+            delta={summary.last_week > 0 ? formatPercent((summary.this_week / summary.last_week) * 100 - 100) : undefined}
+            deltaTone={summary.this_week >= summary.last_week ? 'success' : 'danger'}
           />
           <StatCard
             icon={iconStarted}
             iconTone="lime"
             label={t('crm.charts.metric.started')}
             value={formatCompactNumber(summary.project_started)}
+            hint={t('crm.charts.metric.finished_hint', 'Finished: {{count}}', { count: summary.finished })}
           />
           <StatCard
             icon={iconConversion}
             iconTone="violet"
             label={t('crm.charts.metric.conversion')}
             value={formatPercent(summary.conversion_rate_percent)}
+            hint={t('crm.charts.metric.rejected_hint', 'Rejected: {{count}}', { count: summary.rejected })}
           />
         </div>
       ) : null}

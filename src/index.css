@@ -153,7 +153,7 @@
   --sidebar-w:    252px;
   --header-h:     76px;
   --app-chrome-height: 76px;
-  --page-h:       calc(100vh - 142px);
+  --page-h:       calc(100vh - 198px);
   --page-h-bleed: calc(100vh - 76px);
   --pad-card:     22px;
   --pad-page-x:   28px;

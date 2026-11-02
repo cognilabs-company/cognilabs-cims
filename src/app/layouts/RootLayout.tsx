@@ -17,7 +17,7 @@ function RootLayoutFrame() {
       <AppSidebar />
       <div className="relative flex h-screen min-h-0 flex-col overflow-hidden bg-[var(--app-canvas)]">
         <AppHeader />
-        <main className="app-shell-main relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-7 pt-[26px] pb-10">
+        <main className="app-shell-main relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-7 pt-[26px] pb-24">
           <div className="mx-auto min-h-0 w-full max-w-[1600px]">
             <Outlet />
           </div>

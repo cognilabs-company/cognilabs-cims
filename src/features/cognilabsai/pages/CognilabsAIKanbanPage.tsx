@@ -516,7 +516,7 @@ export function CognilabsAIKanbanPage() {
   }
 
   return (
-    <div className="flex flex-col h-full -mx-7 -mt-[26px] -mb-10" style={{ height: 'var(--page-h-bleed)' }}>
+    <div className="flex flex-col h-full -mx-7 -mt-[26px] -mb-24" style={{ height: 'var(--page-h-bleed)' }}>
       {/* Top bar */}
       <div className="shrink-0 flex items-center justify-between gap-4 px-7 pt-[26px] pb-[18px] flex-wrap">
         <div className="flex items-center gap-5 flex-wrap">

@@ -1321,7 +1321,7 @@ export function CognilabsAIChatPage() {
 
   return (
     <div
-      className="flex min-h-0 flex-col bg-[var(--background)] text-[var(--foreground)] font-sans -mx-7 -mt-[26px] -mb-10"
+      className="flex min-h-0 flex-col bg-[var(--background)] text-[var(--foreground)] font-sans -mx-7 -mt-[26px] -mb-24"
       style={{ height: 'var(--page-h-bleed)' }}
     >
       <div className="flex min-h-0 w-full flex-1 gap-[18px] overflow-hidden p-[18px]">
