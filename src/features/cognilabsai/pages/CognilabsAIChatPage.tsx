@@ -18,6 +18,7 @@ import { Button } from '../../../shared/ui/button'
 import { Dialog } from '../../../shared/ui/dialog'
 import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Label } from '../../../shared/ui/label'
 import { Skeleton } from '../../../shared/ui/skeleton'
 import { Tabs, type TabItem } from '../../../shared/ui/tabs'
@@ -1781,12 +1782,7 @@ export function CognilabsAIChatPage() {
                   {/* Pause until */}
                   {showPauseUntil ? (
                     <div className="flex items-center gap-1.5">
-                      <Input
-                        type="datetime-local"
-                        value={pauseUntilDate}
-                        onChange={(e) => setPauseUntilDate(e.target.value)}
-                        className="h-[30px] min-h-[30px] w-auto rounded-[9px] px-2 py-0 text-[12px] tabular-nums"
-                      />
+                      <CalendarField mode="datetime" value={pauseUntilDate} onValueChange={setPauseUntilDate} className="h-[30px] min-h-[30px] w-auto rounded-[9px] px-2 py-0 text-[12px] tabular-nums" />
                       <button
                         type="button"
                         onClick={() => void handlePauseUntil()}

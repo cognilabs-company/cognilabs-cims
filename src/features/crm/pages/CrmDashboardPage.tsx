@@ -24,6 +24,7 @@ import { Card } from '../../../shared/ui/card'
 import { DataTable } from '../../../shared/ui/data-table'
 import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Label } from '../../../shared/ui/label'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
@@ -1257,14 +1258,14 @@ export function CrmDashboardPage() {
                 <Label>
                   {t('customers.filters.start_date_label', 'Start date')}
                 </Label>
-                <Input type="date" value={dateStart} onChange={(event) => setDateStart(event.target.value)} />
+                <CalendarField value={dateStart} onValueChange={setDateStart} placeholder="Start date" />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <Label>
                   {t('customers.filters.end_date_label', 'End date')}
                 </Label>
-                <Input type="date" value={dateEnd} onChange={(event) => setDateEnd(event.target.value)} />
+                <CalendarField value={dateEnd} onValueChange={setDateEnd} min={dateStart || undefined} placeholder="End date" />
               </div>
 
               <div className="flex flex-col gap-1.5">

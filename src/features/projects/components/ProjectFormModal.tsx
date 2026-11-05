@@ -3,6 +3,7 @@ import { useLocale } from '../../../app/hooks/useLocale'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Label } from '../../../shared/ui/label'
 import { Textarea } from '../../../shared/ui/textarea'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
@@ -330,12 +331,7 @@ export function ProjectFormModal({
             <Label>
               {t('projects.deadline', 'Project deadline')}
             </Label>
-            <Input
-              type="datetime-local"
-              value={values.deadline}
-              onChange={(event) => set('deadline', event.target.value)}
-              step="60"
-            />
+            <CalendarField mode="datetime" value={values.deadline} onValueChange={(value) => set('deadline', value)} />
           </div>
         </div>
 

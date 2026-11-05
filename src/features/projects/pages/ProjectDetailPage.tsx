@@ -5,6 +5,7 @@ import { Card } from '../../../shared/ui/card'
 import { Button } from '../../../shared/ui/button'
 import { Badge } from '../../../shared/ui/badge'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { SelectField } from '../../../shared/ui/select-field'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
 import { StateBlock } from '../../../shared/ui/state-block'
@@ -982,11 +983,7 @@ export function ProjectDetailPage() {
                       </div>
                       <div>
                         <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Due Date</p>
-                        <Input
-                          type="date"
-                          value={featureForm.dueDate}
-                          onChange={(e) => setFeatureForm((f) => ({ ...f, dueDate: e.target.value }))}
-                        />
+                        <CalendarField value={featureForm.dueDate} onValueChange={(value) => setFeatureForm((f) => ({ ...f, dueDate: value }))} />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -1113,11 +1110,7 @@ export function ProjectDetailPage() {
                     />
                     <div>
                       <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Event Date *</p>
-                      <Input
-                        type="date"
-                        value={qualityForm.eventDate}
-                        onChange={(e) => setQualityForm((f) => ({ ...f, eventDate: e.target.value }))}
-                      />
+                      <CalendarField value={qualityForm.eventDate} required onValueChange={(value) => setQualityForm((f) => ({ ...f, eventDate: value }))} />
                     </div>
                     <div className="flex items-center gap-4">
                       <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--foreground)]">
@@ -1222,19 +1215,11 @@ export function ProjectDetailPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Started At *</p>
-                        <Input
-                          type="datetime-local"
-                          value={blockedForm.startedAt}
-                          onChange={(e) => setBlockedForm((f) => ({ ...f, startedAt: e.target.value }))}
-                        />
+                        <CalendarField mode="datetime" value={blockedForm.startedAt} required onValueChange={(value) => setBlockedForm((f) => ({ ...f, startedAt: value }))} />
                       </div>
                       <div>
                         <p className="mb-1.5 text-[13px] font-medium text-[var(--muted-strong)]">Ended At</p>
-                        <Input
-                          type="datetime-local"
-                          value={blockedForm.endedAt}
-                          onChange={(e) => setBlockedForm((f) => ({ ...f, endedAt: e.target.value }))}
-                        />
+                        <CalendarField mode="datetime" value={blockedForm.endedAt} onValueChange={(value) => setBlockedForm((f) => ({ ...f, endedAt: value }))} />
                       </div>
                     </div>
                     <Input

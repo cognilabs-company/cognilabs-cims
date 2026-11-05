@@ -75,7 +75,7 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
         </div>
 
         {/* URL badge */}
-        {project.project_url && (
+        {typeof project.project_url === 'string' && project.project_url && (
           <a
             href={project.project_url}
             target="_blank"

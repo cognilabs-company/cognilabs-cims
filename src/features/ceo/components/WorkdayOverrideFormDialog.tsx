@@ -17,6 +17,7 @@ import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Label } from '../../../shared/ui/label'
 import { MemberAvatar as SharedMemberAvatar } from '../../../shared/ui/member-avatar'
 import { SelectField } from '../../../shared/ui/select-field'
@@ -370,11 +371,7 @@ export function WorkdayOverrideFormDialog({
           <div className="grid gap-[18px] sm:grid-cols-2">
             <div>
               <Label className="mb-2 block">{tx('common.date', 'Date')}</Label>
-              <Input
-                type="date"
-                value={formState.specialDate}
-                onChange={(event) => setForm({ specialDate: event.target.value })}
-              />
+              <CalendarField value={formState.specialDate} onValueChange={(value) => setForm({ specialDate: value })} />
             </div>
             <div>
               <Label className="mb-2 block">{tx('common.type', 'Type')}</Label>

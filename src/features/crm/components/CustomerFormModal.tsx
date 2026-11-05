@@ -9,6 +9,7 @@ import { Button } from '../../../shared/ui/button'
 import { Checkbox } from '../../../shared/ui/checkbox'
 import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Modal } from '../../../shared/ui/modal'
 import { SelectField } from '../../../shared/ui/select-field'
 import { Textarea } from '../../../shared/ui/textarea'
@@ -185,10 +186,10 @@ export function CustomerFormModal({
         </label>
         <label className="grid gap-2">
           <span className="ui-input-label">{t('common.recall_time', 'Recall time')}</span>
-          <Input
-            type="datetime-local"
+          <CalendarField
+            mode="datetime"
             value={values.recall_time}
-            onChange={(event) => onChange('recall_time', event.target.value)}
+            onValueChange={(value) => onChange('recall_time', value)}
           />
         </label>
         <label className="grid gap-2">

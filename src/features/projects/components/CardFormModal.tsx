@@ -6,6 +6,7 @@ import { Dialog } from '../../../shared/ui/dialog'
 import { Button } from '../../../shared/ui/button'
 import { IconButton } from '../../../shared/ui/icon-button'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Label } from '../../../shared/ui/label'
 import { Textarea } from '../../../shared/ui/textarea'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
@@ -329,12 +330,7 @@ export function CardFormModal({
           <Label>
             {t('projects.due_date_time', 'Due Date & Time')}
           </Label>
-          <Input
-            type="datetime-local"
-            value={values.due_date}
-            onChange={(event) => set('due_date', event.target.value)}
-            step="60"
-          />
+          <CalendarField mode="datetime" value={values.due_date} onValueChange={(value) => set('due_date', value)} />
         </div>
 
         <div className="flex flex-col gap-2.5">

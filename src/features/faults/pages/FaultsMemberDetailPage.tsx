@@ -24,6 +24,7 @@ import { Checkbox } from '../../../shared/ui/checkbox'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Label } from '../../../shared/ui/label'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { Progress } from '../../../shared/ui/progress'
@@ -1711,11 +1712,7 @@ export function FaultsMemberDetailPage({
 
               <div>
                 <Label className="mb-2 block">{tr('Incident date', "Sodir bo'lgan sana", 'Дата инцидента')}</Label>
-                <Input
-                  type="date"
-                  value={mistakeDraft.incidentDate}
-                  onChange={(event) => setMistakeDraft((current) => ({ ...current, incidentDate: event.target.value }))}
-                />
+                <CalendarField value={mistakeDraft.incidentDate} onValueChange={(value) => setMistakeDraft((current) => ({ ...current, incidentDate: value }))} />
               </div>
             </div>
 
@@ -1799,11 +1796,7 @@ export function FaultsMemberDetailPage({
 
               <div>
                 <Label className="mb-2 block">{tr('Award date', 'Berilgan sana', 'Дата выдачи')}</Label>
-                <Input
-                  type="date"
-                  value={deliveryBonusDraft.awardDate}
-                  onChange={(event) => setDeliveryBonusDraft((current) => ({ ...current, awardDate: event.target.value }))}
-                />
+                <CalendarField value={deliveryBonusDraft.awardDate} onValueChange={(value) => setDeliveryBonusDraft((current) => ({ ...current, awardDate: value }))} />
               </div>
             </div>
 

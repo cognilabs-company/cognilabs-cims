@@ -34,6 +34,7 @@ import { Checkbox } from '../../../shared/ui/checkbox'
 import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Label } from '../../../shared/ui/label'
 import { Progress } from '../../../shared/ui/progress'
 import { SelectField } from '../../../shared/ui/select-field'
@@ -594,7 +595,7 @@ function FeaturesTab({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Due Date</Label>
-              <Input type="date" value={form.due_date} onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))} />
+              <CalendarField value={form.due_date} onValueChange={(value) => setForm((f) => ({ ...f, due_date: value }))} />
             </div>
             <div className="space-y-1.5">
               <Label>Status</Label>
@@ -705,7 +706,7 @@ function DeductionsTab({
                   return <span className="font-medium whitespace-nowrap text-[var(--foreground)]">{name}</span>
                 },
               },
-              { key: 'type', header: 'Type', render: (d: Deduction) => <span className={DATA_CELL}>{d.type.replace(/_/g, ' ')}</span> },
+              { key: 'type', header: 'Type', render: (d: Deduction) => <span className={DATA_CELL}>{d.type?.replace(/_/g, ' ') || '—'}</span> },
               { key: 'amount', header: 'Amount', render: (d: Deduction) => <span className="font-semibold tabular-nums text-[var(--danger-text)]">-{formatCurrency(d.amount)}</span> },
               { key: 'reason', header: 'Reason', render: (d: Deduction) => <span className={cn('block max-w-48 truncate', DATA_CELL)}>{d.reason ?? '—'}</span> },
               { key: 'status', header: 'Status', render: (d: Deduction) => <Badge variant={statusVariant(d.status)}>{d.status}</Badge> },
@@ -984,7 +985,7 @@ function QualityEventsTab({
           </div>
           <div className="space-y-1.5">
             <Label>Event Date</Label>
-            <Input type="date" value={form.event_date} onChange={(e) => setForm((f) => ({ ...f, event_date: e.target.value }))} required />
+            <CalendarField value={form.event_date} onValueChange={(value) => setForm((f) => ({ ...f, event_date: value }))} required />
           </div>
           <div className={CHECK_PANEL}>
             <label className={CHECK_ROW}>
@@ -1173,11 +1174,11 @@ function BlockedPeriodsTab({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Started At</Label>
-              <Input type="datetime-local" value={form.started_at} onChange={(e) => setForm((f) => ({ ...f, started_at: e.target.value }))} required />
+              <CalendarField mode="datetime" value={form.started_at} onValueChange={(value) => setForm((f) => ({ ...f, started_at: value }))} required />
             </div>
             <div className="space-y-1.5">
               <Label>Ended At <span className="text-[var(--muted)]">(optional)</span></Label>
-              <Input type="datetime-local" value={form.ended_at} onChange={(e) => setForm((f) => ({ ...f, ended_at: e.target.value }))} />
+              <CalendarField mode="datetime" value={form.ended_at} onValueChange={(value) => setForm((f) => ({ ...f, ended_at: value }))} />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -1438,11 +1439,7 @@ function ProjectDeliveryTab({ isCeo, projects }: { isCeo: boolean; projects: Arr
           </div>
           <div className="space-y-1.5">
             <Label>Actual Delivery Date</Label>
-            <Input
-              type="date"
-              value={form.actual_delivery_date}
-              onChange={(e) => setForm((f) => ({ ...f, actual_delivery_date: e.target.value }))}
-            />
+            <CalendarField value={form.actual_delivery_date} onValueChange={(value) => setForm((f) => ({ ...f, actual_delivery_date: value }))} />
           </div>
           <div className="space-y-1.5">
             <Label>Delivery Status</Label>

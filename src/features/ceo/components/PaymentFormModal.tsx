@@ -2,6 +2,7 @@ import { Button } from '../../../shared/ui/button'
 import { Checkbox } from '../../../shared/ui/checkbox'
 import { Label } from '../../../shared/ui/label'
 import { Input } from '../../../shared/ui/input'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Modal } from '../../../shared/ui/modal'
 import { useTranslation } from 'react-i18next'
 
@@ -62,7 +63,7 @@ export function PaymentFormModal({
         <div className="grid gap-[18px] md:grid-cols-2">
           <Label className="grid gap-2">
             <span className="ui-input-label">{t('ceo.payments.form.date')}</span>
-            <Input type="date" value={values.date} onChange={(event) => onChange('date', event.target.value)} />
+            <CalendarField value={values.date} onValueChange={(value) => onChange('date', value)} />
           </Label>
           <Label className="grid gap-2">
             <span className="ui-input-label">{t('ceo.payments.form.amount')}</span>
