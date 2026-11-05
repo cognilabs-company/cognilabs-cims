@@ -161,3 +161,22 @@ async function performRequest<T>(
 export async function request<T>(options: ApiRequestOptions): Promise<T> {
   return performRequest<T>(options)
 }
+
+export async function requestBlob(path: string): Promise<Blob> {
+  async function load(canRetry: boolean): Promise<Blob> {
+    const headers = new Headers(defaultHeaders)
+    const token = getAccessToken()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    const response = await fetch(buildUrl(path), { headers, cache: 'no-store' })
+    if (response.status === 401 && canRetry) {
+      try {
+        if (await refreshAccessToken()) return load(false)
+      } catch {
+        clearSession()
+      }
+    }
+    if (!response.ok) return parseResponse<Blob>(response)
+    return response.blob()
+  }
+  return load(true)
+}

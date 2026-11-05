@@ -5,6 +5,7 @@ import { AppShellProvider } from '../providers/AppShellProvider'
 import { AppHeader } from '../../widgets/navigation/AppHeader'
 import { AppSidebar } from '../../widgets/navigation/AppSidebar'
 import { CimsAiLauncher } from '../../widgets/ai/CimsAiLauncher'
+import { TelephonyProvider } from '../../features/telephony/TelephonyProvider'
 
 function RootLayoutFrame() {
   const { isSidebarCollapsed } = useAppShell()
@@ -31,7 +32,9 @@ function RootLayoutFrame() {
 export function RootLayout() {
   return (
     <AppShellProvider>
-      <RootLayoutFrame />
+      <TelephonyProvider>
+        <RootLayoutFrame />
+      </TelephonyProvider>
     </AppShellProvider>
   )
 }

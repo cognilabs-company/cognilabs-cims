@@ -1,4 +1,4 @@
-export type NavigationAudience = 'member' | 'sales_manager'
+export type NavigationAudience = 'member' | 'sales_manager' | 'telephony'
 
 export type NavigationItem = {
   to: string
@@ -67,6 +67,15 @@ export const navigationItems: readonly NavigationItem[] = [
     permissionKey: 'crm',
     sidebar: true,
     defaultRedirect: true,
+  },
+  {
+    to: '/telephony',
+    label: 'Calls',
+    description: 'Phone dialer and call history.',
+    group: 'Sales',
+    sidebar: true,
+    defaultRedirect: false,
+    audience: 'telephony',
   },
   {
     to: '/crm/my-leads',

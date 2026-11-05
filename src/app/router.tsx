@@ -183,6 +183,10 @@ const PersonalAttendancePage = lazyPage(
   () => import('../features/attendance/pages/PersonalAttendancePage'),
   'PersonalAttendancePage',
 )
+const TelephonyPage = lazyPage(
+  () => import('../features/telephony/pages/TelephonyPage'),
+  'TelephonyPage',
+)
 
 export const router = createBrowserRouter([
   {
@@ -316,6 +320,14 @@ export const router = createBrowserRouter([
                 element: (
                   <ProtectedRoute permissionKey="crm">
                     {withPageLoader(<CrmDashboardPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'telephony',
+                element: (
+                  <ProtectedRoute audience="telephony">
+                    {withPageLoader(<TelephonyPage />)}
                   </ProtectedRoute>
                 ),
               },

@@ -46,6 +46,10 @@ function glyphPath(name: GlyphName) {
           <circle cx="8.5" cy="8.5" r="1" />
         </>
       )
+    case 'phone':
+      return (
+        <path d="M5 3.5h3l1.5 4-2 1.5a16 16 0 0 0 7.5 7.5l1.5-2 4 1.5v3a2 2 0 0 1-2 2C10 21 3 14 3 5.5a2 2 0 0 1 2-2Z" />
+      )
     case 'faults':
       return (
         <>

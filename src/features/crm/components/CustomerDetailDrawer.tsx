@@ -1,4 +1,6 @@
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
+import { Phone } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { cn } from '../../../shared/lib/cn'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +15,7 @@ import {
 } from '../../../shared/lib/customer-display'
 import { formatNumericDate, formatNumericDateTime } from '../../../shared/lib/format'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { canUseTelephony } from '../../../shared/lib/permissions'
 import { Alert } from '../../../shared/ui/alert'
 import { Badge, StatusBadge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
@@ -131,7 +134,7 @@ export function CustomerDetailContent({
   const { showToast } = useToast()
   const { confirm } = useConfirm()
   const { user: currentUser } = useAuth()
-  const { service: crmService } = useCrmScope()
+  const { service: crmService, kind } = useCrmScope()
   const customerName = getCustomerDisplayName(customer)
   const formattedNotes = formatCustomerNotes(customer.notes)
   const recallTone = getRecallTimeTone(customer.recall_time)
@@ -228,6 +231,11 @@ export function CustomerDetailContent({
 
           {!hideActions && (
             <div className="flex flex-wrap gap-2.5">
+              {canUseTelephony(currentUser) && (customer.phone_number ?? customer.phone) && (
+                <Button variant="secondary" size="sm" asChild>
+                  <Link to={`/telephony?phone=${encodeURIComponent((customer.phone_number ?? customer.phone) as string)}&crm_source=${kind === 'outbound' ? 'crm_outbound' : 'crm'}&customer_id=${customer.id}`}><Phone size={15} /><span className="ml-2">Call</span></Link>
+                </Button>
+              )}
               {onOpenChat ? (
                 <Button
                   type="button"
@@ -534,7 +542,8 @@ export function CustomerDetailDrawer({
   onEdit?: (customer: CustomerSummary) => void
 }) {
   const { t } = useTranslation()
-  const { service: crmService, apiBasePath } = useCrmScope()
+  const { user } = useAuth()
+  const { service: crmService, apiBasePath, kind } = useCrmScope()
   const detailQuery = useAsyncData(
     () => crmService.detail(customerId ?? 0),
     [customerId, open],
@@ -599,6 +608,11 @@ export function CustomerDetailDrawer({
             </div>
 
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {customer && customerPhoneNumber && canUseTelephony(user) && (
+                <Button variant="secondary" size="sm" asChild>
+                  <Link to={`/telephony?phone=${encodeURIComponent(customerPhoneNumber)}&crm_source=${kind === 'outbound' ? 'crm_outbound' : 'crm'}&customer_id=${customer.id}`} onClick={onClose}><Phone size={15} /><span className="ml-2">Call</span></Link>
+                </Button>
+              )}
               {customer && onSearchTelegram && customerPhoneNumber ? (
                 <Button
                   type="button"

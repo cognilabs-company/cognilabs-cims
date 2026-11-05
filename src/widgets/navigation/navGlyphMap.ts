@@ -3,6 +3,7 @@ export type GlyphName =
   | 'ai'
   | 'ceo'
   | 'crm'
+  | 'phone'
   | 'faults'
   | 'payment'
   | 'wordpress'
@@ -20,6 +21,7 @@ export type GlyphName =
   | 'default'
 
 export function getNavigationGlyphName(pathname: string): GlyphName {
+  if (pathname.startsWith('/telephony')) return 'phone'
   if (pathname.startsWith('/member/attendance')) return 'attendance'
   if (pathname.startsWith('/member')) return 'member'
   if (pathname.startsWith('/ceo/ai')) return 'ai'

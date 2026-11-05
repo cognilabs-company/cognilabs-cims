@@ -42,6 +42,10 @@ export function hasAudienceAccess(user: CurrentUser | null, audience?: Navigatio
     return user.role === 'SalesManager'
   }
 
+  if (audience === 'telephony') {
+    return canUseTelephony(user)
+  }
+
   return true
 }
 
@@ -86,6 +90,10 @@ export function canAccessPath(user: CurrentUser | null, destination: string) {
 
 export function isSellerUser(user: CurrentUser | null) {
   return String(user?.role ?? '').trim().toLowerCase() === 'seller'
+}
+
+export function canUseTelephony(user: CurrentUser | null) {
+  return user?.role === 'CEO' || isSellerUser(user)
 }
 
 export function getDefaultDashboardPath(user: CurrentUser | null) {
