@@ -104,8 +104,8 @@ export const telephonyService = {
   },
 }
 
-export function normalizePhone(value: string) {
-  return value.replace(/[^\d]/g, '')
+export function normalizePhone(value?: string | null) {
+  return (value ?? '').replace(/[^\d]/g, '')
 }
 
 export function leadPath(source: TelephonyLead['crm_source'] | null, id: number | null) {
