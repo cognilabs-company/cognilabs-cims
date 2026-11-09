@@ -1466,5 +1466,9 @@
   "customers.recall.unit_days": "{{n}} kun",
   "customers.recall.unit_hours": "{{n}} soat",
   "customers.recall.unit_min_short": "daq",
-  "customers.recall.unit_minutes": "{{n}} daqiqa"
+  "customers.recall.unit_minutes": "{{n}} daqiqa",
+  "telephony.theme.label": "Ko'rinish",
+  "telephony.theme.auto": "Avto (tizim)",
+  "telephony.theme.light": "Yorug'",
+  "telephony.theme.dark": "Qorong'i"
 }

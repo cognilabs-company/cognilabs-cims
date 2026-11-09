@@ -1466,5 +1466,9 @@
   "customers.recall.unit_days": "{{n}} d",
   "customers.recall.unit_hours": "{{n}} h",
   "customers.recall.unit_min_short": "min",
-  "customers.recall.unit_minutes": "{{n}} min"
+  "customers.recall.unit_minutes": "{{n}} min",
+  "telephony.theme.label": "Appearance",
+  "telephony.theme.auto": "Auto (system)",
+  "telephony.theme.light": "Light",
+  "telephony.theme.dark": "Dark"
 }

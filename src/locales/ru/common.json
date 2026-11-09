@@ -1466,5 +1466,9 @@
   "customers.recall.unit_days": "{{n}} дн.",
   "customers.recall.unit_hours": "{{n}} ч",
   "customers.recall.unit_min_short": "мин",
-  "customers.recall.unit_minutes": "{{n}} мин"
+  "customers.recall.unit_minutes": "{{n}} мин",
+  "telephony.theme.label": "Оформление",
+  "telephony.theme.auto": "Авто (система)",
+  "telephony.theme.light": "Светлая",
+  "telephony.theme.dark": "Тёмная"
 }
