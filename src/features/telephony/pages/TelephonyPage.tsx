@@ -274,7 +274,7 @@ export function TelephonyPage() {
   return (
     <div
       className="mac-phone flex min-h-0 flex-col overflow-hidden rounded-[24px] bg-[var(--mp-window)] ring-1 ring-[var(--mp-separator)]"
-      style={{ height: 'max(540px, var(--page-h))' }}
+      style={{ height: 'var(--page-h)', minHeight: 360 }}
     >
       <h1 className="sr-only">{t('telephony.title', 'Calls')}</h1>
 

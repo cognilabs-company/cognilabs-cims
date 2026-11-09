@@ -2,7 +2,7 @@
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAppShell } from '../../../app/hooks/useAppShell'
+import { Archive as ArchiveIcon, ArrowRight, Filter, ListTodo, Pencil, Percent, PhoneCall, Plus, RefreshCw, Search, Trash2, UserPlus, UsersRound, X } from 'lucide-react'
 import { env } from '../../../shared/config/env'
 import type { CustomerSummary, DynamicStatusOption } from '../../../shared/api/types'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -20,15 +20,12 @@ import { useToast } from '../../../shared/toast/useToast'
 import { getRecallTimeTone, getRecallTimeToneClasses } from '../lib/recallTime'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
-import { Card } from '../../../shared/ui/card'
-import { DataTable } from '../../../shared/ui/data-table'
-import { IconButton } from '../../../shared/ui/icon-button'
+import { DataGrid, type GridColumn } from '../../../shared/ui/data-grid'
+import { StatCard } from '../../../shared/ui/stat-card'
 import { Input } from '../../../shared/ui/input'
 import { CalendarField } from '../../../shared/ui/calendar-field'
-import { Label } from '../../../shared/ui/label'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
-import { Tabs } from '../../../shared/ui/tabs'
 import { crmService as baseCrmService } from '../../../shared/api/services/crm.service'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
@@ -472,9 +469,21 @@ function TableAudioControl({
 
 
 
+type CrmPageView = 'overview' | 'customers'
+const periodKeys = ['today', '3d', '7d', '30d', '90d'] as const
+
+/** /crm — the CRM dashboard (overview only). */
 export function CrmDashboardPage() {
+  return <CrmWorkspace view="overview" />
+}
+
+/** /crm/customers — the customer list with the customisable table. */
+export function CrmCustomersPage() {
+  return <CrmWorkspace view="customers" />
+}
+
+function CrmWorkspace({ view }: { view: CrmPageView }) {
   const { t } = useTranslation()
-  const { isSidebarCollapsed } = useAppShell()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -483,12 +492,20 @@ export function CrmDashboardPage() {
 
   const [search, setSearch] = useState(() => initialReturnState?.search ?? '')
   const deferredSearch = useDeferredValue(search)
-  const [statusFilters, setStatusFilters] = useState<string[]>(() => initialReturnState?.statusFilters ?? [])
+  // ?status=… and ?period=… (links from the dashboards) win over the remembered view state.
+  const [statusFilters, setStatusFilters] = useState<string[]>(() => {
+    const fromUrl = searchParams.get('status')
+    return fromUrl ? [fromUrl] : (initialReturnState?.statusFilters ?? [])
+  })
   const [platformFilter, setPlatformFilter] = useState(() => initialReturnState?.platformFilter ?? '')
   const [dateStart, setDateStart] = useState(() => initialReturnState?.dateStart ?? '')
   const [dateEnd, setDateEnd] = useState(() => initialReturnState?.dateEnd ?? '')
   const [pageSize, setPageSize] = useState(() => initialReturnState?.pageSize ?? '75')
-  const [selectedPeriod, setSelectedPeriod] = useState<'' | 'today' | '3d' | '7d' | '30d' | '90d'>(() => initialReturnState?.selectedPeriod ?? '')
+  const [selectedPeriod, setSelectedPeriod] = useState<'' | 'today' | '3d' | '7d' | '30d' | '90d'>(() => {
+    const fromUrl = searchParams.get('period')
+    if (fromUrl && (periodKeys as readonly string[]).includes(fromUrl)) return fromUrl as (typeof periodKeys)[number]
+    return initialReturnState?.selectedPeriod ?? ''
+  })
   const [tablePage, setTablePage] = useState(() => Math.max(1, initialReturnState?.tablePage ?? 1))
 
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
@@ -513,6 +530,16 @@ export function CrmDashboardPage() {
     selectedPeriod: '',
     tablePage: 1,
   })
+
+  useEffect(() => {
+    if (!searchParams.has('status') && !searchParams.has('period')) return
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('status')
+      next.delete('period')
+      return next
+    }, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const pageSizeValue = Number(pageSize) || 75
   const shouldRestoreReturnState = Boolean(initialReturnState?.customerId)
@@ -883,7 +910,7 @@ export function CrmDashboardPage() {
       customerIndex: effectiveIndex,
     })
     setDetailCustomer(null)
-    navigate(`/cognilabsai/chat?telegram_search=${encodeURIComponent(phoneNumber)}&return_customer_id=${customerId}&return_to=${encodeURIComponent(routeBasePath)}`)
+    navigate(`/cognilabsai/chat?telegram_search=${encodeURIComponent(phoneNumber)}&return_customer_id=${customerId}&return_to=${encodeURIComponent(`${routeBasePath}/customers`)}`)
   }
 
   function syncCustomerInUi(nextCustomer: CustomerSummary) {
@@ -1046,12 +1073,6 @@ export function CrmDashboardPage() {
     { value: '', label: t('customers.filters.all_platforms', 'All platforms') },
     ...availablePlatforms.map((platform: string) => ({ value: platform, label: platform })),
   ]
-  const pageSizeOptions: SelectFieldOption[] = [
-    { value: '10', label: t('common.per_page', '{{count}} per page', { count: 10 }) },
-    { value: '20', label: t('common.per_page', '{{count}} per page', { count: 20 }) },
-    { value: '50', label: t('common.per_page', '{{count}} per page', { count: 50 }) },
-    { value: '75', label: t('common.per_page', '{{count}} per page', { count: 75 }) },
-  ]
   const activeFilterCount = [
     search,
     statusFilters.length > 0 ? 1 : 0,
@@ -1060,379 +1081,17 @@ export function CrmDashboardPage() {
     dateEnd,
   ].filter((value) => Boolean(value)).length
 
-  return (
-    <section className="flex min-h-[var(--page-h)] flex-col gap-[18px]">
-      <div className="flex flex-col gap-1">
-        <h1 className="ui-page-title text-[var(--foreground)]">
-          {crmKind === 'outbound'
-            ? t('outbound_crm.page.title', 'Outbound CRM')
-            : t('customers.page.title', 'CRM dashboard')}
-        </h1>
-        <p className="text-sm text-[var(--muted)]">
-          {t('customers.page.subtitle', 'Pipeline overview, callbacks and the full customer list.')}
-        </p>
-      </div>
+  const resetPageAnd = <V,>(setter: (value: V) => void) => (value: V) => { setter(value); setTablePage(1) }
+  const listTitle = crmKind === 'outbound' ? t('outbound_crm.page.title', 'Outbound CRM') : t('customers.page.title', 'CRM dashboard')
+  const periodLabel = periodOptions.find((option) => option.value === selectedPeriod)?.label ?? ''
+  const todayKey = new Date().toDateString()
+  const createdTodayCount = (dashboardQuery.data?.customers ?? emptyCustomers)
+    .filter((customer) => normalizeDateValue(customer.created_at)?.toDateString() === todayKey).length
+  const needToCallOption = allChipStatuses.find((option) => normalizeStatusKey(option.value) === 'needtocall')
+  const needToCallCount = statusCounts.get('needtocall') ?? 0
 
-      <CrmDashboardOverview
-        customers={baseCustomers}
-        stats={summaryQuery.data ?? null}
-        conversion={conversionQuery.data ?? null}
-        period={selectedPeriod}
-        onPeriodChange={setSelectedPeriod}
-        onOpenCustomer={(customerId) => {
-          const match = baseCustomers.find((customer) => customer.id === customerId)
-          if (match) {
-            setDetailCustomer(match)
-          }
-        }}
-        onFocusStatus={(statusKey) => {
-          const match = statusOptions.find(
-            (option) => normalizeStatusKey(option.value) === normalizeStatusKey(statusKey),
-          )
-          setStatusFilters(match ? [match.value] : [])
-        }}
-      />
-
-      <div className="flex flex-wrap items-center justify-between gap-[18px]">
-        <div className="flex flex-wrap items-center gap-2">
-          <Tabs items={periodOptions} value={selectedPeriod} onChange={setSelectedPeriod} className="max-w-full flex-wrap" />
-          {selectedPeriod && periodReportQuery.data ? (
-            <Badge variant="blue" dot>
-              {t('customers.period.range', '{{from}} → {{to}}', {
-                from: periodReportQuery.data.from_date,
-                to: periodReportQuery.data.to_date,
-              })}
-            </Badge>
-          ) : null}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => void refreshAll()}>
-            {t('customers.actions.refresh', 'Refresh')}
-          </Button>
-          {crmKind === 'outbound' ? (
-            <Button variant="secondary" onClick={() => navigate(`${routeBasePath}/statuses`)}>
-              {t('outbound_crm.actions.statuses', 'Statuses')}
-            </Button>
-          ) : null}
-          <Button variant="secondary" onClick={() => navigate(`${routeBasePath}/archived`)}>
-            Arxiv
-          </Button>
-          <Button onClick={openCreateModal}>{t('customers.actions.add', 'Add customer')}</Button>
-        </div>
-      </div>
-
-      {allChipStatuses.length > 0 && (
-        <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-          {/* All clients card */}
-          <button
-            type="button"
-            onClick={() => setStatusFilters([])}
-            className={cn(
-              'flex min-h-[96px] flex-col justify-between rounded-[18px] p-4 text-left transition-colors',
-              statusFilters.length === 0
-                ? 'bg-[var(--blue-dim)]'
-                : 'bg-[var(--card)] hover:bg-[var(--card-hover)]',
-            )}
-          >
-            <p className={cn('truncate text-[11px] font-semibold tracking-[0.08em] uppercase', statusFilters.length === 0 ? 'text-[var(--blue-text)]' : 'text-[var(--caption)]')}>
-              Barchasi
-            </p>
-            <p
-              className={cn('mt-3 text-[28px] leading-none font-bold tracking-[-0.03em] tabular-nums', statusFilters.length === 0 ? 'text-[var(--blue-text)]' : 'text-[var(--foreground)]')}
-              data-ui-number="true"
-            >
-              {baseCustomers.length}
-            </p>
-          </button>
-          {allChipStatuses.map((option) => {
-            const isActive = selectedStatusFilterSet.has(normalizeStatusKey(option.value))
-            const count = statusCounts.get(normalizeStatusKey(option.value)) ?? 0
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  const key = normalizeStatusKey(option.value)
-                  setStatusFilters((prev) =>
-                    isActive
-                      ? prev.filter((s) => normalizeStatusKey(s) !== key)
-                      : [...prev, option.value],
-                  )
-                }}
-                className={cn(
-                  'flex min-h-[96px] flex-col justify-between rounded-[18px] p-4 text-left transition-colors',
-                  !isActive && 'bg-[var(--card)] hover:bg-[var(--card-hover)]',
-                )}
-                style={isActive ? {
-                  backgroundColor: `${option.color}1F`,
-                } : undefined}
-              >
-                <p
-                  className={cn('truncate text-[11px] font-semibold tracking-[0.08em] uppercase', !isActive && 'text-[var(--caption)]')}
-                  style={isActive ? { color: option.color } : undefined}
-                >
-                  {option.label}
-                </p>
-                <p
-                  className={cn('mt-3 text-[28px] leading-none font-bold tracking-[-0.03em] tabular-nums', !isActive && 'text-[var(--foreground)]')}
-                  style={isActive ? { color: option.color } : undefined}
-                  data-ui-number="true"
-                >
-                  {count}
-                </p>
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      <Card noPadding className="flex flex-1 flex-col overflow-hidden">
-        <div
-          className={cn(
-            'flex flex-wrap items-center justify-between gap-3 pt-[22px] pb-4',
-            isSidebarCollapsed ? 'px-4 xl:px-[22px]' : 'px-[22px]',
-          )}
-        >
-          <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{t('customers.section.list.title', 'Customers')}</h2>
-          <div className="flex items-center gap-2">
-            <Badge variant="blue" dot>
-              {t('customers.section.list.visible_badge', '{{count}} visible', { count: displayedCustomers.length })}
-            </Badge>
-            <Badge variant={activeFilterCount > 0 ? 'warning' : 'secondary'} dot={activeFilterCount > 0}>
-              {t('customers.section.list.filters_badge', '{{count}} filters', { count: activeFilterCount })}
-            </Badge>
-          </div>
-        </div>
-
-
-        <div className={cn(isSidebarCollapsed ? 'px-4 xl:px-[22px]' : 'px-[22px]')}>
-          <div className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]">
-            {activeFilterCount > 0 && (
-              <div className="mb-3.5 flex items-center justify-end">
-                <Button variant="ghost" size="sm" onClick={resetFilters}>
-                  {t('common.clear', 'Clear')}
-                </Button>
-              </div>
-            )}
-
-            <div className="grid gap-x-[18px] gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  {t('customers.filters.search_label', 'Search')}
-                </Label>
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t('customers.filters.search_placeholder', 'Name, username, note, or phone')}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  {t('customers.filters.status_label', 'Status')}
-                </Label>
-                <SelectField
-                  value={statusFilters[0] ?? ''}
-                  values={statusFilters}
-                  multiple
-                  options={statusFilterOptions}
-                  onValuesChange={setStatusFilters}
-                  placeholder={t('customers.filters.all_statuses', 'All statuses')}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  {t('customers.filters.platform_label', 'Platform')}
-                </Label>
-                <SelectField
-                  key={`crm-platform-filter-${platformFilter || 'all'}`}
-                  value={platformFilter}
-                  options={platformFilterOptions}
-                  onValueChange={setPlatformFilter}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  {t('customers.filters.start_date_label', 'Start date')}
-                </Label>
-                <CalendarField value={dateStart} onValueChange={setDateStart} placeholder="Start date" />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  {t('customers.filters.end_date_label', 'End date')}
-                </Label>
-                <CalendarField value={dateEnd} onValueChange={setDateEnd} min={dateStart || undefined} placeholder="End date" />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  {t('customers.filters.pagination_label', 'Pagination')}
-                </Label>
-                <SelectField
-                  key={`crm-page-size-${pageSize}`}
-                  value={pageSize}
-                  options={pageSizeOptions}
-                  onValueChange={setPageSize}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            'flex min-h-0 flex-1 flex-col py-[18px]',
-            isSidebarCollapsed ? 'px-4 xl:px-[22px]' : 'px-[22px]',
-          )}
-        >
-          <DataTable
-            key={`crm-table-${pageSizeValue}`}
-            caption={t('customers.table.caption', 'CRM customers table')}
-            rows={displayedCustomers}
-            getRowKey={(row) => String(row.id)}
-            pageSize={pageSizeValue}
-            initialPage={tablePage}
-            zebra
-            fillHeight
-            onRowClick={openCustomerDrawer}
-            onPageChange={setTablePage}
-            disableAutoResetPage={shouldRestoreReturnState}
-            emptyState={
-              <EmptyStateBlock
-                eyebrow={crmKind === 'outbound' ? t('outbound_crm.page.eyebrow', 'Outbound CRM workspace') : t('customers.page.eyebrow', 'CRM workspace')}
-                title={t('customers.table.empty_title', 'No customers found')}
-                description={t('customers.table.empty_description', 'The current filters returned no customer records.')}
-              />
-            }
-            columns={[
-              {
-                key: 'client',
-                header: t('customers.table.client', 'Customer'),
-                minWidth: '280px',
-                render: (row) => {
-                  const displayName = getCustomerDisplayName(row)
-                  return (
-                    <div className="min-w-0">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          openCustomerDrawer(row)
-                        }}
-                        className="block truncate text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
-                      >
-                        {displayName}
-                      </button>
-                    </div>
-                  )
-                },
-              },
-              {
-                key: 'phone',
-                header: t('customers.table.phone', 'Phone'),
-                render: (row) => row.phone_number ?? row.phone ?? '-',
-              },
-              {
-                key: 'status',
-                header: t('customers.table.status', 'Status'),
-                render: (row) => (
-                  <div className="flex flex-col gap-1">
-                    <StatusBadge status={row.status} statusMetaMap={statusMetaMap} />
-                    {row.lead_response_metrics && (
-                      <div className="flex flex-wrap gap-1">
-                        {!row.lead_response_metrics.status_changed && (
-                          <Badge variant="warning" size="sm">
-                            Hali bog'lanilmagan
-                          </Badge>
-                        )}
-                        {row.lead_response_metrics.status_changed && !row.lead_response_metrics.is_late_response && (
-                          <Badge variant="success" size="sm">
-                            ✓ O'z vaqtida
-                          </Badge>
-                        )}
-                        {row.lead_response_metrics.is_late_response && (
-                          <Badge variant="danger" size="sm">
-                            Kech {row.lead_response_metrics.late_human ?? ''}
-                          </Badge>
-                        )}
-                        {row.lead_response_metrics.status_changed_without_note && (
-                          <Badge variant="warning" size="sm">
-                            Note yo'q
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: 'actions',
-                header: t('customers.table.actions', 'Actions'),
-                render: (row) => (
-                  <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
-                    <IconButton size="sm" label={t('customers.actions.edit', 'Edit')} onClick={() => openEditModal(row)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </IconButton>
-                    <IconButton size="sm" tone="danger" label={t('customers.actions.delete', 'Delete')} onClick={() => void handleDeleteCustomer(row)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </IconButton>
-                  </div>
-                ),
-              },
-              {
-                key: 'assistant',
-                header: t('customers.table.assistant', 'Assistant'),
-                render: (row) => row.assistant_name || '-',
-              },
-              {
-                key: 'audio',
-                header: t('customers.table.audio', 'Audio'),
-                width: '140px',
-                render: (row) => {
-                  const audioSource = resolveAudioUrl(row, apiBasePath)
-
-                  if (!audioSource) {
-                    return '-'
-                  }
-
-                  return (
-                    <TableAudioControl
-                      src={audioSource}
-                      customerName={getCustomerDisplayName(row)}
-                      onOpenPlayer={(src, name) => setAudioModal({ src, name })}
-                    />
-                  )
-                },
-              },
-              {
-                key: 'notes',
-                header: t('customers.table.notes', 'Notes'),
-                width: '320px',
-                render: (row) => (
-                  <span className="block max-w-[320px] truncate text-[13.5px] text-[var(--muted-strong)]" title={row.notes ?? undefined}>
-                    {summarizeCustomerNotes(row.notes)}
-                  </span>
-                ),
-              },
-              {
-                key: 'recall',
-                header: t('customers.table.recall', 'Recall time'),
-                render: (row) => renderRecallTime(row.recall_time),
-              },
-              {
-                key: 'created',
-                header: t('customers.table.created', 'Created'),
-                render: (row) => formatDateTime(row.created_at),
-              },
-            ]}
-          />
-        </div>
-      </Card>
-
+  const modals = (
+    <>
       <CustomerDetailDrawer
         open={detailCustomer !== null}
         customerId={detailCustomer?.id ?? null}
@@ -1452,16 +1111,12 @@ export function CrmDashboardPage() {
         }}
       />
 
-
-
       <CustomerFormModal
         open={isFormOpen}
         mode={modalMode}
         customerId={modalMode === 'edit' ? (selectedCustomer?.id ?? undefined) : undefined}
         values={formValues}
-        statusOptions={[
-          ...statusFilterOptions,
-        ]}
+        statusOptions={[...statusFilterOptions]}
         onClose={() => setIsFormOpen(false)}
         onChange={(field, value) =>
           setFormValues((current: CustomerFormValues) => ({
@@ -1481,7 +1136,359 @@ export function CrmDashboardPage() {
           onClose={() => setAudioModal(null)}
         />
       )}
+    </>
+  )
+
+  /* ── CRM overview: dashboard only; the list lives on its own page ── */
+  if (view === 'overview') {
+    return (
+      <section className="flex flex-col gap-[18px]">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h1 className="ui-page-title text-[var(--foreground)]">{listTitle}</h1>
+            <p className="text-sm text-[var(--muted)]">
+              {t('customers.page.overview_subtitle', 'Pipeline, callbacks and team results at a glance.')}
+            </p>
+          </div>
+          <Button onClick={() => navigate(`${routeBasePath}/customers`)} rightIcon={<ArrowRight size={16} />}>
+            {t('customers.page.open_list', 'Customer list')}
+          </Button>
+        </div>
+
+        <CrmDashboardOverview
+          statusLabels={Object.fromEntries(statusOptions.map((option) => [option.value, option.label]))}
+          customers={baseCustomers}
+          stats={summaryQuery.data ?? null}
+          conversion={conversionQuery.data ?? null}
+          period={selectedPeriod}
+          onPeriodChange={setSelectedPeriod}
+          onOpenCustomer={(customerId) => {
+            const match = baseCustomers.find((customer) => customer.id === customerId)
+            if (match) setDetailCustomer(match)
+          }}
+          onFocusStatus={(statusKey) => {
+            const match = statusOptions.find((option) => normalizeStatusKey(option.value) === normalizeStatusKey(statusKey))
+            navigate(`${routeBasePath}/customers?status=${encodeURIComponent(match?.value ?? statusKey)}`)
+          }}
+        />
+        {modals}
+      </section>
+    )
+  }
+
+  /* ── Customers page: key numbers, status pills, then the customisable table ── */
+  const gridColumns: GridColumn<CustomerSummary>[] = [
+    {
+      key: 'id',
+      header: 'ID',
+      width: 84,
+      sortValue: (row) => row.id,
+      render: (row) => <span className="font-mono text-[12.5px] font-medium text-[var(--blue-text)]">#{row.id}</span>,
+    },
+    {
+      key: 'name',
+      header: t('customers.table.client', 'Customer'),
+      width: 220,
+      hideable: false,
+      sortValue: (row) => getCustomerDisplayName(row),
+      render: (row) => (
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); openCustomerDrawer(row) }}
+          className="truncate text-left font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
+        >
+          {getCustomerDisplayName(row)}
+        </button>
+      ),
+    },
+    {
+      key: 'username',
+      header: t('customers.table.username', 'Username'),
+      width: 150,
+      defaultHidden: true,
+      sortValue: (row) => formatUsernameHandle(row.username) ?? '',
+      render: (row) => formatUsernameHandle(row.username) || '—',
+    },
+    {
+      key: 'phone',
+      header: t('customers.table.phone', 'Phone'),
+      width: 160,
+      sortValue: (row) => row.phone_number ?? row.phone ?? '',
+      render: (row) => <span className="tabular-nums">{row.phone_number ?? row.phone ?? '—'}</span>,
+    },
+    {
+      key: 'platform',
+      header: t('customers.table.platform', 'Platform'),
+      width: 130,
+      sortValue: (row) => getCustomerDisplayPlatform(row) ?? '',
+      render: (row) => getCustomerDisplayPlatform(row) || '—',
+    },
+    {
+      key: 'status',
+      header: t('customers.table.status', 'Status'),
+      width: 230,
+      sortValue: (row) => row.status,
+      render: (row) => (
+        <span className="flex items-center gap-1">
+          <StatusBadge status={row.status} statusMetaMap={statusMetaMap} />
+          {row.lead_response_metrics?.is_late_response ? (
+            <Badge variant="danger" size="sm">{t('customers.table.late', 'Late')} {row.lead_response_metrics.late_human ?? ''}</Badge>
+          ) : row.lead_response_metrics && !row.lead_response_metrics.status_changed ? (
+            <Badge variant="warning" size="sm">{t('customers.table.not_contacted', 'Not contacted')}</Badge>
+          ) : null}
+          {row.lead_response_metrics?.status_changed_without_note ? (
+            <Badge variant="warning" size="sm">{t('customers.table.no_note', 'No note')}</Badge>
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      key: 'assistant',
+      header: t('customers.table.assistant', 'Assistant'),
+      width: 150,
+      sortValue: (row) => row.assistant_name ?? '',
+      render: (row) => row.assistant_name || '—',
+    },
+    {
+      key: 'audio',
+      header: t('customers.table.audio', 'Audio'),
+      width: 150,
+      render: (row) => {
+        const audioSource = resolveAudioUrl(row, apiBasePath)
+        if (!audioSource) return '—'
+        return (
+          <span onClick={(event) => event.stopPropagation()}>
+            <TableAudioControl src={audioSource} customerName={getCustomerDisplayName(row)} onOpenPlayer={(src, name) => setAudioModal({ src, name })} />
+          </span>
+        )
+      },
+    },
+    {
+      key: 'notes',
+      header: t('customers.table.notes', 'Notes'),
+      width: 260,
+      render: (row) => (
+        <span className="text-[var(--muted-strong)]" title={row.notes ?? undefined}>{summarizeCustomerNotes(row.notes, 8)}</span>
+      ),
+    },
+    {
+      key: 'recall',
+      header: t('customers.table.recall', 'Recall time'),
+      width: 170,
+      sortValue: (row) => row.recall_time ?? '',
+      render: (row) => renderRecallTime(row.recall_time),
+    },
+    {
+      key: 'created',
+      header: t('customers.table.created', 'Created'),
+      width: 160,
+      sortValue: (row) => row.created_at ?? '',
+      render: (row) => <span className="tabular-nums text-[var(--muted-strong)]">{formatDateTime(row.created_at)}</span>,
+    },
+    {
+      key: 'actions',
+      header: t('customers.table.actions', 'Actions'),
+      width: 96,
+      align: 'right',
+      render: (row) => (
+        <span className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+          <button type="button" onClick={() => openEditModal(row)} aria-label={t('customers.actions.edit', 'Edit')} title={t('customers.actions.edit', 'Edit')} className="grid h-8 w-8 place-items-center rounded-[9px] text-[var(--muted-strong)] transition-colors hover:bg-[var(--blue-dim)] hover:text-[var(--primary)]">
+            <Pencil size={15} />
+          </button>
+          <button type="button" onClick={() => void handleDeleteCustomer(row)} aria-label={t('customers.actions.delete', 'Delete')} title={t('customers.actions.delete', 'Delete')} className="grid h-8 w-8 place-items-center rounded-[9px] text-[var(--muted-strong)] transition-colors hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]">
+            <Trash2 size={15} />
+          </button>
+        </span>
+      ),
+    },
+  ]
+
+  const filtersBar = (
+    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(240px,1.5fr)_repeat(5,minmax(150px,1fr))_auto]">
+      <div className="relative sm:col-span-2 lg:col-span-1">
+        <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--muted)]" />
+        <Input
+          value={search}
+          onChange={(event) => { setSearch(event.target.value); setTablePage(1) }}
+          placeholder={t('customers.filters.search_placeholder', 'Name, username, note, or phone')}
+          aria-label={t('customers.filters.search_label', 'Search')}
+          className="pl-9"
+        />
+      </div>
+      <SelectField
+        value={selectedPeriod}
+        options={periodOptions}
+        onValueChange={(value) => { setSelectedPeriod(value as typeof selectedPeriod); setTablePage(1) }}
+      />
+      <SelectField
+        value={statusFilters[0] ?? ''}
+        values={statusFilters}
+        multiple
+        options={statusFilterOptions}
+        onValuesChange={resetPageAnd(setStatusFilters)}
+        placeholder={t('customers.filters.all_statuses', 'All statuses')}
+      />
+      <SelectField
+        key={`crm-platform-filter-${platformFilter || 'all'}`}
+        value={platformFilter}
+        options={platformFilterOptions}
+        onValueChange={resetPageAnd(setPlatformFilter)}
+      />
+      <CalendarField value={dateStart} onValueChange={resetPageAnd(setDateStart)} placeholder={t('customers.filters.start_date_label', 'Start date')} />
+      <CalendarField value={dateEnd} onValueChange={resetPageAnd(setDateEnd)} min={dateStart || undefined} placeholder={t('customers.filters.end_date_label', 'End date')} />
+      {activeFilterCount > 0 ? (
+        <Button variant="ghost" onClick={() => { resetFilters(); setTablePage(1) }} leftIcon={<X size={15} />}>
+          {t('common.clear', 'Clear')}
+        </Button>
+      ) : null}
+    </div>
+  )
+
+  return (
+    <section className="flex min-h-[var(--page-h)] flex-col gap-[18px]">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="ui-page-title text-[var(--foreground)]">{t('customers.list_page.title', 'Customers')}</h1>
+          <p className="text-sm text-[var(--muted)]">
+            {crmKind === 'outbound'
+              ? t('customers.list_page.subtitle_outbound', 'Every Outbound CRM lead — filter, sort and shape the table your way.')
+              : t('customers.list_page.subtitle', 'Every CRM customer — filter, sort and shape the table your way.')}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => void refreshAll()} leftIcon={<RefreshCw size={15} />}>
+            {t('customers.actions.refresh', 'Refresh')}
+          </Button>
+          {crmKind === 'outbound' ? (
+            <Button variant="secondary" onClick={() => navigate(`${routeBasePath}/statuses`)} leftIcon={<ListTodo size={15} />}>
+              {t('outbound_crm.actions.statuses', 'Statuses')}
+            </Button>
+          ) : null}
+          <Button variant="secondary" onClick={() => navigate(`${routeBasePath}/archived`)} leftIcon={<ArchiveIcon size={15} />}>
+            {t('customers.actions.archive', 'Archive')}
+          </Button>
+          <Button onClick={openCreateModal} leftIcon={<Plus size={16} />}>{t('customers.actions.add', 'Add customer')}</Button>
+        </div>
+      </div>
+
+      {/* Key numbers */}
+      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+        <StatCard
+          solid
+          className="min-h-[132px]"
+          label={t('customers.list_page.total', 'Customers')}
+          value={baseCustomers.length}
+          icon={<UsersRound />}
+          hint={periodLabel}
+        />
+        <StatCard
+          className="min-h-[132px]"
+          label={t('customers.list_page.added_today', 'Added today')}
+          value={createdTodayCount}
+          icon={<UserPlus />}
+          iconTone="success"
+          hint={t('customers.list_page.added_today_hint', 'New leads since midnight')}
+          onOpen={() => { setSelectedPeriod('today'); setTablePage(1) }}
+          openLabel={t('customers.period.today', 'Today')}
+        />
+        <StatCard
+          className="min-h-[132px]"
+          label={t('customers.list_page.need_to_call', 'Waiting for a call')}
+          value={needToCallCount}
+          icon={<PhoneCall />}
+          iconTone="warning"
+          hint={t('customers.list_page.need_to_call_hint', 'Status: Need to call')}
+          onOpen={needToCallOption ? () => { setStatusFilters([needToCallOption.value]); setTablePage(1) } : undefined}
+          openLabel={needToCallOption?.label}
+        />
+        <StatCard
+          className="min-h-[132px]"
+          label={conversionQuery.data ? t('customers.stats.conversion', 'Conversion') : t('customers.list_page.shown', 'Shown')}
+          value={conversionQuery.data ? `${Number(conversionQuery.data.conversion_rate ?? 0).toFixed(1)}%` : displayedCustomers.length}
+          icon={conversionQuery.data ? <Percent /> : <Filter />}
+          iconTone="violet"
+          hint={conversionQuery.data
+            ? t('customers.list_page.conversion_hint', 'Projects started: {{count}}', { count: conversionQuery.data.project_started_count })
+            : t('customers.section.list.filters_badge', '{{count}} filters', { count: activeFilterCount })}
+        />
+      </div>
+
+      {/* Status pills — click to filter, several can be combined */}
+      {allChipStatuses.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('customers.filters.status_label', 'Status')}>
+          <button
+            type="button"
+            onClick={() => { setStatusFilters([]); setTablePage(1) }}
+            aria-pressed={statusFilters.length === 0}
+            className={cn(
+              'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors',
+              statusFilters.length === 0
+                ? 'border-transparent bg-[var(--surface-inverse)] text-white'
+                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]',
+            )}
+          >
+            {t('customers.filters.all', 'All')}
+            <span className={cn('rounded-full px-1.5 text-[11.5px] tabular-nums', statusFilters.length === 0 ? 'bg-white/20' : 'bg-[var(--input-surface)] text-[var(--muted-strong)]')}>{baseCustomers.length}</span>
+          </button>
+          {allChipStatuses.map((option) => {
+            const isActive = selectedStatusFilterSet.has(normalizeStatusKey(option.value))
+            const count = statusCounts.get(normalizeStatusKey(option.value)) ?? 0
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => {
+                  const key = normalizeStatusKey(option.value)
+                  setStatusFilters((prev) => (isActive ? prev.filter((s) => normalizeStatusKey(s) !== key) : [...prev, option.value]))
+                  setTablePage(1)
+                }}
+                className={cn(
+                  'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition-colors',
+                  isActive ? 'font-semibold' : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]',
+                  count === 0 && !isActive && 'opacity-60',
+                )}
+                style={isActive ? { backgroundColor: `${option.color}1F`, borderColor: `${option.color}66`, color: option.color } : undefined}
+              >
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />
+                {option.label}
+                <span className={cn('rounded-full px-1.5 text-[11.5px] tabular-nums', isActive ? 'bg-white/70' : 'bg-[var(--input-surface)] text-[var(--muted-strong)]')}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+
+      <DataGrid
+        id={`${storageKey}-customers`}
+        className="h-[calc(100vh-96px)] min-h-[520px] scroll-mt-4"
+        eyebrow={[listTitle, periodLabel].filter(Boolean).join(' · ')}
+        title={
+          <span className="inline-flex items-center gap-2.5">
+            {t('customers.section.list.title', 'Customers')}
+            <span className="rounded-full bg-[var(--blue-dim)] px-2.5 py-0.5 text-[13px] font-semibold tabular-nums text-[var(--blue-text)]">{displayedCustomers.length}</span>
+          </span>
+        }
+        filters={filtersBar}
+        columns={gridColumns}
+        rows={displayedCustomers}
+        getRowKey={(row) => String(row.id)}
+        onRowClick={openCustomerDrawer}
+        loading={dashboardQuery.isLoading || (Boolean(selectedPeriod) && periodReportQuery.isLoading)}
+        page={tablePage}
+        onPageChange={setTablePage}
+        pageSize={pageSizeValue}
+        onPageSizeChange={(size) => setPageSize(String(size))}
+        emptyState={
+          <EmptyStateBlock
+            eyebrow={crmKind === 'outbound' ? t('outbound_crm.page.eyebrow', 'Outbound CRM workspace') : t('customers.page.eyebrow', 'CRM workspace')}
+            title={t('customers.table.empty_title', 'No customers found')}
+            description={t('customers.table.empty_description', 'The current filters returned no customer records.')}
+          />
+        }
+      />
+
+      {modals}
     </section>
   )
 }
-

@@ -35,7 +35,7 @@ export function CustomerDetailPage() {
         title={t('customers.errors.invalid_id.title', 'Invalid customer ID')}
         description={t('customers.errors.invalid_id.description', 'The customer identifier in the route is invalid.')}
         actionLabel={t('customers.detail.back_to', 'Back to {{title}}', { title })}
-        onAction={() => navigate(routeBasePath)}
+        onAction={() => navigate(`${routeBasePath}/customers`)}
       />
     )
   }
@@ -56,7 +56,7 @@ export function CustomerDetailPage() {
         eyebrow={t('customers.detail', 'Customer detail')}
         title={getCustomerUnavailableTitle(t)}
         actionLabel={t('customers.detail.back_to', 'Back to {{title}}', { title })}
-        onAction={() => navigate(routeBasePath)}
+        onAction={() => navigate(`${routeBasePath}/customers`)}
       >
         <p className="max-w-md text-[13px] text-[var(--muted-strong)]">{getCustomerUnavailableMessage(t)}</p>
       </ErrorStateBlock>
@@ -85,7 +85,7 @@ export function CustomerDetailPage() {
         title={t('customers.errors.not_found.title', 'Customer not found')}
         description={t('customers.errors.not_found.description', 'Could not retrieve details for this customer.')}
         actionLabel={t('customers.detail.back_to', 'Back to {{title}}', { title })}
-        onAction={() => navigate(routeBasePath)}
+        onAction={() => navigate(`${routeBasePath}/customers`)}
       />
     )
   }
@@ -97,7 +97,7 @@ export function CustomerDetailPage() {
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => navigate(routeBasePath)}
+          onClick={() => navigate(`${routeBasePath}/customers`)}
           leftIcon={
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M10 3.5 5.5 8 10 12.5" />

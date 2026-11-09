@@ -22,6 +22,8 @@ type CrmDashboardOverviewProps = {
   onPeriodChange: (period: PeriodKey) => void
   onOpenCustomer: (customerId: number) => void
   onFocusStatus: (status: string) => void
+  /** Human labels for status keys (e.g. need_to_call → "Need To Call"). */
+  statusLabels?: Record<string, string>
 }
 
 function IconFlag() {
@@ -117,6 +119,7 @@ export function CrmDashboardOverview({
   onPeriodChange,
   onOpenCustomer,
   onFocusStatus,
+  statusLabels,
 }: CrmDashboardOverviewProps) {
   const { t } = useLocale()
 
@@ -151,14 +154,15 @@ export function CrmDashboardOverview({
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
 
+    const humanize = (key: string) => statusLabels?.[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
     return entries.map(([label, count]) => ({
       key: label,
-      label,
+      label: humanize(label),
       value: count,
       amount: String(count),
       delta: percentages[label] != null ? `${Math.round(percentages[label])}%` : undefined,
     }))
-  }, [stats?.status_dict, stats?.status_percentages])
+  }, [stats?.status_dict, stats?.status_percentages, statusLabels])
 
   const topStatusKey = statusBars.length > 0 ? statusBars[0].key : undefined
 

@@ -44,13 +44,13 @@ type MemberProfileFormState = {
 }
 
 const sidebarItemBase =
-  'group relative flex w-full items-center gap-3 rounded-[12px] px-3 py-[9px] [@media(max-height:900px)]:py-[7px] text-[14px] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
+  'group relative flex w-full items-center gap-3 rounded-[12px] px-3 py-[9px] [@media(max-height:900px)]:py-[7px] text-[14px] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
 const sidebarItemInactive =
-  'font-medium text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-white [&_svg]:text-[var(--sb-icon)] hover:[&_svg]:text-white'
+  'font-medium text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)] [&_svg]:text-[var(--sb-icon)] hover:[&_svg]:text-[var(--sb-strong)]'
 const sidebarItemActive =
   'bg-[var(--primary)] font-semibold text-white shadow-[0_10px_22px_-12px_rgba(43,89,255,0.95)] [&_svg]:text-white'
 const sidebarSubItem =
-  'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] leading-5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
+  'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] leading-5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
 const sidebarIcon = 'h-[18px] w-[18px] transition-colors'
 
 type OutboundSidebarItem = {
@@ -103,9 +103,15 @@ export function AppSidebar() {
   const outboundNavigation: OutboundSidebarItem[] = [
     {
       to: '/outbound-crm',
-      label: t('outbound_crm.sidebar.leads', 'Leads'),
+      label: t('outbound_crm.sidebar.dashboard', 'Dashboard'),
       glyph: 'crm',
-      isActive: (pathname) => pathname === '/outbound-crm' || pathname.startsWith('/outbound-crm/customers/'),
+      isActive: (pathname) => pathname === '/outbound-crm',
+    },
+    {
+      to: '/outbound-crm/customers',
+      label: t('outbound_crm.sidebar.leads', 'Leads'),
+      glyph: 'customers',
+      isActive: (pathname) => pathname.startsWith('/outbound-crm/customers'),
     },
     {
       to: '/outbound-crm/statuses',
@@ -319,7 +325,7 @@ export function AppSidebar() {
               <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
               <span className="flex-1 truncate text-left">{itemLabel}</span>
               {sidebarProjects.length > 0 && (
-                <span className={cn('ml-auto rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums', isProjectsRoute ? 'bg-white/20 text-white' : 'bg-white/8 text-[var(--sb-text)]')}>
+                <span className={cn('ml-auto rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums', isProjectsRoute ? 'bg-white/20 text-white' : 'bg-[var(--sb-hover)] text-[var(--sb-text)]')}>
                   {sidebarProjects.length}
                 </span>
               )}
@@ -331,7 +337,7 @@ export function AppSidebar() {
               aria-expanded={isProjectsExpanded}
               className={cn(
                 'absolute top-1/2 right-2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] transition-colors',
-                isProjectsRoute ? 'text-white hover:bg-white/15' : 'text-[var(--sb-icon)] hover:bg-white/10 hover:text-white',
+                isProjectsRoute ? 'text-white hover:bg-white/15' : 'text-[var(--sb-icon)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)]',
               )}
             >
               <ChevronDown size={15} className={cn('transition-transform duration-200', isProjectsExpanded && 'rotate-180')} />
@@ -341,9 +347,9 @@ export function AppSidebar() {
           {isProjectsExpanded && (
             <div className="my-1 ml-[22px] flex flex-col gap-0.5 border-l border-[var(--sb-line)] pl-2.5">
               {projectsQuery.isLoading ? (
-                Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 animate-pulse rounded-[10px] bg-white/5" />)
+                Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 animate-pulse rounded-[10px] bg-[var(--sb-hover)]" />)
               ) : projectsQuery.isError ? (
-                <button type="button" onClick={() => void projectsQuery.refetch()} className={cn(sidebarSubItem, 'text-[#FF9C9C] hover:bg-[rgba(255,99,99,0.12)]')}>
+                <button type="button" onClick={() => void projectsQuery.refetch()} className={cn(sidebarSubItem, 'text-[var(--danger-text)] hover:bg-[var(--danger-dim)]')}>
                   <span className="truncate">{t('shell.failed_load_projects')} — {t('shell.retry')}</span>
                 </button>
               ) : sidebarProjects.length === 0 ? (
@@ -363,13 +369,13 @@ export function AppSidebar() {
                       to={`/projects/${project.id}`}
                       className={({ isActive }) => cn(
                         sidebarSubItem,
-                        isActive || isActiveProject ? 'bg-white/10 font-semibold text-white' : 'text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-white',
+                        isActive || isActiveProject ? 'bg-[var(--blue-dim)] font-semibold text-[var(--primary)]' : 'text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)]',
                       )}
                     >
                       <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', isActiveProject ? 'bg-[var(--primary)]' : 'bg-current opacity-50')} />
                       <span className="flex-1 truncate text-left">{project.project_name}</span>
                       {openCount > 0 && (
-                        <span className="ml-auto rounded-full bg-white/8 px-[7px] py-px text-[11px] font-semibold tabular-nums text-[var(--sb-text)]">{openCount}</span>
+                        <span className="ml-auto rounded-full bg-[var(--sb-hover)] px-[7px] py-px text-[11px] font-semibold tabular-nums text-[var(--sb-text)]">{openCount}</span>
                       )}
                     </NavLink>
                   )
@@ -381,10 +387,14 @@ export function AppSidebar() {
       )
     }
 
+    // A parent route (/crm) is only "active" on itself when a child (/crm/customers) has its own item.
+    const hasChildItem = sidebarNavigation.some((other) => other.to !== item.to && other.to.startsWith(`${item.to}/`))
+
     return (
       <NavLink
         key={item.to}
         to={item.to}
+        end={hasChildItem}
         aria-label={itemLabel}
         className={({ isActive }) => cn(sidebarItemBase, isActive ? sidebarItemActive : sidebarItemInactive)}
       >
@@ -415,7 +425,7 @@ export function AppSidebar() {
           isSidebarCollapsed ? 'lg:pointer-events-none lg:w-0! lg:p-0! lg:opacity-0' : 'lg:opacity-100',
         )}
       >
-        <div className="flex h-full flex-col overflow-hidden rounded-[24px] bg-[var(--sb-bg)] px-3 pt-[18px] pb-3 shadow-[var(--sb-shadow)]">
+        <div className="flex h-full flex-col overflow-hidden rounded-[24px] border border-[var(--sb-line)] bg-[var(--sb-bg)] px-3 pt-[18px] pb-3 shadow-[var(--sb-shadow)]">
           {/* Brand */}
           <div className="flex items-center gap-2.5 px-1.5 pb-4">
             <span
@@ -426,7 +436,7 @@ export function AppSidebar() {
               {env.appName.trim().charAt(0).toUpperCase() || 'C'}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[16px] leading-5 font-bold tracking-[-0.02em] text-white">{env.appName}</p>
+              <p className="truncate text-[16px] leading-5 font-bold tracking-[-0.02em] text-[var(--sb-strong)]">{env.appName}</p>
               <p className="truncate text-[11.5px] leading-4 text-[var(--sb-label)]">{subtitle}</p>
             </div>
             <button
@@ -434,7 +444,7 @@ export function AppSidebar() {
               onClick={handleSidebarToggle}
               aria-label={t('shell.toggle_navigation')}
               title={t('shell.toggle_navigation')}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[var(--sb-icon)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[var(--sb-icon)] transition-colors hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35"
             >
               {isMobileViewport ? <X size={17} /> : <PanelLeftClose size={17} />}
             </button>
@@ -480,7 +490,7 @@ export function AppSidebar() {
 
           {/* Signed-in user (+ language on phones, where the header has no room for it) */}
           <div className="mt-3 border-t border-[var(--sb-line)] pt-3">
-            <div className="mb-2 flex gap-1 rounded-full bg-white/5 p-1 sm:hidden" role="group" aria-label={t('shell.language')}>
+            <div className="mb-2 flex gap-1 rounded-full bg-[var(--sb-hover)] p-1 sm:hidden" role="group" aria-label={t('shell.language')}>
               {(Object.keys(localeLabels) as AppLocale[]).map((value) => (
                 <button
                   key={value}
@@ -489,7 +499,7 @@ export function AppSidebar() {
                   aria-pressed={locale === value}
                   className={cn(
                     'h-8 flex-1 rounded-full text-[12.5px] transition-colors',
-                    locale === value ? 'bg-white font-semibold text-[var(--sb-bg)]' : 'font-medium text-[var(--sb-text)] hover:text-white',
+                    locale === value ? 'bg-[var(--surface-inverse)] font-semibold text-white' : 'font-medium text-[var(--sb-text)] hover:text-[var(--sb-strong)]',
                   )}
                 >
                   {localeLabels[value]}
@@ -500,7 +510,7 @@ export function AppSidebar() {
               type="button"
               onClick={openMemberDialog}
               disabled={!user}
-              className="flex w-full items-center gap-2.5 rounded-[12px] px-1.5 py-1.5 text-left transition-colors hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-default"
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-1.5 py-1.5 text-left transition-colors hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 disabled:cursor-default"
               aria-label={t('profile.member_details')}
             >
               {resolvedUserProfileImage ? (
@@ -515,7 +525,7 @@ export function AppSidebar() {
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13.5px] leading-5 font-semibold text-white">
+                <span className="block truncate text-[13.5px] leading-5 font-semibold text-[var(--sb-strong)]">
                   {user ? `${user.name} ${user.surname}` : t('shell.authenticated_user')}
                 </span>
                 <span className="block truncate text-[11.5px] leading-4 text-[var(--sb-label)]">

@@ -166,14 +166,15 @@
   /* Focus */
   --focus-ring: 0 0 0 2px var(--background), 0 0 0 4px rgba(43, 89, 255, 0.45);
 
-  /* Shell / Sidebar — floating navy card (LexGo-style) */
-  --sb-bg:        #0E1525;
-  --sb-line:      rgba(255, 255, 255, 0.08);
-  --sb-text:      #C3CBDA;
-  --sb-icon:      #8C97AD;
-  --sb-label:     #6F7A91;
-  --sb-hover:     rgba(255, 255, 255, 0.06);
-  --sb-shadow:    0 24px 48px -28px rgba(14, 21, 37, 0.55);
+  /* Shell / Sidebar — a floating card in the CIMS palette */
+  --sb-bg:        #FFFFFF;
+  --sb-line:      #ECEEF3;
+  --sb-text:      #4A5165;
+  --sb-strong:    #0E1525;
+  --sb-icon:      #8A90A2;
+  --sb-label:     #9AA0B1;
+  --sb-hover:     #F4F5F9;
+  --sb-shadow:    0 1px 2px rgba(14, 21, 37, 0.04), 0 16px 36px -22px rgba(14, 21, 37, 0.22);
   --pill-shadow:  0 1px 2px rgba(14, 21, 37, 0.04);
 }
 
@@ -205,13 +206,15 @@ body {
   a { color: inherit; text-decoration: none; }
 }
 
-button, input, textarea, select {
-  font: inherit;
-  letter-spacing: inherit;
+/* Base layer, so Tailwind utilities (text-sm, placeholder:text-…) on controls win over the reset. */
+@layer base {
+  button, input, textarea, select {
+    font: inherit;
+    letter-spacing: inherit;
+  }
+  button { cursor: pointer; }
+  ::placeholder { color: var(--muted); opacity: 1; }
 }
-button { cursor: pointer; }
-
-::placeholder { color: var(--muted); opacity: 1; }
 
 code, kbd, pre, .font-mono { font-family: var(--font-mono); }
 
@@ -952,12 +955,6 @@ input:-webkit-autofill:focus {
     color-scheme: dark;
   }
 }
-
-/* The global reset (`button, input { font: inherit }`, `::placeholder { color }`) is unlayered and
-   would beat Tailwind utilities like text-[13px]; inside the phone UI let the utilities win. */
-.mac-phone :is(button, input, textarea, select),
-.app-chrome :is(button, input, textarea, select) { font: revert-layer; letter-spacing: revert-layer; }
-.mac-phone ::placeholder { color: revert-layer; }
 
 .mac-phone-scroll { scrollbar-width: thin; scrollbar-color: var(--mp-tertiary) transparent; }
 .mac-phone-scroll::-webkit-scrollbar { width: 8px; }

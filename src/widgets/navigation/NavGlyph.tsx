@@ -1,6 +1,6 @@
 import type { LucideIcon, LucideProps } from 'lucide-react'
 import {
-  Archive, Blocks, CalendarClock, CalendarCog, CalendarRange, Circle, CircleUserRound, Contact, CreditCard, FolderKanban,
+  Archive, Blocks, ChartPie, CalendarClock, CalendarCog, CalendarRange, Circle, CircleUserRound, Contact, CreditCard, FolderKanban,
   Globe, Images, LayoutDashboard, ListChecks, ListTodo, LockKeyhole, LogOut, MessageCircleReply, MessagesSquare, Newspaper,
   Phone, Plug, ScrollText, ServerCog, Sparkles, SquareKanban, TrendingUp, TriangleAlert, UserCheck, UserCog, Users, Wallet,
 } from 'lucide-react'
@@ -11,7 +11,8 @@ const glyphs: Record<GlyphName, LucideIcon> = {
   member: CircleUserRound,
   ai: Sparkles,
   ceo: LayoutDashboard,
-  crm: Contact,
+  crm: ChartPie,
+  customers: Contact,
   'my-leads': UserCheck,
   phone: Phone,
   users: UserCog,

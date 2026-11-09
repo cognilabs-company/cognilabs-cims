@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ceoService, type CeoUserRecord, type CompanyPaymentRecord, type DashboardResponse } from '../../../shared/api/services/ceo.service'
+import { ceoService, type CeoUserRecord, type CompanyPaymentRecord } from '../../../shared/api/services/ceo.service'
 import { projectsService, type UserOpenCardRecord } from '../../../shared/api/services/projects.service'
+import { crmService } from '../../../shared/api/services/crm.service'
+import { PhoneCall, Percent, Timer, UserPlus, Wallet } from 'lucide-react'
 import type { PaymentItem } from '../../../shared/api/types'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -48,22 +50,14 @@ const initialCompanyPaymentForm: CompanyPaymentFormValues = {
   isActive: true,
 }
 
-type MediaPostRecord = NonNullable<DashboardResponse['statistics']['instagram_media_posts']>[number]
 
-type MediaMetric = 'sent' | 'lead' | 'contacted'
 
 const emptyPayments: PaymentItem[] = []
 const emptyCompanyPayments: CompanyPaymentRecord[] = []
 const emptyUsers: CeoUserRecord[] = []
 const emptyUserTasks: UserOpenCardRecord[] = []
-const emptyMediaPosts: MediaPostRecord[] = []
 const doneColumnNamePattern = /\b(done|complete|completed|closed|finished|resolved)\b/i
 
-const mediaMetricFields: Record<MediaMetric, keyof Pick<MediaPostRecord, 'sent_count' | 'lead_count' | 'contacted_count'>> = {
-  sent: 'sent_count',
-  lead: 'lead_count',
-  contacted: 'contacted_count',
-}
 
 function isDoneTask(task: Pick<UserOpenCardRecord, 'column_name'>) {
   return doneColumnNamePattern.test(task.column_name.trim())
@@ -147,6 +141,10 @@ export function CeoDashboardPage() {
   const { confirm } = useConfirm()
 
   const dashboardQuery = useAsyncData(() => ceoService.getDashboard(), [])
+  // Lead numbers for the KPI row and the leads chart (today/yesterday + 30-day breakdown).
+  const chartsQuery = useAsyncData(() => crmService.salesDashboardCharts({ days: 30, platform_limit: 8 }), [])
+  const crmStatsQuery = useAsyncData(() => crmService.summaryStats(), [])
+  const [leadsBreakdown, setLeadsBreakdown] = useState<'status' | 'platform'>('status')
   const paymentsQuery = useAsyncData(() => ceoService.listPayments(), [])
   const companyPaymentsQuery = useAsyncData(() => ceoService.listCompanyPayments(), [])
 
@@ -165,7 +163,6 @@ export function CeoDashboardPage() {
   const [isCompanyPaymentSubmitting, setIsCompanyPaymentSubmitting] = useState(false)
   const [companyPaymentMode, setCompanyPaymentMode] = useState<'create' | 'edit'>('create')
   const [isOverrideOpen, setIsOverrideOpen] = useState(false)
-  const [mediaMetric, setMediaMetric] = useState<MediaMetric>('sent')
 
   const [userTaskCounts, setUserTaskCounts] = useState<Record<number, number>>({})
   const [isLoadingTaskCounts, setIsLoadingTaskCounts] = useState(false)
@@ -337,6 +334,8 @@ export function CeoDashboardPage() {
       dashboardQuery.refetch(),
       paymentsQuery.refetch(),
       companyPaymentsQuery.refetch(),
+      chartsQuery.refetch(),
+      crmStatsQuery.refetch(),
     ])
   }
 
@@ -590,15 +589,11 @@ export function CeoDashboardPage() {
   }
 
   const statistics = dashboardQuery.data?.statistics
-  const mediaPosts = statistics?.instagram_media_posts ?? emptyMediaPosts
   const hasMedia = statistics?.instagram_media_posts !== undefined
   const mediaSent = statistics?.instagram_media_total_sent_count ?? 0
   const mediaLead = statistics?.instagram_media_total_lead_count ?? 0
   const mediaContacted = statistics?.instagram_media_total_contacted_count ?? 0
   const mediaContinuing = statistics?.instagram_media_total_continuing_count ?? 0
-  const mediaUnknownSent = statistics?.instagram_media_unknown_sent_count ?? 0
-  const mediaUnknownLead = statistics?.instagram_media_unknown_lead_count ?? 0
-  const mediaConversion = mediaSent > 0 ? (mediaLead / mediaSent) * 100 : 0
 
   const slaLimit = statistics?.lead_response_limit_minutes ?? 5
   const slaTotal = statistics?.lead_response_total_count ?? 0
@@ -614,36 +609,44 @@ export function CeoDashboardPage() {
   const totalUserCount = statistics?.user_count ?? users.length
   const activeUserCount = statistics?.active_user_count ?? users.filter((user) => user.is_active).length
   const inactiveUserCount = statistics?.inactive_user_count ?? 0
-  const totalOpenTasks = Object.values(userTaskCounts).reduce((sum, count) => sum + count, 0)
   const paidPaymentsCount = payments.filter((row) => row.payment).length
+  const pendingPaymentsAmount = payments.filter((row) => !row.payment).reduce((sum, row) => sum + Number(row.summ ?? 0), 0)
+  const chartsSummary = chartsQuery.data?.summary ?? null
+  const crmStats = crmStatsQuery.data ?? null
+  const todayDelta = (() => {
+    if (!chartsSummary) return null
+    const { today, yesterday } = chartsSummary
+    if (yesterday === 0) return today > 0 ? { text: t('ceo.kpi.new_today', 'new today'), tone: 'success' as const } : null
+    const change = Math.round(((today - yesterday) / yesterday) * 100)
+    return {
+      text: t('ceo.kpi.vs_yesterday', '{{value}} vs yesterday', { value: `${change > 0 ? '+' : ''}${change}%` }),
+      tone: change > 0 ? ('success' as const) : change < 0 ? ('danger' as const) : ('neutral' as const),
+    }
+  })()
   const pendingPaymentsCount = payments.length - paidPaymentsCount
 
-  const mediaMetricField = mediaMetricFields[mediaMetric]
-  const mediaMetricTotal = mediaMetric === 'sent' ? mediaSent : mediaMetric === 'lead' ? mediaLead : mediaContacted
-
-  const mediaMetricTabs = useMemo<TabItem<MediaMetric>[]>(
+  const leadsBreakdownTabs = useMemo<TabItem<'status' | 'platform'>[]>(
     () => [
-      { value: 'sent', label: t('ceo.overview.metric_sent', 'Sent') },
-      { value: 'lead', label: t('ceo.overview.metric_lead', 'Leads') },
-      { value: 'contacted', label: t('ceo.overview.metric_contacted', 'Reached') },
+      { value: 'status', label: t('ceo.leads_chart.by_status', 'By status') },
+      { value: 'platform', label: t('ceo.leads_chart.by_platform', 'By platform') },
     ],
     [t],
   )
 
-  const mediaBars = useMemo<BarDatum[]>(
-    () => mediaPosts
-      .filter((post) => post[mediaMetricField] > 0)
-      .sort((left, right) => right[mediaMetricField] - left[mediaMetricField])
-      .slice(0, 5)
-      .map((post) => ({
-        key: String(post.post_id),
-        label: shortLabel(post.title),
-        value: post[mediaMetricField],
-        amount: String(post[mediaMetricField]),
-        delta: post.sent_count > 0 ? `${Math.round((post.lead_count / post.sent_count) * 100)}%` : undefined,
-      })),
-    [mediaMetricField, mediaPosts],
-  )
+  const leadsBars = useMemo<BarDatum[]>(() => {
+    const source = leadsBreakdown === 'status' ? chartsQuery.data?.status_distribution : chartsQuery.data?.platform_distribution
+    return [...(source ?? [])]
+      .filter((item) => item.value > 0)
+      .sort((left, right) => right.value - left.value)
+      .slice(0, 6)
+      .map((item) => ({
+        key: item.key,
+        label: shortLabel(item.label || item.key),
+        value: item.value,
+        amount: String(item.value),
+        delta: `${Math.round(item.percentage)}%`,
+      }))
+  }, [chartsQuery.data, leadsBreakdown])
 
   const workloadRanking = useMemo(
     () => users
@@ -652,16 +655,6 @@ export function CeoDashboardPage() {
       .sort((left, right) => right.count - left.count)
       .slice(0, 5),
     [userTaskCounts, users],
-  )
-
-  const workloadBars = useMemo<BarDatum[]>(
-    () => workloadRanking.map(({ user, count }) => ({
-      key: String(user.id),
-      label: shortLabel(user.name),
-      value: count,
-      amount: String(count),
-    })),
-    [workloadRanking],
   )
 
   const workloadEntries = useMemo<LeaderboardEntry[]>(() => {
@@ -855,76 +848,35 @@ export function CeoDashboardPage() {
         />
       </div>
 
+      {/* The four numbers a CEO checks first */}
       <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
-        {hasMedia ? (
-          <>
-            <StatCard
-              solid
-              label={t('ceo.media.sent', 'Total sent')}
-              value={mediaSent}
-              icon={<Glyph d={glyphPaths.send} />}
-              hint={t('ceo.overview.media_count', '{{count}} media tracked', { count: mediaPosts.length })}
-              delta={mediaSent > 0 ? t('ceo.overview.delta_to_lead', '{{value}}% → lead', { value: mediaConversion.toFixed(1) }) : undefined}
-            />
-            <StatCard
-              label={t('ceo.media.leads', 'Total leads')}
-              value={mediaLead}
-              icon={<Glyph d={glyphPaths.lead} />}
-              iconTone="success"
-              hint={t('ceo.overview.contacted_hint', 'Contacted: {{count}}', { count: mediaContacted })}
-              delta={mediaContinuing > 0 ? t('ceo.overview.delta_continuing', '{{count}} continuing', { count: mediaContinuing }) : undefined}
-              deltaTone="success"
-              onOpen={() => navigate('/crm')}
-              openLabel={t('ceo.overview.open_crm', 'Open CRM')}
-            />
-            <StatCard
-              label={t('ceo.media.unknown_sent', 'Unlinked sent')}
-              value={mediaUnknownSent}
-              icon={<Glyph d={glyphPaths.help} />}
-              iconTone="warning"
-              hint={t('ceo.overview.unknown_lead_hint', 'Unlinked leads: {{count}}', { count: mediaUnknownLead })}
-              delta={mediaSent > 0 && mediaUnknownSent > 0 ? t('ceo.overview.delta_of_sent', '{{value}}% of sent', { value: Math.round((mediaUnknownSent / mediaSent) * 100) }) : undefined}
-              deltaTone="danger"
-              onOpen={() => navigate('/cognilabsai/media-contexts')}
-              openLabel={t('ceo.overview.open_media_contexts', 'Open media contexts')}
-            />
-          </>
-        ) : (
-          <>
-            <StatCard
-              solid
-              label={t('ceo.overview.active_users', 'Active users')}
-              value={activeUserCount}
-              icon={<Glyph d={glyphPaths.users} />}
-              hint={t('ceo.overview.total_users_hint', 'Total users: {{count}}', { count: totalUserCount })}
-              delta={inactiveUserCount > 0 ? t('ceo.overview.delta_inactive', '{{count}} inactive', { count: inactiveUserCount }) : undefined}
-            />
-            <StatCard
-              label={t('ceo.overview.open_tasks', 'Open tasks')}
-              value={totalOpenTasks}
-              icon={<Glyph d={glyphPaths.tasks} />}
-              iconTone="violet"
-              hint={t('ceo.overview.task_users_hint', 'Across {{count}} teammates', { count: workloadRanking.length })}
-              onOpen={() => navigate('/projects')}
-              openLabel={t('ceo.overview.open_projects', 'Open projects')}
-            />
-            <StatCard
-              label={t('ceo.overview.pending_payments', 'Pending payments')}
-              value={pendingPaymentsCount}
-              icon={<Glyph d={glyphPaths.wallet} />}
-              iconTone="warning"
-              hint={t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount })}
-              delta={pendingPaymentsCount > 0 ? t('ceo.overview.delta_needs_action', 'needs action') : undefined}
-              deltaTone="danger"
-            />
-          </>
-        )}
-
+        <StatCard
+          solid
+          label={t('ceo.kpi.today_leads', "Today's leads")}
+          value={chartsSummary ? chartsSummary.today : '—'}
+          icon={<UserPlus />}
+          delta={todayDelta?.text}
+          deltaTone={todayDelta?.tone}
+          hint={chartsSummary ? t('ceo.kpi.yesterday', 'Yesterday: {{count}}', { count: chartsSummary.yesterday }) : undefined}
+          onOpen={() => navigate('/crm/customers?period=today')}
+          openLabel={t('ceo.kpi.open_today', "Open today's leads")}
+        />
+        <StatCard
+          label={t('ceo.kpi.need_to_call', 'Waiting for a call')}
+          value={crmStats ? crmStats.need_to_call : '—'}
+          icon={<PhoneCall />}
+          iconTone="warning"
+          delta={crmStats && crmStats.total_customers > 0 ? t('ceo.kpi.of_all_leads', '{{value}}% of leads', { value: Math.round((crmStats.need_to_call / crmStats.total_customers) * 100) }) : undefined}
+          deltaTone="neutral"
+          hint={crmStats ? t('ceo.kpi.contacted', 'Contacted: {{count}}', { count: crmStats.contacted }) : undefined}
+          onOpen={() => navigate('/crm/customers?status=need_to_call')}
+          openLabel={t('ceo.kpi.open_need_to_call', 'Open leads waiting for a call')}
+        />
         {hasSla ? (
           <StatCard
             label={t('ceo.sla.average', 'Average response')}
             value={slaAverage}
-            icon={<Glyph d={glyphPaths.clock} />}
+            icon={<Timer />}
             iconTone="violet"
             hint={t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit })}
             delta={t('ceo.overview.delta_on_time', '{{value}}% on time', { value: Math.round((slaOnTime / slaTotal) * 100) })}
@@ -932,45 +884,44 @@ export function CeoDashboardPage() {
           />
         ) : (
           <StatCard
-            label={t('ceo.overview.recurring_total', 'Recurring monthly')}
-            value={formatCurrency(companyPaymentsQuery.data?.totalAmount ?? 0)}
-            icon={<Glyph d={glyphPaths.repeat} />}
-            iconTone="blue"
-            hint={t('ceo.overview.recurring_hint', '{{count}} reminders', { count: companyPayments.length })}
+            label={t('ceo.kpi.conversion', 'Conversion · 30 days')}
+            value={chartsSummary ? `${Number(chartsSummary.conversion_rate_percent ?? 0).toFixed(1)}%` : '—'}
+            icon={<Percent />}
+            iconTone="success"
+            hint={chartsSummary ? t('ceo.kpi.projects_started', 'Projects started: {{count}}', { count: chartsSummary.project_started }) : undefined}
           />
         )}
+        <StatCard
+          label={t('ceo.kpi.pending_payments', 'Payments due')}
+          value={formatCompactNumber(pendingPaymentsAmount)}
+          icon={<Wallet />}
+          iconTone="danger"
+          delta={pendingPaymentsCount > 0 ? t('ceo.kpi.payments_count', '{{count}} unpaid', { count: pendingPaymentsCount }) : undefined}
+          deltaTone="danger"
+          hint={t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount })}
+          onOpen={() => document.getElementById('ceo-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          openLabel={t('ceo.dashboard.payments.title', 'Payments')}
+        />
       </div>
 
       <div className="flex flex-wrap gap-[18px]">
-        {hasMedia && mediaPosts.length > 0 ? (
-          <BarChartCard
-            className="min-w-0 flex-[1.5_1_520px]"
-            title={t('ceo.overview.media_performance', 'Media performance')}
-            deltaBadge={`${mediaConversion.toFixed(1)}%`}
-            deltaCaption={t('ceo.overview.media_conversion_caption', 'sent to lead conversion')}
-            periods={mediaMetricTabs}
-            period={mediaMetric}
-            onPeriodChange={setMediaMetric}
-            data={mediaBars}
-            highlightKey={mediaBars[0]?.key}
-            summaryTitle={t('ceo.overview.media_summary', 'Top performing media in the tracked window.')}
-            total={mediaMetricTotal}
-            totalCaption={t('ceo.overview.media_total_caption', 'across tracked media')}
-            emptyState={emptyHint}
-          />
-        ) : (
-          <BarChartCard
-            className="min-w-0 flex-[1.5_1_520px]"
-            title={t('ceo.overview.workload_chart', 'Workload by teammate')}
-            deltaCaption={t('ceo.overview.workload_caption', 'open tasks per teammate')}
-            data={workloadBars}
-            highlightKey={workloadBars[0]?.key}
-            summaryTitle={t('ceo.overview.workload_summary', 'Who carries the most open cards right now.')}
-            total={totalOpenTasks}
-            totalCaption={t('ceo.overview.open_tasks_total', 'open tasks')}
-            emptyState={emptyHint}
-          />
-        )}
+        <BarChartCard
+          className="min-w-0 flex-[1.5_1_520px]"
+          title={t('ceo.leads_chart.title', 'Where leads stand · 30 days')}
+          deltaBadge={chartsSummary ? `${Number(chartsSummary.conversion_rate_percent ?? 0).toFixed(1)}%` : undefined}
+          deltaCaption={t('ceo.leads_chart.conversion_caption', 'lead → project conversion')}
+          periods={leadsBreakdownTabs}
+          period={leadsBreakdown}
+          onPeriodChange={setLeadsBreakdown}
+          data={leadsBars}
+          highlightKey={leadsBars[0]?.key}
+          summaryTitle={leadsBreakdown === 'status'
+            ? t('ceo.leads_chart.status_summary', 'Leads of the last 30 days by their current status.')
+            : t('ceo.leads_chart.platform_summary', 'Where the leads of the last 30 days came from.')}
+          total={chartsSummary?.total_period_leads ?? 0}
+          totalCaption={t('ceo.leads_chart.total_caption', 'leads in 30 days')}
+          emptyState={emptyHint}
+        />
 
         {hasSla ? (
           <GaugeDonut
@@ -1059,7 +1010,7 @@ export function CeoDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-[18px] xl:grid-cols-2">
+      <div id="ceo-payments" className="grid scroll-mt-6 gap-[18px] xl:grid-cols-2">
         <TaskList
           className="min-w-0"
           listClassName="max-h-[440px] overflow-y-auto pr-1"

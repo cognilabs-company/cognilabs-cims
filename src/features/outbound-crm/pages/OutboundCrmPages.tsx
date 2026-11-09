@@ -1,5 +1,5 @@
 import { CrmArchivedPage } from '../../crm/pages/CrmArchivedPage'
-import { CrmDashboardPage } from '../../crm/pages/CrmDashboardPage'
+import { CrmCustomersPage, CrmDashboardPage } from '../../crm/pages/CrmDashboardPage'
 import { CustomerDetailPage } from '../../crm/pages/CustomerDetailPage'
 import { CrmScopeProvider } from '../../crm/lib/crmScope'
 
@@ -8,6 +8,14 @@ export function OutboundCrmDashboardPage() {
   return (
     <CrmScopeProvider kind="outbound">
       <CrmDashboardPage />
+    </CrmScopeProvider>
+  )
+}
+
+export function OutboundCrmCustomersPage() {
+  return (
+    <CrmScopeProvider kind="outbound">
+      <CrmCustomersPage />
     </CrmScopeProvider>
   )
 }

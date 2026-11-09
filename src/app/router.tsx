@@ -89,6 +89,14 @@ const CrmDashboardPage = lazyPage(
   () => import('../features/crm/pages/CrmDashboardPage'),
   'CrmDashboardPage',
 )
+const CrmCustomersPage = lazyPage(
+  () => import('../features/crm/pages/CrmDashboardPage'),
+  'CrmCustomersPage',
+)
+const OutboundCrmCustomersPage = lazyPage(
+  () => import('../features/outbound-crm/pages/OutboundCrmPages'),
+  'OutboundCrmCustomersPage',
+)
 const CrmArchivedPage = lazyPage(
   () => import('../features/crm/pages/CrmArchivedPage'),
   'CrmArchivedPage',
@@ -332,6 +340,14 @@ export const router = createBrowserRouter([
                 ),
               },
               {
+                path: 'crm/customers',
+                element: (
+                  <ProtectedRoute permissionKey="crm">
+                    {withPageLoader(<CrmCustomersPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
                 path: 'crm/customers/:customerId',
                 element: (
                   <ProtectedRoute permissionKey="crm">
@@ -360,6 +376,14 @@ export const router = createBrowserRouter([
                 element: (
                   <ProtectedRoute permissionKey="crm_outbound">
                     {withPageLoader(<OutboundCrmDashboardPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'outbound-crm/customers',
+                element: (
+                  <ProtectedRoute permissionKey="crm_outbound">
+                    {withPageLoader(<OutboundCrmCustomersPage />)}
                   </ProtectedRoute>
                 ),
               },

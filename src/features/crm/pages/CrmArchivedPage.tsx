@@ -150,7 +150,7 @@ export function CrmArchivedPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => navigate(routeBasePath)}
+              onClick={() => navigate(`${routeBasePath}/customers`)}
             >
               {t('customers.detail.back_to', 'Back to {{title}}', { title })}
             </Button>

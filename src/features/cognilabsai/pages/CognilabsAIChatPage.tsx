@@ -1312,7 +1312,8 @@ export function CognilabsAIChatPage() {
 
   function handleReturnToCrm() {
     const returnTo = searchParams.get('return_to')
-    navigate(returnTo === '/outbound-crm' ? returnTo : '/crm')
+    const allowed = ['/crm', '/crm/customers', '/outbound-crm', '/outbound-crm/customers']
+    navigate(returnTo && allowed.includes(returnTo) ? returnTo : '/crm/customers')
   }
 
   return (
