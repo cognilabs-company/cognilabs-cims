@@ -115,10 +115,10 @@ function compareValues(left: unknown, right: unknown) {
 }
 
 function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="rounded-[4px] border border-[var(--border)] bg-[var(--surface)] px-1.5 py-px font-mono text-[10.5px] text-[var(--muted-strong)]">{children}</kbd>
+  return <kbd className="border border-[var(--border)] bg-[var(--surface)] px-1.5 py-px font-mono text-[10.5px] text-[var(--muted-strong)]">{children}</kbd>
 }
 
-const controlButton = 'inline-flex h-9 items-center gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--input-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30'
+const controlButton = 'inline-flex h-9 items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--input-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30'
 
 export function DataGrid<T>({
   id, columns, rows, getRowKey, onRowClick, toolbar, belowToolbar, emptyState, loading, pageSize, onPageSizeChange, page, onPageChange, rowNumbers = false, className,
@@ -295,11 +295,11 @@ export function DataGrid<T>({
             <button type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-haspopup="dialog" className={controlButton}>
               <Columns3 size={15} className="text-[var(--primary)]" />
               <span className="hidden sm:inline">{t('grid.columns', 'Columns')}</span>
-              <span className="rounded-[4px] bg-[var(--input-surface)] px-1.5 py-px font-mono text-[11px] text-[var(--muted-strong)]">{visibleKeys.length}/{columns.length}</span>
+              <span className="bg-[var(--input-surface)] px-1.5 py-px font-mono text-[11px] text-[var(--muted-strong)]">{visibleKeys.length}/{columns.length}</span>
               <ChevronDown size={14} className={cn('text-[var(--muted)] transition-transform duration-200', menuOpen && 'rotate-180')} />
             </button>
             {menuOpen ? (
-              <div role="dialog" aria-label={t('grid.columns', 'Columns')} className="modal-pop absolute top-[calc(100%+6px)] right-0 z-30 w-[300px] rounded-[12px] border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[var(--elev-xl)]">
+              <div role="dialog" aria-label={t('grid.columns', 'Columns')} className="modal-pop absolute top-[calc(100%+6px)] right-0 z-30 w-[300px] border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[var(--elev-xl)]">
                 <p className="px-2.5 pt-1.5 pb-2 text-[11.5px] leading-4 text-[var(--muted)]">{t('grid.columns_hint', 'Show, pin or reorder columns. Drag a header to move it.')}</p>
                 <ul className="max-h-[340px] overflow-y-auto overscroll-contain">
                   {state.order.filter((key) => columnMap.has(key)).map((key, index, list) => {
@@ -307,18 +307,18 @@ export function DataGrid<T>({
                     const visible = !state.hidden.includes(key)
                     const pinned = state.pinned.includes(key)
                     return (
-                      <li key={key} className="flex items-center gap-1 rounded-[8px] px-1 py-0.5 transition-colors hover:bg-[var(--input-surface)]">
-                        <button type="button" onClick={() => toggleHidden(key)} disabled={column.hideable === false} aria-pressed={visible} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[6px] px-1.5 py-1.5 text-left text-[13px] disabled:opacity-60">
-                          <span className={cn('grid h-[17px] w-[17px] shrink-0 place-items-center rounded-[4px] border-[1.5px] transition-colors', visible ? 'border-[var(--primary)] bg-[var(--primary)] text-white' : 'border-[#D3D7E0] bg-[var(--surface)] text-transparent')}>
+                      <li key={key} className="flex items-center gap-1 px-1 py-0.5 transition-colors hover:bg-[var(--input-surface)]">
+                        <button type="button" onClick={() => toggleHidden(key)} disabled={column.hideable === false} aria-pressed={visible} className="flex min-w-0 flex-1 items-center gap-2.5 px-1.5 py-1.5 text-left text-[13px] disabled:opacity-60">
+                          <span className={cn('grid h-[17px] w-[17px] shrink-0 place-items-center border-[1.5px] transition-colors', visible ? 'border-[var(--primary)] bg-[var(--primary)] text-white' : 'border-[#D3D7E0] bg-[var(--surface)] text-transparent')}>
                             <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
                           </span>
                           <span className={cn('truncate', visible ? 'font-medium text-[var(--foreground)]' : 'text-[var(--muted)]')}>{column.header}</span>
                         </button>
-                        <button type="button" onClick={() => togglePinned(key)} aria-pressed={pinned} title={pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')} aria-label={`${pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')}: ${column.header}`} className={cn('grid h-7 w-7 place-items-center rounded-[6px] transition-colors', pinned ? 'bg-[var(--blue-dim)] text-[var(--primary)]' : 'text-[var(--caption)] hover:text-[var(--foreground)]')}>
+                        <button type="button" onClick={() => togglePinned(key)} aria-pressed={pinned} title={pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')} aria-label={`${pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')}: ${column.header}`} className={cn('grid h-7 w-7 place-items-center transition-colors', pinned ? 'bg-[var(--blue-dim)] text-[var(--primary)]' : 'text-[var(--caption)] hover:text-[var(--foreground)]')}>
                           {pinned ? <Pin size={14} /> : <PinOff size={14} />}
                         </button>
-                        <button type="button" onClick={() => moveColumn(key, -1)} disabled={index === 0} aria-label={`${t('grid.move_up', 'Move up')}: ${column.header}`} className="grid h-7 w-6 place-items-center rounded-[6px] text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowUp size={14} /></button>
-                        <button type="button" onClick={() => moveColumn(key, 1)} disabled={index === list.length - 1} aria-label={`${t('grid.move_down', 'Move down')}: ${column.header}`} className="grid h-7 w-6 place-items-center rounded-[6px] text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowDown size={14} /></button>
+                        <button type="button" onClick={() => moveColumn(key, -1)} disabled={index === 0} aria-label={`${t('grid.move_up', 'Move up')}: ${column.header}`} className="grid h-7 w-6 place-items-center text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowUp size={14} /></button>
+                        <button type="button" onClick={() => moveColumn(key, 1)} disabled={index === list.length - 1} aria-label={`${t('grid.move_down', 'Move down')}: ${column.header}`} className="grid h-7 w-6 place-items-center text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowDown size={14} /></button>
                       </li>
                     )
                   })}
@@ -327,7 +327,7 @@ export function DataGrid<T>({
             ) : null}
           </div>
 
-          <div role="radiogroup" aria-label={t('grid.density.label', 'Row density')} className="inline-flex h-9 items-center gap-0.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] p-[3px]">
+          <div role="radiogroup" aria-label={t('grid.density.label', 'Row density')} className="inline-flex h-9 items-center gap-0.5 border border-[var(--border)] bg-[var(--surface)] p-[3px]">
             {(Object.keys(densityLabels) as GridDensity[]).map((value) => {
               const Icon = densityIcons[value]
               return (
@@ -339,7 +339,7 @@ export function DataGrid<T>({
                   aria-label={densityLabels[value]}
                   title={densityLabels[value]}
                   onClick={() => update((current) => ({ ...current, density: value }))}
-                  className={cn('grid h-[28px] w-[30px] place-items-center rounded-[6px] transition-colors', state.density === value ? 'bg-[var(--surface-inverse)] text-white' : 'text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]')}
+                  className={cn('grid h-[28px] w-[30px] place-items-center transition-colors', state.density === value ? 'bg-[var(--surface-inverse)] text-white' : 'text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]')}
                 >
                   <Icon size={15} />
                 </button>
@@ -423,7 +423,7 @@ export function DataGrid<T>({
                       <span className={cn('my-2 w-[2px] rounded-full transition-colors', resizing?.key === key ? 'bg-[var(--primary)]' : 'bg-[var(--border)] group-hover/th:bg-[var(--border-hover)] hover:bg-[var(--primary)]!')} />
                     </span>
                     {resizing?.key === key ? (
-                      <span className="pointer-events-none absolute top-[calc(100%+6px)] right-0 z-20 translate-x-1/2 rounded-[6px] bg-[var(--primary)] px-2 py-0.5 font-mono text-[11px] font-semibold text-white normal-case shadow-[var(--elev-md)]">
+                      <span className="pointer-events-none absolute top-[calc(100%+6px)] right-0 z-20 translate-x-1/2 bg-[var(--primary)] px-2 py-0.5 font-mono text-[11px] font-semibold text-white normal-case shadow-[var(--elev-md)]">
                         {resizing.width} px
                       </span>
                     ) : null}
@@ -477,7 +477,7 @@ export function DataGrid<T>({
           <div className="px-5 py-12">
             {loading ? (
               <div className="mx-auto flex max-w-[520px] flex-col gap-2.5" aria-busy="true">
-                {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-9 animate-pulse rounded-[6px] bg-[var(--input-surface)]" style={{ animationDelay: `${index * 80}ms` }} />)}
+                {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-9 animate-pulse bg-[var(--input-surface)]" style={{ animationDelay: `${index * 80}ms` }} />)}
               </div>
             ) : emptyState}
           </div>
@@ -507,7 +507,7 @@ export function DataGrid<T>({
               <select
                 value={pageSize}
                 onChange={(event) => { onPageSizeChange(Number(event.target.value)); onPageChange(1) }}
-                className="h-8 rounded-[6px] border border-[var(--border)] bg-[var(--surface)] px-2 text-[12.5px] text-[var(--foreground)]"
+                className="h-8 border border-[var(--border)] bg-[var(--surface)] px-2 text-[12.5px] text-[var(--foreground)]"
               >
                 {PAGE_SIZES.map((size) => <option key={size} value={size}>{t('common.per_page', '{{count}} per page', { count: size })}</option>)}
               </select>
@@ -516,8 +516,8 @@ export function DataGrid<T>({
           <span className="tabular-nums">
             {sortedRows.length === 0 ? '0' : `${firstIndex + 1}–${Math.min(firstIndex + pageSize, sortedRows.length)}`} / {sortedRows.length}
           </span>
-          <button type="button" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage <= 1} aria-label={t('grid.prev_page', 'Previous page')} className="grid h-8 w-8 place-items-center rounded-[6px] border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)] disabled:opacity-40"><ChevronLeft size={15} /></button>
-          <button type="button" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= pageCount} aria-label={t('grid.next_page', 'Next page')} className="grid h-8 w-8 place-items-center rounded-[6px] border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)] disabled:opacity-40"><ChevronRight size={15} /></button>
+          <button type="button" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage <= 1} aria-label={t('grid.prev_page', 'Previous page')} className="grid h-8 w-8 place-items-center border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)] disabled:opacity-40"><ChevronLeft size={15} /></button>
+          <button type="button" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= pageCount} aria-label={t('grid.next_page', 'Next page')} className="grid h-8 w-8 place-items-center border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)] disabled:opacity-40"><ChevronRight size={15} /></button>
         </div>
       </div>
     </section>

@@ -2,7 +2,7 @@
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Archive as ArchiveIcon, ArrowRight, Filter, ListTodo, Pencil, Percent, PhoneCall, Plus, RefreshCw, Search, Trash2, UserPlus, UsersRound, X } from 'lucide-react'
+import { AlarmClock, Archive as ArchiveIcon, ArrowRight, CircleDashed, Filter, Globe, Layers, ListTodo, NotebookPen, Pencil, Percent, PhoneCall, Plus, RefreshCw, Search, Trash2, UserPlus, UsersRound, X } from 'lucide-react'
 import { env } from '../../../shared/config/env'
 import type { CustomerSummary, DynamicStatusOption } from '../../../shared/api/types'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -18,15 +18,15 @@ import {
 import { formatNumericDateTime } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
 import { getRecallTimeTone, getRecallTimeToneClasses } from '../lib/recallTime'
-import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { DataGrid, type GridColumn } from '../../../shared/ui/data-grid'
-import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
+import type { SelectFieldOption } from '../../../shared/ui/select-field'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { crmService as baseCrmService } from '../../../shared/api/services/crm.service'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
-import { FacetList, FilterToken, PeriodPicker } from '../components/CustomerFilters'
+import { FilterMenu, FilterToken, PeriodPicker } from '../components/CustomerFilters'
+import { statusIconFor } from '../lib/statusIcon'
 import { CountUp } from '../../../shared/ui/count-up'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
@@ -412,28 +412,6 @@ function getCustomerStatusKeys(customer: CustomerSummary, statusMetaMap: Map<str
   }
 
   return keys
-}
-
-function StatusBadge({
-  status,
-  statusMetaMap,
-}: {
-  status: string
-  statusMetaMap: Map<string, DynamicStatusOption>
-}) {
-  const meta = statusMetaMap.get(normalizeStatusKey(status))
-
-  return (
-    <span
-      className="inline-flex items-center rounded-full px-2.5 py-1 text-xs leading-none font-semibold capitalize"
-      style={{
-        color: meta?.color ?? 'var(--muted-strong)',
-        backgroundColor: meta?.color ? `${meta.color}1F` : 'var(--muted-surface)',
-      }}
-    >
-      {meta?.label ?? status}
-    </span>
-  )
 }
 
 function TableAudioControl({
@@ -1102,7 +1080,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     dateEnd,
   ].filter((value) => Boolean(value)).length
 
-  const resetPageAnd = <V,>(setter: (value: V) => void) => (value: V) => { setter(value); setTablePage(1) }
   const listTitle = crmKind === 'outbound' ? t('outbound_crm.page.title', 'Outbound CRM') : t('customers.page.title', 'CRM dashboard')
   const periodLabel = periodOptions.find((option) => option.value === selectedPeriod)?.label ?? ''
   const todayKey = new Date().toDateString()
@@ -1209,7 +1186,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
         const name = getCustomerDisplayName(row)
         return (
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-[7px] text-[11px] font-bold', avatarTone(name))}>{initialsFor(name)}</span>
+            <span className={cn('grid h-7 w-7 shrink-0 place-items-center text-[11px] font-bold', avatarTone(name))}>{initialsFor(name)}</span>
             <span className="truncate font-semibold text-[var(--foreground)] transition-colors group-hover/row:text-[var(--primary)]">{name}</span>
           </span>
         )
@@ -1240,21 +1217,31 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     {
       key: 'status',
       header: t('customers.table.status', 'Status'),
-      width: 230,
+      width: 132,
       sortValue: (row) => row.status,
-      render: (row) => (
-        <span className="flex items-center gap-1">
-          <StatusBadge status={row.status} statusMetaMap={statusMetaMap} />
-          {row.lead_response_metrics?.is_late_response ? (
-            <Badge variant="danger" size="sm">{t('customers.table.late', 'Late')} {row.lead_response_metrics.late_human ?? ''}</Badge>
-          ) : row.lead_response_metrics && !row.lead_response_metrics.status_changed ? (
-            <Badge variant="warning" size="sm">{t('customers.table.not_contacted', 'Not contacted')}</Badge>
-          ) : null}
-          {row.lead_response_metrics?.status_changed_without_note ? (
-            <Badge variant="warning" size="sm">{t('customers.table.no_note', 'No note')}</Badge>
-          ) : null}
-        </span>
-      ),
+      render: (row) => {
+        const meta = statusMetaMap.get(normalizeStatusKey(row.status))
+        const color = meta?.color ?? '#8A90A2'
+        const label = meta?.label ?? row.status
+        const Icon = statusIconFor(row.status)
+        const metrics = row.lead_response_metrics
+        const lateLabel = `${t('customers.table.late', 'Late')} ${metrics?.late_human ?? ''}`.trim()
+        return (
+          <span className="flex items-center gap-1">
+            <span role="img" aria-label={label} title={label} className="grid h-7 w-7 place-items-center" style={{ background: `${color}1A`, color }}>
+              <Icon size={15} strokeWidth={2.1} />
+            </span>
+            {metrics?.is_late_response ? (
+              <span role="img" aria-label={lateLabel} title={lateLabel} className="grid h-7 w-7 place-items-center bg-[var(--danger-dim)] text-[var(--danger-text)]"><AlarmClock size={14} strokeWidth={2.1} /></span>
+            ) : metrics && !metrics.status_changed ? (
+              <span role="img" aria-label={t('customers.table.not_contacted', 'Not contacted')} title={t('customers.table.not_contacted', 'Not contacted')} className="grid h-7 w-7 place-items-center bg-[var(--warning-dim)] text-[var(--warning-text)]"><CircleDashed size={14} strokeWidth={2.1} /></span>
+            ) : null}
+            {metrics?.status_changed_without_note ? (
+              <span role="img" aria-label={t('customers.table.no_note', 'No note')} title={t('customers.table.no_note', 'No note')} className="grid h-7 w-7 place-items-center bg-[var(--warning-dim)] text-[var(--warning-text)]"><NotebookPen size={14} strokeWidth={2.1} /></span>
+            ) : null}
+          </span>
+        )
+      },
     },
     {
       key: 'assistant',
@@ -1282,7 +1269,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       header: t('customers.table.notes', 'Notes'),
       width: 260,
       render: (row) => (
-        <span className="text-[var(--muted-strong)]" title={row.notes ?? undefined}>{summarizeCustomerNotes(row.notes, 8)}</span>
+        <span className="text-[var(--muted-strong)]" title={row.notes ?? undefined}>{row.notes?.trim() ? summarizeCustomerNotes(row.notes, 8) : '—'}</span>
       ),
     },
     {
@@ -1331,6 +1318,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     value: option.value,
     label: option.label,
     color: option.color,
+    icon: statusIconFor(option.value),
     count: statusCounts.get(normalizeStatusKey(option.value)) ?? 0,
   }))
   const toggleStatus = (value: string) => {
@@ -1405,14 +1393,14 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           onChange={(event) => { setSearch(event.target.value); setTablePage(1) }}
           placeholder={t('customers.filters.search_placeholder', 'Name, username, note, or phone')}
           aria-label={t('customers.filters.search_label', 'Search')}
-          className="h-9 w-full rounded-[8px] border border-[var(--border)] bg-[var(--input-surface)] pr-9 pl-9 text-[13px] text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-3 focus:ring-[var(--primary)]/12 [&::-webkit-search-cancel-button]:hidden"
+          className="h-9 w-full border border-[var(--border)] bg-[var(--input-surface)] pr-9 pl-9 text-[13px] text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-3 focus:ring-[var(--primary)]/12 [&::-webkit-search-cancel-button]:hidden"
         />
         {search ? (
-          <button type="button" onClick={() => { setSearch(''); setTablePage(1) }} aria-label={t('common.clear', 'Clear')} className="absolute right-2 grid h-5 w-5 place-items-center rounded-[4px] text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]">
+          <button type="button" onClick={() => { setSearch(''); setTablePage(1) }} aria-label={t('common.clear', 'Clear')} className="absolute right-2 grid h-5 w-5 place-items-center text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]">
             <X size={13} />
           </button>
         ) : (
-          <kbd className="pointer-events-none absolute right-2.5 hidden rounded-[4px] border border-[var(--border)] bg-[var(--surface)] px-1.5 font-mono text-[11px] text-[var(--muted)] sm:block">/</kbd>
+          <kbd className="pointer-events-none absolute right-2.5 hidden border border-[var(--border)] bg-[var(--surface)] px-1.5 font-mono text-[11px] text-[var(--muted)] sm:block">/</kbd>
         )}
       </label>
       <PeriodPicker
@@ -1430,17 +1418,28 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           apply: t('customers.filters.apply', 'Apply'),
         }}
       />
-      {/* On narrow screens the rail is hidden, so status is picked here */}
-      <div className="w-[180px] lg:hidden">
-        <SelectField
-          value={statusFilters[0] ?? ''}
-          values={statusFilters}
-          multiple
-          options={statusFilterOptions}
-          onValuesChange={resetPageAnd(setStatusFilters)}
-          placeholder={t('customers.filters.all_statuses', 'All statuses')}
+      <FilterMenu
+        label={t('customers.filters.status_label', 'Status')}
+        icon={Layers}
+        items={statusFacets}
+        isSelected={(value) => selectedStatusFilterSet.has(normalizeStatusKey(value))}
+        onToggle={toggleStatus}
+        onClear={() => { setStatusFilters([]); setTablePage(1) }}
+        selectedCount={statusFilters.length}
+        clearLabel={t('common.clear', 'Clear')}
+      />
+      {platformFacets.length > 0 ? (
+        <FilterMenu
+          label={t('customers.filters.platform_label', 'Platform')}
+          icon={Globe}
+          items={platformFacets}
+          isSelected={(value) => platformFilter === value}
+          onToggle={(value) => { setPlatformFilter((current) => (current === value ? '' : value)); setTablePage(1) }}
+          onClear={() => { setPlatformFilter(''); setTablePage(1) }}
+          selectedCount={platformFilter ? 1 : 0}
+          clearLabel={t('common.clear', 'Clear')}
         />
-      </div>
+      ) : null}
     </>
   )
 
@@ -1480,7 +1479,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       {/* Header */}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3.5">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[12px] bg-[var(--surface-inverse)] text-white shadow-[0_10px_24px_-14px_rgba(14,21,37,0.8)]">
+          <span className="grid h-12 w-12 shrink-0 place-items-center bg-[var(--surface-inverse)] text-white">
             <UsersRound size={22} />
           </span>
           <div className="min-w-0">
@@ -1498,26 +1497,26 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
             onClick={() => void refreshAll()}
             title={t('customers.actions.refresh', 'Refresh')}
             aria-label={t('customers.actions.refresh', 'Refresh')}
-            className="grid h-10 w-10 place-items-center rounded-[10px] border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]"
+            className="grid h-10 w-10 place-items-center border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]"
           >
             <RefreshCw size={16} className={cn(isRefreshing && 'animate-spin')} />
           </button>
           {crmKind === 'outbound' ? (
-            <button type="button" onClick={() => navigate(`${routeBasePath}/statuses`)} className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)]">
+            <button type="button" onClick={() => navigate(`${routeBasePath}/statuses`)} className="inline-flex h-10 items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)]">
               <ListTodo size={16} /> {t('outbound_crm.actions.statuses', 'Statuses')}
             </button>
           ) : null}
-          <button type="button" onClick={() => navigate(`${routeBasePath}/archived`)} className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)]">
+          <button type="button" onClick={() => navigate(`${routeBasePath}/archived`)} className="inline-flex h-10 items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)]">
             <ArchiveIcon size={16} /> {t('customers.actions.archive', 'Archive')}
           </button>
-          <button type="button" onClick={openCreateModal} className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-[13.5px] font-semibold text-white shadow-[0_10px_22px_-12px_rgba(43,89,255,0.95)] transition hover:-translate-y-px hover:bg-[var(--primary-hover)]">
+          <button type="button" onClick={openCreateModal} className="inline-flex h-10 items-center gap-2 bg-[var(--primary)] px-4 text-[13.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]">
             <Plus size={17} /> {t('customers.actions.add', 'Add customer')}
           </button>
         </div>
       </header>
 
       {/* Key numbers — one strip; each cell is also a quick filter */}
-      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--card)] lg:grid-cols-4">
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden border border-[var(--border)] bg-[var(--card)] lg:grid-cols-4">
         {metrics.map((metric, index) => {
           const Cell = metric.onClick ? 'button' : 'div'
           return (
@@ -1534,7 +1533,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
               )}
             >
               {metric.active ? <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[var(--primary)]" /> : null}
-              <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[10px] transition-transform duration-300 group-hover:scale-105', metric.tone)}>{metric.icon}</span>
+              <span className={cn('grid h-10 w-10 shrink-0 place-items-center transition-transform duration-300 group-hover:scale-105', metric.tone)}>{metric.icon}</span>
               <span className="min-w-0">
                 <span className="block truncate text-[12.5px] font-medium text-[var(--muted)]">{metric.label}</span>
                 <span className="block text-[26px] leading-8 font-bold tracking-[-0.03em] text-[var(--foreground)] tabular-nums" data-ui-number="true">
@@ -1547,33 +1546,8 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
         })}
       </div>
 
-      {/* Workspace: facets on the left, the table on the right; fills the rest of the screen */}
-      <div className="flex min-h-[560px] flex-1 overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--card)] shadow-[0_1px_2px_rgba(14,21,37,0.04),0_18px_40px_-30px_rgba(14,21,37,0.35)] lg:min-h-0">
-        <aside className="hidden w-[240px] shrink-0 flex-col gap-5 overflow-y-auto overscroll-contain border-r border-[var(--border)] bg-[#FAFBFC] p-2.5 lg:flex">
-          <FacetList
-            title={t('customers.filters.status_label', 'Status')}
-            allLabel={t('customers.filters.all', 'All')}
-            total={baseCustomers.length}
-            items={statusFacets}
-            isSelected={(value) => selectedStatusFilterSet.has(normalizeStatusKey(value))}
-            onToggle={toggleStatus}
-            onClear={() => { setStatusFilters([]); setTablePage(1) }}
-            anySelected={statusFilters.length > 0}
-          />
-          {platformFacets.length > 0 ? (
-            <FacetList
-              title={t('customers.filters.platform_label', 'Platform')}
-              allLabel={t('customers.filters.all_platforms', 'All platforms')}
-              total={baseCustomers.length}
-              items={platformFacets}
-              isSelected={(value) => platformFilter === value}
-              onToggle={(value) => { setPlatformFilter((current) => (current === value ? '' : value)); setTablePage(1) }}
-              onClear={() => { setPlatformFilter(''); setTablePage(1) }}
-              anySelected={Boolean(platformFilter)}
-            />
-          ) : null}
-        </aside>
-
+      {/* The table fills the rest of the screen */}
+      <div className="flex min-h-[560px] flex-1 overflow-hidden border border-[var(--border)] bg-[var(--card)] lg:min-h-0">
         <DataGrid
           id={`${storageKey}-customers`}
           className="min-w-0 flex-1"
