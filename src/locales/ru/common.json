@@ -1372,5 +1372,10 @@
   "ceo.leads_chart.conversion_caption": "конверсия лид → проект",
   "ceo.leads_chart.status_summary": "Лиды за 30 дней по текущему статусу.",
   "ceo.leads_chart.platform_summary": "Откуда пришли лиды за 30 дней.",
-  "ceo.leads_chart.total_caption": "лидов за 30 дней"
+  "ceo.leads_chart.total_caption": "лидов за 30 дней",
+  "customers.filters.period": "Период",
+  "customers.filters.custom_range": "Свой период",
+  "customers.filters.apply": "Применить",
+  "customers.filters.active": "Фильтры",
+  "customers.filters.clear_all": "Сбросить всё"
 }

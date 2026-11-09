@@ -785,7 +785,7 @@ export function CeoDashboardPage() {
   }
 
   return (
-    <section className="flex flex-col gap-[18px]">
+    <section className="stagger-in flex flex-col gap-[18px]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="ui-page-title text-[var(--foreground)]">

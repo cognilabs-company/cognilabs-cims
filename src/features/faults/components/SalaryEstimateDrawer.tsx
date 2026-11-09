@@ -87,12 +87,12 @@ export function SalaryEstimateDrawer({
       <button
         type="button"
         aria-label={lt('Close salary detail drawer')}
-        className="dialog-backdrop absolute inset-0"
+        className="dialog-backdrop backdrop-fade absolute inset-0"
         onClick={onClose}
       />
 
-      <div className="absolute inset-y-0 right-0 w-full md:w-[min(50vw,760px)] xl:w-[min(46vw,780px)]">
-        <div className="sheet-enter flex h-full flex-col overflow-hidden rounded-l-[24px] bg-[var(--surface)] shadow-[var(--elev-xl)]">
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-3 sm:p-6">
+        <div className="modal-pop pointer-events-auto flex max-h-full w-full max-w-[860px] flex-col overflow-hidden rounded-[22px] bg-[var(--surface)] shadow-[var(--elev-xl)]">
           <div className="flex items-start justify-between gap-4 bg-[var(--surface)] px-5 py-[18px] sm:px-6">
             <div className="min-w-0">
               <p className="ui-eyebrow">

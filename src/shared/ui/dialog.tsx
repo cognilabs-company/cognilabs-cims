@@ -67,7 +67,7 @@ export function Dialog({
       <button
         type="button"
         aria-label={translateCurrentLiteral('Close dialog')}
-        className="dialog-backdrop absolute inset-0"
+        className="dialog-backdrop backdrop-fade absolute inset-0"
         onClick={onClose}
       />
       <div
@@ -75,7 +75,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         className={cn(
-          'dialog-content relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full flex-col overflow-hidden rounded-[24px] shadow-[var(--elev-xl)] sm:max-h-[calc(100vh-3rem)]',
+          'dialog-content modal-pop relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full flex-col overflow-hidden rounded-[24px] shadow-[var(--elev-xl)] sm:max-h-[calc(100vh-3rem)]',
           sizeClasses[size],
           className,
         )}

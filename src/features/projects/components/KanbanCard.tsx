@@ -35,7 +35,7 @@ function MetaChip({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold leading-none',
+        'inline-flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-[11px] font-semibold leading-none',
         tonePill(tone),
         className,
       )}
@@ -102,7 +102,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
         data-slot="card"
         ref={setNodeRef}
         style={style}
-        className="min-h-[112px] w-full rounded-[14px] border border-dashed border-[var(--border-hover)] bg-[var(--muted-surface)]"
+        className="min-h-[112px] w-full rounded-[10px] border-2 border-dashed border-[var(--blue-border)] bg-[var(--blue-dim)]"
       />
     )
   }
@@ -118,14 +118,15 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
       onKeyDown={handleKeyDown}
       tabIndex={readOnly ? 0 : attributes.tabIndex}
       className={cn(
-        'group relative flex cursor-pointer select-none flex-col gap-2.5 overflow-hidden rounded-[14px] p-3',
-        'bg-[var(--surface)] text-[var(--foreground)]',
-        'transition-[background-color,opacity] duration-150',
-        'hover:bg-[var(--card-hover)]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--accent-soft)]',
-        isOverlay && 'shadow-[var(--elev-lg)]',
+        'group relative flex cursor-pointer select-none flex-col gap-2.5 overflow-hidden rounded-[10px] border border-[var(--border)] p-3 pl-3.5',
+        'bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(14,21,37,0.04)]',
+        'transition-[box-shadow,border-color,opacity] duration-200',
+        'hover:border-[var(--border-hover)] hover:shadow-[0_12px_26px_-18px_rgba(14,21,37,0.5)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#F6F7FA]',
+        isOverlay && 'rotate-[2deg] scale-[1.03] border-[var(--blue-border)] shadow-[0_26px_50px_-20px_rgba(14,21,37,0.55)]',
       )}
     >
+      {priority ? <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px]" style={{ background: priority.color }} /> : null}
       <div className="relative z-10 flex items-start justify-between gap-1.5">
         <div className="flex min-w-0 flex-1 items-center gap-1">
           {priority ? (
@@ -133,7 +134,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
               {priority.label}
             </Badge>
           ) : (
-            <span className="inline-flex items-center rounded-full bg-[var(--muted-surface)] px-2 py-1 text-[11px] font-semibold leading-none text-[var(--muted)]">
+            <span className="inline-flex items-center rounded-[6px] bg-[var(--muted-surface)] px-1.5 py-1 text-[11px] font-semibold leading-none text-[var(--muted)]">
               {lt('Task')}
             </span>
           )}
@@ -202,7 +203,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
         {assignees.length > 0 ? (
           assignees.length > 1 ? (
             <div
-              className="inline-flex max-w-[55%] shrink-0 items-center gap-1.5 rounded-full bg-[var(--muted-surface)] px-1.5 py-1"
+              className="inline-flex max-w-[55%] shrink-0 items-center gap-1.5 rounded-[6px] bg-[var(--muted-surface)] px-1.5 py-1"
               title={assigneeName}
             >
               <AvatarGroup users={assignees} max={3} size="xs" className="pr-0.5" />
@@ -212,7 +213,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
             </div>
           ) : (
             <div
-              className="inline-flex max-w-[50%] shrink-0 items-center gap-1.5 rounded-full bg-[var(--muted-surface)] px-1.5 py-1"
+              className="inline-flex max-w-[50%] shrink-0 items-center gap-1.5 rounded-[6px] bg-[var(--muted-surface)] px-1.5 py-1"
               title={assigneeName}
             >
               <Avatar

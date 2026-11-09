@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '../lib/cn'
+import { CountUp } from './count-up'
 import { toneSurface, toneText, type Tone } from './tone'
 
 type StatCardProps = {
@@ -108,7 +109,7 @@ export function StatCard({
           className="truncate text-[32px] leading-none font-bold tracking-[-0.035em] tabular-nums"
           data-ui-number="true"
         >
-          {value}
+          {typeof value === 'number' ? <CountUp value={value} /> : value}
         </div>
 
         {/* 3. Context: one pill + one line. */}

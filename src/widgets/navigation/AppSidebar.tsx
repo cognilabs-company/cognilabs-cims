@@ -44,7 +44,7 @@ type MemberProfileFormState = {
 }
 
 const sidebarItemBase =
-  'group relative flex w-full items-center gap-3 rounded-[12px] px-3 py-[9px] [@media(max-height:900px)]:py-[7px] text-[14px] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
+  'group relative flex w-full items-center gap-3 rounded-[12px] px-3 py-[9px] [@media(max-height:1000px)]:py-[7px] [@media(max-height:820px)]:py-[5px] text-[14px] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
 const sidebarItemInactive =
   'font-medium text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)] [&_svg]:text-[var(--sb-icon)] hover:[&_svg]:text-[var(--sb-strong)]'
 const sidebarItemActive =
@@ -451,7 +451,7 @@ export function AppSidebar() {
           </div>
 
           {/* Navigation */}
-          <nav aria-label={t('shell.menu')} className="-mx-1 flex-1 overflow-x-hidden overflow-y-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav aria-label={t('shell.menu')} className="sidebar-scroll -mx-1 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1">
             {isOutboundCrmRoute ? (
               <div className="flex flex-col gap-0.5">
                 <p className={sidebarSectionLabel}>Outbound CRM</p>
@@ -477,7 +477,7 @@ export function AppSidebar() {
                 ) : null}
               </div>
             ) : (
-              <div className="flex flex-col gap-4 [@media(max-height:900px)]:gap-2.5">
+              <div className="flex flex-col gap-4 [@media(max-height:1000px)]:gap-2.5 [@media(max-height:820px)]:gap-1.5">
                 {groupedNavigation.map(({ group, items }) => (
                   <div key={group} className="flex flex-col gap-0.5">
                     <p className={sidebarSectionLabel}>{t(`shell.group.${group}`, groupFallback[group])}</p>

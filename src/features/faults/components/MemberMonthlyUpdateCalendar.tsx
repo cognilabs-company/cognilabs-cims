@@ -537,12 +537,12 @@ export function MemberMonthlyUpdateCalendarBoard({
         <button
           type="button"
           aria-label={lt('Close focus day panel')}
-          className="dialog-backdrop absolute inset-0"
+          className="dialog-backdrop backdrop-fade absolute inset-0"
           onClick={() => setIsFocusPanelOpen(false)}
         />
 
-        <div className="absolute inset-y-0 right-0 w-full sm:w-[min(88vw,430px)] xl:w-[min(34vw,480px)]">
-          <div className="sheet-enter flex h-full flex-col overflow-hidden bg-[var(--surface)] text-[var(--foreground)]">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-3 sm:p-6">
+          <div className="modal-pop pointer-events-auto flex max-h-full w-full max-w-[540px] flex-col overflow-hidden rounded-[22px] bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--elev-xl)]">
             <div className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4 sm:px-6">
               <div className="min-w-0">
                 <p className="ui-eyebrow text-[var(--blue-text)]">

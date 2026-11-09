@@ -591,12 +591,12 @@ export function CustomerDetailDrawer({
       <button
         type="button"
         aria-label={t('customers.detail.drawer_close', 'Close customer detail drawer')}
-        className="dialog-backdrop absolute inset-0"
+        className="dialog-backdrop backdrop-fade absolute inset-0"
         onClick={onClose}
       />
 
-      <div className="absolute inset-y-0 right-0 w-full md:w-[min(50vw,760px)]">
-        <div className="sheet-enter flex h-full flex-col overflow-hidden bg-[var(--surface)] shadow-[var(--elev-xl)] md:rounded-l-[24px]">
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-3 sm:p-6">
+        <div className="modal-pop pointer-events-auto flex max-h-full w-full max-w-[880px] flex-col overflow-hidden rounded-[22px] bg-[var(--surface)] shadow-[var(--elev-xl)]">
           <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-[18px] py-4 sm:px-[22px]">
             <div className="min-w-0 flex-1">
               <p className="ui-eyebrow">

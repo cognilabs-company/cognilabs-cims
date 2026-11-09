@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Archive as ArchiveIcon, ArrowRight, Filter, ListTodo, Pencil, Percent, PhoneCall, Plus, RefreshCw, Search, Trash2, UserPlus, UsersRound, X } from 'lucide-react'
@@ -21,14 +21,13 @@ import { getRecallTimeTone, getRecallTimeToneClasses } from '../lib/recallTime'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { DataGrid, type GridColumn } from '../../../shared/ui/data-grid'
-import { StatCard } from '../../../shared/ui/stat-card'
-import { Input } from '../../../shared/ui/input'
-import { CalendarField } from '../../../shared/ui/calendar-field'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { crmService as baseCrmService } from '../../../shared/api/services/crm.service'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
+import { FacetList, FilterToken, PeriodPicker } from '../components/CustomerFilters'
+import { CountUp } from '../../../shared/ui/count-up'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
 import { useCrmScope } from '../lib/crmScope'
@@ -469,6 +468,24 @@ function TableAudioControl({
 
 
 
+const avatarTones = [
+  'bg-[var(--blue-dim)] text-[var(--blue-text)]',
+  'bg-[var(--violet-dim)] text-[var(--violet-text)]',
+  'bg-[var(--success-dim)] text-[var(--success-text)]',
+  'bg-[var(--warning-dim)] text-[var(--warning-text)]',
+  'bg-[#E9F7FB] text-[#0B7285]',
+]
+
+function avatarTone(name: string) {
+  let hash = 0
+  for (let index = 0; index < name.length; index += 1) hash = (hash * 31 + name.charCodeAt(index)) >>> 0
+  return avatarTones[hash % avatarTones.length]
+}
+
+function initialsFor(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || '—'
+}
+
 type CrmPageView = 'overview' | 'customers'
 const periodKeys = ['today', '3d', '7d', '30d', '90d'] as const
 
@@ -540,6 +557,19 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       return next
     }, { replace: true })
   }, [searchParams, setSearchParams])
+
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (view !== 'customers') return
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (event.key !== '/' || event.metaKey || event.ctrlKey || target?.closest('input, textarea, select, [contenteditable="true"]')) return
+      event.preventDefault()
+      searchInputRef.current?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [view])
 
   const pageSizeValue = Number(pageSize) || 75
   const shouldRestoreReturnState = Boolean(initialReturnState?.customerId)
@@ -736,15 +766,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     return result
   }, [statusOptions, dashboardQuery.data?.status_choices, baseCustomers, statusMetaMap])
 
-  const availablePlatforms = useMemo(() => {
-    return Array.from(
-      new Set(
-        customers
-          .flatMap((item) => getCustomerPlatforms(item))
-          .filter(Boolean),
-      ),
-    ).sort((a, b) => a.localeCompare(b))
-  }, [customers])
 
   const displayedCustomers = useMemo(() => {
     const normalizedSearch = normalizeFilterValue(deferredSearch)
@@ -860,7 +881,10 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     tablePage,
   ])
 
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
   async function refreshAll() {
+    setIsRefreshing(true)
     await Promise.allSettled([
       dashboardQuery.refetch(),
       statusesQuery.refetch(),
@@ -869,6 +893,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       ...(selectedPeriod ? [periodReportQuery.refetch()] : []),
       ...(selectedStatusFilterValues.length > 0 ? [selectedStatusCustomersQuery.refetch()] : []),
     ])
+    setIsRefreshing(false)
   }
 
   function resetFilters() {
@@ -1069,10 +1094,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     { value: '30d', label: t('customers.period.last_30_days', 'Last 30 days') },
     { value: '90d', label: t('customers.period.last_90_days', 'Last 90 days') },
   ]
-  const platformFilterOptions = [
-    { value: '', label: t('customers.filters.all_platforms', 'All platforms') },
-    ...availablePlatforms.map((platform: string) => ({ value: platform, label: platform })),
-  ]
   const activeFilterCount = [
     search,
     statusFilters.length > 0 ? 1 : 0,
@@ -1142,7 +1163,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   /* ── CRM overview: dashboard only; the list lives on its own page ── */
   if (view === 'overview') {
     return (
-      <section className="flex flex-col gap-[18px]">
+      <section className="stagger-in flex flex-col gap-[18px]">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <h1 className="ui-page-title text-[var(--foreground)]">{listTitle}</h1>
@@ -1176,30 +1197,23 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     )
   }
 
-  /* ── Customers page: key numbers, status pills, then the customisable table ── */
+  /* ── Customers page: header, number strip, facet rail + customisable table ── */
   const gridColumns: GridColumn<CustomerSummary>[] = [
-    {
-      key: 'id',
-      header: 'ID',
-      width: 84,
-      sortValue: (row) => row.id,
-      render: (row) => <span className="font-mono text-[12.5px] font-medium text-[var(--blue-text)]">#{row.id}</span>,
-    },
     {
       key: 'name',
       header: t('customers.table.client', 'Customer'),
       width: 220,
       hideable: false,
       sortValue: (row) => getCustomerDisplayName(row),
-      render: (row) => (
-        <button
-          type="button"
-          onClick={(event) => { event.stopPropagation(); openCustomerDrawer(row) }}
-          className="truncate text-left font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
-        >
-          {getCustomerDisplayName(row)}
-        </button>
-      ),
+      render: (row) => {
+        const name = getCustomerDisplayName(row)
+        return (
+          <span className="flex min-w-0 items-center gap-2.5">
+            <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-[7px] text-[11px] font-bold', avatarTone(name))}>{initialsFor(name)}</span>
+            <span className="truncate font-semibold text-[var(--foreground)] transition-colors group-hover/row:text-[var(--primary)]">{name}</span>
+          </span>
+        )
+      },
     },
     {
       key: 'username',
@@ -1303,190 +1317,287 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     },
   ]
 
-  const filtersBar = (
-    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(240px,1.5fr)_repeat(5,minmax(150px,1fr))_auto]">
-      <div className="relative sm:col-span-2 lg:col-span-1">
-        <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--muted)]" />
-        <Input
+  // Facets for the left rail
+  const platformCounts = new Map<string, number>()
+  for (const customer of baseCustomers) {
+    for (const platform of getCustomerPlatforms(customer)) {
+      if (platform) platformCounts.set(platform, (platformCounts.get(platform) ?? 0) + 1)
+    }
+  }
+  const platformFacets = [...platformCounts.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .map(([value, count], index) => ({ value, label: value, count, color: ['#2B59FF', '#6A3FE0', '#17924A', '#C2410C', '#0E7A55', '#8A90A2'][index % 6] }))
+  const statusFacets = allChipStatuses.map((option) => ({
+    value: option.value,
+    label: option.label,
+    color: option.color,
+    count: statusCounts.get(normalizeStatusKey(option.value)) ?? 0,
+  }))
+  const toggleStatus = (value: string) => {
+    const key = normalizeStatusKey(value)
+    setStatusFilters((prev) => (prev.some((item) => normalizeStatusKey(item) === key) ? prev.filter((item) => normalizeStatusKey(item) !== key) : [...prev, value]))
+    setTablePage(1)
+  }
+  const clearAll = () => { resetFilters(); setSelectedPeriod(''); setTablePage(1) }
+  const hasAnyFilter = activeFilterCount > 0 || Boolean(selectedPeriod)
+
+  const metrics: Array<{ key: string; label: string; value: number; format?: (value: number) => string; caption: string; icon: ReactNode; tone: string; active: boolean; onClick?: () => void }> = [
+    {
+      key: 'total',
+      label: t('customers.list_page.total', 'Customers'),
+      value: baseCustomers.length,
+      caption: periodLabel,
+      icon: <UsersRound size={18} />,
+      tone: 'bg-[var(--surface-inverse)] text-white',
+      active: !hasAnyFilter,
+      onClick: clearAll,
+    },
+    {
+      key: 'today',
+      label: t('customers.list_page.added_today', 'Added today'),
+      value: createdTodayCount,
+      caption: t('customers.list_page.added_today_hint', 'New leads since midnight'),
+      icon: <UserPlus size={18} />,
+      tone: 'bg-[var(--success-dim)] text-[var(--success-text)]',
+      active: selectedPeriod === 'today',
+      onClick: () => { setSelectedPeriod('today'); setDateStart(''); setDateEnd(''); setTablePage(1) },
+    },
+    {
+      key: 'call',
+      label: t('customers.list_page.need_to_call', 'Waiting for a call'),
+      value: needToCallCount,
+      caption: t('customers.list_page.need_to_call_hint', 'Status: Need to call'),
+      icon: <PhoneCall size={18} />,
+      tone: 'bg-[var(--warning-dim)] text-[var(--warning-text)]',
+      active: Boolean(needToCallOption) && selectedStatusFilterSet.has('needtocall') && statusFilters.length === 1,
+      onClick: needToCallOption ? () => { setStatusFilters([needToCallOption.value]); setTablePage(1) } : undefined,
+    },
+    conversionQuery.data
+      ? {
+          key: 'conversion',
+          label: t('customers.stats.conversion', 'Conversion'),
+          value: Number(conversionQuery.data.conversion_rate ?? 0),
+          format: (value: number) => `${value.toFixed(1)}%`,
+          caption: t('customers.list_page.conversion_hint', 'Projects started: {{count}}', { count: conversionQuery.data.project_started_count }),
+          icon: <Percent size={18} />,
+          tone: 'bg-[var(--violet-dim)] text-[var(--violet-text)]',
+          active: false,
+        }
+      : {
+          key: 'shown',
+          label: t('customers.list_page.shown', 'Shown'),
+          value: displayedCustomers.length,
+          caption: t('customers.section.list.filters_badge', '{{count}} filters', { count: activeFilterCount }),
+          icon: <Filter size={18} />,
+          tone: 'bg-[var(--violet-dim)] text-[var(--violet-text)]',
+          active: false,
+        },
+  ]
+
+  const toolbar = (
+    <>
+      <label className="relative flex h-9 min-w-[200px] flex-1 items-center sm:max-w-[360px]">
+        <Search size={15} className="pointer-events-none absolute left-3 text-[var(--muted)]" />
+        <input
+          ref={searchInputRef}
+          type="search"
           value={search}
           onChange={(event) => { setSearch(event.target.value); setTablePage(1) }}
           placeholder={t('customers.filters.search_placeholder', 'Name, username, note, or phone')}
           aria-label={t('customers.filters.search_label', 'Search')}
-          className="pl-9"
+          className="h-9 w-full rounded-[8px] border border-[var(--border)] bg-[var(--input-surface)] pr-9 pl-9 text-[13px] text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-3 focus:ring-[var(--primary)]/12 [&::-webkit-search-cancel-button]:hidden"
         />
-      </div>
-      <SelectField
+        {search ? (
+          <button type="button" onClick={() => { setSearch(''); setTablePage(1) }} aria-label={t('common.clear', 'Clear')} className="absolute right-2 grid h-5 w-5 place-items-center rounded-[4px] text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]">
+            <X size={13} />
+          </button>
+        ) : (
+          <kbd className="pointer-events-none absolute right-2.5 hidden rounded-[4px] border border-[var(--border)] bg-[var(--surface)] px-1.5 font-mono text-[11px] text-[var(--muted)] sm:block">/</kbd>
+        )}
+      </label>
+      <PeriodPicker
         value={selectedPeriod}
         options={periodOptions}
-        onValueChange={(value) => { setSelectedPeriod(value as typeof selectedPeriod); setTablePage(1) }}
+        onChange={(value) => { setSelectedPeriod(value); setTablePage(1) }}
+        dateStart={dateStart}
+        dateEnd={dateEnd}
+        onDatesChange={(start, end) => { setDateStart(start); setDateEnd(end); setTablePage(1) }}
+        labels={{
+          title: t('customers.filters.period', 'Period'),
+          custom: t('customers.filters.custom_range', 'Custom range'),
+          from: t('customers.filters.start_date_label', 'Start date'),
+          to: t('customers.filters.end_date_label', 'End date'),
+          apply: t('customers.filters.apply', 'Apply'),
+        }}
       />
-      <SelectField
-        value={statusFilters[0] ?? ''}
-        values={statusFilters}
-        multiple
-        options={statusFilterOptions}
-        onValuesChange={resetPageAnd(setStatusFilters)}
-        placeholder={t('customers.filters.all_statuses', 'All statuses')}
-      />
-      <SelectField
-        key={`crm-platform-filter-${platformFilter || 'all'}`}
-        value={platformFilter}
-        options={platformFilterOptions}
-        onValueChange={resetPageAnd(setPlatformFilter)}
-      />
-      <CalendarField value={dateStart} onValueChange={resetPageAnd(setDateStart)} placeholder={t('customers.filters.start_date_label', 'Start date')} />
-      <CalendarField value={dateEnd} onValueChange={resetPageAnd(setDateEnd)} min={dateStart || undefined} placeholder={t('customers.filters.end_date_label', 'End date')} />
-      {activeFilterCount > 0 ? (
-        <Button variant="ghost" onClick={() => { resetFilters(); setTablePage(1) }} leftIcon={<X size={15} />}>
-          {t('common.clear', 'Clear')}
-        </Button>
-      ) : null}
-    </div>
+      {/* On narrow screens the rail is hidden, so status is picked here */}
+      <div className="w-[180px] lg:hidden">
+        <SelectField
+          value={statusFilters[0] ?? ''}
+          values={statusFilters}
+          multiple
+          options={statusFilterOptions}
+          onValuesChange={resetPageAnd(setStatusFilters)}
+          placeholder={t('customers.filters.all_statuses', 'All statuses')}
+        />
+      </div>
+    </>
   )
 
+  const tokens = hasAnyFilter ? (
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] bg-[#FBFBFD] px-4 py-2">
+      <span className="mr-1 text-[11px] font-semibold tracking-[0.08em] text-[var(--caption)] uppercase">{t('customers.filters.active', 'Filters')}</span>
+      {selectedPeriod ? (
+        <FilterToken onRemove={() => { setSelectedPeriod(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{periodLabel}</FilterToken>
+      ) : null}
+      {dateStart || dateEnd ? (
+        <FilterToken onRemove={() => { setDateStart(''); setDateEnd(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>
+          {`${dateStart || '…'} – ${dateEnd || '…'}`}
+        </FilterToken>
+      ) : null}
+      {statusFilters.map((value) => {
+        const meta = allChipStatuses.find((option) => normalizeStatusKey(option.value) === normalizeStatusKey(value))
+        return (
+          <FilterToken key={value} color={meta?.color} onRemove={() => toggleStatus(value)} removeLabel={t('common.clear', 'Clear')}>
+            {meta?.label ?? value}
+          </FilterToken>
+        )
+      })}
+      {platformFilter ? (
+        <FilterToken onRemove={() => { setPlatformFilter(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{platformFilter}</FilterToken>
+      ) : null}
+      {search ? (
+        <FilterToken onRemove={() => { setSearch(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>“{search}”</FilterToken>
+      ) : null}
+      <button type="button" onClick={clearAll} className="ml-1 text-[12.5px] font-semibold text-[var(--primary)] hover:underline">
+        {t('customers.filters.clear_all', 'Clear all')}
+      </button>
+    </div>
+  ) : null
+
   return (
-    <section className="flex min-h-[var(--page-h)] flex-col gap-[18px]">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="ui-page-title text-[var(--foreground)]">{t('customers.list_page.title', 'Customers')}</h1>
-          <p className="text-sm text-[var(--muted)]">
-            {crmKind === 'outbound'
-              ? t('customers.list_page.subtitle_outbound', 'Every Outbound CRM lead — filter, sort and shape the table your way.')
-              : t('customers.list_page.subtitle', 'Every CRM customer — filter, sort and shape the table your way.')}
-          </p>
+    <section className="stagger-in flex flex-col gap-4 lg:h-[var(--page-h)] lg:min-h-[620px]">
+      {/* Header */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[12px] bg-[var(--surface-inverse)] text-white shadow-[0_10px_24px_-14px_rgba(14,21,37,0.8)]">
+            <UsersRound size={22} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-[26px] leading-8 font-bold tracking-[-0.025em] text-[var(--foreground)]">{t('customers.list_page.title', 'Customers')}</h1>
+            <p className="truncate text-[13px] text-[var(--muted)]">
+              {crmKind === 'outbound'
+                ? t('customers.list_page.subtitle_outbound', 'Every Outbound CRM lead — filter, sort and shape the table your way.')
+                : t('customers.list_page.subtitle', 'Every CRM customer — filter, sort and shape the table your way.')}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => void refreshAll()} leftIcon={<RefreshCw size={15} />}>
-            {t('customers.actions.refresh', 'Refresh')}
-          </Button>
-          {crmKind === 'outbound' ? (
-            <Button variant="secondary" onClick={() => navigate(`${routeBasePath}/statuses`)} leftIcon={<ListTodo size={15} />}>
-              {t('outbound_crm.actions.statuses', 'Statuses')}
-            </Button>
-          ) : null}
-          <Button variant="secondary" onClick={() => navigate(`${routeBasePath}/archived`)} leftIcon={<ArchiveIcon size={15} />}>
-            {t('customers.actions.archive', 'Archive')}
-          </Button>
-          <Button onClick={openCreateModal} leftIcon={<Plus size={16} />}>{t('customers.actions.add', 'Add customer')}</Button>
-        </div>
-      </div>
-
-      {/* Key numbers */}
-      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
-        <StatCard
-          solid
-          className="min-h-[132px]"
-          label={t('customers.list_page.total', 'Customers')}
-          value={baseCustomers.length}
-          icon={<UsersRound />}
-          hint={periodLabel}
-        />
-        <StatCard
-          className="min-h-[132px]"
-          label={t('customers.list_page.added_today', 'Added today')}
-          value={createdTodayCount}
-          icon={<UserPlus />}
-          iconTone="success"
-          hint={t('customers.list_page.added_today_hint', 'New leads since midnight')}
-          onOpen={() => { setSelectedPeriod('today'); setTablePage(1) }}
-          openLabel={t('customers.period.today', 'Today')}
-        />
-        <StatCard
-          className="min-h-[132px]"
-          label={t('customers.list_page.need_to_call', 'Waiting for a call')}
-          value={needToCallCount}
-          icon={<PhoneCall />}
-          iconTone="warning"
-          hint={t('customers.list_page.need_to_call_hint', 'Status: Need to call')}
-          onOpen={needToCallOption ? () => { setStatusFilters([needToCallOption.value]); setTablePage(1) } : undefined}
-          openLabel={needToCallOption?.label}
-        />
-        <StatCard
-          className="min-h-[132px]"
-          label={conversionQuery.data ? t('customers.stats.conversion', 'Conversion') : t('customers.list_page.shown', 'Shown')}
-          value={conversionQuery.data ? `${Number(conversionQuery.data.conversion_rate ?? 0).toFixed(1)}%` : displayedCustomers.length}
-          icon={conversionQuery.data ? <Percent /> : <Filter />}
-          iconTone="violet"
-          hint={conversionQuery.data
-            ? t('customers.list_page.conversion_hint', 'Projects started: {{count}}', { count: conversionQuery.data.project_started_count })
-            : t('customers.section.list.filters_badge', '{{count}} filters', { count: activeFilterCount })}
-        />
-      </div>
-
-      {/* Status pills — click to filter, several can be combined */}
-      {allChipStatuses.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('customers.filters.status_label', 'Status')}>
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => { setStatusFilters([]); setTablePage(1) }}
-            aria-pressed={statusFilters.length === 0}
-            className={cn(
-              'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors',
-              statusFilters.length === 0
-                ? 'border-transparent bg-[var(--surface-inverse)] text-white'
-                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]',
-            )}
+            onClick={() => void refreshAll()}
+            title={t('customers.actions.refresh', 'Refresh')}
+            aria-label={t('customers.actions.refresh', 'Refresh')}
+            className="grid h-10 w-10 place-items-center rounded-[10px] border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]"
           >
-            {t('customers.filters.all', 'All')}
-            <span className={cn('rounded-full px-1.5 text-[11.5px] tabular-nums', statusFilters.length === 0 ? 'bg-white/20' : 'bg-[var(--input-surface)] text-[var(--muted-strong)]')}>{baseCustomers.length}</span>
+            <RefreshCw size={16} className={cn(isRefreshing && 'animate-spin')} />
           </button>
-          {allChipStatuses.map((option) => {
-            const isActive = selectedStatusFilterSet.has(normalizeStatusKey(option.value))
-            const count = statusCounts.get(normalizeStatusKey(option.value)) ?? 0
-            return (
-              <button
-                key={option.value}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => {
-                  const key = normalizeStatusKey(option.value)
-                  setStatusFilters((prev) => (isActive ? prev.filter((s) => normalizeStatusKey(s) !== key) : [...prev, option.value]))
-                  setTablePage(1)
-                }}
-                className={cn(
-                  'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition-colors',
-                  isActive ? 'font-semibold' : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]',
-                  count === 0 && !isActive && 'opacity-60',
-                )}
-                style={isActive ? { backgroundColor: `${option.color}1F`, borderColor: `${option.color}66`, color: option.color } : undefined}
-              >
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />
-                {option.label}
-                <span className={cn('rounded-full px-1.5 text-[11.5px] tabular-nums', isActive ? 'bg-white/70' : 'bg-[var(--input-surface)] text-[var(--muted-strong)]')}>{count}</span>
-              </button>
-            )
-          })}
+          {crmKind === 'outbound' ? (
+            <button type="button" onClick={() => navigate(`${routeBasePath}/statuses`)} className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)]">
+              <ListTodo size={16} /> {t('outbound_crm.actions.statuses', 'Statuses')}
+            </button>
+          ) : null}
+          <button type="button" onClick={() => navigate(`${routeBasePath}/archived`)} className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)]">
+            <ArchiveIcon size={16} /> {t('customers.actions.archive', 'Archive')}
+          </button>
+          <button type="button" onClick={openCreateModal} className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[var(--primary)] px-4 text-[13.5px] font-semibold text-white shadow-[0_10px_22px_-12px_rgba(43,89,255,0.95)] transition hover:-translate-y-px hover:bg-[var(--primary-hover)]">
+            <Plus size={17} /> {t('customers.actions.add', 'Add customer')}
+          </button>
         </div>
-      ) : null}
+      </header>
 
-      <DataGrid
-        id={`${storageKey}-customers`}
-        className="h-[calc(100vh-96px)] min-h-[520px] scroll-mt-4"
-        eyebrow={[listTitle, periodLabel].filter(Boolean).join(' · ')}
-        title={
-          <span className="inline-flex items-center gap-2.5">
-            {t('customers.section.list.title', 'Customers')}
-            <span className="rounded-full bg-[var(--blue-dim)] px-2.5 py-0.5 text-[13px] font-semibold tabular-nums text-[var(--blue-text)]">{displayedCustomers.length}</span>
-          </span>
-        }
-        filters={filtersBar}
-        columns={gridColumns}
-        rows={displayedCustomers}
-        getRowKey={(row) => String(row.id)}
-        onRowClick={openCustomerDrawer}
-        loading={dashboardQuery.isLoading || (Boolean(selectedPeriod) && periodReportQuery.isLoading)}
-        page={tablePage}
-        onPageChange={setTablePage}
-        pageSize={pageSizeValue}
-        onPageSizeChange={(size) => setPageSize(String(size))}
-        emptyState={
-          <EmptyStateBlock
-            eyebrow={crmKind === 'outbound' ? t('outbound_crm.page.eyebrow', 'Outbound CRM workspace') : t('customers.page.eyebrow', 'CRM workspace')}
-            title={t('customers.table.empty_title', 'No customers found')}
-            description={t('customers.table.empty_description', 'The current filters returned no customer records.')}
+      {/* Key numbers — one strip; each cell is also a quick filter */}
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--card)] lg:grid-cols-4">
+        {metrics.map((metric, index) => {
+          const Cell = metric.onClick ? 'button' : 'div'
+          return (
+            <Cell
+              key={metric.key}
+              {...(metric.onClick ? { type: 'button' as const, onClick: metric.onClick, 'aria-pressed': metric.active } : {})}
+              className={cn(
+                'group relative flex items-center gap-3.5 px-5 py-4 text-left transition-colors',
+                index % 2 === 1 && 'border-l border-[var(--border)]',
+                index >= 2 && 'border-t border-[var(--border)] lg:border-t-0',
+                index === 2 && 'lg:border-l',
+                metric.onClick && 'hover:bg-[#F7F9FF]',
+                metric.active && 'bg-[#F5F8FF]',
+              )}
+            >
+              {metric.active ? <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[var(--primary)]" /> : null}
+              <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-[10px] transition-transform duration-300 group-hover:scale-105', metric.tone)}>{metric.icon}</span>
+              <span className="min-w-0">
+                <span className="block truncate text-[12.5px] font-medium text-[var(--muted)]">{metric.label}</span>
+                <span className="block text-[26px] leading-8 font-bold tracking-[-0.03em] text-[var(--foreground)] tabular-nums" data-ui-number="true">
+                  <CountUp value={metric.value} format={metric.format} />
+                </span>
+                <span className="block truncate text-[11.5px] text-[var(--caption)]">{metric.caption}</span>
+              </span>
+            </Cell>
+          )
+        })}
+      </div>
+
+      {/* Workspace: facets on the left, the table on the right; fills the rest of the screen */}
+      <div className="flex min-h-[560px] flex-1 overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--card)] shadow-[0_1px_2px_rgba(14,21,37,0.04),0_18px_40px_-30px_rgba(14,21,37,0.35)] lg:min-h-0">
+        <aside className="hidden w-[240px] shrink-0 flex-col gap-5 overflow-y-auto overscroll-contain border-r border-[var(--border)] bg-[#FAFBFC] p-2.5 lg:flex">
+          <FacetList
+            title={t('customers.filters.status_label', 'Status')}
+            allLabel={t('customers.filters.all', 'All')}
+            total={baseCustomers.length}
+            items={statusFacets}
+            isSelected={(value) => selectedStatusFilterSet.has(normalizeStatusKey(value))}
+            onToggle={toggleStatus}
+            onClear={() => { setStatusFilters([]); setTablePage(1) }}
+            anySelected={statusFilters.length > 0}
           />
-        }
-      />
+          {platformFacets.length > 0 ? (
+            <FacetList
+              title={t('customers.filters.platform_label', 'Platform')}
+              allLabel={t('customers.filters.all_platforms', 'All platforms')}
+              total={baseCustomers.length}
+              items={platformFacets}
+              isSelected={(value) => platformFilter === value}
+              onToggle={(value) => { setPlatformFilter((current) => (current === value ? '' : value)); setTablePage(1) }}
+              onClear={() => { setPlatformFilter(''); setTablePage(1) }}
+              anySelected={Boolean(platformFilter)}
+            />
+          ) : null}
+        </aside>
+
+        <DataGrid
+          id={`${storageKey}-customers`}
+          className="min-w-0 flex-1"
+          rowNumbers
+          toolbar={toolbar}
+          belowToolbar={tokens}
+          columns={gridColumns}
+          rows={displayedCustomers}
+          getRowKey={(row) => String(row.id)}
+          onRowClick={openCustomerDrawer}
+          loading={dashboardQuery.isLoading || (Boolean(selectedPeriod) && periodReportQuery.isLoading)}
+          page={tablePage}
+          onPageChange={setTablePage}
+          pageSize={pageSizeValue}
+          onPageSizeChange={(size) => setPageSize(String(size))}
+          emptyState={
+            <EmptyStateBlock
+              eyebrow={crmKind === 'outbound' ? t('outbound_crm.page.eyebrow', 'Outbound CRM workspace') : t('customers.page.eyebrow', 'CRM workspace')}
+              title={t('customers.table.empty_title', 'No customers found')}
+              description={t('customers.table.empty_description', 'The current filters returned no customer records.')}
+            />
+          }
+        />
+      </div>
 
       {modals}
     </section>

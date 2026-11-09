@@ -227,7 +227,7 @@ export function KanbanBoard({
     >
       {/* Horizontal + vertical scroll canvas — Trello-like */}
       <div className="h-full w-full overflow-x-auto overflow-y-auto horizontal-scrollbar-visible">
-        <div className="flex min-h-full items-start gap-[18px] p-[18px] sm:p-[22px]">
+        <div className="stagger-in flex min-h-full items-start gap-4 p-[18px] sm:p-[22px]">
           <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
             {localColumns.map((col) => (
               <div key={col.id} className="shrink-0 self-start">
@@ -250,7 +250,7 @@ export function KanbanBoard({
             <button
               type="button"
               onClick={onAddColumn}
-              className="flex min-h-11 w-[280px] shrink-0 items-center gap-2 self-start rounded-[18px] border border-dashed border-[var(--border-hover)] bg-[var(--muted-surface)] px-4 text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]"
+              className="flex h-11 w-[296px] shrink-0 items-center justify-center gap-2 self-start rounded-[12px] border border-dashed border-[var(--border-hover)] bg-transparent px-4 text-[13px] font-semibold text-[var(--muted)] transition-colors hover:border-[var(--primary)] hover:bg-[var(--blue-dim)] hover:text-[var(--primary)]"
             >
               <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M8 3v10M3 8h10" strokeLinecap="round" />
@@ -262,7 +262,7 @@ export function KanbanBoard({
       </div>
 
       {createPortal(
-        <DragOverlay dropAnimation={{ duration: 180, easing: 'ease' }}>
+        <DragOverlay dropAnimation={{ duration: 240, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }}>
           {activeDrag?.type === 'card' && (
             <KanbanCard
               card={activeDrag.card}

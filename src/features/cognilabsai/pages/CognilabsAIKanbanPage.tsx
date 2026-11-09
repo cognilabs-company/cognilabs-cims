@@ -125,10 +125,10 @@ function KanbanCard({ conv, onClick, highlighted }: { conv: ConversationItem; on
       type="button"
       onClick={onClick}
       className={cn(
-        'group w-full text-left rounded-[18px] p-3.5 transition-colors duration-150 active:scale-[0.99]',
+        'group w-full text-left rounded-[10px] border p-3.5 transition-[background-color,border-color,box-shadow] duration-200 active:scale-[0.99]',
         highlighted
-          ? 'bg-[var(--blue-dim)] ring-2 ring-[var(--primary)]'
-          : 'bg-[var(--accent-soft)] hover:bg-[var(--input-surface-hover)]',
+          ? 'border-[var(--primary)] bg-[var(--blue-dim)] ring-2 ring-[var(--primary)]/30'
+          : 'border-[var(--border)] bg-[var(--surface)] shadow-[0_1px_2px_rgba(14,21,37,0.04)] hover:border-[var(--border-hover)] hover:shadow-[0_12px_26px_-18px_rgba(14,21,37,0.5)]',
       )}
     >
       <div className="flex items-start gap-2.5 mb-2">
@@ -212,8 +212,8 @@ function KanbanColumn({
   highlightedConvId?: number | null
 }) {
   return (
-    <div className="flex flex-col w-[292px] shrink-0 rounded-[24px] bg-[var(--card)] p-3 overflow-hidden h-full">
-      <div className={cn('flex shrink-0 items-center justify-between gap-2 h-10 rounded-[14px] px-3', toneSurface[stage.tone])}>
+    <div className="flex flex-col w-[296px] shrink-0 rounded-[14px] border border-[var(--border)] bg-[#F6F7FA] p-2.5 overflow-hidden h-full">
+      <div className={cn('flex shrink-0 items-center justify-between gap-2 h-10 rounded-[8px] px-3', toneSurface[stage.tone])}>
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn('h-2 w-2 rounded-full shrink-0', toneDot[stage.tone])} />
           <h3 className={cn('text-[12.5px] font-semibold tracking-[-0.01em] truncate', toneText[stage.tone])}>
@@ -223,7 +223,7 @@ function KanbanColumn({
         <span
           data-ui-number="true"
           className={cn(
-            'shrink-0 inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[var(--surface)] px-1.5 text-[11.5px] font-bold',
+            'shrink-0 inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[6px] bg-[var(--surface)] px-1.5 font-mono text-[11px] font-bold',
             toneText[stage.tone],
           )}
         >
@@ -231,9 +231,9 @@ function KanbanColumn({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto mt-3 space-y-2.5 custom-scrollbar-visible min-h-0">
+      <div className="flex-1 overflow-y-auto overscroll-contain mt-2.5 space-y-2 custom-scrollbar-visible min-h-0">
         {cards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] py-10 text-center">
+          <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[var(--border-hover)] py-10 text-center">
             <span className="text-2xl text-[var(--border-hover)]">—</span>
             <p className="text-[11.5px] text-[var(--caption)] mt-1">Bo'sh</p>
           </div>
@@ -252,7 +252,7 @@ function KanbanBoardSkeleton() {
     <div className="flex-1 overflow-hidden pb-[18px]">
       <div className="flex gap-[18px] px-7 h-full">
         {[0, 1, 2, 3, 4].map((column) => (
-          <div key={column} className="flex flex-col w-[292px] shrink-0 rounded-[24px] bg-[var(--card)] p-3">
+          <div key={column} className="flex flex-col w-[296px] shrink-0 rounded-[14px] border border-[var(--border)] bg-[#F6F7FA] p-2.5">
             <Skeleton rounded="lg" className="h-10 w-full" />
             <div className="mt-3 space-y-2.5">
               {[0, 1, 2].map((row) => (
@@ -579,7 +579,7 @@ export function CognilabsAIKanbanPage() {
             }
           }}
         >
-          <div className="flex gap-[18px] px-7 h-full" style={{ width: 'max-content' }}>
+          <div className="stagger-in flex gap-4 px-7 h-full" style={{ width: 'max-content' }}>
             {orderedStages.map((stage) => (
               <KanbanColumn
                 key={stage.key}
