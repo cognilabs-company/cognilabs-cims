@@ -80,7 +80,7 @@ const MIN_WIDTH = 64
 const CHECK_WIDTH = 42
 const NUMBER_WIDTH = 46
 const STAR_WIDTH = 38
-const PAGE_SIZES = [10, 20, 50, 75, 100]
+const PAGE_SIZES = [20, 50, 110, 200]
 
 const densityRow: Record<GridDensity, string> = {
   comfortable: 'h-[50px] text-[13.5px]',
@@ -197,6 +197,8 @@ export function DataGrid<T>({
   const headerRefs = useRef(new Map<string, HTMLTableCellElement>())
   // True while a column edge is being dragged, so the header itself does not start a drag-to-move.
   const resizingRef = useRef(false)
+  const scrollBoxRef = useRef<HTMLDivElement>(null)
+  const headRef = useRef<HTMLTableSectionElement>(null)
 
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(state)) } catch { /* private mode */ }
@@ -204,6 +206,35 @@ export function DataGrid<T>({
   useEffect(() => {
     try { window.localStorage.setItem(`${STORAGE_PREFIX}${id}:fav`, JSON.stringify(favoriteKeys)) } catch { /* private mode */ }
   }, [favoriteKeys, id])
+
+  // The table grows with its rows and the page scrolls; keep the header row visible by
+  // shifting it down while the table passes under the top of the scrolling area.
+  useEffect(() => {
+    const box = scrollBoxRef.current
+    const head = headRef.current
+    if (!box || !head) return
+    let scroller: HTMLElement | null = box.parentElement
+    while (scroller && !/(auto|scroll)/.test(window.getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement
+    const target: HTMLElement | Window = scroller ?? window
+    let frame = 0
+    const place = () => {
+      frame = 0
+      const top = scroller ? scroller.getBoundingClientRect().top : 0
+      const rect = box.getBoundingClientRect()
+      const shift = Math.max(0, Math.min(top - rect.top, rect.height - head.offsetHeight * 2))
+      head.style.transform = shift > 0 ? `translateY(${shift}px)` : ''
+      head.classList.toggle('grid-head-floating', shift > 0)
+    }
+    const onScroll = () => { if (!frame) frame = window.requestAnimationFrame(place) }
+    target.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    place()
+    return () => {
+      target.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      window.cancelAnimationFrame(frame)
+    }
+  })
 
   const columnMap = useMemo(() => new Map(columns.map((column) => [column.key, column])), [columns])
   const widthOf = useCallback((key: string) => state.widths[key] ?? columnMap.get(key)?.width ?? DEFAULT_WIDTH, [columnMap, state.widths])
@@ -390,7 +421,7 @@ export function DataGrid<T>({
   const offsets = { check: 0, number: selectable ? CHECK_WIDTH : 0, star: (selectable ? CHECK_WIDTH : 0) + (rowNumbers ? NUMBER_WIDTH : 0) }
 
   return (
-    <section className={cn('flex min-h-0 flex-col overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--card)] shadow-[0_1px_2px_rgba(14,21,37,0.04),0_10px_30px_-24px_rgba(14,21,37,0.3)]', className)}>
+    <section className={cn('flex min-h-0 flex-col rounded-[14px] border border-[var(--border)] bg-[var(--card)] shadow-[0_1px_2px_rgba(14,21,37,0.04),0_10px_30px_-24px_rgba(14,21,37,0.3)]', className)}>
       {/* ── Toolbar ─────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-3 py-2.5">
         {toolbarStart}
@@ -477,7 +508,7 @@ export function DataGrid<T>({
                   ))}
                 </div>
                 <p className="px-2 pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--caption)] uppercase">{t('grid.columns', 'Columns')}</p>
-                <ul className="max-h-[300px] overflow-y-auto overscroll-contain">
+                <ul className="no-scrollbar max-h-[300px] overflow-y-auto overscroll-contain">
                   {state.order.filter((key) => columnMap.has(key)).map((key, index, list) => {
                     const column = columnMap.get(key)!
                     const visible = !state.hidden.includes(key)
@@ -511,7 +542,7 @@ export function DataGrid<T>({
       {belowToolbar}
 
       {/* ── Table ──────────────────────────────────────── */}
-      <div className="relative min-h-0 flex-1 overflow-auto overscroll-contain">
+      <div ref={scrollBoxRef} className="no-scrollbar relative overflow-x-auto overflow-y-hidden">
         <table ref={tableRef} className="border-separate border-spacing-0 text-left" style={{ tableLayout: 'fixed', width: tableWidth, minWidth: '100%' }}>
           <colgroup>
             {selectable ? <col style={{ width: CHECK_WIDTH }} /> : null}
@@ -519,7 +550,7 @@ export function DataGrid<T>({
             {favorites ? <col style={{ width: STAR_WIDTH }} /> : null}
             {visibleKeys.map((key) => <col key={key} style={{ width: resizing?.key === key ? resizing.width : widthOf(key) }} />)}
           </colgroup>
-          <thead>
+          <thead ref={headRef} className="relative z-10">
             <tr>
               {selectable ? (
                 <th scope="col" style={{ ...stickyLead(offsets.check, 5), top: 0 }} className="h-10 border-r border-b border-[var(--border)] bg-[var(--surface)] px-0">

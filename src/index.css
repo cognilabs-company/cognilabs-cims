@@ -916,8 +916,9 @@ input:-webkit-autofill:focus {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Phone UI theme: follows the system unless the Calls page switch picks light or dark. */
 @media (prefers-color-scheme: dark) {
-  .mac-phone {
+  .mac-phone:not([data-phone-theme="light"]) {
     --mp-window: #1e1e1e;
     --mp-toolbar: #262626;
     --mp-text: #f5f5f7;
@@ -954,6 +955,43 @@ input:-webkit-autofill:focus {
     --mp-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.6), 0 24px 70px -18px rgba(0, 0, 0, 0.7);
     color-scheme: dark;
   }
+}
+.mac-phone[data-phone-theme="dark"] {
+  --mp-window: #1e1e1e;
+  --mp-toolbar: #262626;
+  --mp-text: #f5f5f7;
+  --mp-secondary: rgba(235, 235, 245, 0.6);
+  --mp-tertiary: rgba(235, 235, 245, 0.32);
+  --mp-separator: rgba(84, 84, 88, 0.5);
+  --mp-hover: rgba(255, 255, 255, 0.04);
+  --mp-selected: rgba(255, 255, 255, 0.09);
+  --mp-control: rgba(118, 118, 128, 0.26);
+  --mp-control-hover: rgba(118, 118, 128, 0.38);
+  --mp-menu: rgba(40, 40, 40, 0.92);
+  --mp-menu-border: rgba(255, 255, 255, 0.12);
+  --mp-blue: #0a84ff;
+  --mp-red: #ff453a;
+  --mp-green: #30d158;
+  --mp-orange: #ff9f0a;
+  --mp-purple: #bf9cff;
+  --mp-avatar: linear-gradient(180deg, #6e6e76 0%, #4b4b52 100%);
+  --mp-glass: rgba(255, 255, 255, 0.08);
+  --mp-glass-strong: rgba(255, 255, 255, 0.14);
+  --mp-glass-text: #f5f5f7;
+  --mp-glass-secondary: rgba(245, 245, 247, 0.62);
+  --mp-glass-line: rgba(255, 255, 255, 0.1);
+  --mp-group: rgba(255, 255, 255, 0.05);
+  --mp-segment: #636366;
+  --mp-dialer: linear-gradient(180deg, #2c2c30 0%, #1c1c1e 100%);
+  --mp-key-bg: rgba(118, 118, 128, 0.3);
+  --mp-hero-avatar: rgba(255, 255, 255, 0.1);
+  --mp-hero: linear-gradient(180deg,
+    hsl(var(--mp-hue, 220) 10% 62%) 0%,
+    hsl(calc(var(--mp-hue, 220) + 30) 22% 42%) 38%,
+    hsl(calc(var(--mp-hue, 220) + 45) 42% 27%) 70%,
+    hsl(calc(var(--mp-hue, 220) + 50) 48% 20%) 100%);
+  --mp-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.6), 0 24px 70px -18px rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
 }
 
 .mac-phone-scroll { scrollbar-width: thin; scrollbar-color: var(--mp-tertiary) transparent; }
@@ -1025,3 +1063,47 @@ input:-webkit-autofill:focus {
 .sidebar-scroll::-webkit-scrollbar { width: 6px; }
 .sidebar-scroll::-webkit-scrollbar-thumb { background: #DADDE5; border-radius: 6px; }
 .sidebar-scroll:hover::-webkit-scrollbar-thumb { background: #B9BECB; }
+
+/* Scrolls normally, but the bar itself is never shown. */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* DataGrid header while it floats over a long table */
+.grid-head-floating th { box-shadow: 0 1px 0 var(--border), 0 10px 18px -14px rgba(14, 21, 37, 0.45); }
+
+/* ──────────────────────────────────────────────────────────────
+   Call island — drops from the top centre like the MacBook notch.
+   clip-path grows it from a notch-sized pill to the full card.
+   ────────────────────────────────────────────────────────────── */
+.call-island {
+  clip-path: inset(0 0 0 0 round 0 0 30px 30px);
+  animation: island-open 620ms cubic-bezier(0.32, 1.12, 0.4, 1) backwards;
+}
+.call-island-closing { animation: island-close 380ms cubic-bezier(0.55, 0, 0.75, 0.25) forwards; }
+.call-island-content { animation: island-content 420ms 180ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.call-island-ears { animation: island-content 300ms 220ms ease-out backwards; }
+@keyframes island-open {
+  0%   { clip-path: inset(0 calc(50% - 92px) calc(100% - 34px) calc(50% - 92px) round 0 0 18px 18px); }
+  100% { clip-path: inset(0 0 0 0 round 0 0 30px 30px); }
+}
+@keyframes island-close {
+  0%   { clip-path: inset(0 0 0 0 round 0 0 30px 30px); opacity: 1; }
+  100% { clip-path: inset(0 calc(50% - 92px) calc(100% - 34px) calc(50% - 92px) round 0 0 18px 18px); opacity: 0; }
+}
+@keyframes island-content {
+  0%   { opacity: 0; transform: translateY(-6px) scale(0.98); filter: blur(4px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes island-wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50%      { transform: scaleY(1); }
+}
+.call-wave > span { transform-origin: center; animation: island-wave 1s ease-in-out infinite; }
+@keyframes island-halo {
+  0%   { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.55); }
+  100% { box-shadow: 0 0 0 16px rgba(48, 209, 88, 0); }
+}
+.call-halo { animation: island-halo 1.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .call-island, .call-island-closing, .call-island-content, .call-island-ears, .call-wave > span, .call-halo { animation: none !important; }
+}

@@ -25,7 +25,7 @@ import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../sh
 import { crmService as baseCrmService } from '../../../shared/api/services/crm.service'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
-import { CopyButton, FilterPanel, FilterToken, FlagTag, StatusPill } from '../components/CustomerFilters'
+import { CopyButton, FilterPanel, FilterToken, FlagTag, StatusSelect } from '../components/CustomerFilters'
 import { platformVisual } from '../lib/platformIcon'
 import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { statusIconFor } from '../lib/statusIcon'
@@ -497,7 +497,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const [platformFilter, setPlatformFilter] = useState(() => initialReturnState?.platformFilter ?? '')
   const [dateStart, setDateStart] = useState(() => initialReturnState?.dateStart ?? '')
   const [dateEnd, setDateEnd] = useState(() => initialReturnState?.dateEnd ?? '')
-  const [pageSize, setPageSize] = useState(() => initialReturnState?.pageSize ?? '75')
+  const [pageSize, setPageSize] = useState(() => initialReturnState?.pageSize ?? '110')
   const [selectedPeriod, setSelectedPeriod] = useState<'' | 'today' | '3d' | '7d' | '30d' | '90d'>(() => {
     const fromUrl = searchParams.get('period')
     if (fromUrl && (periodKeys as readonly string[]).includes(fromUrl)) return fromUrl as (typeof periodKeys)[number]
@@ -523,7 +523,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     platformFilter: '',
     dateStart: '',
     dateEnd: '',
-    pageSize: '75',
+    pageSize: '110',
     selectedPeriod: '',
     tablePage: 1,
   })
@@ -551,7 +551,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [view])
 
-  const pageSizeValue = Number(pageSize) || 75
+  const pageSizeValue = Number(pageSize) || 110
   const shouldRestoreReturnState = Boolean(initialReturnState?.customerId)
 
   useLayoutEffect(() => {
@@ -590,7 +590,11 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const baseCustomers = selectedPeriod && periodCustomers
     ? periodCustomers
     : (dashboardQuery.data?.customers ?? emptyCustomers)
-  const statusOptions = statusesQuery.data ?? emptyStatuses
+  const localizeStatus = (value: string, fallback: string) => t(`crm.status_label.${normalizeStatusKey(value)}`, fallback)
+  const statusOptions = useMemo(
+    () => (statusesQuery.data ?? emptyStatuses).map((option) => ({ ...option, label: t(`crm.status_label.${normalizeStatusKey(option.value)}`, option.label) })),
+    [statusesQuery.data, t],
+  )
 
   const statusMetaMap = useMemo(() => buildNormalizedStatusMetaMap(statusOptions), [statusOptions])
 
@@ -734,17 +738,17 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     // 2. All status_choices from dashboard response — includes newly added statuses
     for (const choice of (dashboardQuery.data?.status_choices ?? [])) {
       const meta = statusMetaMap.get(normalizeStatusKey(choice.value))
-      add(choice.value, choice.label, meta?.color ?? '#8A90A2')
+      add(choice.value, t(`crm.status_label.${normalizeStatusKey(choice.value)}`, choice.label), meta?.color ?? '#8A90A2')
     }
 
     // 3. Actual customer statuses as final fallback
     for (const c of baseCustomers) {
       const meta = statusMetaMap.get(normalizeStatusKey(c.status))
-      add(c.status, meta?.label ?? c.status, meta?.color ?? '#8A90A2')
+      add(c.status, meta?.label ?? t(`crm.status_label.${normalizeStatusKey(c.status)}`, c.status), meta?.color ?? '#8A90A2')
     }
 
     return result
-  }, [statusOptions, dashboardQuery.data?.status_choices, baseCustomers, statusMetaMap])
+  }, [statusOptions, dashboardQuery.data?.status_choices, baseCustomers, statusMetaMap, t])
 
 
   const displayedCustomers = useMemo(() => {
@@ -970,6 +974,43 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     }
   }
 
+  const [savingStatusId, setSavingStatusId] = useState<number | null>(null)
+
+  async function handleInlineStatusChange(customer: CustomerSummary, nextStatus: string) {
+    const previous = customer
+    const formData = new FormData()
+    formData.append('status', nextStatus)
+    formData.append('customer_status', nextStatus)
+    setSavingStatusId(customer.id)
+    syncCustomerInUi({ ...customer, status: nextStatus })
+    try {
+      await crmService.patchCustomer(customer.id, formData)
+      showToast({
+        title: t('customers.toast.status_changed', 'Status changed'),
+        description: t('customers.toast.status_changed_description', '{{name}} → {{status}}', {
+          name: getCustomerDisplayName(customer),
+          status: t(`crm.status_label.${normalizeStatusKey(nextStatus)}`, nextStatus),
+        }),
+        tone: 'success',
+      })
+      void Promise.allSettled([
+        summaryQuery.refetch(),
+        statusSummaryQuery.refetch(),
+        ...(selectedPeriod ? [periodReportQuery.refetch()] : []),
+        ...(selectedStatusFilterValues.length > 0 ? [selectedStatusCustomersQuery.refetch()] : []),
+      ])
+    } catch (error) {
+      syncCustomerInUi(previous)
+      showToast({
+        title: t('customers.errors.status_change_failed', 'Could not change the status'),
+        description: getCustomerActionErrorMessage(error, t),
+        tone: 'error',
+      })
+    } finally {
+      setSavingStatusId(null)
+    }
+  }
+
   async function handleSubmitCustomer() {
     if (
       !formValues.full_name.trim() ||
@@ -1171,8 +1212,9 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   /* ── Customers page: title + search, metric cards, then the CRM table ── */
   const statusMetaFor = (value: string) => {
     const meta = statusMetaMap.get(normalizeStatusKey(value))
-    return { label: meta?.label ?? value, color: meta?.color ?? '#8A90A2', icon: statusIconFor(value) }
+    return { label: meta?.label ?? localizeStatus(value, value), color: meta?.color ?? '#8A90A2', icon: statusIconFor(value) }
   }
+  const statusChoices = allChipStatuses.map((option) => ({ value: option.value, label: option.label, color: option.color, icon: statusIconFor(option.value) }))
 
   const gridColumns: GridColumn<CustomerSummary>[] = [
     {
@@ -1228,12 +1270,23 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     {
       key: 'status',
       header: t('customers.table.status', 'Status'),
-      width: 190,
+      width: 210,
       sortValue: (row) => row.status,
       exportValue: (row) => statusMetaFor(row.status).label,
       render: (row) => {
         const meta = statusMetaFor(row.status)
-        return <StatusPill label={meta.label} color={meta.color} icon={meta.icon} />
+        return (
+          <StatusSelect
+            current={row.status}
+            label={meta.label}
+            color={meta.color}
+            icon={meta.icon}
+            options={statusChoices}
+            saving={savingStatusId === row.id}
+            title={t('customers.table.change_status', 'Change status')}
+            onChange={(next) => void handleInlineStatusChange(row, next)}
+          />
+        )
       },
     },
     {
@@ -1430,7 +1483,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   ) : null
 
   return (
-    <section className="stagger-in flex flex-col gap-4 lg:h-[var(--page-h)] lg:min-h-[640px]">
+    <section className="stagger-in flex flex-col gap-4">
       {/* Title row: name + count on the left, search and archive on the right */}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -1507,9 +1560,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
 
       <DataGrid
         id={`${storageKey}-customers`}
-        className="min-h-[560px] flex-1 lg:min-h-0"
         rowNumbers
-        selectable
         favorites
         exportName={crmKind === 'outbound' ? 'outbound-leads' : 'customers'}
         toolbarStart={(

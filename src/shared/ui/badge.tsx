@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react'
-import { translateCurrentLiteral } from '../i18n/translations'
+import { translateCurrent, translateCurrentLiteral } from '../i18n/translations'
 import { cn } from '../lib/cn'
 
 type BadgeVariant =
@@ -142,7 +142,7 @@ export function StatusBadge({
 
   return (
     <Badge variant={variant} dot className={className}>
-      {status}
+      {translateCurrent(`crm.status_label.${status.toLowerCase().replace(/[^a-z0-9]/g, '')}`, status.replace(/_/g, ' '))}
     </Badge>
   )
 }

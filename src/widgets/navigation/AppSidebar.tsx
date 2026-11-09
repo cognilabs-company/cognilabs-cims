@@ -451,7 +451,7 @@ export function AppSidebar() {
           </div>
 
           {/* Navigation */}
-          <nav aria-label={t('shell.menu')} className="sidebar-scroll -mx-1 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1">
+          <nav aria-label={t('shell.menu')} className="no-scrollbar -mx-1 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1">
             {isOutboundCrmRoute ? (
               <div className="flex flex-col gap-0.5">
                 <p className={sidebarSectionLabel}>Outbound CRM</p>

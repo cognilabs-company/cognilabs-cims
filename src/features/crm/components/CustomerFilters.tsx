@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Check, ChevronDown, Copy, SlidersHorizontal, X, type LucideIcon } from 'lucide-react'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { Check, ChevronDown, Copy, Loader2, SlidersHorizontal, X, type LucideIcon } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn'
 import { gridButton, gridPanel } from '../../../shared/ui/data-grid-styles'
 
@@ -230,5 +231,103 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
     >
       {copied ? <Check size={13} strokeWidth={2.6} /> : <Copy size={13} />}
     </button>
+  )
+}
+
+/** The status pill in a table cell; click it to pick another status right there. */
+export function StatusSelect({ current, label, color, icon, options, onChange, saving, title }: {
+  current: string
+  label: string
+  color: string
+  icon: LucideIcon
+  options: FilterOption[]
+  onChange: (value: string) => void
+  saving?: boolean
+  title: string
+}) {
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const open = position !== null
+  const currentKey = current.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  useEffect(() => {
+    if (!open) return
+    const inside = (target: EventTarget | null) => Boolean(target instanceof Node && (menuRef.current?.contains(target) || buttonRef.current?.contains(target)))
+    const onPointer = (event: PointerEvent) => { if (!inside(event.target)) setPosition(null) }
+    const onScroll = (event: Event) => { if (!inside(event.target)) setPosition(null) }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setPosition(null) }
+    document.addEventListener('pointerdown', onPointer)
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  function toggle(event: ReactMouseEvent) {
+    event.stopPropagation()
+    if (open || saving) { setPosition(null); return }
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const height = Math.min(options.length * 36 + 12, 380)
+    const below = window.innerHeight - rect.bottom > height + 12
+    setPosition({ top: below ? rect.bottom + 4 : Math.max(8, rect.top - height - 4), left: Math.min(rect.left, window.innerWidth - 256) })
+  }
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={toggle}
+        title={title}
+        aria-label={`${title}: ${label}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="group/status inline-flex max-w-full items-center gap-1 rounded-[7px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30"
+      >
+        <StatusPill label={label} color={color} icon={icon} />
+        {saving
+          ? <Loader2 size={13} className="shrink-0 animate-spin text-[var(--muted)]" />
+          : <ChevronDown size={13} className={cn('shrink-0 text-[var(--muted)] transition-all duration-200', open ? 'rotate-180 opacity-100' : 'opacity-0 group-hover/row:opacity-70')} />}
+      </button>
+      {open && position ? createPortal(
+        <div
+          ref={menuRef}
+          role="listbox"
+          aria-label={title}
+          onClick={(event) => event.stopPropagation()}
+          className="modal-pop no-scrollbar fixed z-[200] max-h-[380px] w-[248px] overflow-y-auto rounded-[12px] border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[0_20px_44px_-20px_rgba(14,21,37,0.4),0_2px_6px_rgba(14,21,37,0.06)]"
+          style={{ top: position.top, left: position.left }}
+        >
+          {options.map((option) => {
+            const selected = option.value.toLowerCase().replace(/[^a-z0-9]/g, '') === currentKey
+            const OptionIcon = option.icon
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => { setPosition(null); if (!selected) onChange(option.value) }}
+                className={cn('flex w-full items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-left text-[13px] transition-colors', selected ? 'bg-[var(--blue-dim)] font-semibold text-[var(--foreground)]' : 'text-[var(--muted-strong)] hover:bg-[var(--muted-surface)] hover:text-[var(--foreground)]')}
+              >
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px]" style={{ background: `${option.color ?? '#8A90A2'}1A`, color: option.color ?? '#8A90A2' }}>
+                  {OptionIcon ? <OptionIcon size={13} strokeWidth={2.2} /> : null}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                {selected ? <Check size={14} className="text-[var(--primary)]" /> : null}
+              </button>
+            )
+          })}
+        </div>,
+        document.body,
+      ) : null}
+    </>
   )
 }
