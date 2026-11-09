@@ -1,0 +1,3 @@
+/* Shared class names for the DataGrid toolbar and the filter controls placed in it. */
+export const gridButton = 'inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[12.5px] font-semibold text-[var(--foreground)] shadow-[0_1px_1px_rgba(14,21,37,0.03)] transition-[background-color,border-color,transform] duration-150 hover:border-[var(--border-hover)] hover:bg-[var(--muted-surface)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/25'
+export const gridPanel = 'modal-pop absolute top-[calc(100%+6px)] z-40 rounded-[12px] border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[0_20px_44px_-20px_rgba(14,21,37,0.35),0_2px_6px_rgba(14,21,37,0.05)]'

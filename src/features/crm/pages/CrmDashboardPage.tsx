@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlarmClock, Archive as ArchiveIcon, ArrowRight, CircleDashed, Filter, Globe, Layers, ListTodo, NotebookPen, Pencil, Percent, PhoneCall, Plus, RefreshCw, Search, Trash2, UserPlus, UsersRound, X } from 'lucide-react'
+import { AlarmClock, Archive as ArchiveIcon, ArrowRight, Bot, CircleDashed, Filter, ListTodo, NotebookPen, Pencil, Percent, PhoneCall, Plus, RefreshCw, Search, Trash2, UserPlus, UsersRound, X, type LucideIcon } from 'lucide-react'
 import { env } from '../../../shared/config/env'
 import type { CustomerSummary, DynamicStatusOption } from '../../../shared/api/types'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -25,7 +25,9 @@ import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../sh
 import { crmService as baseCrmService } from '../../../shared/api/services/crm.service'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
-import { FilterMenu, FilterToken, PeriodPicker } from '../components/CustomerFilters'
+import { CopyButton, FilterPanel, FilterToken, FlagTag, StatusPill } from '../components/CustomerFilters'
+import { platformVisual } from '../lib/platformIcon'
+import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { statusIconFor } from '../lib/statusIcon'
 import { CountUp } from '../../../shared/ui/count-up'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
@@ -1072,14 +1074,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     { value: '30d', label: t('customers.period.last_30_days', 'Last 30 days') },
     { value: '90d', label: t('customers.period.last_90_days', 'Last 90 days') },
   ]
-  const activeFilterCount = [
-    search,
-    statusFilters.length > 0 ? 1 : 0,
-    platformFilter,
-    dateStart,
-    dateEnd,
-  ].filter((value) => Boolean(value)).length
-
   const listTitle = crmKind === 'outbound' ? t('outbound_crm.page.title', 'Outbound CRM') : t('customers.page.title', 'CRM dashboard')
   const periodLabel = periodOptions.find((option) => option.value === selectedPeriod)?.label ?? ''
   const todayKey = new Date().toDateString()
@@ -1174,23 +1168,106 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     )
   }
 
-  /* ── Customers page: header, number strip, facet rail + customisable table ── */
+  /* ── Customers page: title + search, metric cards, then the CRM table ── */
+  const statusMetaFor = (value: string) => {
+    const meta = statusMetaMap.get(normalizeStatusKey(value))
+    return { label: meta?.label ?? value, color: meta?.color ?? '#8A90A2', icon: statusIconFor(value) }
+  }
+
   const gridColumns: GridColumn<CustomerSummary>[] = [
     {
       key: 'name',
       header: t('customers.table.client', 'Customer'),
-      width: 220,
+      width: 230,
       hideable: false,
       sortValue: (row) => getCustomerDisplayName(row),
       render: (row) => {
         const name = getCustomerDisplayName(row)
         return (
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className={cn('grid h-7 w-7 shrink-0 place-items-center text-[11px] font-bold', avatarTone(name))}>{initialsFor(name)}</span>
+            <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-bold ring-2 ring-white', avatarTone(name))}>{initialsFor(name)}</span>
             <span className="truncate font-semibold text-[var(--foreground)] transition-colors group-hover/row:text-[var(--primary)]">{name}</span>
           </span>
         )
       },
+    },
+    {
+      key: 'phone',
+      header: t('customers.table.phone', 'Phone'),
+      width: 180,
+      sortValue: (row) => row.phone_number ?? row.phone ?? '',
+      render: (row) => {
+        const phone = row.phone_number ?? row.phone ?? ''
+        return phone ? (
+          <span className="flex items-center gap-1">
+            <span className="tabular-nums text-[var(--foreground)]">{phone}</span>
+            <CopyButton value={phone} label={t('customers.table.copy_phone', 'Copy phone')} />
+          </span>
+        ) : '—'
+      },
+    },
+    {
+      key: 'platform',
+      header: t('customers.table.platform', 'Platform'),
+      width: 150,
+      sortValue: (row) => getCustomerDisplayPlatform(row) ?? '',
+      render: (row) => {
+        const platform = getCustomerDisplayPlatform(row)
+        if (!platform) return '—'
+        const { icon: Icon, color } = platformVisual(platform)
+        return (
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-white shadow-[0_2px_6px_-2px_rgba(14,21,37,0.4)]" style={{ background: color }}>
+              <Icon size={13} strokeWidth={2.2} />
+            </span>
+            <span className="truncate">{platform}</span>
+          </span>
+        )
+      },
+    },
+    {
+      key: 'status',
+      header: t('customers.table.status', 'Status'),
+      width: 190,
+      sortValue: (row) => row.status,
+      exportValue: (row) => statusMetaFor(row.status).label,
+      render: (row) => {
+        const meta = statusMetaFor(row.status)
+        return <StatusPill label={meta.label} color={meta.color} icon={meta.icon} />
+      },
+    },
+    {
+      key: 'flags',
+      header: t('customers.table.flags', 'Flags'),
+      width: 200,
+      exportValue: (row) => [
+        row.lead_response_metrics?.is_late_response ? t('customers.table.late', 'Late') : null,
+        row.lead_response_metrics && !row.lead_response_metrics.status_changed ? t('customers.table.not_contacted', 'Not contacted') : null,
+        row.lead_response_metrics?.status_changed_without_note ? t('customers.table.no_note', 'No note') : null,
+      ].filter(Boolean).join(', '),
+      render: (row) => {
+        const metrics = row.lead_response_metrics
+        const late = metrics?.is_late_response
+        const notContacted = metrics && !metrics.status_changed
+        const noNote = metrics?.status_changed_without_note
+        if (!late && !notContacted && !noNote) return <span className="text-[var(--caption)]">—</span>
+        return (
+          <span className="flex items-center gap-1">
+            {late ? <FlagTag tone="danger" icon={AlarmClock}>{`${t('customers.table.late', 'Late')} ${metrics?.late_human ?? ''}`.trim()}</FlagTag> : null}
+            {!late && notContacted ? <FlagTag tone="warning" icon={CircleDashed}>{t('customers.table.not_contacted', 'Not contacted')}</FlagTag> : null}
+            {noNote ? <FlagTag tone="neutral" icon={NotebookPen}>{t('customers.table.no_note', 'No note')}</FlagTag> : null}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'assistant',
+      header: t('customers.table.assistant', 'Assistant'),
+      width: 150,
+      sortValue: (row) => row.assistant_name ?? '',
+      render: (row) => row.assistant_name
+        ? <span className="inline-flex items-center gap-1.5"><Bot size={14} className="text-[var(--violet-text)]" />{row.assistant_name}</span>
+        : <span className="text-[var(--caption)]">—</span>,
     },
     {
       key: 'username',
@@ -1201,62 +1278,12 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       render: (row) => formatUsernameHandle(row.username) || '—',
     },
     {
-      key: 'phone',
-      header: t('customers.table.phone', 'Phone'),
-      width: 160,
-      sortValue: (row) => row.phone_number ?? row.phone ?? '',
-      render: (row) => <span className="tabular-nums">{row.phone_number ?? row.phone ?? '—'}</span>,
-    },
-    {
-      key: 'platform',
-      header: t('customers.table.platform', 'Platform'),
-      width: 130,
-      sortValue: (row) => getCustomerDisplayPlatform(row) ?? '',
-      render: (row) => getCustomerDisplayPlatform(row) || '—',
-    },
-    {
-      key: 'status',
-      header: t('customers.table.status', 'Status'),
-      width: 132,
-      sortValue: (row) => row.status,
-      render: (row) => {
-        const meta = statusMetaMap.get(normalizeStatusKey(row.status))
-        const color = meta?.color ?? '#8A90A2'
-        const label = meta?.label ?? row.status
-        const Icon = statusIconFor(row.status)
-        const metrics = row.lead_response_metrics
-        const lateLabel = `${t('customers.table.late', 'Late')} ${metrics?.late_human ?? ''}`.trim()
-        return (
-          <span className="flex items-center gap-1">
-            <span role="img" aria-label={label} title={label} className="grid h-7 w-7 place-items-center" style={{ background: `${color}1A`, color }}>
-              <Icon size={15} strokeWidth={2.1} />
-            </span>
-            {metrics?.is_late_response ? (
-              <span role="img" aria-label={lateLabel} title={lateLabel} className="grid h-7 w-7 place-items-center bg-[var(--danger-dim)] text-[var(--danger-text)]"><AlarmClock size={14} strokeWidth={2.1} /></span>
-            ) : metrics && !metrics.status_changed ? (
-              <span role="img" aria-label={t('customers.table.not_contacted', 'Not contacted')} title={t('customers.table.not_contacted', 'Not contacted')} className="grid h-7 w-7 place-items-center bg-[var(--warning-dim)] text-[var(--warning-text)]"><CircleDashed size={14} strokeWidth={2.1} /></span>
-            ) : null}
-            {metrics?.status_changed_without_note ? (
-              <span role="img" aria-label={t('customers.table.no_note', 'No note')} title={t('customers.table.no_note', 'No note')} className="grid h-7 w-7 place-items-center bg-[var(--warning-dim)] text-[var(--warning-text)]"><NotebookPen size={14} strokeWidth={2.1} /></span>
-            ) : null}
-          </span>
-        )
-      },
-    },
-    {
-      key: 'assistant',
-      header: t('customers.table.assistant', 'Assistant'),
-      width: 150,
-      sortValue: (row) => row.assistant_name ?? '',
-      render: (row) => row.assistant_name || '—',
-    },
-    {
       key: 'audio',
       header: t('customers.table.audio', 'Audio'),
       width: 150,
       render: (row) => {
         const audioSource = resolveAudioUrl(row, apiBasePath)
-        if (!audioSource) return '—'
+        if (!audioSource) return <span className="text-[var(--caption)]">—</span>
         return (
           <span onClick={(event) => event.stopPropagation()}>
             <TableAudioControl src={audioSource} customerName={getCustomerDisplayName(row)} onOpenPlayer={(src, name) => setAudioModal({ src, name })} />
@@ -1267,7 +1294,8 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     {
       key: 'notes',
       header: t('customers.table.notes', 'Notes'),
-      width: 260,
+      width: 240,
+      exportValue: (row) => row.notes ?? '',
       render: (row) => (
         <span className="text-[var(--muted-strong)]" title={row.notes ?? undefined}>{row.notes?.trim() ? summarizeCustomerNotes(row.notes, 8) : '—'}</span>
       ),
@@ -1282,39 +1310,39 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     {
       key: 'created',
       header: t('customers.table.created', 'Created'),
-      width: 160,
+      width: 150,
       sortValue: (row) => row.created_at ?? '',
       render: (row) => <span className="tabular-nums text-[var(--muted-strong)]">{formatDateTime(row.created_at)}</span>,
     },
     {
       key: 'actions',
       header: t('customers.table.actions', 'Actions'),
-      width: 96,
-      align: 'right',
+      width: 92,
+      align: 'center',
       render: (row) => (
-        <span className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
-          <button type="button" onClick={() => openEditModal(row)} aria-label={t('customers.actions.edit', 'Edit')} title={t('customers.actions.edit', 'Edit')} className="grid h-8 w-8 place-items-center rounded-[9px] text-[var(--muted-strong)] transition-colors hover:bg-[var(--blue-dim)] hover:text-[var(--primary)]">
-            <Pencil size={15} />
+        <span className="flex items-center justify-center gap-0.5" onClick={(event) => event.stopPropagation()}>
+          <button type="button" onClick={() => openEditModal(row)} aria-label={t('customers.actions.edit', 'Edit')} title={t('customers.actions.edit', 'Edit')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] transition-all hover:bg-[var(--blue-dim)] hover:text-[var(--primary)] active:scale-90">
+            <Pencil size={14} />
           </button>
-          <button type="button" onClick={() => void handleDeleteCustomer(row)} aria-label={t('customers.actions.delete', 'Delete')} title={t('customers.actions.delete', 'Delete')} className="grid h-8 w-8 place-items-center rounded-[9px] text-[var(--muted-strong)] transition-colors hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]">
-            <Trash2 size={15} />
+          <button type="button" onClick={() => void handleDeleteCustomer(row)} aria-label={t('customers.actions.delete', 'Delete')} title={t('customers.actions.delete', 'Delete')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] transition-all hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)] active:scale-90">
+            <Trash2 size={14} />
           </button>
         </span>
       ),
     },
   ]
 
-  // Facets for the left rail
+  // Filter options
   const platformCounts = new Map<string, number>()
   for (const customer of baseCustomers) {
     for (const platform of getCustomerPlatforms(customer)) {
       if (platform) platformCounts.set(platform, (platformCounts.get(platform) ?? 0) + 1)
     }
   }
-  const platformFacets = [...platformCounts.entries()]
+  const platformOptions = [...platformCounts.entries()]
     .sort((left, right) => right[1] - left[1])
-    .map(([value, count], index) => ({ value, label: value, count, color: ['#2B59FF', '#6A3FE0', '#17924A', '#C2410C', '#0E7A55', '#8A90A2'][index % 6] }))
-  const statusFacets = allChipStatuses.map((option) => ({
+    .map(([value, count]) => ({ value, label: value, count, ...platformVisual(value) }))
+  const statusOptionsForFilter = allChipStatuses.map((option) => ({
     value: option.value,
     label: option.label,
     color: option.color,
@@ -1327,16 +1355,17 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     setTablePage(1)
   }
   const clearAll = () => { resetFilters(); setSelectedPeriod(''); setTablePage(1) }
-  const hasAnyFilter = activeFilterCount > 0 || Boolean(selectedPeriod)
+  const filterCount = statusFilters.length + (platformFilter ? 1 : 0) + (selectedPeriod ? 1 : 0) + (dateStart || dateEnd ? 1 : 0)
+  const hasAnyFilter = filterCount > 0 || Boolean(search)
 
-  const metrics: Array<{ key: string; label: string; value: number; format?: (value: number) => string; caption: string; icon: ReactNode; tone: string; active: boolean; onClick?: () => void }> = [
+  const metrics: Array<{ key: string; label: string; value: number; format?: (value: number) => string; caption: string; icon: LucideIcon; accent: string; active: boolean; onClick?: () => void }> = [
     {
       key: 'total',
       label: t('customers.list_page.total', 'Customers'),
       value: baseCustomers.length,
       caption: periodLabel,
-      icon: <UsersRound size={18} />,
-      tone: 'bg-[var(--surface-inverse)] text-white',
+      icon: UsersRound,
+      accent: '#2B59FF',
       active: !hasAnyFilter,
       onClick: clearAll,
     },
@@ -1345,8 +1374,8 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       label: t('customers.list_page.added_today', 'Added today'),
       value: createdTodayCount,
       caption: t('customers.list_page.added_today_hint', 'New leads since midnight'),
-      icon: <UserPlus size={18} />,
-      tone: 'bg-[var(--success-dim)] text-[var(--success-text)]',
+      icon: UserPlus,
+      accent: '#17924A',
       active: selectedPeriod === 'today',
       onClick: () => { setSelectedPeriod('today'); setDateStart(''); setDateEnd(''); setTablePage(1) },
     },
@@ -1355,8 +1384,8 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       label: t('customers.list_page.need_to_call', 'Waiting for a call'),
       value: needToCallCount,
       caption: t('customers.list_page.need_to_call_hint', 'Status: Need to call'),
-      icon: <PhoneCall size={18} />,
-      tone: 'bg-[var(--warning-dim)] text-[var(--warning-text)]',
+      icon: PhoneCall,
+      accent: '#E8590C',
       active: Boolean(needToCallOption) && selectedStatusFilterSet.has('needtocall') && statusFilters.length === 1,
       onClick: needToCallOption ? () => { setStatusFilters([needToCallOption.value]); setTablePage(1) } : undefined,
     },
@@ -1367,211 +1396,181 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           value: Number(conversionQuery.data.conversion_rate ?? 0),
           format: (value: number) => `${value.toFixed(1)}%`,
           caption: t('customers.list_page.conversion_hint', 'Projects started: {{count}}', { count: conversionQuery.data.project_started_count }),
-          icon: <Percent size={18} />,
-          tone: 'bg-[var(--violet-dim)] text-[var(--violet-text)]',
+          icon: Percent,
+          accent: '#7C5CFC',
           active: false,
         }
       : {
           key: 'shown',
           label: t('customers.list_page.shown', 'Shown'),
           value: displayedCustomers.length,
-          caption: t('customers.section.list.filters_badge', '{{count}} filters', { count: activeFilterCount }),
-          icon: <Filter size={18} />,
-          tone: 'bg-[var(--violet-dim)] text-[var(--violet-text)]',
+          caption: t('customers.section.list.filters_badge', '{{count}} filters', { count: filterCount }),
+          icon: Filter,
+          accent: '#7C5CFC',
           active: false,
         },
   ]
 
-  const toolbar = (
-    <>
-      <label className="relative flex h-9 min-w-[200px] flex-1 items-center sm:max-w-[360px]">
-        <Search size={15} className="pointer-events-none absolute left-3 text-[var(--muted)]" />
-        <input
-          ref={searchInputRef}
-          type="search"
-          value={search}
-          onChange={(event) => { setSearch(event.target.value); setTablePage(1) }}
-          placeholder={t('customers.filters.search_placeholder', 'Name, username, note, or phone')}
-          aria-label={t('customers.filters.search_label', 'Search')}
-          className="h-9 w-full border border-[var(--border)] bg-[var(--input-surface)] pr-9 pl-9 text-[13px] text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-3 focus:ring-[var(--primary)]/12 [&::-webkit-search-cancel-button]:hidden"
-        />
-        {search ? (
-          <button type="button" onClick={() => { setSearch(''); setTablePage(1) }} aria-label={t('common.clear', 'Clear')} className="absolute right-2 grid h-5 w-5 place-items-center text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--foreground)]">
-            <X size={13} />
-          </button>
-        ) : (
-          <kbd className="pointer-events-none absolute right-2.5 hidden border border-[var(--border)] bg-[var(--surface)] px-1.5 font-mono text-[11px] text-[var(--muted)] sm:block">/</kbd>
-        )}
-      </label>
-      <PeriodPicker
-        value={selectedPeriod}
-        options={periodOptions}
-        onChange={(value) => { setSelectedPeriod(value); setTablePage(1) }}
-        dateStart={dateStart}
-        dateEnd={dateEnd}
-        onDatesChange={(start, end) => { setDateStart(start); setDateEnd(end); setTablePage(1) }}
-        labels={{
-          title: t('customers.filters.period', 'Period'),
-          custom: t('customers.filters.custom_range', 'Custom range'),
-          from: t('customers.filters.start_date_label', 'Start date'),
-          to: t('customers.filters.end_date_label', 'End date'),
-          apply: t('customers.filters.apply', 'Apply'),
-        }}
-      />
-      <FilterMenu
-        label={t('customers.filters.status_label', 'Status')}
-        icon={Layers}
-        items={statusFacets}
-        isSelected={(value) => selectedStatusFilterSet.has(normalizeStatusKey(value))}
-        onToggle={toggleStatus}
-        onClear={() => { setStatusFilters([]); setTablePage(1) }}
-        selectedCount={statusFilters.length}
-        clearLabel={t('common.clear', 'Clear')}
-      />
-      {platformFacets.length > 0 ? (
-        <FilterMenu
-          label={t('customers.filters.platform_label', 'Platform')}
-          icon={Globe}
-          items={platformFacets}
-          isSelected={(value) => platformFilter === value}
-          onToggle={(value) => { setPlatformFilter((current) => (current === value ? '' : value)); setTablePage(1) }}
-          onClear={() => { setPlatformFilter(''); setTablePage(1) }}
-          selectedCount={platformFilter ? 1 : 0}
-          clearLabel={t('common.clear', 'Clear')}
-        />
-      ) : null}
-    </>
-  )
-
   const tokens = hasAnyFilter ? (
-    <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] bg-[#FBFBFD] px-4 py-2">
-      <span className="mr-1 text-[11px] font-semibold tracking-[0.08em] text-[var(--caption)] uppercase">{t('customers.filters.active', 'Filters')}</span>
-      {selectedPeriod ? (
-        <FilterToken onRemove={() => { setSelectedPeriod(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{periodLabel}</FilterToken>
-      ) : null}
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] bg-[#FAFBFC] px-3 py-2">
+      {selectedPeriod ? <FilterToken onRemove={() => { setSelectedPeriod(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{periodLabel}</FilterToken> : null}
       {dateStart || dateEnd ? (
-        <FilterToken onRemove={() => { setDateStart(''); setDateEnd(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>
-          {`${dateStart || '…'} – ${dateEnd || '…'}`}
-        </FilterToken>
+        <FilterToken onRemove={() => { setDateStart(''); setDateEnd(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{`${dateStart || '…'} – ${dateEnd || '…'}`}</FilterToken>
       ) : null}
       {statusFilters.map((value) => {
-        const meta = allChipStatuses.find((option) => normalizeStatusKey(option.value) === normalizeStatusKey(value))
-        return (
-          <FilterToken key={value} color={meta?.color} onRemove={() => toggleStatus(value)} removeLabel={t('common.clear', 'Clear')}>
-            {meta?.label ?? value}
-          </FilterToken>
-        )
+        const meta = statusMetaFor(value)
+        return <FilterToken key={value} color={meta.color} onRemove={() => toggleStatus(value)} removeLabel={t('common.clear', 'Clear')}>{meta.label}</FilterToken>
       })}
-      {platformFilter ? (
-        <FilterToken onRemove={() => { setPlatformFilter(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{platformFilter}</FilterToken>
-      ) : null}
-      {search ? (
-        <FilterToken onRemove={() => { setSearch(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>“{search}”</FilterToken>
-      ) : null}
-      <button type="button" onClick={clearAll} className="ml-1 text-[12.5px] font-semibold text-[var(--primary)] hover:underline">
+      {platformFilter ? <FilterToken onRemove={() => { setPlatformFilter(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{platformFilter}</FilterToken> : null}
+      {search ? <FilterToken onRemove={() => { setSearch(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>“{search}”</FilterToken> : null}
+      <button type="button" onClick={() => { clearAll(); setSearch('') }} className="ml-1 text-[12px] font-semibold text-[var(--primary)] hover:underline">
         {t('customers.filters.clear_all', 'Clear all')}
       </button>
     </div>
   ) : null
 
   return (
-    <section className="stagger-in flex flex-col gap-4 lg:h-[var(--page-h)] lg:min-h-[620px]">
-      {/* Header */}
+    <section className="stagger-in flex flex-col gap-4 lg:h-[var(--page-h)] lg:min-h-[640px]">
+      {/* Title row: name + count on the left, search and archive on the right */}
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3.5">
-          <span className="grid h-12 w-12 shrink-0 place-items-center bg-[var(--surface-inverse)] text-white">
-            <UsersRound size={22} />
+        <div className="flex min-w-0 items-center gap-2.5">
+          <h1 className="text-[24px] leading-8 font-bold tracking-[-0.025em] text-[var(--foreground)]">{t('customers.list_page.title', 'Customers')}</h1>
+          <span className="rounded-[6px] bg-[var(--blue-dim)] px-2 py-0.5 text-[12px] font-semibold text-[var(--primary)] tabular-nums">
+            {t('customers.list_page.records', '{{count}} records', { count: baseCustomers.length })}
           </span>
-          <div className="min-w-0">
-            <h1 className="text-[26px] leading-8 font-bold tracking-[-0.025em] text-[var(--foreground)]">{t('customers.list_page.title', 'Customers')}</h1>
-            <p className="truncate text-[13px] text-[var(--muted)]">
-              {crmKind === 'outbound'
-                ? t('customers.list_page.subtitle_outbound', 'Every Outbound CRM lead — filter, sort and shape the table your way.')
-                : t('customers.list_page.subtitle', 'Every CRM customer — filter, sort and shape the table your way.')}
-            </p>
-          </div>
+          {crmKind === 'outbound' ? <span className="rounded-[6px] bg-[var(--muted-surface)] px-2 py-0.5 text-[12px] font-semibold text-[var(--muted-strong)]">Outbound</span> : null}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void refreshAll()}
-            title={t('customers.actions.refresh', 'Refresh')}
-            aria-label={t('customers.actions.refresh', 'Refresh')}
-            className="grid h-10 w-10 place-items-center border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]"
-          >
-            <RefreshCw size={16} className={cn(isRefreshing && 'animate-spin')} />
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="group/search relative flex h-10 w-full items-center sm:w-[320px]">
+            <Search size={16} className="pointer-events-none absolute left-3 text-[var(--muted)] transition-colors group-focus-within/search:text-[var(--primary)]" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={search}
+              onChange={(event) => { setSearch(event.target.value); setTablePage(1) }}
+              placeholder={t('customers.filters.search_placeholder', 'Name, username, note, or phone')}
+              aria-label={t('customers.filters.search_label', 'Search')}
+              className="h-10 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] pr-10 pl-9 text-[13.5px] text-[var(--foreground)] shadow-[0_1px_2px_rgba(14,21,37,0.04)] transition-[border-color,box-shadow] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:shadow-[0_0_0_4px_rgba(43,89,255,0.12)] focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+            />
+            {search ? (
+              <button type="button" onClick={() => { setSearch(''); setTablePage(1) }} aria-label={t('common.clear', 'Clear')} className="absolute right-2.5 grid h-6 w-6 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--muted-surface)] hover:text-[var(--foreground)]">
+                <X size={14} />
+              </button>
+            ) : (
+              <kbd className="pointer-events-none absolute right-2.5 hidden rounded-[5px] border border-[var(--border)] bg-[var(--muted-surface)] px-1.5 font-mono text-[11px] text-[var(--muted)] sm:block">/</kbd>
+            )}
+          </label>
           {crmKind === 'outbound' ? (
-            <button type="button" onClick={() => navigate(`${routeBasePath}/statuses`)} className="inline-flex h-10 items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)]">
-              <ListTodo size={16} /> {t('outbound_crm.actions.statuses', 'Statuses')}
+            <button type="button" onClick={() => navigate(`${routeBasePath}/statuses`)} className={cn(gridButton, 'h-10 px-3.5')}>
+              <ListTodo size={15} /> {t('outbound_crm.actions.statuses', 'Statuses')}
             </button>
           ) : null}
-          <button type="button" onClick={() => navigate(`${routeBasePath}/archived`)} className="inline-flex h-10 items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)]">
-            <ArchiveIcon size={16} /> {t('customers.actions.archive', 'Archive')}
-          </button>
-          <button type="button" onClick={openCreateModal} className="inline-flex h-10 items-center gap-2 bg-[var(--primary)] px-4 text-[13.5px] font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]">
-            <Plus size={17} /> {t('customers.actions.add', 'Add customer')}
+          <button type="button" onClick={() => navigate(`${routeBasePath}/archived`)} className={cn(gridButton, 'h-10 px-3.5')}>
+            <ArchiveIcon size={15} /> {t('customers.actions.archive', 'Archive')}
           </button>
         </div>
       </header>
 
-      {/* Key numbers — one strip; each cell is also a quick filter */}
-      <div className="grid shrink-0 grid-cols-2 overflow-hidden border border-[var(--border)] bg-[var(--card)] lg:grid-cols-4">
-        {metrics.map((metric, index) => {
+      {/* Metric cards — each also works as a quick filter */}
+      <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
+        {metrics.map((metric) => {
+          const Icon = metric.icon
           const Cell = metric.onClick ? 'button' : 'div'
           return (
             <Cell
               key={metric.key}
               {...(metric.onClick ? { type: 'button' as const, onClick: metric.onClick, 'aria-pressed': metric.active } : {})}
               className={cn(
-                'group relative flex items-center gap-3.5 px-5 py-4 text-left transition-colors',
-                index % 2 === 1 && 'border-l border-[var(--border)]',
-                index >= 2 && 'border-t border-[var(--border)] lg:border-t-0',
-                index === 2 && 'lg:border-l',
-                metric.onClick && 'hover:bg-[#F7F9FF]',
-                metric.active && 'bg-[#F5F8FF]',
+                'group relative overflow-hidden rounded-[14px] border bg-[var(--card)] px-4 py-3.5 text-left transition-[transform,box-shadow,border-color] duration-300',
+                metric.active ? 'border-transparent shadow-[0_0_0_2px_var(--primary),0_12px_28px_-18px_rgba(43,89,255,0.6)]' : 'border-[var(--border)] shadow-[0_1px_2px_rgba(14,21,37,0.04)]',
+                metric.onClick && 'hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-20px_rgba(14,21,37,0.45)]',
               )}
             >
-              {metric.active ? <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[var(--primary)]" /> : null}
-              <span className={cn('grid h-10 w-10 shrink-0 place-items-center transition-transform duration-300 group-hover:scale-105', metric.tone)}>{metric.icon}</span>
-              <span className="min-w-0">
-                <span className="block truncate text-[12.5px] font-medium text-[var(--muted)]">{metric.label}</span>
-                <span className="block text-[26px] leading-8 font-bold tracking-[-0.03em] text-[var(--foreground)] tabular-nums" data-ui-number="true">
-                  <CountUp value={metric.value} format={metric.format} />
+              <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-[0.07] transition-transform duration-500 group-hover:scale-125" style={{ background: metric.accent }} />
+              <span className="flex items-center justify-between gap-3">
+                <span className="truncate text-[12.5px] font-medium text-[var(--muted-strong)]">{metric.label}</span>
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] transition-transform duration-300 group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: `${metric.accent}14`, color: metric.accent }}>
+                  <Icon size={16} strokeWidth={2.2} />
                 </span>
-                <span className="block truncate text-[11.5px] text-[var(--caption)]">{metric.caption}</span>
+              </span>
+              <span className="mt-1 block text-[28px] leading-8 font-bold tracking-[-0.035em] text-[var(--foreground)] tabular-nums" data-ui-number="true">
+                <CountUp value={metric.value} format={metric.format} />
+              </span>
+              <span className="mt-1 flex items-center gap-1.5 truncate text-[11.5px] text-[var(--muted)]">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: metric.accent }} />
+                {metric.caption}
               </span>
             </Cell>
           )
         })}
       </div>
 
-      {/* The table fills the rest of the screen */}
-      <div className="flex min-h-[560px] flex-1 overflow-hidden border border-[var(--border)] bg-[var(--card)] lg:min-h-0">
-        <DataGrid
-          id={`${storageKey}-customers`}
-          className="min-w-0 flex-1"
-          rowNumbers
-          toolbar={toolbar}
-          belowToolbar={tokens}
-          columns={gridColumns}
-          rows={displayedCustomers}
-          getRowKey={(row) => String(row.id)}
-          onRowClick={openCustomerDrawer}
-          loading={dashboardQuery.isLoading || (Boolean(selectedPeriod) && periodReportQuery.isLoading)}
-          page={tablePage}
-          onPageChange={setTablePage}
-          pageSize={pageSizeValue}
-          onPageSizeChange={(size) => setPageSize(String(size))}
-          emptyState={
-            <EmptyStateBlock
-              eyebrow={crmKind === 'outbound' ? t('outbound_crm.page.eyebrow', 'Outbound CRM workspace') : t('customers.page.eyebrow', 'CRM workspace')}
-              title={t('customers.table.empty_title', 'No customers found')}
-              description={t('customers.table.empty_description', 'The current filters returned no customer records.')}
+      <DataGrid
+        id={`${storageKey}-customers`}
+        className="min-h-[560px] flex-1 lg:min-h-0"
+        rowNumbers
+        selectable
+        favorites
+        exportName={crmKind === 'outbound' ? 'outbound-leads' : 'customers'}
+        toolbarStart={(
+          <>
+            <button type="button" onClick={() => void refreshAll()} className={cn(gridButton, 'border-[var(--blue-border)] text-[var(--primary)] hover:bg-[var(--blue-dim)]')}>
+              <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
+              {t('customers.actions.refresh', 'Refresh')}
+            </button>
+            <FilterPanel
+              labels={{
+                filter: t('customers.filters.filter', 'Filter'),
+                period: t('customers.filters.period', 'Period'),
+                status: t('customers.filters.status_label', 'Status'),
+                platform: t('customers.filters.platform_label', 'Platform'),
+                custom: t('customers.filters.custom_range', 'Custom range'),
+                from: t('customers.filters.start_date_label', 'Start date'),
+                to: t('customers.filters.end_date_label', 'End date'),
+                clear: t('customers.filters.clear_all', 'Clear all'),
+                done: t('customers.filters.done', 'Done'),
+              }}
+              activeCount={filterCount}
+              period={selectedPeriod}
+              periodOptions={periodOptions}
+              onPeriodChange={(value) => { setSelectedPeriod(value); setTablePage(1) }}
+              dateStart={dateStart}
+              dateEnd={dateEnd}
+              onDatesChange={(start, end) => { setDateStart(start); setDateEnd(end); setTablePage(1) }}
+              statusOptions={statusOptionsForFilter}
+              isStatusSelected={(value) => selectedStatusFilterSet.has(normalizeStatusKey(value))}
+              onStatusToggle={toggleStatus}
+              platformOptions={platformOptions}
+              platform={platformFilter}
+              onPlatformChange={(value) => { setPlatformFilter(value); setTablePage(1) }}
+              onClearAll={clearAll}
             />
-          }
-        />
-      </div>
+          </>
+        )}
+        toolbarEnd={(
+          <button type="button" onClick={openCreateModal} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-[var(--primary)] px-3 text-[12.5px] font-semibold text-white shadow-[0_6px_16px_-8px_rgba(43,89,255,0.9)] transition-[background-color,transform] duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.97]">
+            <Plus size={15} strokeWidth={2.4} />
+            {t('customers.actions.add', 'Add customer')}
+          </button>
+        )}
+        belowToolbar={tokens}
+        columns={gridColumns}
+        rows={displayedCustomers}
+        getRowKey={(row) => String(row.id)}
+        onRowClick={openCustomerDrawer}
+        loading={dashboardQuery.isLoading || (Boolean(selectedPeriod) && periodReportQuery.isLoading)}
+        page={tablePage}
+        onPageChange={setTablePage}
+        pageSize={pageSizeValue}
+        onPageSizeChange={(size) => setPageSize(String(size))}
+        emptyState={
+          <EmptyStateBlock
+            eyebrow={crmKind === 'outbound' ? t('outbound_crm.page.eyebrow', 'Outbound CRM workspace') : t('customers.page.eyebrow', 'CRM workspace')}
+            title={t('customers.table.empty_title', 'No customers found')}
+            description={t('customers.table.empty_description', 'The current filters returned no customer records.')}
+          />
+        }
+      />
 
       {modals}
     </section>

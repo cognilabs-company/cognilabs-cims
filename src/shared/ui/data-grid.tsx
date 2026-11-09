@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Columns3, GripVertical, Pin, PinOff, RotateCcw, Rows2, Rows3, Rows4 } from 'lucide-react'
+import {
+  ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown,
+  Download, Eye, GripVertical, Minus, Pin, PinOff, RotateCcw, Star, X,
+} from 'lucide-react'
 import { useLocale } from '../../app/hooks/useLocale'
 import { cn } from '../lib/cn'
+import { gridButton, gridPanel } from './data-grid-styles'
 
 /* ──────────────────────────────────────────────────────────────
-   DataGrid — a table each user can shape:
-   show/hide columns, drag (or Alt+←/→) to reorder, drag the edge to
-   resize (double-click = fit), pin left, sort, three densities, reset.
-   Layout is remembered per grid in localStorage.
+   DataGrid — a clean CRM-style table each user can shape.
+   • select rows (checkbox), star favourites, row numbers
+   • sort (header or Sort menu), View menu: show/hide, pin, reorder,
+     density, reset; drag a header to move it, drag its edge to resize
+   • CSV export of the selection (or of every filtered row)
+   Layout, favourites and density are remembered per grid (localStorage).
    Keyboard on a focused header: ←/→ focus · Alt+←/→ move ·
    Shift+←/→ width · F pin · H hide · Enter fit · Space sort.
    ────────────────────────────────────────────────────────────── */
@@ -22,6 +28,8 @@ export type GridColumn<T> = {
   align?: 'left' | 'right' | 'center'
   /** Enables sorting by this column. */
   sortValue?: (row: T) => string | number | null | undefined
+  /** Plain text for CSV export (falls back to sortValue). */
+  exportValue?: (row: T) => string | number | null | undefined
   /** false keeps the column always visible. */
   hideable?: boolean
   /** Starts hidden (the user can turn it on). */
@@ -40,15 +48,17 @@ type GridState = {
 }
 
 type DataGridProps<T> = {
-  /** Storage id — each grid remembers its own layout. */
+  /** Storage id — each grid remembers its own layout and favourites. */
   id: string
   columns: GridColumn<T>[]
   rows: T[]
   getRowKey: (row: T) => string
   onRowClick?: (row: T) => void
-  /** Left side of the control bar (search, filter buttons). */
-  toolbar?: ReactNode
-  /** A row under the control bar (e.g. active filter tokens). */
+  /** Toolbar, left side (before Sort / results). */
+  toolbarStart?: ReactNode
+  /** Toolbar, right side (before Export / View). */
+  toolbarEnd?: ReactNode
+  /** A row under the toolbar (e.g. active filter tokens). */
   belowToolbar?: ReactNode
   emptyState?: ReactNode
   loading?: boolean
@@ -56,23 +66,27 @@ type DataGridProps<T> = {
   onPageSizeChange?: (size: number) => void
   page: number
   onPageChange: (page: number) => void
-  /** Adds a "№" column with the row's position in the (sorted, filtered) list. */
   rowNumbers?: boolean
+  selectable?: boolean
+  favorites?: boolean
+  /** File name (without .csv) for the Export button; omit to hide it. */
+  exportName?: string
   className?: string
 }
 
 const STORAGE_PREFIX = 'cims-grid:'
 const DEFAULT_WIDTH = 160
 const MIN_WIDTH = 64
-const NUMBER_WIDTH = 56
+const CHECK_WIDTH = 42
+const NUMBER_WIDTH = 46
+const STAR_WIDTH = 38
 const PAGE_SIZES = [10, 20, 50, 75, 100]
 
 const densityRow: Record<GridDensity, string> = {
-  comfortable: 'h-[56px] text-[14px]',
-  normal: 'h-[46px] text-[13.5px]',
-  compact: 'h-[36px] text-[13px]',
+  comfortable: 'h-[50px] text-[13.5px]',
+  normal: 'h-[42px] text-[13px]',
+  compact: 'h-[34px] text-[12.5px]',
 }
-const densityIcons: Record<GridDensity, typeof Rows2> = { comfortable: Rows2, normal: Rows3, compact: Rows4 }
 
 function defaultState<T>(columns: GridColumn<T>[]): GridState {
   return {
@@ -85,24 +99,28 @@ function defaultState<T>(columns: GridColumn<T>[]): GridState {
   }
 }
 
-function readState<T>(id: string, columns: GridColumn<T>[]): GridState {
-  const fallback = defaultState(columns)
+function readJson<V>(key: string, fallback: V): V {
   try {
-    const raw = window.localStorage.getItem(STORAGE_PREFIX + id)
-    if (!raw) return fallback
-    const saved = JSON.parse(raw) as Partial<GridState>
-    const known = new Set(columns.map((column) => column.key))
-    const savedOrder = (saved.order ?? []).filter((key) => known.has(key))
-    return {
-      order: [...savedOrder, ...fallback.order.filter((key) => !savedOrder.includes(key))],
-      hidden: (saved.hidden ?? fallback.hidden).filter((key) => known.has(key)),
-      pinned: (saved.pinned ?? []).filter((key) => known.has(key)),
-      widths: saved.widths ?? {},
-      density: saved.density ?? 'normal',
-      sort: saved.sort && known.has(saved.sort.key) ? saved.sort : null,
-    }
+    const raw = window.localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as V) : fallback
   } catch {
     return fallback
+  }
+}
+
+function readState<T>(id: string, columns: GridColumn<T>[]): GridState {
+  const fallback = defaultState(columns)
+  const saved = readJson<Partial<GridState> | null>(STORAGE_PREFIX + id, null)
+  if (!saved) return fallback
+  const known = new Set(columns.map((column) => column.key))
+  const savedOrder = (saved.order ?? []).filter((key) => known.has(key))
+  return {
+    order: [...savedOrder, ...fallback.order.filter((key) => !savedOrder.includes(key))],
+    hidden: (saved.hidden ?? fallback.hidden).filter((key) => known.has(key)),
+    pinned: (saved.pinned ?? []).filter((key) => known.has(key)),
+    widths: saved.widths ?? {},
+    density: saved.density ?? 'normal',
+    sort: saved.sort && known.has(saved.sort.key) ? saved.sort : null,
   }
 }
 
@@ -114,22 +132,67 @@ function compareValues(left: unknown, right: unknown) {
   return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' })
 }
 
-function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="border border-[var(--border)] bg-[var(--surface)] px-1.5 py-px font-mono text-[10.5px] text-[var(--muted-strong)]">{children}</kbd>
+/** Page buttons with ellipses: 1 … 4 5 6 … 16 */
+function pageWindow(current: number, total: number) {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1)
+  const pages = new Set([1, total, current - 1, current, current + 1])
+  if (current <= 3) [2, 3, 4].forEach((page) => pages.add(page))
+  if (current >= total - 2) [total - 1, total - 2, total - 3].forEach((page) => pages.add(page))
+  const sorted = [...pages].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b)
+  const result: Array<number | 'gap'> = []
+  sorted.forEach((page, index) => {
+    if (index > 0 && page - sorted[index - 1] > 1) result.push('gap')
+    result.push(page)
+  })
+  return result
 }
 
-const controlButton = 'inline-flex h-9 items-center gap-2 border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--input-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30'
+function usePopover() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: PointerEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false) }
+    const onKey = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
+    document.addEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey) }
+  }, [open])
+  return { open, setOpen, ref }
+}
+
+function Checkbox({ checked, indeterminate, onChange, label }: { checked: boolean; indeterminate?: boolean; onChange: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate ? 'mixed' : checked}
+      aria-label={label}
+      onClick={(event) => { event.stopPropagation(); onChange() }}
+      className={cn(
+        'grid h-[16px] w-[16px] place-items-center rounded-[4px] border transition-all duration-150 active:scale-90',
+        checked || indeterminate ? 'border-[var(--primary)] bg-[var(--primary)] text-white' : 'border-[#CDD2DC] bg-[var(--surface)] hover:border-[var(--primary)]',
+      )}
+    >
+      {indeterminate ? <Minus size={11} strokeWidth={3.2} /> : checked ? <Check size={11} strokeWidth={3.2} /> : null}
+    </button>
+  )
+}
+
 
 export function DataGrid<T>({
-  id, columns, rows, getRowKey, onRowClick, toolbar, belowToolbar, emptyState, loading, pageSize, onPageSizeChange, page, onPageChange, rowNumbers = false, className,
+  id, columns, rows, getRowKey, onRowClick, toolbarStart, toolbarEnd, belowToolbar, emptyState, loading,
+  pageSize, onPageSizeChange, page, onPageChange, rowNumbers = false, selectable = false, favorites = false, exportName, className,
 }: DataGridProps<T>) {
   const { t } = useLocale()
   const [state, setState] = useState<GridState>(() => readState(id, columns))
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [favoriteKeys, setFavoriteKeys] = useState<string[]>(() => readJson<string[]>(`${STORAGE_PREFIX}${id}:fav`, []))
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [resizing, setResizing] = useState<{ key: string; width: number } | null>(null)
   const [dragKey, setDragKey] = useState<string | null>(null)
   const [dropKey, setDropKey] = useState<string | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const { open: viewOpen, setOpen: setViewOpen, ref: viewRef } = usePopover()
+  const { open: sortOpen, setOpen: setSortOpen, ref: sortRef } = usePopover()
   const tableRef = useRef<HTMLTableElement>(null)
   const headerRefs = useRef(new Map<string, HTMLTableCellElement>())
   // True while a column edge is being dragged, so the header itself does not start a drag-to-move.
@@ -138,36 +201,31 @@ export function DataGrid<T>({
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(state)) } catch { /* private mode */ }
   }, [id, state])
-
   useEffect(() => {
-    if (!menuOpen) return
-    const close = (event: PointerEvent) => { if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false) }
-    const esc = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false) }
-    document.addEventListener('pointerdown', close)
-    document.addEventListener('keydown', esc)
-    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', esc) }
-  }, [menuOpen])
+    try { window.localStorage.setItem(`${STORAGE_PREFIX}${id}:fav`, JSON.stringify(favoriteKeys)) } catch { /* private mode */ }
+  }, [favoriteKeys, id])
 
   const columnMap = useMemo(() => new Map(columns.map((column) => [column.key, column])), [columns])
   const widthOf = useCallback((key: string) => state.widths[key] ?? columnMap.get(key)?.width ?? DEFAULT_WIDTH, [columnMap, state.widths])
+  const favoriteSet = useMemo(() => new Set(favoriteKeys), [favoriteKeys])
 
-  // Pinned columns come first, in their pin order; then the rest in the user's order.
   const visibleKeys = useMemo(() => {
     const visible = state.order.filter((key) => columnMap.has(key) && !state.hidden.includes(key))
     const pinned = visible.filter((key) => state.pinned.includes(key))
     return [...pinned, ...visible.filter((key) => !state.pinned.includes(key))]
   }, [columnMap, state.hidden, state.order, state.pinned])
 
+  const leadWidth = (selectable ? CHECK_WIDTH : 0) + (rowNumbers ? NUMBER_WIDTH : 0) + (favorites ? STAR_WIDTH : 0)
   const pinnedOffsets = useMemo(() => {
     const offsets = new Map<string, number>()
-    let left = rowNumbers ? NUMBER_WIDTH : 0
+    let left = leadWidth
     for (const key of visibleKeys) {
       if (!state.pinned.includes(key)) break
       offsets.set(key, left)
       left += widthOf(key)
     }
     return offsets
-  }, [rowNumbers, state.pinned, visibleKeys, widthOf])
+  }, [leadWidth, state.pinned, visibleKeys, widthOf])
 
   const sortedRows = useMemo(() => {
     const sortColumn = state.sort ? columnMap.get(state.sort.key) : null
@@ -177,12 +235,20 @@ export function DataGrid<T>({
     return [...rows].sort((left, right) => compareValues(getValue(left), getValue(right)) * direction)
   }, [columnMap, rows, state.sort])
 
+  const rowKeys = useMemo(() => new Set(rows.map(getRowKey)), [getRowKey, rows])
+  // Only keys still in the list count as selected (filters may have hidden some).
+  const selectedVisible = useMemo(() => [...selected].filter((key) => rowKeys.has(key)), [rowKeys, selected])
+
   const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize))
   const currentPage = Math.min(Math.max(1, page), pageCount)
   const firstIndex = (currentPage - 1) * pageSize
   const pageRows = sortedRows.slice(firstIndex, firstIndex + pageSize)
-  const tableWidth = visibleKeys.reduce((sum, key) => sum + widthOf(key), rowNumbers ? NUMBER_WIDTH : 0)
+  const pageKeys = pageRows.map(getRowKey)
+  const pageAllSelected = pageKeys.length > 0 && pageKeys.every((key) => selected.has(key))
+  const pageSomeSelected = !pageAllSelected && pageKeys.some((key) => selected.has(key))
+  const tableWidth = visibleKeys.reduce((sum, key) => sum + widthOf(key), leadWidth)
   const lastPinned = [...pinnedOffsets.keys()].at(-1)
+  const sortableColumns = columns.filter((column) => column.sortValue)
 
   /* ── state helpers ─────────────────────────────────────── */
   const update = (patch: (current: GridState) => GridState) => setState((current) => patch(current))
@@ -212,14 +278,11 @@ export function DataGrid<T>({
     order.splice(order.indexOf(targetKey), 0, key)
     return { ...current, order }
   })
+  const setSort = (sort: GridState['sort']) => { update((current) => ({ ...current, sort })); onPageChange(1) }
   const toggleSort = (key: string) => {
     if (!columnMap.get(key)?.sortValue) return
-    update((current) => {
-      if (current.sort?.key !== key) return { ...current, sort: { key, dir: 'asc' } }
-      if (current.sort.dir === 'asc') return { ...current, sort: { key, dir: 'desc' } }
-      return { ...current, sort: null }
-    })
-    onPageChange(1)
+    const current = state.sort
+    setSort(current?.key !== key ? { key, dir: 'asc' } : current.dir === 'asc' ? { key, dir: 'desc' } : null)
   }
   const autoFit = (key: string) => {
     const table = tableRef.current
@@ -228,9 +291,48 @@ export function DataGrid<T>({
     table.querySelectorAll<HTMLElement>(`[data-col="${CSS.escape(key)}"] [data-cell-content]`).forEach((element) => {
       widest = Math.max(widest, element.scrollWidth)
     })
-    setWidth(key, widest + 32)
+    setWidth(key, widest + 30)
   }
   const reset = () => { setState(defaultState(columns)); onPageChange(1) }
+  const toggleRow = (key: string) => setSelected((current) => {
+    const next = new Set(current)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    return next
+  })
+  const togglePage = () => setSelected((current) => {
+    const next = new Set(current)
+    if (pageAllSelected) pageKeys.forEach((key) => next.delete(key))
+    else pageKeys.forEach((key) => next.add(key))
+    return next
+  })
+  const toggleFavorite = (key: string) => setFavoriteKeys((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]))
+
+  function exportCsv() {
+    const chosen = selectedVisible.length > 0 ? sortedRows.filter((row) => selected.has(getRowKey(row))) : sortedRows
+    const exportKeys = visibleKeys.filter((key) => {
+      const column = columnMap.get(key)!
+      return column.exportValue || column.sortValue
+    })
+    const escape = (value: unknown) => {
+      const text = value === null || value === undefined ? '' : String(value)
+      return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+    }
+    const lines = [
+      exportKeys.map((key) => escape(columnMap.get(key)!.header)).join(','),
+      ...chosen.map((row) => exportKeys.map((key) => {
+        const column = columnMap.get(key)!
+        return escape((column.exportValue ?? column.sortValue)?.(row))
+      }).join(',')),
+    ]
+    const blob = new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${exportName ?? id}-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
 
   /* ── resize by dragging the header edge ────────────────── */
   function startResize(event: ReactPointerEvent, key: string) {
@@ -278,78 +380,131 @@ export function DataGrid<T>({
     normal: t('grid.density.normal', 'Normal'),
     compact: t('grid.density.compact', 'Compact'),
   }
+  const sortLabel = state.sort ? columnMap.get(state.sort.key)?.header : null
 
+  const stickyLead = (left: number, z = 2): CSSProperties => ({ position: 'sticky', left, zIndex: z })
   const stickyCell = (key: string): CSSProperties | undefined => {
     const left = pinnedOffsets.get(key)
     return left === undefined ? undefined : { position: 'sticky', left, zIndex: 2 }
   }
+  const offsets = { check: 0, number: selectable ? CHECK_WIDTH : 0, star: (selectable ? CHECK_WIDTH : 0) + (rowNumbers ? NUMBER_WIDTH : 0) }
 
   return (
-    <section className={cn('flex min-h-0 flex-col overflow-hidden bg-[var(--card)]', className)}>
-      {/* ── Control bar: page filters on the left, table controls on the right ── */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-3">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{toolbar}</div>
+    <section className={cn('flex min-h-0 flex-col overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--card)] shadow-[0_1px_2px_rgba(14,21,37,0.04),0_10px_30px_-24px_rgba(14,21,37,0.3)]', className)}>
+      {/* ── Toolbar ─────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-3 py-2.5">
+        {toolbarStart}
 
-        <div className="flex shrink-0 items-center gap-2">
-          <div ref={menuRef} className="relative">
-            <button type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-haspopup="dialog" className={controlButton}>
-              <Columns3 size={15} className="text-[var(--primary)]" />
-              <span className="hidden sm:inline">{t('grid.columns', 'Columns')}</span>
-              <span className="bg-[var(--input-surface)] px-1.5 py-px font-mono text-[11px] text-[var(--muted-strong)]">{visibleKeys.length}/{columns.length}</span>
-              <ChevronDown size={14} className={cn('text-[var(--muted)] transition-transform duration-200', menuOpen && 'rotate-180')} />
+        {selectedVisible.length > 0 ? (
+          <span className="grid-row-in inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-[var(--blue-border)] bg-[var(--blue-dim)] pr-1 pl-2.5 text-[12.5px] font-semibold text-[var(--primary)]">
+            {t('grid.selected', '{{count}} selected', { count: selectedVisible.length })}
+            <button type="button" onClick={() => setSelected(new Set())} aria-label={t('grid.clear_selection', 'Clear selection')} className="grid h-6 w-6 place-items-center rounded-[6px] hover:bg-white/70"><X size={13} /></button>
+          </span>
+        ) : null}
+
+        {sortableColumns.length > 0 ? (
+          <div ref={sortRef} className="relative">
+            <button type="button" onClick={() => setSortOpen((value) => !value)} aria-expanded={sortOpen} aria-haspopup="menu" className={cn(gridButton, state.sort && 'border-[var(--blue-border)] text-[var(--primary)]')}>
+              <ArrowUpDown size={14} />
+              {sortLabel ?? t('grid.sort', 'Sort')}
+              {state.sort ? (state.sort.dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : null}
+              <ChevronDown size={13} className={cn('opacity-50 transition-transform duration-200', sortOpen && 'rotate-180')} />
             </button>
-            {menuOpen ? (
-              <div role="dialog" aria-label={t('grid.columns', 'Columns')} className="modal-pop absolute top-[calc(100%+6px)] right-0 z-30 w-[300px] border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[var(--elev-xl)]">
-                <p className="px-2.5 pt-1.5 pb-2 text-[11.5px] leading-4 text-[var(--muted)]">{t('grid.columns_hint', 'Show, pin or reorder columns. Drag a header to move it.')}</p>
-                <ul className="max-h-[340px] overflow-y-auto overscroll-contain">
+            {sortOpen ? (
+              <div role="menu" className={cn(gridPanel, 'left-0 w-[240px]')}>
+                {sortableColumns.map((column) => (
+                  <div key={column.key} className="flex items-center gap-1 rounded-[8px] px-2 py-0.5 hover:bg-[var(--muted-surface)]">
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--foreground)]">{column.header}</span>
+                    {(['asc', 'desc'] as const).map((dir) => {
+                      const active = state.sort?.key === column.key && state.sort.dir === dir
+                      return (
+                        <button
+                          key={dir}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={active}
+                          aria-label={`${column.header} ${dir === 'asc' ? '↑' : '↓'}`}
+                          onClick={() => { setSort(active ? null : { key: column.key, dir }); setSortOpen(false) }}
+                          className={cn('grid h-7 w-7 place-items-center rounded-[6px] transition-colors', active ? 'bg-[var(--primary)] text-white' : 'text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]')}
+                        >
+                          {dir === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
+                {state.sort ? (
+                  <button type="button" onClick={() => { setSort(null); setSortOpen(false) }} className="mt-1 w-full rounded-[8px] px-2 py-1.5 text-left text-[12.5px] font-semibold text-[var(--primary)] hover:bg-[var(--muted-surface)]">
+                    {t('grid.clear_sort', 'Clear sorting')}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <span className="px-1 text-[12.5px] font-medium text-[var(--muted)] tabular-nums">{t('grid.results', '{{count}} results', { count: rows.length })}</span>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {toolbarEnd}
+
+          {exportName ? (
+            <button type="button" onClick={exportCsv} disabled={rows.length === 0} className={cn(gridButton, 'disabled:opacity-40')} title={selectedVisible.length > 0 ? t('grid.export_selected', 'Export selected rows') : t('grid.export_all', 'Export all filtered rows')}>
+              <Download size={14} />
+              {t('grid.export', 'Export')}
+            </button>
+          ) : null}
+
+          <div ref={viewRef} className="relative">
+            <button type="button" onClick={() => setViewOpen((value) => !value)} aria-expanded={viewOpen} aria-haspopup="dialog" className={gridButton}>
+              <Eye size={14} />
+              {t('grid.view', 'View')}
+              <span className="rounded-[5px] bg-[var(--muted-surface)] px-1 font-mono text-[10.5px] text-[var(--muted-strong)]">{visibleKeys.length}/{columns.length}</span>
+            </button>
+            {viewOpen ? (
+              <div role="dialog" aria-label={t('grid.view', 'View')} className={cn(gridPanel, 'right-0 w-[300px]')}>
+                <p className="px-2 pt-1 pb-1.5 text-[11px] font-semibold tracking-[0.06em] text-[var(--caption)] uppercase">{t('grid.density.label', 'Row density')}</p>
+                <div className="mx-1 mb-2 grid grid-cols-3 gap-1 rounded-[9px] bg-[var(--muted-surface)] p-[3px]">
+                  {(Object.keys(densityLabels) as GridDensity[]).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => update((current) => ({ ...current, density: value }))}
+                      className={cn('h-7 rounded-[7px] text-[12px] font-medium transition-all', state.density === value ? 'bg-[var(--surface)] font-semibold text-[var(--foreground)] shadow-[0_1px_3px_rgba(14,21,37,0.12)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]')}
+                    >
+                      {densityLabels[value]}
+                    </button>
+                  ))}
+                </div>
+                <p className="px-2 pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] text-[var(--caption)] uppercase">{t('grid.columns', 'Columns')}</p>
+                <ul className="max-h-[300px] overflow-y-auto overscroll-contain">
                   {state.order.filter((key) => columnMap.has(key)).map((key, index, list) => {
                     const column = columnMap.get(key)!
                     const visible = !state.hidden.includes(key)
                     const pinned = state.pinned.includes(key)
                     return (
-                      <li key={key} className="flex items-center gap-1 px-1 py-0.5 transition-colors hover:bg-[var(--input-surface)]">
+                      <li key={key} className="flex items-center gap-0.5 rounded-[8px] px-1 transition-colors hover:bg-[var(--muted-surface)]">
                         <button type="button" onClick={() => toggleHidden(key)} disabled={column.hideable === false} aria-pressed={visible} className="flex min-w-0 flex-1 items-center gap-2.5 px-1.5 py-1.5 text-left text-[13px] disabled:opacity-60">
-                          <span className={cn('grid h-[17px] w-[17px] shrink-0 place-items-center border-[1.5px] transition-colors', visible ? 'border-[var(--primary)] bg-[var(--primary)] text-white' : 'border-[#D3D7E0] bg-[var(--surface)] text-transparent')}>
-                            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                          <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-[4px] border transition-colors', visible ? 'border-[var(--primary)] bg-[var(--primary)] text-white' : 'border-[#CDD2DC] bg-[var(--surface)]')}>
+                            {visible ? <Check size={11} strokeWidth={3.2} /> : null}
                           </span>
                           <span className={cn('truncate', visible ? 'font-medium text-[var(--foreground)]' : 'text-[var(--muted)]')}>{column.header}</span>
                         </button>
-                        <button type="button" onClick={() => togglePinned(key)} aria-pressed={pinned} title={pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')} aria-label={`${pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')}: ${column.header}`} className={cn('grid h-7 w-7 place-items-center transition-colors', pinned ? 'bg-[var(--blue-dim)] text-[var(--primary)]' : 'text-[var(--caption)] hover:text-[var(--foreground)]')}>
-                          {pinned ? <Pin size={14} /> : <PinOff size={14} />}
+                        <button type="button" onClick={() => togglePinned(key)} aria-pressed={pinned} title={pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')} aria-label={`${pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')}: ${column.header}`} className={cn('grid h-7 w-7 place-items-center rounded-[6px] transition-colors', pinned ? 'text-[var(--primary)]' : 'text-[var(--caption)] hover:text-[var(--foreground)]')}>
+                          {pinned ? <Pin size={13} /> : <PinOff size={13} />}
                         </button>
-                        <button type="button" onClick={() => moveColumn(key, -1)} disabled={index === 0} aria-label={`${t('grid.move_up', 'Move up')}: ${column.header}`} className="grid h-7 w-6 place-items-center text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowUp size={14} /></button>
-                        <button type="button" onClick={() => moveColumn(key, 1)} disabled={index === list.length - 1} aria-label={`${t('grid.move_down', 'Move down')}: ${column.header}`} className="grid h-7 w-6 place-items-center text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowDown size={14} /></button>
+                        <button type="button" onClick={() => moveColumn(key, -1)} disabled={index === 0} aria-label={`${t('grid.move_up', 'Move up')}: ${column.header}`} className="grid h-7 w-6 place-items-center rounded-[6px] text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowUp size={13} /></button>
+                        <button type="button" onClick={() => moveColumn(key, 1)} disabled={index === list.length - 1} aria-label={`${t('grid.move_down', 'Move down')}: ${column.header}`} className="grid h-7 w-6 place-items-center rounded-[6px] text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowDown size={13} /></button>
                       </li>
                     )
                   })}
                 </ul>
+                <button type="button" onClick={() => { reset(); setViewOpen(false) }} className="mt-1 flex w-full items-center gap-2 rounded-[8px] border-t border-[var(--border)] px-2 pt-2 pb-1.5 text-left text-[12.5px] font-semibold text-[var(--muted-strong)] hover:text-[var(--foreground)]">
+                  <RotateCcw size={13} /> {t('grid.reset', 'Reset')}
+                </button>
               </div>
             ) : null}
           </div>
-
-          <div role="radiogroup" aria-label={t('grid.density.label', 'Row density')} className="inline-flex h-9 items-center gap-0.5 border border-[var(--border)] bg-[var(--surface)] p-[3px]">
-            {(Object.keys(densityLabels) as GridDensity[]).map((value) => {
-              const Icon = densityIcons[value]
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={state.density === value}
-                  aria-label={densityLabels[value]}
-                  title={densityLabels[value]}
-                  onClick={() => update((current) => ({ ...current, density: value }))}
-                  className={cn('grid h-[28px] w-[30px] place-items-center transition-colors', state.density === value ? 'bg-[var(--surface-inverse)] text-white' : 'text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]')}
-                >
-                  <Icon size={15} />
-                </button>
-              )
-            })}
-          </div>
-
-          <button type="button" onClick={reset} title={t('grid.reset', 'Reset')} aria-label={t('grid.reset', 'Reset')} className={cn(controlButton, 'w-9 justify-center px-0 font-medium text-[var(--muted-strong)]')}>
-            <RotateCcw size={15} />
-          </button>
         </div>
       </div>
 
@@ -359,14 +514,24 @@ export function DataGrid<T>({
       <div className="relative min-h-0 flex-1 overflow-auto overscroll-contain">
         <table ref={tableRef} className="border-separate border-spacing-0 text-left" style={{ tableLayout: 'fixed', width: tableWidth, minWidth: '100%' }}>
           <colgroup>
+            {selectable ? <col style={{ width: CHECK_WIDTH }} /> : null}
             {rowNumbers ? <col style={{ width: NUMBER_WIDTH }} /> : null}
+            {favorites ? <col style={{ width: STAR_WIDTH }} /> : null}
             {visibleKeys.map((key) => <col key={key} style={{ width: resizing?.key === key ? resizing.width : widthOf(key) }} />)}
           </colgroup>
           <thead>
             <tr>
+              {selectable ? (
+                <th scope="col" style={{ ...stickyLead(offsets.check, 5), top: 0 }} className="h-10 border-r border-b border-[var(--border)] bg-[var(--surface)] px-0">
+                  <span className="grid place-items-center"><Checkbox checked={pageAllSelected} indeterminate={pageSomeSelected} onChange={togglePage} label={t('grid.select_page', 'Select page')} /></span>
+                </th>
+              ) : null}
               {rowNumbers ? (
-                <th scope="col" style={{ position: 'sticky', top: 0, left: 0, zIndex: 5 }} className="h-10 border-b border-[var(--border)] bg-[#F7F8FB] px-2 text-center text-[11px] font-semibold tracking-[0.06em] text-[var(--caption)] uppercase">
-                  №
+                <th scope="col" style={{ ...stickyLead(offsets.number, 5), top: 0 }} className="h-10 border-r border-b border-[var(--border)] bg-[var(--surface)] px-2 text-center text-[12px] font-medium text-[var(--caption)]">№</th>
+              ) : null}
+              {favorites ? (
+                <th scope="col" style={{ ...stickyLead(offsets.star, 5), top: 0 }} className="h-10 border-r border-b border-[var(--border)] bg-[var(--surface)] px-0" aria-label={t('grid.favorites', 'Favourites')}>
+                  <span className="grid place-items-center text-[var(--caption)]"><Star size={13} /></span>
                 </th>
               ) : null}
               {visibleKeys.map((key) => {
@@ -396,20 +561,23 @@ export function DataGrid<T>({
                     data-col={key}
                     style={{ position: 'sticky', top: 0, zIndex: pinned ? 4 : 3, ...(pinned ? { left: pinnedOffsets.get(key) } : {}) }}
                     className={cn(
-                      'group/th relative h-10 border-b border-[var(--border)] bg-[#F7F8FB] px-3 text-[11px] font-semibold tracking-[0.06em] whitespace-nowrap text-[var(--muted-strong)] uppercase select-none',
-                      'outline-none transition-colors focus-visible:bg-[var(--blue-dim)] focus-visible:text-[var(--primary)]',
-                      column.sortValue ? 'cursor-pointer hover:text-[var(--foreground)]' : 'cursor-grab',
+                      'group/th relative h-10 border-r border-b border-[var(--border)] bg-[var(--surface)] px-3 text-[12.5px] font-medium whitespace-nowrap text-[var(--muted-strong)] select-none last:border-r-0',
+                      'outline-none transition-colors focus-visible:bg-[var(--blue-dim)]',
+                      column.sortValue ? 'cursor-pointer hover:bg-[var(--muted-surface)] hover:text-[var(--foreground)]' : 'cursor-grab',
                       sorted && 'text-[var(--primary)]',
                       dropKey === key && 'shadow-[inset_3px_0_0_var(--primary)]',
                       dragKey === key && 'opacity-40',
-                      key === lastPinned && 'shadow-[inset_-1px_0_0_var(--border-hover)]',
                     )}
                   >
                     <span className={cn('flex min-w-0 items-center gap-1.5', column.align === 'right' && 'justify-end', column.align === 'center' && 'justify-center')}>
                       <GripVertical size={12} className="-ml-1.5 shrink-0 text-[var(--caption)] opacity-0 transition-opacity group-hover/th:opacity-100" aria-hidden="true" />
                       {pinned ? <Pin size={11} className="shrink-0 text-[var(--primary)]" aria-label={t('grid.pinned', 'Pinned')} /> : null}
                       <span className="truncate">{column.header}</span>
-                      {sorted === 'asc' ? <ArrowUp size={12} className="shrink-0" /> : sorted === 'desc' ? <ArrowDown size={12} className="shrink-0" /> : null}
+                      {column.sortValue ? (
+                        <span className="ml-auto shrink-0 pl-1">
+                          {sorted === 'asc' ? <ArrowUp size={13} /> : sorted === 'desc' ? <ArrowDown size={13} /> : <ChevronsUpDown size={13} className="text-[var(--caption)]" />}
+                        </span>
+                      ) : null}
                     </span>
                     <span
                       role="separator"
@@ -420,10 +588,10 @@ export function DataGrid<T>({
                       onPointerDown={(event) => startResize(event, key)}
                       className="absolute top-0 -right-[5px] z-10 flex h-full w-[10px] cursor-col-resize justify-center"
                     >
-                      <span className={cn('my-2 w-[2px] rounded-full transition-colors', resizing?.key === key ? 'bg-[var(--primary)]' : 'bg-[var(--border)] group-hover/th:bg-[var(--border-hover)] hover:bg-[var(--primary)]!')} />
+                      <span className={cn('w-[2px] rounded-full transition-colors', resizing?.key === key ? 'bg-[var(--primary)]' : 'bg-transparent hover:bg-[var(--primary)]')} />
                     </span>
                     {resizing?.key === key ? (
-                      <span className="pointer-events-none absolute top-[calc(100%+6px)] right-0 z-20 translate-x-1/2 bg-[var(--primary)] px-2 py-0.5 font-mono text-[11px] font-semibold text-white normal-case shadow-[var(--elev-md)]">
+                      <span className="pointer-events-none absolute top-[calc(100%+6px)] right-0 z-20 translate-x-1/2 rounded-[6px] bg-[var(--primary)] px-2 py-0.5 font-mono text-[11px] font-semibold text-white shadow-[var(--elev-md)]">
                         {resizing.width} px
                       </span>
                     ) : null}
@@ -432,94 +600,129 @@ export function DataGrid<T>({
               })}
             </tr>
           </thead>
-          {/* keyed by page/sort so rows cascade in again when the view changes */}
+          {/* keyed by page/sort so rows fade in again when the view changes */}
           <tbody key={`${currentPage}-${state.sort?.key ?? ''}-${state.sort?.dir ?? ''}`}>
-            {pageRows.map((row, rowIndex) => (
-              <tr
-                key={getRowKey(row)}
-                data-row-key={getRowKey(row)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={cn('group/row grid-row-in', onRowClick && 'cursor-pointer')}
-                style={{ animationDelay: `${Math.min(rowIndex * 22, 360)}ms` }}
-              >
-                {rowNumbers ? (
-                  <td style={{ position: 'sticky', left: 0, zIndex: 2 }} className={cn('border-b border-[var(--border-subtle)] bg-[var(--card)] px-2 text-center font-mono text-[12px] text-[var(--caption)] tabular-nums transition-colors group-hover/row:bg-[#F5F8FF] group-hover/row:text-[var(--primary)] group-hover/row:shadow-[inset_2px_0_0_var(--primary)]', densityRow[state.density])}>
-                    {firstIndex + rowIndex + 1}
-                  </td>
-                ) : null}
-                {visibleKeys.map((key) => {
-                  const column = columnMap.get(key)!
-                  return (
-                    <td
-                      key={key}
-                      data-col={key}
-                      style={stickyCell(key)}
-                      className={cn(
-                        'border-b border-[var(--border-subtle)] bg-[var(--card)] px-3 align-middle text-[var(--foreground)] transition-colors group-hover/row:bg-[#F5F8FF]',
-                        densityRow[state.density],
-                        resizing?.key === key && 'shadow-[inset_-2px_0_0_var(--primary)]',
-                        key === lastPinned && 'shadow-[inset_-1px_0_0_var(--border-hover)]',
-                        column.align === 'right' && 'text-right',
-                        column.align === 'center' && 'text-center',
-                      )}
-                    >
-                      <div data-cell-content className={cn('w-max max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap', column.align === 'right' && 'ml-auto', column.align === 'center' && 'mx-auto')}>
-                        {column.render(row)}
-                      </div>
+            {pageRows.map((row, rowIndex) => {
+              const key = getRowKey(row)
+              const isSelected = selected.has(key)
+              const isFavorite = favoriteSet.has(key)
+              const zebra = rowIndex % 2 === 1
+              const rowBg = isSelected ? 'bg-[#EEF3FF]' : zebra ? 'bg-[#FAFBFC]' : 'bg-[var(--surface)]'
+              const cellBase = cn('border-r border-b border-[var(--border-subtle)] transition-colors duration-150 group-hover/row:bg-[#F3F6FF]', rowBg, densityRow[state.density])
+              return (
+                <tr
+                  key={key}
+                  data-row-key={key}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  className={cn('group/row grid-row-in', onRowClick && 'cursor-pointer')}
+                  style={{ animationDelay: `${Math.min(rowIndex * 18, 300)}ms` }}
+                >
+                  {selectable ? (
+                    <td style={stickyLead(offsets.check)} className={cn(cellBase, 'px-0')}>
+                      <span className="grid place-items-center"><Checkbox checked={isSelected} onChange={() => toggleRow(key)} label={t('grid.select_row', 'Select row')} /></span>
                     </td>
-                  )
-                })}
-              </tr>
-            ))}
+                  ) : null}
+                  {rowNumbers ? (
+                    <td style={stickyLead(offsets.number)} className={cn(cellBase, 'px-1 text-center font-mono text-[11.5px] text-[var(--caption)] tabular-nums')}>
+                      {firstIndex + rowIndex + 1}
+                    </td>
+                  ) : null}
+                  {favorites ? (
+                    <td style={stickyLead(offsets.star)} className={cn(cellBase, 'px-0')}>
+                      <button
+                        type="button"
+                        aria-pressed={isFavorite}
+                        aria-label={t('grid.favorite', 'Favourite')}
+                        onClick={(event) => { event.stopPropagation(); toggleFavorite(key) }}
+                        className={cn('mx-auto grid h-7 w-7 place-items-center rounded-[6px] transition-all duration-200 active:scale-75', isFavorite ? 'text-[#7C5CFC]' : 'text-[#C3C8D2] hover:text-[var(--muted-strong)]')}
+                      >
+                        <Star size={14} fill={isFavorite ? 'currentColor' : 'none'} className={cn(isFavorite && 'drop-shadow-[0_2px_4px_rgba(124,92,252,0.35)]')} />
+                      </button>
+                    </td>
+                  ) : null}
+                  {visibleKeys.map((columnKey) => {
+                    const column = columnMap.get(columnKey)!
+                    return (
+                      <td
+                        key={columnKey}
+                        data-col={columnKey}
+                        style={stickyCell(columnKey)}
+                        className={cn(
+                          cellBase,
+                          'px-3 align-middle text-[var(--foreground)] last:border-r-0',
+                          resizing?.key === columnKey && 'shadow-[inset_-2px_0_0_var(--primary)]',
+                          columnKey === lastPinned && 'shadow-[inset_-1px_0_0_var(--border-hover)]',
+                          column.align === 'right' && 'text-right',
+                          column.align === 'center' && 'text-center',
+                        )}
+                      >
+                        <div data-cell-content className={cn('w-max max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap', column.align === 'right' && 'ml-auto', column.align === 'center' && 'mx-auto')}>
+                          {column.render(row)}
+                        </div>
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
         {pageRows.length === 0 ? (
           <div className="px-5 py-12">
             {loading ? (
-              <div className="mx-auto flex max-w-[520px] flex-col gap-2.5" aria-busy="true">
-                {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-9 animate-pulse bg-[var(--input-surface)]" style={{ animationDelay: `${index * 80}ms` }} />)}
+              <div className="mx-auto flex max-w-[560px] flex-col gap-2" aria-busy="true">
+                {Array.from({ length: 7 }, (_, index) => <div key={index} className="h-8 animate-pulse rounded-[8px] bg-[var(--muted-surface)]" style={{ animationDelay: `${index * 80}ms` }} />)}
               </div>
             ) : emptyState}
           </div>
         ) : null}
       </div>
 
-      {/* ── Footer: layout summary, keyboard help, pagination ── */}
-      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 border-t border-[var(--border)] bg-[#FBFBFD] py-2.5 pr-24 pl-4 text-[12px] text-[var(--muted)]">
-        <p className="min-w-0">
-          <b className="font-semibold text-[var(--foreground)]">{visibleKeys.length}</b>/{columns.length} {t('grid.footer.columns', 'columns')}
-          {' · '}{state.pinned.length > 0 ? t('grid.footer.pinned', '{{count}} pinned', { count: state.pinned.length }) : t('grid.footer.none_pinned', 'none pinned')}
-          {' · '}{t('grid.footer.rows', '{{density}} rows', { density: densityLabels[state.density].toLowerCase() })}
-        </p>
-        <p className="hidden items-center gap-1.5 2xl:flex">
-          {t('grid.footer.focus_header', 'Focus a header:')}
-          <Kbd>←</Kbd><Kbd>→</Kbd> {t('grid.footer.navigate', 'navigate')}
-          <Kbd>Alt</Kbd><Kbd>←→</Kbd> {t('grid.footer.move', 'move')}
-          <Kbd>Shift</Kbd><Kbd>←→</Kbd> {t('grid.footer.width', 'width')}
-          <Kbd>F</Kbd> {t('grid.footer.pin', 'pin')}
-          <Kbd>H</Kbd> {t('grid.footer.hide', 'hide')}
-          <Kbd>Enter</Kbd> {t('grid.footer.fit', 'fit')}
-        </p>
-        <div className="flex items-center gap-2">
-          {onPageSizeChange ? (
-            <label className="flex items-center gap-1.5">
-              <span className="sr-only">{t('grid.page_size', 'Rows per page')}</span>
-              <select
-                value={pageSize}
-                onChange={(event) => { onPageSizeChange(Number(event.target.value)); onPageChange(1) }}
-                className="h-8 border border-[var(--border)] bg-[var(--surface)] px-2 text-[12.5px] text-[var(--foreground)]"
+      {/* ── Footer: range · page numbers · rows per page ── */}
+      <div className="grid grid-cols-1 items-center gap-2 border-t border-[var(--border)] px-3 py-2.5 text-[12.5px] text-[var(--muted)] sm:grid-cols-[1fr_auto_1fr] sm:pr-24">
+        <span className="tabular-nums">
+          {sortedRows.length === 0 ? '0' : `${firstIndex + 1}–${Math.min(firstIndex + pageSize, sortedRows.length)}`} / {sortedRows.length}
+        </span>
+        <nav aria-label={t('grid.pagination', 'Pagination')} className="flex items-center justify-center gap-0.5">
+          <PageButton label={t('grid.first_page', 'First page')} disabled={currentPage <= 1} onClick={() => onPageChange(1)}><ChevronsLeft size={15} /></PageButton>
+          <PageButton label={t('grid.prev_page', 'Previous page')} disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)}><ChevronLeft size={15} /></PageButton>
+          {pageWindow(currentPage, pageCount).map((item, index) => item === 'gap'
+            ? <span key={`gap-${index}`} className="grid h-8 w-6 place-items-center text-[var(--caption)]">…</span>
+            : (
+              <button
+                key={item}
+                type="button"
+                aria-current={item === currentPage ? 'page' : undefined}
+                onClick={() => onPageChange(item)}
+                className={cn('grid h-8 min-w-8 place-items-center rounded-[8px] px-2 font-medium tabular-nums transition-colors', item === currentPage ? 'bg-[var(--blue-dim)] font-semibold text-[var(--primary)]' : 'text-[var(--muted-strong)] hover:bg-[var(--muted-surface)] hover:text-[var(--foreground)]')}
               >
-                {PAGE_SIZES.map((size) => <option key={size} value={size}>{t('common.per_page', '{{count}} per page', { count: size })}</option>)}
-              </select>
-            </label>
-          ) : null}
-          <span className="tabular-nums">
-            {sortedRows.length === 0 ? '0' : `${firstIndex + 1}–${Math.min(firstIndex + pageSize, sortedRows.length)}`} / {sortedRows.length}
-          </span>
-          <button type="button" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage <= 1} aria-label={t('grid.prev_page', 'Previous page')} className="grid h-8 w-8 place-items-center border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)] disabled:opacity-40"><ChevronLeft size={15} /></button>
-          <button type="button" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= pageCount} aria-label={t('grid.next_page', 'Next page')} className="grid h-8 w-8 place-items-center border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition-colors hover:bg-[var(--input-surface)] disabled:opacity-40"><ChevronRight size={15} /></button>
-        </div>
+                {item}
+              </button>
+            ))}
+          <PageButton label={t('grid.next_page', 'Next page')} disabled={currentPage >= pageCount} onClick={() => onPageChange(currentPage + 1)}><ChevronRight size={15} /></PageButton>
+          <PageButton label={t('grid.last_page', 'Last page')} disabled={currentPage >= pageCount} onClick={() => onPageChange(pageCount)}><ChevronsRight size={15} /></PageButton>
+        </nav>
+        {onPageSizeChange ? (
+          <label className="flex items-center justify-end gap-2">
+            <span>{t('grid.rows_per_page', 'Rows / page')}:</span>
+            <select
+              value={pageSize}
+              onChange={(event) => { onPageSizeChange(Number(event.target.value)); onPageChange(1) }}
+              className="h-8 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-2 text-[12.5px] font-semibold text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none"
+            >
+              {PAGE_SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
+        ) : <span />}
       </div>
     </section>
+  )
+}
+
+function PageButton({ label, disabled, onClick, children }: { label: string; disabled: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick} className="grid h-8 w-8 place-items-center rounded-[8px] text-[var(--muted-strong)] transition-colors hover:bg-[var(--muted-surface)] hover:text-[var(--foreground)] disabled:pointer-events-none disabled:opacity-30">
+      {children}
+    </button>
   )
 }
