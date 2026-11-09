@@ -33,6 +33,10 @@ import { resolveCustomerAudioUrl } from '../lib/customerAudio'
 import { getCustomerActionErrorMessage, getCustomerUnavailableMessage, getCustomerUnavailableTitle } from '../lib/customerErrors'
 import { getRecallTimeTone, getRecallTimeToneClasses } from '../lib/recallTime'
 import { AudioPlayerCard } from './AudioPlayerCard'
+import { CustomerQuickView, type QuickStatusChoice } from './CustomerQuickView'
+import { useLocale } from '../../../app/hooks/useLocale'
+import { formatClock, formatDayLong, toRecallApiValue, type WallTime } from '../lib/tashkentTime'
+import { formatConversationLanguageLabel, formatCustomerNotes } from '../lib/customerNotes'
 
 type MergedCustomerNote = {
   id: number | string
@@ -41,59 +45,6 @@ type MergedCustomerNote = {
   created_by_full_name: string
   created_at: string | null
   isAi?: boolean
-}
-
-function formatCustomerNotes(notes?: string | null) {
-  if (!notes) {
-    return []
-  }
-
-  const normalizedNotes = notes
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/\r\n?/g, '\n')
-    .replace(/\u00a0/g, ' ')
-
-  const segmentedNotes = normalizedNotes
-    .replace(/\s+(?=\([^)]+\)\s+\d{1,2}[./]\d{1,2}[./]\d{2,4}\b)/g, '\n\n')
-    .replace(
-      /\s+(?=\d{1,2}[./]\d{1,2}[./]\d{2,4}\s+\d{1,2}(?::|\.)\d{2}(?:\s?[APMapm]{2})?\s+\([^)]+\)\s+)/g,
-      '\n\n',
-    )
-    .replace(
-      /\s+(?=\d{1,2}[./]\d{1,2}[./]\d{2,4}\s+\d{1,2}(?::|\.)\d{2}(?:\s?[APMapm]{2})?\s+[A-ZА-ЯЁ][\p{L}.'-]*(?:\s+[A-ZА-ЯЁ][\p{L}.'-]*){0,2}\s+)/gu,
-      '\n\n',
-    )
-    .replace(
-      /\s+(?=\d{1,2}(?::|\.)\d{2}(?:\s?[APMapm]{2})?\s+\d{1,2}[./]\d{1,2}[./]\d{2,4}\s+[A-ZА-ЯЁ][\p{L}.'-]*(?:\s+[A-ZА-ЯЁ][\p{L}.'-]*){0,2}\b)/gu,
-      '\n\n',
-    )
-    .replace(
-      /\s+(?=(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{1,2}:\d{2}(?:\s+\([^)]+\))?)/g,
-      '\n\n',
-    )
-    .replace(
-      /([.!?])\s+(?=\d{1,2}[./]\d{1,2}[./]\d{2,4}\s+(?:Today|Tomorrow|Yesterday|Call|Called|Need|Meeting|Spoke|Contacted|Lead)\b)/g,
-      '$1\n\n',
-    )
-    .replace(/\n{3,}/g, '\n\n')
-
-  return segmentedNotes
-    .split(/\n{2,}/)
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-}
-
-function formatConversationLanguageLabel(
-  t: (key: string, fallback: string) => string,
-  value?: string | null,
-) {
-  const normalized = (value ?? '').trim().toLowerCase()
-
-  if (normalized === 'uz' || normalized === 'ru' || normalized === 'en') {
-    return t(`common.language.${normalized}`, value ?? normalized)
-  }
-
-  return value || '-'
 }
 
 function CustomerAudioPanel({ audioSource, customerName }: { audioSource: string; customerName: string }) {
@@ -532,6 +483,9 @@ export function CustomerDetailDrawer({
   onOpenChat,
   onSearchTelegram,
   onEdit,
+  statusChoices,
+  onStatusChange,
+  onCustomerUpdated,
 }: {
   open: boolean
   customerId?: number | null
@@ -540,10 +494,17 @@ export function CustomerDetailDrawer({
   onOpenChat?: (conversationId: number) => void
   onSearchTelegram?: (phoneNumber: string, customerId: number) => void
   onEdit?: (customer: CustomerSummary) => void
+  /** Statuses for the quick status action. */
+  statusChoices?: QuickStatusChoice[]
+  /** Saves a new status (updates the table too); resolves to false on failure. */
+  onStatusChange?: (customer: CustomerSummary, nextStatus: string) => Promise<boolean>
+  /** Called after the modal saved a change, so the list can show it. */
+  onCustomerUpdated?: (customer: CustomerSummary) => void
 }) {
   const { t } = useTranslation()
-  const { user } = useAuth()
-  const { service: crmService, apiBasePath, kind } = useCrmScope()
+  const { locale } = useLocale()
+  const { showToast } = useToast()
+  const { service: crmService, apiBasePath } = useCrmScope()
   const detailQuery = useAsyncData(
     () => crmService.detail(customerId ?? 0),
     [customerId, open],
@@ -559,7 +520,7 @@ export function CustomerDetailDrawer({
     document.body.style.overflow = 'hidden'
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
         onClose()
       }
     }
@@ -573,9 +534,13 @@ export function CustomerDetailDrawer({
   }, [onClose, open])
 
   const isCustomerUnavailable = detailQuery.isError && isNotFoundError(detailQuery.error)
+  const detail = detailQuery.data?.id === customerId ? detailQuery.data : null
+  // The list row carries the latest quick edits (status / recall), so it wins for those two fields.
   const customer = isCustomerUnavailable
     ? null
-    : detailQuery.data?.id === customerId ? detailQuery.data : initialCustomer ?? null
+    : detail
+      ? (initialCustomer?.id === detail.id ? { ...detail, status: initialCustomer.status, recall_time: initialCustomer.recall_time } : detail)
+      : initialCustomer ?? null
   const customerPhoneNumber = (customer?.phone_number ?? customer?.phone ?? '').trim()
   const audioSource = useMemo(
     () => resolveCustomerAudioUrl(customer?.audio_file_id, customer?.audio_url, apiBasePath),
@@ -585,6 +550,47 @@ export function CustomerDetailDrawer({
   if (!open) {
     return null
   }
+
+  function patchLocal(next: Partial<CustomerSummary>) {
+    detailQuery.setData((current: CustomerSummary | undefined) => (current ? { ...current, ...next } : current))
+  }
+
+  async function saveRecall(current: CustomerSummary, wall: WallTime | null) {
+    const formData = new FormData()
+    if (wall) formData.append('recall_time', toRecallApiValue(wall))
+    else formData.append('clear_recall_time', 'true')
+    try {
+      await crmService.patchCustomer(current.id, formData)
+      const recall_time = wall ? toRecallApiValue(wall) : null
+      patchLocal({ recall_time })
+      onCustomerUpdated?.({ ...current, recall_time })
+      showToast({
+        title: wall ? t('customers.recall.saved', 'Call-back time set') : t('customers.recall.cleared', 'Call-back time cleared'),
+        description: wall ? `${formatDayLong(locale, wall.date)}, ${formatClock(wall)}` : undefined,
+        tone: 'success',
+      })
+      return true
+    } catch (error) {
+      showToast({ title: t('customers.recall.failed', 'Could not save the call-back time'), description: getCustomerActionErrorMessage(error, t), tone: 'error' })
+      return false
+    }
+  }
+
+  async function changeStatus(current: CustomerSummary, next: string) {
+    if (!onStatusChange) return false
+    const ok = await onStatusChange(current, next)
+    if (ok) patchLocal({ status: next })
+    return ok
+  }
+
+  const fallbackHeader = (
+    <div className="flex items-center justify-between gap-3 px-5 pt-4">
+      <p className="text-[15px] font-semibold text-[var(--foreground)]">{t('customers.detail', 'Customer detail')}</p>
+      <IconButton size="md" label={t('common.close', 'Close')} onClick={onClose}>
+        <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" /></svg>
+      </IconButton>
+    </div>
+  )
 
   return createPortal(
     <div className="fixed inset-0 z-[90]">
@@ -596,129 +602,65 @@ export function CustomerDetailDrawer({
       />
 
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-3 sm:p-6">
-        <div className="modal-pop pointer-events-auto flex max-h-full w-full max-w-[880px] flex-col overflow-hidden rounded-[22px] bg-[var(--surface)] shadow-[var(--elev-xl)]">
-          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-[18px] py-4 sm:px-[22px]">
-            <div className="min-w-0 flex-1">
-              <p className="ui-eyebrow">
-                {t('customers.detail.drawer_eyebrow', 'CRM drawer')}
-              </p>
-              <h2 className="mt-1.5 truncate text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">
-                {customer ? getCustomerDisplayName(customer) : t('customers.detail', 'Customer detail')}
-              </h2>
-            </div>
-
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              {customer && customerPhoneNumber && canUseTelephony(user) && (
-                <Button variant="secondary" size="sm" asChild>
-                  <Link to={`/telephony?phone=${encodeURIComponent(customerPhoneNumber)}&crm_source=${kind === 'outbound' ? 'crm_outbound' : 'crm'}&customer_id=${customer.id}`} onClick={onClose}><Phone size={15} /><span className="ml-2">Call</span></Link>
-                </Button>
-              )}
-              {customer && onSearchTelegram && customerPhoneNumber ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  title={t('customers.detail.search_telegram', 'Search Telegram')}
-                  onClick={() => onSearchTelegram(customerPhoneNumber, customer.id)}
-                  leftIcon={
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                      <circle cx="7" cy="7" r="4.25" />
-                      <path d="M10.25 10.25 13 13" strokeLinecap="round" />
-                    </svg>
-                  }
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={customer ? getCustomerDisplayName(customer) : t('customers.detail', 'Customer detail')}
+          className="modal-pop pointer-events-auto flex max-h-[min(88vh,860px)] w-full max-w-[620px] flex-col overflow-hidden rounded-[22px] bg-[var(--surface)] shadow-[var(--elev-xl)] ring-1 ring-black/[0.04]"
+        >
+          {isCustomerUnavailable ? (
+            <>
+              {fallbackHeader}
+              <div className="p-5">
+                <ErrorStateBlock
+                  eyebrow={t('customers.detail', 'Customer detail')}
+                  title={getCustomerUnavailableTitle(t)}
+                  actionLabel={t('common.close', 'Close')}
+                  onAction={onClose}
                 >
-                  {t('customers.detail.search_telegram', 'Search Telegram')}
-                </Button>
-              ) : null}
-              {customer && onEdit ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  title={t('customers.detail.edit', 'Edit customer')}
-                  onClick={() => onEdit(customer)}
-                  leftIcon={
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                      <path d="M11.33 2.67L13.33 4.67M2 14h3.33l8-8V3.67A1.33 1.33 0 0 0 12 2.33H3.33A1.33 1.33 0 0 0 2 3.67z" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  }
-                >
-                  {t('customers.detail.edit', 'Edit')}
-                </Button>
-              ) : null}
-              {customer?.chat_url && onOpenChat ? (() => {
+                  <p className="max-w-md text-[13px] text-[var(--muted-strong)]">{getCustomerUnavailableMessage(t)}</p>
+                </ErrorStateBlock>
+              </div>
+            </>
+          ) : customer ? (
+            <CustomerQuickView
+              customer={customer}
+              audioSource={audioSource}
+              statusChoices={statusChoices}
+              onChangeStatus={onStatusChange ? (next) => changeStatus(customer, next) : undefined}
+              onSaveRecall={(wall) => saveRecall(customer, wall)}
+              onClose={onClose}
+              onEdit={onEdit ? () => onEdit(customer) : undefined}
+              onSearchTelegram={onSearchTelegram && customerPhoneNumber ? () => onSearchTelegram(customerPhoneNumber, customer.id) : undefined}
+              onOpenChat={onOpenChat ? () => {
                 const match = customer.chat_url?.match(/conversation_id=(\d+)/)
-                const convId = match ? Number(match[1]) : null
-                return convId ? (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    title={t('customers.detail.view_chat', "Suhbatni ko'rish")}
-                    onClick={() => onOpenChat(convId)}
-                    leftIcon={
-                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                        <path d="M14 10a1.33 1.33 0 0 1-1.33 1.33H4.67L2 14V3.33A1.33 1.33 0 0 1 3.33 2h9.34A1.33 1.33 0 0 1 14 3.33z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    }
-                  >
-                    {t('customers.detail.view_chat', "Suhbat")}
-                  </Button>
-                ) : null
-              })() : null}
-
-              <IconButton
-                size="md"
-                label={t('customers.detail.close', 'Close detail drawer')}
-                onClick={onClose}
-              >
-                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                  <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
-                </svg>
-              </IconButton>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--app-canvas)] p-[18px] sm:p-[22px]">
-            {isCustomerUnavailable ? (
-              <ErrorStateBlock
-                eyebrow={t('customers.detail', 'Customer detail')}
-                title={getCustomerUnavailableTitle(t)}
-                actionLabel={t('common.close', 'Close')}
-                onAction={onClose}
-              >
-                <p className="max-w-md text-[13px] text-[var(--muted-strong)]">{getCustomerUnavailableMessage(t)}</p>
-              </ErrorStateBlock>
-            ) : detailQuery.isLoading && !customer ? (
-              <LoadingStateBlock
-                eyebrow={t('customers.detail', 'Customer detail')}
-                title={t('customers.loading.detail.title', 'Customer detail loading')}
-                description={t('customers.loading.detail.description', 'Preparing the CRM detail view.')}
-              />
-            ) : detailQuery.isError && !customer ? (
-              <ErrorStateBlock
-                eyebrow={t('customers.detail', 'Customer detail')}
-                title={t('customers.errors.detail_unavailable.title', 'Customer detail unavailable')}
-                description={t('customers.errors.detail_unavailable.description', 'The CRM detail endpoint could not return this customer.')}
-                actionLabel={t('common.retry', 'Retry')}
-                onAction={() => {
-                  void detailQuery.refetch()
-                }}
-              />
-            ) : customer ? (
-              <CustomerDetailContent
-                customer={customer}
-                audioSource={audioSource}
-                hideActions
-              />
-            ) : (
-              <EmptyStateBlock
-                eyebrow={t('customers.detail', 'Customer detail')}
-                title={t('customers.detail.no_selection.title', 'No customer selected')}
-                description={t('customers.detail.no_selection.description', 'Pick a CRM row to inspect the customer on the right side.')}
-              />
-            )}
-          </div>
+                if (match) onOpenChat(Number(match[1]))
+              } : undefined}
+            />
+          ) : (
+            <>
+              {fallbackHeader}
+              <div className="p-5">
+                {detailQuery.isError ? (
+                  <ErrorStateBlock
+                    eyebrow={t('customers.detail', 'Customer detail')}
+                    title={t('customers.errors.detail_unavailable.title', 'Customer detail unavailable')}
+                    description={t('customers.errors.detail_unavailable.description', 'The CRM detail endpoint could not return this customer.')}
+                    actionLabel={t('common.retry', 'Retry')}
+                    onAction={() => {
+                      void detailQuery.refetch()
+                    }}
+                  />
+                ) : (
+                  <LoadingStateBlock
+                    eyebrow={t('customers.detail', 'Customer detail')}
+                    title={t('customers.loading.detail.title', 'Customer detail loading')}
+                    description={t('customers.loading.detail.description', 'Preparing the CRM detail view.')}
+                  />
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>,

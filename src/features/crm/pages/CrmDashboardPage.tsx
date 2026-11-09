@@ -976,7 +976,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
 
   const [savingStatusId, setSavingStatusId] = useState<number | null>(null)
 
-  async function handleInlineStatusChange(customer: CustomerSummary, nextStatus: string) {
+  async function handleInlineStatusChange(customer: CustomerSummary, nextStatus: string): Promise<boolean> {
     const previous = customer
     const formData = new FormData()
     formData.append('status', nextStatus)
@@ -999,6 +999,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
         ...(selectedPeriod ? [periodReportQuery.refetch()] : []),
         ...(selectedStatusFilterValues.length > 0 ? [selectedStatusCustomersQuery.refetch()] : []),
       ])
+      return true
     } catch (error) {
       syncCustomerInUi(previous)
       showToast({
@@ -1006,6 +1007,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
         description: getCustomerActionErrorMessage(error, t),
         tone: 'error',
       })
+      return false
     } finally {
       setSavingStatusId(null)
     }
@@ -1123,6 +1125,8 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const needToCallOption = allChipStatuses.find((option) => normalizeStatusKey(option.value) === 'needtocall')
   const needToCallCount = statusCounts.get('needtocall') ?? 0
 
+  const statusChoices = allChipStatuses.map((option) => ({ value: option.value, label: option.label, color: option.color, icon: statusIconFor(option.value) }))
+
   const modals = (
     <>
       <CustomerDetailDrawer
@@ -1142,6 +1146,9 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           setModalMode('edit')
           setIsFormOpen(true)
         }}
+        statusChoices={statusChoices}
+        onStatusChange={handleInlineStatusChange}
+        onCustomerUpdated={syncCustomerInUi}
       />
 
       <CustomerFormModal
@@ -1214,7 +1221,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     const meta = statusMetaMap.get(normalizeStatusKey(value))
     return { label: meta?.label ?? localizeStatus(value, value), color: meta?.color ?? '#8A90A2', icon: statusIconFor(value) }
   }
-  const statusChoices = allChipStatuses.map((option) => ({ value: option.value, label: option.label, color: option.color, icon: statusIconFor(option.value) }))
 
   const gridColumns: GridColumn<CustomerSummary>[] = [
     {

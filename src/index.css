@@ -916,9 +916,9 @@ input:-webkit-autofill:focus {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Phone UI theme: follows the system unless the Calls page switch picks light or dark. */
+/* Phone UI follows the system appearance (macOS Light / Dark). */
 @media (prefers-color-scheme: dark) {
-  .mac-phone:not([data-phone-theme="light"]) {
+  .mac-phone {
     --mp-window: #1e1e1e;
     --mp-toolbar: #262626;
     --mp-text: #f5f5f7;
@@ -955,43 +955,6 @@ input:-webkit-autofill:focus {
     --mp-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.6), 0 24px 70px -18px rgba(0, 0, 0, 0.7);
     color-scheme: dark;
   }
-}
-.mac-phone[data-phone-theme="dark"] {
-  --mp-window: #1e1e1e;
-  --mp-toolbar: #262626;
-  --mp-text: #f5f5f7;
-  --mp-secondary: rgba(235, 235, 245, 0.6);
-  --mp-tertiary: rgba(235, 235, 245, 0.32);
-  --mp-separator: rgba(84, 84, 88, 0.5);
-  --mp-hover: rgba(255, 255, 255, 0.04);
-  --mp-selected: rgba(255, 255, 255, 0.09);
-  --mp-control: rgba(118, 118, 128, 0.26);
-  --mp-control-hover: rgba(118, 118, 128, 0.38);
-  --mp-menu: rgba(40, 40, 40, 0.92);
-  --mp-menu-border: rgba(255, 255, 255, 0.12);
-  --mp-blue: #0a84ff;
-  --mp-red: #ff453a;
-  --mp-green: #30d158;
-  --mp-orange: #ff9f0a;
-  --mp-purple: #bf9cff;
-  --mp-avatar: linear-gradient(180deg, #6e6e76 0%, #4b4b52 100%);
-  --mp-glass: rgba(255, 255, 255, 0.08);
-  --mp-glass-strong: rgba(255, 255, 255, 0.14);
-  --mp-glass-text: #f5f5f7;
-  --mp-glass-secondary: rgba(245, 245, 247, 0.62);
-  --mp-glass-line: rgba(255, 255, 255, 0.1);
-  --mp-group: rgba(255, 255, 255, 0.05);
-  --mp-segment: #636366;
-  --mp-dialer: linear-gradient(180deg, #2c2c30 0%, #1c1c1e 100%);
-  --mp-key-bg: rgba(118, 118, 128, 0.3);
-  --mp-hero-avatar: rgba(255, 255, 255, 0.1);
-  --mp-hero: linear-gradient(180deg,
-    hsl(var(--mp-hue, 220) 10% 62%) 0%,
-    hsl(calc(var(--mp-hue, 220) + 30) 22% 42%) 38%,
-    hsl(calc(var(--mp-hue, 220) + 45) 42% 27%) 70%,
-    hsl(calc(var(--mp-hue, 220) + 50) 48% 20%) 100%);
-  --mp-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.6), 0 24px 70px -18px rgba(0, 0, 0, 0.7);
-  color-scheme: dark;
 }
 
 .mac-phone-scroll { scrollbar-width: thin; scrollbar-color: var(--mp-tertiary) transparent; }
@@ -1107,3 +1070,11 @@ input:-webkit-autofill:focus {
 @media (prefers-reduced-motion: reduce) {
   .call-island, .call-island-closing, .call-island-content, .call-island-ears, .call-wave > span, .call-halo { animation: none !important; }
 }
+
+/* Customer modal: quick-action panels (recall picker, status list) slide open */
+.qa-panel { animation: qa-panel 280ms cubic-bezier(0.16, 1, 0.3, 1) backwards; transform-origin: 50% 0; }
+@keyframes qa-panel {
+  0% { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  100% { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .qa-panel { animation: none !important; } }

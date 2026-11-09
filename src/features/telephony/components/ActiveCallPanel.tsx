@@ -6,7 +6,7 @@ import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { leadPath } from '../../../shared/api/services/telephony.service'
 import { useTelephony } from '../TelephonyContext'
-import { startRingtone, stopRingtone } from '../lib/ringtone'
+import { preloadRingtone, startRingtone, stopRingtone } from '../lib/ringtone'
 import { formatDuration, formatPhone, hueOf, initialOf, sourceLabel } from './telephonyFormat'
 
 /* ──────────────────────────────────────────────────────────────
@@ -111,6 +111,9 @@ export function ActiveCallPanel() {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [confirmedAt])
+
+  // Fetch the ringtone once up front so the first ring is instant
+  useEffect(() => { preloadRingtone() }, [])
 
   // Ringtone while an incoming call rings (unless silenced)
   useEffect(() => {
