@@ -27,9 +27,10 @@ import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
 import { CopyButton, FilterPanel, FilterToken, FlagTag, StatusSelect } from '../components/CustomerFilters'
 import { platformVisual } from '../lib/platformIcon'
+import { avatarTone, initialsFor } from '../lib/customerAvatar'
+import { MetricTile } from '../components/MetricTile'
 import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { statusIconFor } from '../lib/statusIcon'
-import { CountUp } from '../../../shared/ui/count-up'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
 import { useCrmScope } from '../lib/crmScope'
@@ -447,24 +448,6 @@ function TableAudioControl({
 }
 
 
-
-const avatarTones = [
-  'bg-[var(--blue-dim)] text-[var(--blue-text)]',
-  'bg-[var(--violet-dim)] text-[var(--violet-text)]',
-  'bg-[var(--success-dim)] text-[var(--success-text)]',
-  'bg-[var(--warning-dim)] text-[var(--warning-text)]',
-  'bg-[#E9F7FB] text-[#0B7285]',
-]
-
-function avatarTone(name: string) {
-  let hash = 0
-  for (let index = 0; index < name.length; index += 1) hash = (hash * 31 + name.charCodeAt(index)) >>> 0
-  return avatarTones[hash % avatarTones.length]
-}
-
-function initialsFor(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || '—'
-}
 
 type CrmPageView = 'overview' | 'customers'
 const periodKeys = ['today', '3d', '7d', '30d', '90d'] as const
@@ -1532,36 +1515,9 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
 
       {/* Metric cards — each also works as a quick filter */}
       <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
-        {metrics.map((metric) => {
-          const Icon = metric.icon
-          const Cell = metric.onClick ? 'button' : 'div'
-          return (
-            <Cell
-              key={metric.key}
-              {...(metric.onClick ? { type: 'button' as const, onClick: metric.onClick, 'aria-pressed': metric.active } : {})}
-              className={cn(
-                'group relative overflow-hidden rounded-[14px] border bg-[var(--card)] px-4 py-3.5 text-left transition-[transform,box-shadow,border-color] duration-300',
-                metric.active ? 'border-transparent shadow-[0_0_0_2px_var(--primary),0_12px_28px_-18px_rgba(43,89,255,0.6)]' : 'border-[var(--border)] shadow-[0_1px_2px_rgba(14,21,37,0.04)]',
-                metric.onClick && 'hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-20px_rgba(14,21,37,0.45)]',
-              )}
-            >
-              <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-[0.07] transition-transform duration-500 group-hover:scale-125" style={{ background: metric.accent }} />
-              <span className="flex items-center justify-between gap-3">
-                <span className="truncate text-[12.5px] font-medium text-[var(--muted-strong)]">{metric.label}</span>
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] transition-transform duration-300 group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: `${metric.accent}14`, color: metric.accent }}>
-                  <Icon size={16} strokeWidth={2.2} />
-                </span>
-              </span>
-              <span className="mt-1 block text-[28px] leading-8 font-bold tracking-[-0.035em] text-[var(--foreground)] tabular-nums" data-ui-number="true">
-                <CountUp value={metric.value} format={metric.format} />
-              </span>
-              <span className="mt-1 flex items-center gap-1.5 truncate text-[11.5px] text-[var(--muted)]">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: metric.accent }} />
-                {metric.caption}
-              </span>
-            </Cell>
-          )
-        })}
+        {metrics.map((metric) => (
+          <MetricTile key={metric.key} label={metric.label} value={metric.value} caption={metric.caption} icon={metric.icon} accent={metric.accent} format={metric.format} onClick={metric.onClick} active={metric.active} />
+        ))}
       </div>
 
       <DataGrid

@@ -71,6 +71,8 @@ type DataGridProps<T> = {
   favorites?: boolean
   /** File name (without .csv) for the Export button; omit to hide it. */
   exportName?: string
+  /** Buttons shown next to "N selected" (selectable grids): receive the selected row keys. */
+  selectionActions?: (keys: string[], clear: () => void) => ReactNode
   className?: string
 }
 
@@ -182,7 +184,7 @@ function Checkbox({ checked, indeterminate, onChange, label }: { checked: boolea
 
 export function DataGrid<T>({
   id, columns, rows, getRowKey, onRowClick, toolbarStart, toolbarEnd, belowToolbar, emptyState, loading,
-  pageSize, onPageSizeChange, page, onPageChange, rowNumbers = false, selectable = false, favorites = false, exportName, className,
+  pageSize, onPageSizeChange, page, onPageChange, rowNumbers = false, selectable = false, favorites = false, exportName, selectionActions, className,
 }: DataGridProps<T>) {
   const { t } = useLocale()
   const [state, setState] = useState<GridState>(() => readState(id, columns))
@@ -432,6 +434,7 @@ export function DataGrid<T>({
             <button type="button" onClick={() => setSelected(new Set())} aria-label={t('grid.clear_selection', 'Clear selection')} className="grid h-6 w-6 place-items-center rounded-[6px] hover:bg-white/70"><X size={13} /></button>
           </span>
         ) : null}
+        {selectedVisible.length > 0 && selectionActions ? selectionActions(selectedVisible, () => setSelected(new Set())) : null}
 
         {sortableColumns.length > 0 ? (
           <div ref={sortRef} className="relative">
