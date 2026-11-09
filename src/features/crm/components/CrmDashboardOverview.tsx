@@ -292,7 +292,7 @@ export function CrmDashboardOverview({
           value={total}
           icon={<IconUsers />}
           hint={t('customers.stats.active_now', 'Active in the pipeline')}
-          delta={continuing > 0 ? `${continuing}` : undefined}
+          delta={continuing > 0 ? t('customers.stats.delta_continuing', '{{count}} continuing', { count: continuing }) : undefined}
         />
         <StatCard
           label={t('customers.stats.need_to_call', 'Need to call')}
@@ -300,7 +300,7 @@ export function CrmDashboardOverview({
           icon={<IconUserPlus />}
           iconTone="blue"
           hint={t('customers.stats.contacted_hint', 'Contacted: {{count}}', { count: contacted })}
-          delta={needToCall > 0 ? `${Math.round((needToCall / (total || 1)) * 100)}%` : undefined}
+          delta={needToCall > 0 ? t('customers.stats.delta_of_total', '{{value}}% of total', { value: Math.round((needToCall / (total || 1)) * 100) }) : undefined}
           deltaTone="neutral"
           onOpen={() => onFocusStatus('need_to_call')}
         />
@@ -310,7 +310,7 @@ export function CrmDashboardOverview({
           icon={<IconTrophy />}
           iconTone="warning"
           hint={t('customers.stats.finished_hint', 'Finished: {{count}}', { count: finished })}
-          delta={rejected > 0 ? `${rejected}` : undefined}
+          delta={rejected > 0 ? t('customers.stats.delta_rejected', '{{count}} rejected', { count: rejected }) : undefined}
           deltaTone="danger"
           onOpen={() => onFocusStatus('project_started')}
         />

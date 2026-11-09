@@ -1,24 +1,121 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowDownLeft, ArrowUpRight, ExternalLink, Headphones, Phone, Search } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Grip, ListFilter, PhoneMissed, Search, X } from 'lucide-react'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { useTelephony } from '../TelephonyContext'
-import { Button } from '../../../shared/ui/button'
-import { Input } from '../../../shared/ui/input'
-import { CalendarField } from '../../../shared/ui/calendar-field'
-import { SelectField } from '../../../shared/ui/select-field'
-import { PageHeader } from '../../../shared/ui/page-header'
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
-import { leadPath, normalizePhone, telephonyService, type CallHistoryResponse, type TelephonyLead } from '../../../shared/api/services/telephony.service'
-import { CallDetailPanel } from '../components/CallDetailPanel'
-import { formatCallDate, formatDuration, statusLabel, statusTone } from '../components/telephonyFormat'
+import { cn } from '../../../shared/lib/cn'
+import { normalizePhone, telephonyService, type CallHistoryResponse, type TelephonyCall, type TelephonyLead } from '../../../shared/api/services/telephony.service'
+import { CallInspector } from '../components/CallInspector'
+import { KeypadPopover } from '../components/KeypadPopover'
+import { MacAvatar, MacMenu, MacMenuItem, MacMenuLabel, MacMenuSeparator, RowCallButton, ToolbarButton, TrafficLights } from '../components/MacPrimitives'
+import { useDismiss } from '../components/useDismiss'
+import { connectionLabel, formatPhone, formatRecentTime, groupRecents, sourceLabel, statusLabel, type RecentGroup } from '../components/telephonyFormat'
 import { CeoTelephonyPanel } from '../components/CeoTelephonyPanel'
 
 const statuses = ['ringing', 'answered', 'completed', 'missed', 'rejected', 'busy', 'failed']
 
+type View = 'all' | 'missed' | 'incoming' | 'outgoing'
+const views: View[] = ['all', 'missed', 'incoming', 'outgoing']
+const viewFallback: Record<View, string> = { all: 'All calls', missed: 'Missed', incoming: 'Incoming', outgoing: 'Outgoing' }
+
+const desktopQuery = '(min-width: 1024px)'
+
+function subscribeDesktop(onChange: () => void) {
+  const media = window.matchMedia(desktopQuery)
+  media.addEventListener('change', onChange)
+  return () => media.removeEventListener('change', onChange)
+}
+
+function isDesktop() {
+  return typeof window !== 'undefined' && window.matchMedia(desktopQuery).matches
+}
+
+function leadFromCall(call: TelephonyCall): TelephonyLead | null {
+  if (!call.crm_source || !call.customer_id) return null
+  return {
+    crm_source: call.crm_source,
+    customer_id: call.customer_id,
+    full_name: call.customer_name ?? '',
+    phone_number: call.phone_number,
+    status: null,
+    platform: null,
+    seller_id: call.user_id,
+    seller_name: call.user_name,
+  }
+}
+
+function RecentRow({ group, selected, showSeller, canCall, onSelect, onCall }: {
+  group: RecentGroup
+  selected: boolean
+  showSeller: boolean
+  canCall: boolean
+  onSelect: () => void
+  onCall: () => void
+}) {
+  const { t } = useLocale()
+  const { head, calls, missed } = group
+  const name = head.customer_name?.trim()
+  const Arrow = head.direction === 'incoming' ? ArrowDownLeft : ArrowUpRight
+  const subtitle = name ? formatPhone(head.phone_number) : sourceLabel(head.crm_source) ?? t('telephony.unknown', 'unknown')
+
+  return (
+    <li className="group/li">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-pressed={selected}
+        onClick={onSelect}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect() } }}
+        className={cn(
+          'group flex cursor-default items-center gap-3 rounded-[10px] px-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mp-blue)]/60',
+          selected ? 'bg-[var(--mp-selected)]' : 'hover:bg-[var(--mp-hover)]',
+        )}
+      >
+        <MacAvatar name={name} size={36} />
+        <div className={cn(
+          'flex min-w-0 flex-1 items-center gap-3 py-[9px]',
+          'border-b border-[var(--mp-separator)] group-last/li:border-transparent',
+          selected && 'border-transparent',
+        )}>
+          <div className="min-w-0 flex-1">
+            <p className={cn('truncate text-[14px] leading-[18px] font-semibold', missed ? 'text-[var(--mp-red)]' : 'text-[var(--mp-text)]')}>
+              {name || formatPhone(head.phone_number)}
+            </p>
+            <p className="mt-px flex min-w-0 items-center gap-1 text-[12.5px] leading-4 text-[var(--mp-secondary)]">
+              <Arrow size={12} strokeWidth={2.4} className="shrink-0" aria-label={t(`telephony.direction.${head.direction}`, head.direction)} />
+              <span className="truncate">
+                {subtitle}{calls.length > 1 ? ` (${calls.length})` : ''}
+                {showSeller && head.user_name ? ` · ${head.user_name}` : ''}
+              </span>
+            </p>
+          </div>
+          <span className="shrink-0 text-[12.5px] tabular-nums text-[var(--mp-secondary)]">{formatRecentTime(head.started_at)}</span>
+          <RowCallButton disabled={!canCall} label={t('telephony.call_number', 'Call {{phone}}', { phone: head.phone_number })} onClick={onCall} />
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function RowSkeleton() {
+  return (
+    <li className="flex items-center gap-3 px-2.5 py-[9px]" aria-hidden="true">
+      <span className="h-9 w-9 animate-pulse rounded-full bg-[var(--mp-control)]" />
+      <span className="flex-1 space-y-1.5">
+        <span className="block h-3 w-40 animate-pulse rounded bg-[var(--mp-control)]" />
+        <span className="block h-2.5 w-24 animate-pulse rounded bg-[var(--mp-control)]" />
+      </span>
+      <span className="h-2.5 w-10 animate-pulse rounded bg-[var(--mp-control)]" />
+    </li>
+  )
+}
+
 export function TelephonyPage() {
   const { user } = useAuth()
+  const { t } = useLocale()
   const { config, connection, error: phoneError, dial, historyVersion } = useTelephony()
   const [params, setParams] = useSearchParams()
   const [phone, setPhone] = useState(() => params.get('phone') ?? '')
@@ -36,11 +133,24 @@ export function TelephonyPage() {
   const [history, setHistory] = useState<CallHistoryResponse | null>(null)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [loadingHistory, setLoadingHistory] = useState(true)
-  const [detailId, setDetailId] = useState<number | null>(null)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [keypadOpen, setKeypadOpen] = useState(() => Boolean(params.get('phone')))
+  const [viewOpen, setViewOpen] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const keypadRef = useRef<HTMLDivElement>(null)
+  const viewRef = useRef<HTMLDivElement>(null)
+  const filterRef = useRef<HTMLDivElement>(null)
   const debouncedPhone = useDebouncedValue(phone, 300)
   const debouncedQuery = useDebouncedValue(query, 300)
   const digits = normalizePhone(debouncedPhone)
   const isCeo = user?.role === 'CEO'
+  const canCall = connection === 'Ready'
+  const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, () => true)
+
+  useDismiss(keypadRef, keypadOpen, () => setKeypadOpen(false))
+  useDismiss(viewRef, viewOpen, () => setViewOpen(false))
+  useDismiss(filterRef, filterOpen, () => setFilterOpen(false))
 
   useEffect(() => {
     const nextPhone = params.get('phone')
@@ -87,8 +197,27 @@ export function TelephonyPage() {
     return () => { active = false }
   }, [page, debouncedQuery, direction, status, dateFrom, dateTo, historyVersion])
 
-  const resultCount = useMemo(() => history?.total ?? 0, [history?.total])
-  const selectedPath = selectedLead ? leadPath(selectedLead.crm_source, selectedLead.customer_id) : null
+  const groups = useMemo(() => groupRecents(history?.items ?? []), [history?.items])
+  // Like the Mac app: on a wide screen the newest call is open on the right until you pick another one.
+  const selectedGroup = useMemo(
+    () => groups.find((group) => group.key === selectedKey) ?? (desktop ? groups[0] ?? null : null),
+    [desktop, groups, selectedKey],
+  )
+
+  const view: View = status === 'missed' ? 'missed' : direction === 'incoming' ? 'incoming' : direction === 'outgoing' ? 'outgoing' : 'all'
+  const extraFilters = (status && status !== 'missed' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0)
+  const totalPages = Math.max(1, history?.pages ?? 1)
+  const viewLabel = (key: View) => t(`telephony.view.${key}`, viewFallback[key])
+  const connectionText = `${connectionLabel(connection)}${config?.extension ? ` · ${t('telephony.ext', 'Ext {{ext}}', { ext: config.extension })}` : ''}`
+
+  function resetPage() { setPage(1); setLoadingHistory(true) }
+
+  function applyView(next: View) {
+    setDirection(next === 'incoming' || next === 'outgoing' ? next : '')
+    setStatus(next === 'missed' ? 'missed' : status === 'missed' ? '' : status)
+    setViewOpen(false)
+    resetPage()
+  }
 
   function updatePhone(value: string) {
     phoneRef.current = value
@@ -96,8 +225,7 @@ export function TelephonyPage() {
     setSelectedLead(null)
     setLeads([])
     setLeadError(null)
-    if (normalizePhone(value).length >= 4) setSearching(true)
-    else setSearching(false)
+    setSearching(normalizePhone(value).length >= 4)
   }
 
   function selectLead(item: TelephonyLead) {
@@ -116,40 +244,195 @@ export function TelephonyPage() {
     }, { replace: true })
   }
 
-  return (
-    <div className="space-y-7 pb-12">
-      <PageHeader title="Calls" actions={<span className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold ${connection === 'Ready' ? 'bg-[var(--success-dim)] text-[var(--success-text)]' : 'bg-[var(--input-surface)] text-[var(--muted)]'}`}><span className="h-2 w-2 rounded-full bg-current" />{connection}{config?.extension ? ` · Ext ${config.extension}` : ''}</span>} />
-      {phoneError && <p role="alert" className="text-sm text-[var(--danger-text)]">{phoneError}</p>}
-      <section className="grid gap-7 border-b border-[var(--border)] pb-7 lg:grid-cols-[minmax(290px,420px)_1fr]">
-        <div>
-          <h2 className="mb-4 text-base font-semibold text-[var(--foreground)]">Dialer</h2>
-          <label htmlFor="dialer-phone" className="mb-2 block text-xs font-semibold text-[var(--muted)]">Phone number or last 4 digits</label>
-          <div className="flex gap-2"><Input id="dialer-phone" type="tel" inputMode="tel" value={phone} onChange={(event) => updatePhone(event.target.value)} placeholder="+998 90 123 45 67" />
-            <Button title="Call" aria-label="Call" disabled={normalizePhone(phone).length < 7 || connection !== 'Ready'} onClick={() => dial(phone, selectedLead)}><Phone size={17} /></Button></div>
-          {searching && <p className="mt-2 text-xs text-[var(--muted)]">Searching leads...</p>}
-          {leadError && <p className="mt-2 text-xs text-[var(--danger-text)]">{leadError}</p>}
-          {digits.length >= 4 && !selectedLead && !searching && leads.length === 0 && !leadError && <p className="mt-2 text-xs text-[var(--muted)]">No matching leads.</p>}
-          {leads.length > 0 && !selectedLead && <div className="mt-3 max-h-64 overflow-y-auto border-y border-[var(--border)]">{leads.map((item) => <button type="button" key={`${item.crm_source}-${item.customer_id}`} onClick={() => selectLead(item)} className="flex w-full items-center justify-between gap-3 border-b border-[var(--border)] px-2 py-3 text-left last:border-0 hover:bg-[var(--input-surface)]"><span className="min-w-0"><span className="block truncate text-sm font-semibold text-[var(--foreground)]">{item.full_name}</span><span className="block text-xs text-[var(--muted)]">{item.phone_number}</span></span><span className="shrink-0 text-right text-xs text-[var(--muted)]">{item.crm_source === 'crm_outbound' ? 'Outbound CRM' : 'CRM'}<br />{item.status || '-'}</span></button>)}</div>}
-        </div>
-        {selectedLead && <div className="self-start border-l-2 border-[var(--primary)] pl-5"><p className="ui-eyebrow">Selected lead</p><h3 className="mt-2 text-lg font-semibold text-[var(--foreground)]">{selectedLead.full_name}</h3><p className="mt-1 text-sm text-[var(--muted)]">{selectedLead.phone_number}</p><div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--muted-strong)]"><span>{selectedLead.crm_source === 'crm_outbound' ? 'Outbound CRM' : 'CRM'}</span><span>·</span><span>{selectedLead.status || 'No status'}</span>{selectedLead.platform && <><span>·</span><span>{selectedLead.platform}</span></>}</div>{selectedPath && <Link to={selectedPath} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--blue-text)] hover:underline"><ExternalLink size={14} /> Open lead</Link>}</div>}
-      </section>
+  function selectGroup(group: RecentGroup) {
+    setSelectedKey(group.key)
+    if (!desktop) setMobileOpen(true)
+  }
 
-      <section>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="text-base font-semibold text-[var(--foreground)]">Call history</h2><span className="text-xs text-[var(--muted)]">{resultCount} calls</span></div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_150px_150px_150px_150px]">
-          <div className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" /><Input aria-label="Search calls" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); setLoadingHistory(true) }} placeholder="Customer or phone" className="pl-9" /></div>
-          <SelectField value={direction} options={[{ value: '', label: 'All directions' }, { value: 'incoming', label: 'Incoming' }, { value: 'outgoing', label: 'Outgoing' }]} onValueChange={(value) => { setDirection(value); setPage(1); setLoadingHistory(true) }} />
-          <SelectField value={status} options={[{ value: '', label: 'All statuses' }, ...statuses.map((value) => ({ value, label: statusLabel(value) }))]} onValueChange={(value) => { setStatus(value); setPage(1); setLoadingHistory(true) }} />
-          <CalendarField aria-label="From date" placeholder="From date" value={dateFrom} max={dateTo || undefined} onValueChange={(value) => { setDateFrom(value); setPage(1); setLoadingHistory(true) }} />
-          <CalendarField aria-label="To date" placeholder="To date" value={dateTo} min={dateFrom || undefined} onValueChange={(value) => { setDateTo(value); setPage(1); setLoadingHistory(true) }} />
+  const connectionTone = connection === 'Ready' ? 'bg-[var(--mp-green)]' : /connect/i.test(connection) ? 'bg-[var(--mp-orange)]' : 'bg-[var(--mp-red)]'
+
+  return (
+    <div className="space-y-8 pb-12">
+      <h1 className="sr-only">{t('telephony.title', 'Calls')}</h1>
+      {phoneError ? <p role="alert" className="rounded-[14px] bg-[var(--danger-dim)] px-4 py-2.5 text-sm text-[var(--danger-text)]">{phoneError}</p> : null}
+
+      <div className="mac-phone flex h-[max(560px,calc(100vh-150px))] flex-col overflow-hidden rounded-[16px] bg-[var(--mp-window)] shadow-[var(--mp-shadow)]">
+        {/* ── Toolbar ─────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2 px-3.5 py-2.5">
+          <TrafficLights />
+
+          <div ref={viewRef} className="relative">
+            <ToolbarButton aria-haspopup="menu" aria-expanded={viewOpen} onClick={() => setViewOpen((value) => !value)} className="pr-2.5">
+              {view === 'missed' ? <PhoneMissed size={14} className="text-[var(--mp-red)]" /> : null}
+              {viewLabel(view)}
+              <ChevronDown size={14} className="text-[var(--mp-secondary)]" />
+            </ToolbarButton>
+            {viewOpen ? (
+              <MacMenu>
+                {views.map((key) => (
+                  <MacMenuItem key={key} checked={view === key} onSelect={() => applyView(key)}>{viewLabel(key)}</MacMenuItem>
+                ))}
+              </MacMenu>
+            ) : null}
+          </div>
+
+          <div ref={filterRef} className="relative">
+            <ToolbarButton aria-label={t('telephony.filters', 'Filters')} title={t('telephony.filters', 'Filters')} aria-haspopup="menu" aria-expanded={filterOpen} onClick={() => setFilterOpen((value) => !value)} className="px-2.5">
+              <ListFilter size={15} />
+              {extraFilters > 0 ? <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[var(--mp-blue)] px-1 text-[10px] font-bold text-white">{extraFilters}</span> : null}
+              <ChevronDown size={14} className="text-[var(--mp-secondary)]" />
+            </ToolbarButton>
+            {filterOpen ? (
+              <MacMenu className="w-[250px]">
+                <MacMenuLabel>{t('telephony.filter.status', 'Status')}</MacMenuLabel>
+                <MacMenuItem checked={!status} onSelect={() => { setStatus(''); resetPage() }}>{t('telephony.filter.any_status', 'Any status')}</MacMenuItem>
+                {statuses.map((value) => (
+                  <MacMenuItem key={value} checked={status === value} onSelect={() => { setStatus(value); resetPage() }}>{statusLabel(value)}</MacMenuItem>
+                ))}
+                <MacMenuSeparator />
+                <MacMenuLabel>{t('telephony.filter.date_range', 'Date range')}</MacMenuLabel>
+                <div className="grid grid-cols-[38px_1fr] items-center gap-x-2 gap-y-1.5 px-2 pb-1.5">
+                  <label htmlFor="calls-from" className="text-[12px] text-[var(--mp-secondary)]">{t('telephony.filter.from', 'From')}</label>
+                  <input id="calls-from" type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => { setDateFrom(event.target.value); resetPage() }} className="h-7 rounded-[7px] bg-[var(--mp-control)] px-2 text-[12.5px] text-[var(--mp-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mp-blue)]/60" />
+                  <label htmlFor="calls-to" className="text-[12px] text-[var(--mp-secondary)]">{t('telephony.filter.to', 'To')}</label>
+                  <input id="calls-to" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => { setDateTo(event.target.value); resetPage() }} className="h-7 rounded-[7px] bg-[var(--mp-control)] px-2 text-[12.5px] text-[var(--mp-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mp-blue)]/60" />
+                </div>
+                {extraFilters > 0 || status ? (
+                  <>
+                    <MacMenuSeparator />
+                    <MacMenuItem onSelect={() => { setStatus(''); setDirection(''); setDateFrom(''); setDateTo(''); setFilterOpen(false); resetPage() }}>{t('telephony.filter.clear', 'Clear all filters')}</MacMenuItem>
+                  </>
+                ) : null}
+              </MacMenu>
+            ) : null}
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden items-center gap-1.5 rounded-full px-2 text-[12px] font-medium text-[var(--mp-secondary)] md:inline-flex" title={t('telephony.phone_state', 'Phone: {{state}}', { state: connectionText })}>
+              <span className={cn('h-2 w-2 rounded-full', connectionTone)} />
+              {connectionText}
+            </span>
+
+            <div ref={keypadRef} className="relative">
+              <button
+                type="button"
+                aria-label={t('telephony.keypad', 'Keypad')}
+                title={t('telephony.keypad', 'Keypad')}
+                aria-expanded={keypadOpen}
+                onClick={() => setKeypadOpen((value) => !value)}
+                className={cn(
+                  'grid h-8 w-8 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mp-blue)]/60',
+                  keypadOpen ? 'bg-[var(--mp-blue)] text-white' : 'bg-[var(--mp-control)] text-[var(--mp-text)] hover:bg-[var(--mp-control-hover)]',
+                )}
+              >
+                <Grip size={16} />
+              </button>
+              {keypadOpen ? (
+                <KeypadPopover
+                  phone={phone}
+                  onPhoneChange={updatePhone}
+                  leads={leads}
+                  selectedLead={selectedLead}
+                  searching={searching}
+                  leadError={leadError}
+                  onSelectLead={selectLead}
+                  onCall={() => dial(phone, selectedLead)}
+                  canCall={canCall && normalizePhone(phone).length >= 7}
+                  connection={connection}
+                />
+              ) : null}
+            </div>
+          </div>
+
+          <div className="relative order-last w-full sm:order-none sm:w-[240px] lg:w-[280px]">
+            <Search size={14} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--mp-secondary)]" />
+            <input
+              type="search"
+              aria-label={t('telephony.search_calls', 'Search calls')}
+              value={query}
+              onChange={(event) => { setQuery(event.target.value); resetPage() }}
+              placeholder={t('telephony.search', 'Search')}
+              className="h-8 w-full rounded-full bg-[var(--mp-control)] pr-8 pl-8 text-[13px] text-[var(--mp-text)] placeholder:text-[var(--mp-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mp-blue)]/60 [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query ? (
+              <button type="button" aria-label={t('telephony.clear_search', 'Clear search')} onClick={() => { setQuery(''); resetPage() }} className="absolute top-1/2 right-2 grid h-4 w-4 -translate-y-1/2 place-items-center rounded-full bg-[var(--mp-secondary)] text-[var(--mp-window)]">
+                <X size={10} strokeWidth={3} />
+              </button>
+            ) : null}
+          </div>
         </div>
-        <div className="mt-4 overflow-x-auto border-t border-[var(--border)]"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b border-[var(--border)] text-xs text-[var(--muted)]"><th className="px-3 py-3 font-semibold">Direction</th><th className="px-3 py-3 font-semibold">Customer</th><th className="px-3 py-3 font-semibold">Phone</th><th className="px-3 py-3 font-semibold">Seller</th><th className="px-3 py-3 font-semibold">Status</th><th className="px-3 py-3 font-semibold">Started</th><th className="px-3 py-3 font-semibold">Talk</th><th className="px-3 py-3 font-semibold">Recording</th></tr></thead><tbody>
-          {history?.items.map((item) => <tr key={item.id} onClick={() => setDetailId(item.id)} className="cursor-pointer border-b border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--input-surface)]"><td className="px-3 py-3"><span className="inline-flex items-center gap-1.5 capitalize">{item.direction === 'incoming' ? <ArrowDownLeft size={15} /> : <ArrowUpRight size={15} />}{item.direction}</span></td><td className="max-w-[180px] truncate px-3 py-3 font-medium">{item.customer_name || '-'}</td><td className="px-3 py-3">{item.phone_number}</td><td className="px-3 py-3">{item.user_name || '-'}</td><td className="px-3 py-3"><span className={`rounded px-2 py-1 text-xs font-semibold ${statusTone(item.status)}`}>{statusLabel(item.status)}</span></td><td className="px-3 py-3 whitespace-nowrap text-xs">{formatCallDate(item.started_at)}</td><td className="px-3 py-3 tabular-nums">{formatDuration(item.talk_seconds)}</td><td className="px-3 py-3">{item.has_recording && <button type="button" title="Open recording" aria-label={`Open recording for call ${item.id}`} onClick={(event) => { event.stopPropagation(); setDetailId(item.id) }} className="text-[var(--blue-text)]"><Headphones size={17} /></button>}</td></tr>)}
-        </tbody></table>{loadingHistory && <p className="px-3 py-5 text-sm text-[var(--muted)]">Loading calls...</p>}{historyError && <p role="alert" className="px-3 py-5 text-sm text-[var(--danger-text)]">{historyError}</p>}{!loadingHistory && !historyError && history?.items.length === 0 && <p className="px-3 py-8 text-center text-sm text-[var(--muted)]">No calls match these filters.</p>}</div>
-        <div className="mt-4 flex items-center justify-between"><span className="text-xs text-[var(--muted)]">Page {history?.page ?? page} of {Math.max(1, history?.pages ?? 1)}</span><div className="flex gap-2"><Button size="sm" variant="secondary" disabled={page <= 1 || loadingHistory} onClick={() => { setPage((current) => current - 1); setLoadingHistory(true) }}>Previous</Button><Button size="sm" variant="secondary" disabled={page >= (history?.pages ?? 1) || loadingHistory} onClick={() => { setPage((current) => current + 1); setLoadingHistory(true) }}>Next</Button></div></div>
-      </section>
-      {isCeo && <CeoTelephonyPanel />}
-      {detailId !== null && <CallDetailPanel key={detailId} callId={detailId} onClose={() => setDetailId(null)} />}
+
+        {/* ── Body: Recents | Inspector ───────────────────────── */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(340px,1fr)_minmax(400px,1fr)]">
+          <section aria-labelledby="recents-title" className="flex min-h-0 min-w-0 flex-col">
+            <div className="flex items-baseline justify-between px-4 pt-2 pb-1.5">
+              <h2 id="recents-title" className="text-[17px] font-bold tracking-[-0.01em] text-[var(--mp-text)]">
+                {view === 'all' ? t('telephony.recents', 'Recents') : viewLabel(view)}
+              </h2>
+              <span className="text-[12px] tabular-nums text-[var(--mp-secondary)]">{history ? t('telephony.calls_count', '{{count}} calls', { count: history.total }) : ''}</span>
+            </div>
+
+            <ul className="mac-phone-scroll min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
+              {loadingHistory && !history ? Array.from({ length: 9 }, (_, index) => <RowSkeleton key={index} />) : null}
+              {groups.map((group) => (
+                <RecentRow
+                  key={group.key}
+                  group={group}
+                  selected={group.key === selectedGroup?.key}
+                  showSeller={isCeo}
+                  canCall={canCall}
+                  onSelect={() => selectGroup(group)}
+                  onCall={() => dial(group.head.phone_number, leadFromCall(group.head))}
+                />
+              ))}
+              {historyError ? <li role="alert" className="px-4 py-6 text-center text-[13px] text-[var(--mp-red)]">{historyError}</li> : null}
+              {!loadingHistory && !historyError && history?.items.length === 0 ? (
+                <li className="flex flex-col items-center px-6 py-16 text-center">
+                  <PhoneMissed size={30} className="text-[var(--mp-tertiary)]" />
+                  <p className="mt-3 text-[15px] font-semibold text-[var(--mp-text)]">{t('telephony.no_recents', 'No Recents')}</p>
+                  <p className="mt-1 text-[13px] text-[var(--mp-secondary)]">{t('telephony.no_match', 'No calls match these filters.')}</p>
+                </li>
+              ) : null}
+            </ul>
+
+            {totalPages > 1 ? (
+              <div className="flex items-center justify-between border-t border-[var(--mp-separator)] px-4 py-2 text-[12px] text-[var(--mp-secondary)]">
+                <span className="tabular-nums">{t('telephony.page_of', 'Page {{page}} of {{total}}', { page: history?.page ?? page, total: totalPages })}</span>
+                <div className="flex gap-1">
+                  <button type="button" aria-label={t('telephony.prev_page', 'Previous page')} disabled={page <= 1 || loadingHistory} onClick={() => { setPage((current) => current - 1); setLoadingHistory(true) }} className="grid h-7 w-7 place-items-center rounded-full text-[var(--mp-text)] hover:bg-[var(--mp-control)] disabled:opacity-35">
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button type="button" aria-label={t('telephony.next_page', 'Next page')} disabled={page >= totalPages || loadingHistory} onClick={() => { setPage((current) => current + 1); setLoadingHistory(true) }} className="grid h-7 w-7 place-items-center rounded-full text-[var(--mp-text)] hover:bg-[var(--mp-control)] disabled:opacity-35">
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <div className="hidden min-h-0 min-w-0 p-3 pt-1 lg:block">
+            {selectedGroup ? (
+              <CallInspector key={selectedGroup.head.id} group={selectedGroup} canCall={canCall} onDial={dial} />
+            ) : (
+              <div className="grid h-full place-items-center rounded-[22px] bg-[var(--mp-hover)] text-center">
+                <div>
+                  <p className="text-[15px] font-semibold text-[var(--mp-text)]">{t('telephony.no_selection.title', 'No call selected')}</p>
+                  <p className="mt-1 text-[13px] text-[var(--mp-secondary)]">{t('telephony.no_selection.description', 'Choose a call from Recents to see details.')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile: inspector opens as a full-screen sheet */}
+      {mobileOpen && !desktop && selectedGroup ? (
+        <div className="mac-phone fixed inset-0 z-[120] bg-[var(--mp-window)] p-2 lg:hidden" role="dialog" aria-modal="true" aria-label={t('telephony.call_details', 'Call details')}>
+          <CallInspector key={selectedGroup.head.id} group={selectedGroup} canCall={canCall} onDial={dial} onBack={() => setMobileOpen(false)} />
+        </div>
+      ) : null}
+
+      {isCeo ? <CeoTelephonyPanel /> : null}
     </div>
   )
 }

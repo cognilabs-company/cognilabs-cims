@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Download } from 'lucide-react'
-import { Button } from '../../../shared/ui/button'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { telephonyService } from '../../../shared/api/services/telephony.service'
 
+/** Call recording player — styled for the macOS Phone inspector (uses --mp-* tokens). */
 export function RecordingPlayer({ callId }: { callId: number }) {
+  const { t } = useLocale()
   const [url, setUrl] = useState<string | null>(null)
   const [extension, setExtension] = useState('webm')
   const [loading, setLoading] = useState(true)
@@ -24,14 +26,22 @@ export function RecordingPlayer({ callId }: { callId: number }) {
 
   useEffect(() => () => { if (url) URL.revokeObjectURL(url) }, [url])
 
-  if (loading) return <p className="text-sm text-[var(--muted)]">Loading recording...</p>
-  if (error) return <p role="alert" className="text-sm text-[var(--danger-text)]">{error}</p>
+  if (loading) return <p className="text-[13px] text-[var(--mp-glass-secondary)]">{t('telephony.recording_loading', 'Loading recording…')}</p>
+  if (error) return <p role="alert" className="text-[13px] text-[var(--mp-red)]">{error}</p>
   if (!url) return null
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <audio className="min-w-0 flex-1" src={url} controls preload="metadata" />
-      <Button asChild variant="secondary" size="sm"><a href={url} download={`call-${callId}.${extension}`}><Download size={15} aria-hidden="true" /><span className="ml-2">Download</span></a></Button>
+    <div className="flex items-center gap-2">
+      <audio className="h-9 min-w-0 flex-1" src={url} controls preload="metadata" />
+      <a
+        href={url}
+        download={`call-${callId}.${extension}`}
+        title={t('telephony.recording_download', 'Download recording')}
+        aria-label={t('telephony.recording_download', 'Download recording')}
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--mp-glass-strong)] text-[var(--mp-glass-text)] transition-colors hover:text-[var(--mp-blue)]"
+      >
+        <Download size={15} aria-hidden="true" />
+      </a>
     </div>
   )
 }

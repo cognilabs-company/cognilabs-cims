@@ -14,6 +14,7 @@ const LEGACY_TRANSLATION_SKIP_SELECTOR = [
 const textSourceMap = new WeakMap<Text, string>()
 const textAppliedMap = new WeakMap<Text, string>()
 const attributeSourceMap = new WeakMap<Element, Map<string, string>>()
+const attributeAppliedMap = new WeakMap<Element, Map<string, string>>()
 
 function preserveEdgeWhitespace(source: string, translated: string) {
   const leading = source.match(/^\s*/)?.[0] ?? ''
@@ -71,10 +72,16 @@ function applyAttributeTranslation(locale: AppLocale, element: Element) {
   }
 
   let sourceMap = attributeSourceMap.get(element)
+  let appliedMap = attributeAppliedMap.get(element)
 
   if (!sourceMap) {
     sourceMap = new Map<string, string>()
     attributeSourceMap.set(element, sourceMap)
+  }
+
+  if (!appliedMap) {
+    appliedMap = new Map<string, string>()
+    attributeAppliedMap.set(element, appliedMap)
   }
 
   TRANSLATABLE_ATTRIBUTES.forEach((attributeName) => {
@@ -84,7 +91,14 @@ function applyAttributeTranslation(locale: AppLocale, element: Element) {
       return
     }
 
-    const source = sourceMap!.get(attributeName) ?? current
+    const previousSource = sourceMap!.get(attributeName)
+    const previousApplied = appliedMap!.get(attributeName)
+
+    // React (or other code) changed the attribute since we last translated it:
+    // the new value is the new source, otherwise we would keep restoring a stale one.
+    const source = previousSource === undefined || (current !== previousSource && current !== previousApplied)
+      ? current
+      : previousSource
     sourceMap!.set(attributeName, source)
 
     const translated = translateLiteral(locale, source)
@@ -92,6 +106,8 @@ function applyAttributeTranslation(locale: AppLocale, element: Element) {
     if (translated !== current) {
       element.setAttribute(attributeName, translated)
     }
+
+    appliedMap!.set(attributeName, translated)
   })
 }
 

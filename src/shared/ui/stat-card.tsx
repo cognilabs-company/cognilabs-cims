@@ -1,18 +1,24 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '../lib/cn'
 import { toneSurface, toneText, type Tone } from './tone'
 
 type StatCardProps = {
+  /** Short metric name, shown above the number. */
   label: ReactNode
+  /** The main value — the most important thing on the card. */
   value: ReactNode
+  /** One line of context under the value. */
   hint?: ReactNode
+  /** Small pill next to the hint (change, ratio, warning count). */
   delta?: ReactNode
   deltaTone?: 'success' | 'danger' | 'neutral'
   icon?: ReactNode
   iconTone?: Tone
+  /** Highlighted (brand-filled) card — use for the single most important KPI. */
   solid?: boolean
   onOpen?: () => void
   openLabel?: string
+  /** @deprecated kept for API compatibility; no longer used. */
   canvas?: string
   footer?: ReactNode
   className?: string
@@ -26,7 +32,7 @@ const deltaClasses: Record<NonNullable<StatCardProps['deltaTone']>, string> = {
 
 function ArrowOut() {
   return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M7 17L17 7M8 7h9v9" />
     </svg>
   )
@@ -43,80 +49,89 @@ export function StatCard({
   solid = false,
   onOpen,
   openLabel,
-  canvas = 'var(--app-canvas)',
   footer,
   className,
 }: StatCardProps) {
-  const notchStyle = { background: canvas } as CSSProperties
-  const cornerStyle = {
-    background: `radial-gradient(circle at 0 100%, transparent 19.5px, ${canvas} 20px)`,
-  } as CSSProperties
+  const hasMeta = Boolean(delta || hint)
 
   return (
     <div
       className={cn(
-        'relative flex min-h-[168px] flex-col justify-between rounded-[24px] p-[22px]',
-        solid ? 'text-white' : 'bg-[var(--card)] text-[var(--foreground)]',
+        'group relative flex min-h-[150px] flex-col rounded-[24px] p-[22px]',
+        solid
+          ? 'text-white shadow-[var(--elev-primary)]'
+          : 'bg-[var(--card)] text-[var(--foreground)] ring-1 ring-inset ring-[var(--border)]',
+        onOpen && 'transition-shadow hover:shadow-[var(--elev-lg)]',
         className,
       )}
       style={solid ? { background: 'var(--primary-gradient)' } : undefined}
     >
-      {onOpen ? (
-        <div className="absolute top-0 right-0 h-[62px] w-[62px] rounded-bl-[24px]" style={notchStyle}>
-          <span className="absolute top-0 -left-5 h-5 w-5" style={cornerStyle} />
-          <span className="absolute right-0 -bottom-5 h-5 w-5" style={cornerStyle} />
-          <button
-            type="button"
-            onClick={onOpen}
-            aria-label={openLabel ?? (typeof label === 'string' ? label : 'Open')}
-            className={cn(
-              'absolute top-0 right-0 grid h-[50px] w-[50px] place-items-center rounded-full transition-colors',
-              solid
-                ? 'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]'
-                : 'bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_0_#E6E8EE] hover:bg-[var(--surface-inverse)] hover:text-white',
-            )}
-          >
-            <ArrowOut />
-          </button>
-        </div>
-      ) : null}
-
+      {/* 1. What is this number? */}
       <div className="flex items-center gap-2.5">
         {icon ? (
           <span
             className={cn(
-              'grid h-9 w-9 shrink-0 place-items-center rounded-[11px]',
-              solid ? 'bg-white/16 text-white' : cn(toneSurface[iconTone], toneText[iconTone]),
+              'grid h-8 w-8 shrink-0 place-items-center rounded-[10px] [&_svg]:h-[17px] [&_svg]:w-[17px]',
+              solid ? 'bg-white/18 text-white' : cn(toneSurface[iconTone], toneText[iconTone]),
             )}
           >
             {icon}
           </span>
         ) : null}
-        <span className={cn('text-[15px] font-medium', solid ? 'text-white' : 'text-[var(--foreground)]')}>
+        <span
+          className={cn(
+            'min-w-0 flex-1 truncate text-[13.5px] font-medium leading-tight',
+            solid ? 'text-white/85' : 'text-[var(--muted-strong)]',
+          )}
+        >
           {label}
         </span>
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={openLabel ?? (typeof label === 'string' ? label : 'Open')}
+            title={openLabel ?? (typeof label === 'string' ? label : undefined)}
+            className={cn(
+              'grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40',
+              solid
+                ? 'bg-white/15 text-white hover:bg-white/25'
+                : 'bg-[var(--input-surface)] text-[var(--muted-strong)] hover:bg-[var(--surface-inverse)] hover:text-white',
+            )}
+          >
+            <ArrowOut />
+          </button>
+        ) : null}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="text-[28px] font-bold tracking-[-0.03em] tabular-nums" data-ui-number="true">
-            {value}
-          </span>
-          {delta ? (
-            <span
-              className={cn(
-                'rounded-full px-2 py-1 text-xs font-semibold',
-                solid ? 'bg-white/18 text-white' : deltaClasses[deltaTone],
-              )}
-            >
-              {delta}
-            </span>
-          ) : null}
+      {/* 2. The number itself — biggest element on the card. */}
+      <div className="mt-auto pt-5">
+        <div
+          className="truncate text-[32px] leading-none font-bold tracking-[-0.035em] tabular-nums"
+          data-ui-number="true"
+        >
+          {value}
         </div>
-        {hint ? (
-          <span className={cn('text-[12.5px]', solid ? 'text-[#D7E0FF]' : 'text-[var(--muted)]')}>
-            {hint}
-          </span>
+
+        {/* 3. Context: one pill + one line. */}
+        {hasMeta ? (
+          <div className="mt-3 flex min-w-0 items-center gap-2">
+            {delta ? (
+              <span
+                className={cn(
+                  'inline-flex shrink-0 items-center rounded-full px-2 py-[3px] text-[11.5px] font-semibold tabular-nums',
+                  solid ? 'bg-white/20 text-white' : deltaClasses[deltaTone],
+                )}
+              >
+                {delta}
+              </span>
+            ) : null}
+            {hint ? (
+              <span className={cn('min-w-0 truncate text-[12.5px]', solid ? 'text-white/75' : 'text-[var(--muted)]')}>
+                {hint}
+              </span>
+            ) : null}
+          </div>
         ) : null}
         {footer}
       </div>

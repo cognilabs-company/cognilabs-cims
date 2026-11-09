@@ -724,7 +724,7 @@ export function MemberDashboardPage() {
           hint={weeklyProgressHint}
           icon={<PulseIcon />}
           iconTone="violet"
-          delta={typeof weeklyRemaining === 'number' && weeklyRemaining > 0 ? formatCount(weeklyRemaining) : undefined}
+          delta={typeof weeklyRemaining === 'number' && weeklyRemaining > 0 ? t('member.overview.delta_left', '{{count}} left', { count: formatCount(weeklyRemaining) }) : undefined}
           deltaTone="neutral"
           onOpen={() => scrollToSection('member-update-checklist')}
         />
@@ -743,7 +743,7 @@ export function MemberDashboardPage() {
           hint={salaryEstimateLabel}
           icon={<WalletIcon />}
           iconTone="lime"
-          delta={Number.isFinite(detail.report.totalBonusPercent) ? formatPercent(detail.report.totalBonusPercent) : undefined}
+          delta={Number.isFinite(detail.report.totalBonusPercent) ? t('member.overview.delta_bonus', 'Bonus {{value}}', { value: formatPercent(detail.report.totalBonusPercent) }) : undefined}
           deltaTone={detail.report.hasPenalty ? 'danger' : 'success'}
           onOpen={() => scrollToSection('member-salary-snapshot')}
         />

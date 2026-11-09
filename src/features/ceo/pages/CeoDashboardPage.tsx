@@ -104,7 +104,7 @@ function initialsOf(value: string) {
     .toUpperCase() || '—'
 }
 
-const statPanelClassName = 'min-h-0 gap-3 rounded-[18px] bg-[var(--accent-soft)] p-4'
+const statPanelClassName = 'min-h-[118px] rounded-[18px] bg-[var(--accent-soft)] p-4 ring-0'
 
 const glyphPaths = {
   send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
@@ -743,11 +743,11 @@ export function CeoDashboardPage() {
 
   const slaSegments = useMemo<GaugeSegment[]>(
     () => [
-      { key: 'on_time', label: "O'z vaqtida", value: slaOnTime, color: '#A6E83B' },
-      { key: 'late', label: 'Kech boglanildi', value: slaLate, color: '#C6D4FF' },
-      { key: 'no_status', label: "Status o'zgarmadi", value: slaNoChange, color: '#2B59FF' },
+      { key: 'on_time', label: t('ceo.sla.on_time', 'On time'), value: slaOnTime, color: '#A6E83B' },
+      { key: 'late', label: t('ceo.sla.late', 'Contacted late'), value: slaLate, color: '#C6D4FF' },
+      { key: 'no_status', label: t('ceo.sla.no_status', 'Status unchanged'), value: slaNoChange, color: '#2B59FF' },
     ],
-    [slaLate, slaNoChange, slaOnTime],
+    [slaLate, slaNoChange, slaOnTime, t],
   )
 
   const teamSegments = useMemo<GaugeSegment[]>(
@@ -760,15 +760,15 @@ export function CeoDashboardPage() {
 
   const funnelStages = useMemo<FunnelStage[]>(() => {
     const mediaSteps = [
-      { key: 'sent', label: 'Jami yuborildi', count: mediaSent, glyph: glyphPaths.send, hero: false },
-      { key: 'lead', label: 'Jami lead', count: mediaLead, glyph: glyphPaths.lead, hero: false },
-      { key: 'contacted', label: 'Contacted', count: mediaContacted, glyph: glyphPaths.chat, hero: false },
-      { key: 'continuing', label: 'Continuing', count: mediaContinuing, glyph: glyphPaths.arrow, hero: true },
+      { key: 'sent', label: t('ceo.media.sent', 'Total sent'), count: mediaSent, glyph: glyphPaths.send, hero: false },
+      { key: 'lead', label: t('ceo.media.leads', 'Total leads'), count: mediaLead, glyph: glyphPaths.lead, hero: false },
+      { key: 'contacted', label: t('ceo.media.contacted', 'Contacted'), count: mediaContacted, glyph: glyphPaths.chat, hero: false },
+      { key: 'continuing', label: t('ceo.media.continuing', 'Continuing'), count: mediaContinuing, glyph: glyphPaths.arrow, hero: true },
     ]
     const slaSteps = [
-      { key: 'total', label: 'Jami lead', count: slaTotal, glyph: glyphPaths.lead, hero: false },
-      { key: 'on_time', label: "O'z vaqtida", count: slaOnTime, glyph: glyphPaths.check, hero: false },
-      { key: 'note', label: 'Note yozilgan', count: slaNoteWritten, glyph: glyphPaths.note, hero: true },
+      { key: 'total', label: t('ceo.media.leads', 'Total leads'), count: slaTotal, glyph: glyphPaths.lead, hero: false },
+      { key: 'on_time', label: t('ceo.sla.on_time', 'On time'), count: slaOnTime, glyph: glyphPaths.check, hero: false },
+      { key: 'note', label: t('ceo.note.written', 'Note written'), count: slaNoteWritten, glyph: glyphPaths.note, hero: true },
     ]
     const steps = hasMedia ? mediaSteps : hasSla ? slaSteps : []
     const max = steps.reduce((acc, step) => Math.max(acc, step.count), 0) || 1
@@ -782,7 +782,7 @@ export function CeoDashboardPage() {
       icon: <GlyphSmall d={step.glyph} />,
       hero: step.hero,
     }))
-  }, [hasMedia, hasSla, mediaContacted, mediaContinuing, mediaLead, mediaSent, slaNoteWritten, slaOnTime, slaTotal])
+  }, [hasMedia, hasSla, mediaContacted, mediaContinuing, mediaLead, mediaSent, slaNoteWritten, slaOnTime, slaTotal, t])
 
   const funnelTotal = hasMedia ? mediaSent : slaTotal
 
@@ -903,30 +903,30 @@ export function CeoDashboardPage() {
           <>
             <StatCard
               solid
-              label="Jami yuborildi"
+              label={t('ceo.media.sent', 'Total sent')}
               value={mediaSent}
               icon={<Glyph d={glyphPaths.send} />}
               hint={t('ceo.overview.media_count', '{{count}} media tracked', { count: mediaPosts.length })}
-              delta={mediaSent > 0 ? `${mediaConversion.toFixed(1)}%` : undefined}
+              delta={mediaSent > 0 ? t('ceo.overview.delta_to_lead', '{{value}}% → lead', { value: mediaConversion.toFixed(1) }) : undefined}
             />
             <StatCard
-              label="Jami lead"
+              label={t('ceo.media.leads', 'Total leads')}
               value={mediaLead}
               icon={<Glyph d={glyphPaths.lead} />}
               iconTone="success"
               hint={t('ceo.overview.contacted_hint', 'Contacted: {{count}}', { count: mediaContacted })}
-              delta={mediaContinuing > 0 ? String(mediaContinuing) : undefined}
-              deltaTone="neutral"
+              delta={mediaContinuing > 0 ? t('ceo.overview.delta_continuing', '{{count}} continuing', { count: mediaContinuing }) : undefined}
+              deltaTone="success"
               onOpen={() => navigate('/crm')}
               openLabel={t('ceo.overview.open_crm', 'Open CRM')}
             />
             <StatCard
-              label="Noaniq yuborildi"
+              label={t('ceo.media.unknown_sent', 'Unlinked sent')}
               value={mediaUnknownSent}
               icon={<Glyph d={glyphPaths.help} />}
               iconTone="warning"
               hint={t('ceo.overview.unknown_lead_hint', 'Unlinked leads: {{count}}', { count: mediaUnknownLead })}
-              delta={mediaSent > 0 ? `${Math.round((mediaUnknownSent / mediaSent) * 100)}%` : undefined}
+              delta={mediaSent > 0 && mediaUnknownSent > 0 ? t('ceo.overview.delta_of_sent', '{{value}}% of sent', { value: Math.round((mediaUnknownSent / mediaSent) * 100) }) : undefined}
               deltaTone="danger"
               onOpen={() => navigate('/cognilabsai/media-contexts')}
               openLabel={t('ceo.overview.open_media_contexts', 'Open media contexts')}
@@ -940,7 +940,7 @@ export function CeoDashboardPage() {
               value={activeUserCount}
               icon={<Glyph d={glyphPaths.users} />}
               hint={t('ceo.overview.total_users_hint', 'Total users: {{count}}', { count: totalUserCount })}
-              delta={inactiveUserCount > 0 ? String(inactiveUserCount) : undefined}
+              delta={inactiveUserCount > 0 ? t('ceo.overview.delta_inactive', '{{count}} inactive', { count: inactiveUserCount }) : undefined}
             />
             <StatCard
               label={t('ceo.overview.open_tasks', 'Open tasks')}
@@ -957,7 +957,7 @@ export function CeoDashboardPage() {
               icon={<Glyph d={glyphPaths.wallet} />}
               iconTone="warning"
               hint={t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount })}
-              delta={pendingPaymentsCount > 0 ? String(pendingPaymentsCount) : undefined}
+              delta={pendingPaymentsCount > 0 ? t('ceo.overview.delta_needs_action', 'needs action') : undefined}
               deltaTone="danger"
             />
           </>
@@ -965,12 +965,13 @@ export function CeoDashboardPage() {
 
         {hasSla ? (
           <StatCard
-            label="O'rtacha vaqt"
+            label={t('ceo.sla.average', 'Average response')}
             value={slaAverage}
             icon={<Glyph d={glyphPaths.clock} />}
             iconTone="violet"
             hint={t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit })}
-            delta={`${Math.round((slaOnTime / slaTotal) * 100)}%`}
+            delta={t('ceo.overview.delta_on_time', '{{value}}% on time', { value: Math.round((slaOnTime / slaTotal) * 100) })}
+            deltaTone={slaOnTime / slaTotal >= 0.8 ? 'success' : 'danger'}
           />
         ) : (
           <StatCard
@@ -1017,10 +1018,10 @@ export function CeoDashboardPage() {
         {hasSla ? (
           <GaugeDonut
             className="min-w-0 flex-[1_1_360px]"
-            title="Lead Javob Vaqti"
+            title={t('ceo.sla.title', 'Lead response time')}
             action={
               <span className="rounded-full bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--blue-text)]">
-                SLA: {slaLimit} min
+                {t('ceo.sla.badge', 'SLA: {{count}} min', { count: slaLimit })}
               </span>
             }
             segments={slaSegments}
@@ -1039,6 +1040,36 @@ export function CeoDashboardPage() {
           />
         )}
       </div>
+
+      {hasSla && (
+        <Card noPadding>
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle>{t('ceo.overview.note_discipline', 'Note discipline')}</CardTitle>
+            <Badge variant="blue" dot>
+              {t('ceo.overview.measured_leads', '{{count}} leads measured', { count: slaTotal })}
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {([
+                { label: t('ceo.media.leads', 'Total leads'), value: slaTotal, tone: 'blue', glyph: glyphPaths.lead },
+                { label: t('ceo.note.written', 'Note written'), value: slaNoteWritten, tone: 'success', glyph: glyphPaths.note },
+                { label: t('ceo.note.missing', 'Note missing'), value: slaNoteMissing, tone: 'warning', glyph: glyphPaths.note },
+                { label: t('ceo.note.status_without_note', 'Status without note'), value: slaNoNote, tone: 'violet', glyph: glyphPaths.alert },
+              ] as ReadonlyArray<{ label: string; value: number; tone: Tone; glyph: string }>).map((item) => (
+                <StatCard
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                  icon={<Glyph d={item.glyph} />}
+                  iconTone={item.tone}
+                  className={statPanelClassName}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-wrap gap-[18px]">
         {funnelStages.length > 0 ? (
@@ -1332,30 +1363,30 @@ export function CeoDashboardPage() {
       {hasMedia && (
         <Card noPadding>
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>Instagram Media Funnel</CardTitle>
+            <CardTitle>{t('ceo.media.funnel_title', 'Instagram media funnel')}</CardTitle>
             <Badge variant="blue" dot>
               {mediaPosts.length} media
             </Badge>
           </CardHeader>
           <CardContent className="space-y-[18px]">
             {mediaPosts.length === 0 ? (
-              <p className="rounded-[18px] bg-[var(--muted-surface)] py-6 text-center text-sm text-[var(--muted)]">Hali media context qo'shilmagan.</p>
+              <p className="rounded-[18px] bg-[var(--muted-surface)] py-6 text-center text-sm text-[var(--muted)]">{t('ceo.media.empty', 'No media context added yet.')}</p>
             ) : (
               <>
                 {mediaUnknownSent > 0 && (
                   <Alert tone="warning">
-                    Ba'zi Instagram media xabarlari contextga bog'lanmagan. Media Contexts sahifasidan post/reel/story link qo'shing.
+                    {t('ceo.media.unlinked_warning', 'Some Instagram media messages are not linked to a context. Add a post/reel/story link on the Media Contexts page.')}
                   </Alert>
                 )}
                 <DataTable
-                  caption="Instagram media posts"
+                  caption={t('ceo.media.posts_caption', 'Instagram media posts')}
                   rows={mediaPosts}
                   getRowKey={(row) => String(row.post_id)}
-                  emptyState={<EmptyStateBlock eyebrow="CEO Workspace" title="No media" />}
+                  emptyState={<EmptyStateBlock eyebrow={t('ceo.dashboard.header.eyebrow', 'CEO Workspace')} title={t('ceo.media.no_media', 'No media')} />}
                   columns={[
                     {
                       key: 'title',
-                      header: 'Post',
+                      header: t('ceo.media.post', 'Post'),
                       render: (row) => (
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-[var(--foreground)]">{row.title}</p>
@@ -1363,13 +1394,13 @@ export function CeoDashboardPage() {
                         </div>
                       ),
                     },
-                    { key: 'sent', header: 'Yuborildi', align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--blue-text)]">{row.sent_count}</span> },
-                    { key: 'leads', header: 'Lead', align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--success-text)]">{row.lead_count}</span> },
-                    { key: 'contacted', header: 'Contacted', align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--blue-text)]">{row.contacted_count}</span> },
-                    { key: 'continuing', header: 'Continuing', align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--violet-text)]">{row.continuing_count}</span> },
+                    { key: 'sent', header: t('ceo.media.col_sent', 'Sent'), align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--blue-text)]">{row.sent_count}</span> },
+                    { key: 'leads', header: t('ceo.media.col_leads', 'Leads'), align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--success-text)]">{row.lead_count}</span> },
+                    { key: 'contacted', header: t('ceo.media.contacted', 'Contacted'), align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--blue-text)]">{row.contacted_count}</span> },
+                    { key: 'continuing', header: t('ceo.media.continuing', 'Continuing'), align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--violet-text)]">{row.continuing_count}</span> },
                     {
                       key: 'conversion',
-                      header: 'Conversion',
+                      header: t('ceo.media.conversion', 'Conversion'),
                       align: 'right',
                       render: (row) => {
                         const pct = row.sent_count > 0 ? ((row.lead_count / row.sent_count) * 100).toFixed(1) : '0.0'
@@ -1395,36 +1426,6 @@ export function CeoDashboardPage() {
                 />
               </>
             )}
-          </CardContent>
-        </Card>
-      )}
-
-      {hasSla && (
-        <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>{t('ceo.overview.note_discipline', 'Note discipline')}</CardTitle>
-            <Badge variant="blue" dot>
-              {t('ceo.overview.measured_leads', '{{count}} leads measured', { count: slaTotal })}
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {([
-                { label: 'Jami lead', value: slaTotal, tone: 'blue', glyph: glyphPaths.lead },
-                { label: 'Note yozilgan', value: slaNoteWritten, tone: 'success', glyph: glyphPaths.note },
-                { label: 'Note yozilmagan', value: slaNoteMissing, tone: 'warning', glyph: glyphPaths.note },
-                { label: 'Note yoqsiz status', value: slaNoNote, tone: 'violet', glyph: glyphPaths.alert },
-              ] as ReadonlyArray<{ label: string; value: number; tone: Tone; glyph: string }>).map((item) => (
-                <StatCard
-                  key={item.label}
-                  label={item.label}
-                  value={item.value}
-                  icon={<Glyph d={item.glyph} />}
-                  iconTone={item.tone}
-                  className={statPanelClassName}
-                />
-              ))}
-            </div>
           </CardContent>
         </Card>
       )}

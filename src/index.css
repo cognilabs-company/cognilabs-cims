@@ -884,3 +884,104 @@ input:-webkit-autofill:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────
+   macOS-style Phone window (Telephony / Calls page)
+   Follows the system appearance like a native Mac app.
+   ────────────────────────────────────────────────────────────── */
+.mac-phone {
+  --mp-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Onest", system-ui, sans-serif;
+  --mp-window: #ffffff;
+  --mp-toolbar: #f6f6f6;
+  --mp-text: #1d1d1f;
+  --mp-secondary: rgba(60, 60, 67, 0.62);
+  --mp-tertiary: rgba(60, 60, 67, 0.36);
+  --mp-separator: rgba(60, 60, 67, 0.14);
+  --mp-hover: rgba(0, 0, 0, 0.035);
+  --mp-selected: rgba(0, 0, 0, 0.065);
+  --mp-control: rgba(118, 118, 128, 0.12);
+  --mp-control-hover: rgba(118, 118, 128, 0.2);
+  --mp-menu: rgba(246, 246, 246, 0.92);
+  --mp-menu-border: rgba(0, 0, 0, 0.1);
+  --mp-blue: #007aff;
+  --mp-red: #ff3b30;
+  --mp-green: #34c759;
+  --mp-orange: #ff9500;
+  --mp-purple: #8e5cf7;
+  --mp-avatar: linear-gradient(180deg, #a8adb8 0%, #868b96 100%);
+  --mp-glass: rgba(255, 255, 255, 0.55);
+  --mp-glass-strong: rgba(255, 255, 255, 0.72);
+  --mp-glass-text: #1d1d1f;
+  --mp-glass-secondary: rgba(29, 29, 31, 0.6);
+  --mp-glass-line: rgba(0, 0, 0, 0.08);
+  --mp-group: #f5f5f7;
+  --mp-segment: #ffffff;
+  --mp-hero-avatar: linear-gradient(180deg, #b4b9c4 0%, #8b909c 100%);
+  --mp-hero: linear-gradient(180deg,
+    hsl(var(--mp-hue, 220) 18% 86%) 0%,
+    hsl(calc(var(--mp-hue, 220) + 35) 30% 84%) 42%,
+    hsl(calc(var(--mp-hue, 220) + 50) 38% 80%) 100%);
+  --mp-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 22px 60px -18px rgba(0, 0, 0, 0.28), 0 4px 14px -6px rgba(0, 0, 0, 0.12);
+  color-scheme: light;
+  font-family: var(--mp-font);
+  color: var(--mp-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mac-phone {
+    --mp-window: #1e1e1e;
+    --mp-toolbar: #262626;
+    --mp-text: #f5f5f7;
+    --mp-secondary: rgba(235, 235, 245, 0.6);
+    --mp-tertiary: rgba(235, 235, 245, 0.32);
+    --mp-separator: rgba(84, 84, 88, 0.5);
+    --mp-hover: rgba(255, 255, 255, 0.04);
+    --mp-selected: rgba(255, 255, 255, 0.09);
+    --mp-control: rgba(118, 118, 128, 0.26);
+    --mp-control-hover: rgba(118, 118, 128, 0.38);
+    --mp-menu: rgba(40, 40, 40, 0.92);
+    --mp-menu-border: rgba(255, 255, 255, 0.12);
+    --mp-blue: #0a84ff;
+    --mp-red: #ff453a;
+    --mp-green: #30d158;
+    --mp-orange: #ff9f0a;
+    --mp-purple: #bf9cff;
+    --mp-avatar: linear-gradient(180deg, #6e6e76 0%, #4b4b52 100%);
+    --mp-glass: rgba(255, 255, 255, 0.08);
+    --mp-glass-strong: rgba(255, 255, 255, 0.14);
+    --mp-glass-text: #f5f5f7;
+    --mp-glass-secondary: rgba(245, 245, 247, 0.62);
+    --mp-glass-line: rgba(255, 255, 255, 0.1);
+    --mp-group: rgba(255, 255, 255, 0.05);
+    --mp-segment: #636366;
+    --mp-hero-avatar: rgba(255, 255, 255, 0.1);
+    --mp-hero: linear-gradient(180deg,
+      hsl(var(--mp-hue, 220) 10% 62%) 0%,
+      hsl(calc(var(--mp-hue, 220) + 30) 22% 42%) 38%,
+      hsl(calc(var(--mp-hue, 220) + 45) 42% 27%) 70%,
+      hsl(calc(var(--mp-hue, 220) + 50) 48% 20%) 100%);
+    --mp-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.6), 0 24px 70px -18px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+
+.mac-phone-scroll { scrollbar-width: thin; scrollbar-color: var(--mp-tertiary) transparent; }
+.mac-phone-scroll::-webkit-scrollbar { width: 8px; }
+.mac-phone-scroll::-webkit-scrollbar-thumb { background: var(--mp-tertiary); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+
+@keyframes mac-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.mac-pop { animation: mac-pop-in 140ms cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: top; }
+
+@keyframes mac-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.55); }
+  70% { box-shadow: 0 0 0 14px rgba(52, 199, 89, 0); }
+}
+.mac-ring { animation: mac-ring 1.4s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mac-pop, .mac-ring { animation: none; }
+}
