@@ -99,7 +99,7 @@ export function ActiveCallPanel() {
       role="dialog"
       aria-modal="false"
       aria-label={t('telephony.hud.label', 'Active phone call')}
-      className="mac-phone mac-pop fixed inset-x-3 bottom-3 z-[150] rounded-[24px] border border-[var(--mp-menu-border)] bg-[var(--mp-menu)] p-4 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:inset-x-auto sm:top-4 sm:right-4 sm:bottom-auto sm:w-[360px]"
+      className="mac-phone mac-pop fixed inset-x-3 bottom-3 z-[150] rounded-[24px] border border-[var(--mp-menu-border)] bg-[var(--mp-menu)] p-4 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:inset-x-auto sm:top-[88px] sm:right-5 sm:bottom-auto sm:w-[360px]"
     >
       {/* Caller */}
       <div className="flex items-center gap-3">

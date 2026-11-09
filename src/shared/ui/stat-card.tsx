@@ -18,8 +18,6 @@ type StatCardProps = {
   solid?: boolean
   onOpen?: () => void
   openLabel?: string
-  /** @deprecated kept for API compatibility; no longer used. */
-  canvas?: string
   footer?: ReactNode
   className?: string
 }

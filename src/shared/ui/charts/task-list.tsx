@@ -16,9 +16,24 @@ type TaskListProps = {
   tasks: TaskRow[]
   onToggle?: (key: string) => void
   onSelect?: (key: string) => void
+  /** Shows a delete button on each row (on hover, always on touch screens). */
+  onDelete?: (key: string) => void
+  deleteLabel?: string
+  /** false hides the leading checkbox (plain list rows). */
+  checkable?: boolean
   action?: ReactNode
   emptyState?: ReactNode
   className?: string
+  /** Extra classes for the rows container, e.g. a max height with scrolling. */
+  listClassName?: string
+}
+
+function TrashGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 7h16M10 11v6M14 11v6M5.5 7l1 12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2l1-12M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7" />
+    </svg>
+  )
 }
 
 function Tick({ visible }: { visible: boolean }) {
@@ -40,7 +55,9 @@ function Tick({ visible }: { visible: boolean }) {
   )
 }
 
-export function TaskList({ title, tasks, onToggle, onSelect, action, emptyState, className }: TaskListProps) {
+export function TaskList({
+  title, tasks, onToggle, onSelect, onDelete, deleteLabel = 'Delete', checkable = true, action, emptyState, className, listClassName,
+}: TaskListProps) {
   return (
     <div className={cn('flex flex-col gap-3.5 rounded-[24px] bg-[var(--card)] p-[22px]', className)}>
       <div className="flex items-center justify-between gap-3">
@@ -51,7 +68,7 @@ export function TaskList({ title, tasks, onToggle, onSelect, action, emptyState,
       {tasks.length === 0 ? (
         emptyState ?? null
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className={cn('flex flex-col gap-2', listClassName)}>
           {tasks.map((task) => {
             const tone = task.tone ?? 'blue'
 
@@ -59,12 +76,13 @@ export function TaskList({ title, tasks, onToggle, onSelect, action, emptyState,
               <div
                 key={task.key}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-[16px] border p-3 transition-colors',
+                  'group/row flex w-full items-center gap-3 rounded-[16px] border p-3 transition-colors',
                   task.done
                     ? 'border-transparent bg-[var(--muted-surface)]'
                     : 'border-[#EEF0F4] bg-[var(--surface)]',
                 )}
               >
+                {checkable ? (
                 <button
                   type="button"
                   onClick={onToggle ? () => onToggle(task.key) : undefined}
@@ -79,6 +97,7 @@ export function TaskList({ title, tasks, onToggle, onSelect, action, emptyState,
                 >
                   <Tick visible={Boolean(task.done)} />
                 </button>
+                ) : null}
 
                 <button
                   type="button"
@@ -112,6 +131,18 @@ export function TaskList({ title, tasks, onToggle, onSelect, action, emptyState,
                   >
                     {task.tag}
                   </span>
+                ) : null}
+
+                {onDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(task.key)}
+                    aria-label={`${deleteLabel}: ${task.title}`}
+                    title={deleteLabel}
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] text-[var(--muted)] opacity-0 transition hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger-text)]/30 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100"
+                  >
+                    <TrashGlyph />
+                  </button>
                 ) : null}
               </div>
             )

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronLeft, ChevronRight, Headphones, MessageSquareText, Phone, UserRound } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Grip, Headphones, MessageSquareText, Phone, UserRound } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -14,7 +14,10 @@ type CallInspectorProps = {
   group: RecentGroup
   canCall: boolean
   onDial: (phone: string, lead: TelephonyLead | null) => void
+  /** Mobile sheet: back to the list. */
   onBack?: () => void
+  /** Desktop: close the card and show the keypad again. */
+  onClose?: () => void
 }
 
 function GlassCard({ className, children }: { className?: string; children: ReactNode }) {
@@ -41,7 +44,7 @@ function HeroAction({ label, onClick, disabled, children, to }: { label: string;
   )
 }
 
-export function CallInspector({ group, canCall, onDial, onBack }: CallInspectorProps) {
+export function CallInspector({ group, canCall, onDial, onBack, onClose }: CallInspectorProps) {
   const { t } = useLocale()
   const head = group.head
   const [detail, setDetail] = useState<TelephonyCallDetail | null>(null)
@@ -99,6 +102,10 @@ export function CallInspector({ group, canCall, onDial, onBack }: CallInspectorP
           <button type="button" onClick={onBack} className="inline-flex h-8 items-center gap-0.5 rounded-full bg-[var(--mp-glass-strong)] pr-3 pl-1.5 text-[13px] font-medium backdrop-blur-xl">
             <ChevronLeft size={18} /> {t('telephony.recents', 'Recents')}
           </button>
+        ) : onClose ? (
+          <button type="button" onClick={onClose} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[var(--mp-glass-strong)] px-3 text-[13px] font-medium backdrop-blur-xl transition hover:brightness-110">
+            <Grip size={14} /> {t('telephony.keypad', 'Keypad')}
+          </button>
         ) : <span />}
         {path ? (
           <Link to={path} className="inline-flex h-8 items-center rounded-full bg-[var(--mp-glass-strong)] px-3.5 text-[13px] font-semibold backdrop-blur-xl transition hover:brightness-110">
@@ -132,7 +139,7 @@ export function CallInspector({ group, canCall, onDial, onBack }: CallInspectorP
         </div>
       </header>
 
-      <div className="relative space-y-3 px-4 pb-5">
+      <div className="relative space-y-3 px-4 pb-24">
         {error ? <p role="alert" className="rounded-[12px] bg-[var(--mp-glass)] px-4 py-2.5 text-[13px] text-[var(--mp-red)]">{error}</p> : null}
 
         {/* Call history */}
@@ -237,6 +244,9 @@ export function CallInspector({ group, canCall, onDial, onBack }: CallInspectorP
             { key: 'status', label: t('telephony.fact.status', 'Status'), value: statusLabel(head.status), danger: group.missed },
             { key: 'seller', label: t('telephony.fact.seller', 'Seller'), value: head.user_name || '—' },
             { key: 'source', label: t('telephony.fact.source', 'Source'), value: source || t('telephony.fact.not_linked', 'Not linked') },
+            ...(lead?.status ? [{ key: 'lead_status', label: t('telephony.fact.lead_status', 'Lead status'), value: lead.status }] : []),
+            ...(lead?.platform ? [{ key: 'platform', label: t('telephony.fact.platform', 'Platform'), value: lead.platform }] : []),
+            ...(lead?.seller_name ? [{ key: 'responsible', label: t('telephony.fact.responsible', 'Responsible'), value: lead.seller_name }] : []),
             ...(detail?.hangup_cause ? [{ key: 'hangup', label: t('telephony.fact.hangup', 'Hangup cause'), value: detail.hangup_cause }] : []),
           ].map((row, index) => (
             <div key={row.key} className={cn('flex items-center justify-between gap-3 px-4 py-3 text-[14px]', index > 0 && 'border-t border-[var(--mp-glass-line)]')}>

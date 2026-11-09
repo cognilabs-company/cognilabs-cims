@@ -16,6 +16,9 @@ type LeaderboardProps = {
   entries: LeaderboardEntry[]
   emptyState?: ReactNode
   className?: string
+  /** Makes each row a button (e.g. open that person's tasks). */
+  onSelect?: (key: string) => void
+  selectLabel?: (entry: LeaderboardEntry) => string
 }
 
 const avatarTones = [
@@ -26,7 +29,7 @@ const avatarTones = [
   'bg-[#E9D8FF] text-[var(--surface-inverse)]',
 ]
 
-export function Leaderboard({ title, badge, entries, emptyState, className }: LeaderboardProps) {
+export function Leaderboard({ title, badge, entries, emptyState, className, onSelect, selectLabel }: LeaderboardProps) {
   return (
     <div
       className={cn(
@@ -47,8 +50,17 @@ export function Leaderboard({ title, badge, entries, emptyState, className }: Le
         emptyState ?? null
       ) : (
         <div className="flex flex-col gap-3.5">
-          {entries.map((entry, index) => (
-            <div key={entry.key} className="flex flex-col gap-2">
+          {entries.map((entry, index) => {
+            const Row = onSelect ? 'button' : 'div'
+            return (
+            <Row
+              key={entry.key}
+              {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(entry.key), 'aria-label': selectLabel?.(entry) ?? entry.name } : {})}
+              className={cn(
+                'flex flex-col gap-2 text-left',
+                onSelect && '-mx-2 rounded-[14px] px-2 py-1.5 transition-colors hover:bg-white/6 focus-visible:bg-white/8 focus-visible:outline-none',
+              )}
+            >
               <div className="flex items-center gap-2.5">
                 <span
                   className={cn(
@@ -82,8 +94,9 @@ export function Leaderboard({ title, badge, entries, emptyState, className }: Le
                   style={{ width: `${Math.min(100, Math.max(0, entry.percent))}%` }}
                 />
               </div>
-            </div>
-          ))}
+            </Row>
+            )
+          })}
         </div>
       )}
     </div>

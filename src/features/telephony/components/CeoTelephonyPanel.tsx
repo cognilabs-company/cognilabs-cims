@@ -128,7 +128,7 @@ export function CeoTelephonyPanel() {
   const canCreate = Number.isInteger(Number(newUserId)) && Number(newUserId) > 0 && busyId === null
 
   return (
-    <section className="mac-phone rounded-[16px] bg-[var(--mp-window)] p-5 shadow-[var(--mp-shadow)] sm:p-6">
+    <section className="mx-auto w-full max-w-[1120px] px-4 py-5 sm:px-6 sm:py-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[20px] font-bold tracking-[-0.01em] text-[var(--mp-text)]">{t('telephony.system.title', 'Phone system')}</h2>

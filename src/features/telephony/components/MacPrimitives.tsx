@@ -5,16 +5,6 @@ import { initialOf } from './telephonyFormat'
 
 /* Small building blocks that make the Calls page feel like the macOS Phone app. */
 
-export function TrafficLights() {
-  return (
-    <div className="hidden items-center gap-2 pr-1 sm:flex" aria-hidden="true">
-      <span className="h-3 w-3 rounded-full bg-[#ff5f57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
-      <span className="h-3 w-3 rounded-full bg-[#febc2e] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
-      <span className="h-3 w-3 rounded-full bg-[#28c840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
-    </div>
-  )
-}
-
 function PersonGlyph({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden="true">

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { ChevronDown, PanelLeftClose, X } from 'lucide-react'
 import { useAppShell } from '../../app/hooks/useAppShell'
 import { useLocale } from '../../app/hooks/useLocale'
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { authService } from '../../shared/api/services/auth.service'
 import { env } from '../../shared/config/env'
+import { type AppLocale, localeLabels } from '../../shared/i18n/translations'
 import { useAsyncData } from '../../shared/hooks/useAsyncData'
 import { cn } from '../../shared/lib/cn'
 import { canReadManagedProjects, getAccessibleNavigation, hasPermission } from '../../shared/lib/permissions'
@@ -18,6 +20,7 @@ import { Input } from '../../shared/ui/input'
 import { PROJECTS_NAVIGATION_UPDATED_EVENT } from '../../features/projects/lib/navigationSync'
 import { NavGlyph } from './NavGlyph'
 import { getNavigationGlyphName, type GlyphName } from './navGlyphMap'
+import { OPEN_PROFILE_EVENT } from './profileEvents'
 
 const DONE_COLUMN_PATTERN = /\b(done|complete|completed|closed|finished|resolved)\b/i
 
@@ -41,11 +44,14 @@ type MemberProfileFormState = {
 }
 
 const sidebarItemBase =
-  'group flex w-full items-center gap-3 rounded-[13px] px-3 py-[11px] text-sm transition-colors'
+  'group relative flex w-full items-center gap-3 rounded-[12px] px-3 py-[9px] [@media(max-height:900px)]:py-[7px] text-[14px] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
 const sidebarItemInactive =
-  'font-medium text-[var(--shell-nav-text)] hover:bg-[var(--shell-nav-hover-bg)] hover:text-[var(--shell-nav-hover-text)]'
+  'font-medium text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-white [&_svg]:text-[var(--sb-icon)] hover:[&_svg]:text-white'
 const sidebarItemActive =
-  'bg-[var(--primary)] font-semibold text-white shadow-[var(--elev-nav)]'
+  'bg-[var(--primary)] font-semibold text-white shadow-[0_10px_22px_-12px_rgba(43,89,255,0.95)] [&_svg]:text-white'
+const sidebarSubItem =
+  'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] leading-5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
+const sidebarIcon = 'h-[18px] w-[18px] transition-colors'
 
 type OutboundSidebarItem = {
   to: string
@@ -55,14 +61,29 @@ type OutboundSidebarItem = {
 }
 
 const sidebarSectionLabel =
-  'px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--caption)]'
+  'px-3 pt-1 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-[var(--sb-label)]'
+
+type NavGroupKey = 'main' | 'sales' | 'work' | 'team' | 'ai' | 'system'
+const groupOrder: NavGroupKey[] = ['main', 'sales', 'work', 'team', 'ai', 'system']
+const groupFallback: Record<NavGroupKey, string> = {
+  main: 'Overview', sales: 'Sales', work: 'Work', team: 'Team', ai: 'Cognilabs AI', system: 'System',
+}
+
+function navGroupOf(path: string): NavGroupKey {
+  if (path === '/member/dashboard' || path === '/ceo/dashboard') return 'main'
+  if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony')) return 'sales'
+  if (path.startsWith('/projects')) return 'work'
+  if (path.startsWith('/cognilabsai') || path.startsWith('/ceo/ai')) return 'ai'
+  if (['/ceo/website-stats', '/ceo/management', '/audit', '/ceo/workday-overrides'].some((prefix) => path.startsWith(prefix))) return 'system'
+  return 'team'
+}
 
 const profileFieldCard = 'rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-5 py-4'
 
 export function AppSidebar() {
   const location = useLocation()
   const { closeSidebar, isSidebarCollapsed, isSidebarOpen, toggleSidebar, toggleSidebarCollapsed } = useAppShell()
-  const { t } = useLocale()
+  const { locale, setLocale, t } = useLocale()
   const { showToast } = useToast()
   const { user, refreshUser } = useAuth()
   const [isMobileViewport, setIsMobileViewport] = useState(
@@ -121,6 +142,7 @@ export function AppSidebar() {
   const [projectsRefreshKey, setProjectsRefreshKey] = useState(0)
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null)
   const profileImageInputRef = useRef<HTMLInputElement>(null)
+  const openMemberDialogRef = useRef<() => void>(() => {})
 
   const activePermissions = useMemo(
     () =>
@@ -267,6 +289,113 @@ export function AppSidebar() {
     }
   }
 
+  useEffect(() => {
+    openMemberDialogRef.current = openMemberDialog
+  })
+
+  useEffect(() => {
+    const handleOpen = () => openMemberDialogRef.current()
+    window.addEventListener(OPEN_PROFILE_EVENT, handleOpen)
+    return () => window.removeEventListener(OPEN_PROFILE_EVENT, handleOpen)
+  }, [])
+
+  const groupedNavigation = groupOrder
+    .map((group) => ({ group, items: sidebarNavigation.filter((item) => navGroupOf(item.to) === group) }))
+    .filter((entry) => entry.items.length > 0)
+
+  function renderNavItem(item: (typeof sidebarNavigation)[number]) {
+    const itemLabel = getNavigationLabel(item.to, item.label)
+
+    if (item.to === '/projects') {
+      return (
+        <div key={item.to} className="flex flex-col gap-0.5">
+          <div className="relative">
+            <NavLink
+              to={item.to}
+              aria-label={itemLabel}
+              onClick={() => setIsProjectsExpanded(true)}
+              className={({ isActive }) => cn(sidebarItemBase, isActive || isProjectsRoute ? sidebarItemActive : sidebarItemInactive, 'pr-[72px]')}
+            >
+              <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
+              <span className="flex-1 truncate text-left">{itemLabel}</span>
+              {sidebarProjects.length > 0 && (
+                <span className={cn('ml-auto rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums', isProjectsRoute ? 'bg-white/20 text-white' : 'bg-white/8 text-[var(--sb-text)]')}>
+                  {sidebarProjects.length}
+                </span>
+              )}
+            </NavLink>
+            <button
+              type="button"
+              onClick={toggleProjectsExpanded}
+              aria-label={isProjectsExpanded ? t('shell.collapse_projects') : t('shell.expand_projects')}
+              aria-expanded={isProjectsExpanded}
+              className={cn(
+                'absolute top-1/2 right-2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] transition-colors',
+                isProjectsRoute ? 'text-white hover:bg-white/15' : 'text-[var(--sb-icon)] hover:bg-white/10 hover:text-white',
+              )}
+            >
+              <ChevronDown size={15} className={cn('transition-transform duration-200', isProjectsExpanded && 'rotate-180')} />
+            </button>
+          </div>
+
+          {isProjectsExpanded && (
+            <div className="my-1 ml-[22px] flex flex-col gap-0.5 border-l border-[var(--sb-line)] pl-2.5">
+              {projectsQuery.isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 animate-pulse rounded-[10px] bg-white/5" />)
+              ) : projectsQuery.isError ? (
+                <button type="button" onClick={() => void projectsQuery.refetch()} className={cn(sidebarSubItem, 'text-[#FF9C9C] hover:bg-[rgba(255,99,99,0.12)]')}>
+                  <span className="truncate">{t('shell.failed_load_projects')} — {t('shell.retry')}</span>
+                </button>
+              ) : sidebarProjects.length === 0 ? (
+                <div className={cn(sidebarSubItem, 'text-[var(--sb-label)]')}>
+                  <span className="truncate">{t('shell.no_projects')}</span>
+                </div>
+              ) : (
+                sidebarProjects.map((project) => {
+                  const isActiveProject =
+                    location.pathname === `/projects/${project.id}` ||
+                    location.pathname.startsWith(`/projects/${project.id}/`)
+                  const openCount = openTaskCountByProject.get(project.id) ?? 0
+
+                  return (
+                    <NavLink
+                      key={project.id}
+                      to={`/projects/${project.id}`}
+                      className={({ isActive }) => cn(
+                        sidebarSubItem,
+                        isActive || isActiveProject ? 'bg-white/10 font-semibold text-white' : 'text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-white',
+                      )}
+                    >
+                      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', isActiveProject ? 'bg-[var(--primary)]' : 'bg-current opacity-50')} />
+                      <span className="flex-1 truncate text-left">{project.project_name}</span>
+                      {openCount > 0 && (
+                        <span className="ml-auto rounded-full bg-white/8 px-[7px] py-px text-[11px] font-semibold tabular-nums text-[var(--sb-text)]">{openCount}</span>
+                      )}
+                    </NavLink>
+                  )
+                })
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        aria-label={itemLabel}
+        className={({ isActive }) => cn(sidebarItemBase, isActive ? sidebarItemActive : sidebarItemInactive)}
+      >
+        <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
+        <span className="flex-1 truncate text-left">{itemLabel}</span>
+      </NavLink>
+    )
+  }
+
+  const subtitle = isOutboundCrmRoute ? 'Outbound CRM' : (user?.job_title?.trim() || user?.role || t('shell.user'))
+
   return (
     <>
       <button
@@ -274,45 +403,48 @@ export function AppSidebar() {
         aria-label={t('shell.close_navigation_overlay')}
         onClick={closeSidebar}
         className={cn(
-          'shell-scrim fixed inset-0 z-30 bg-[rgba(14,21,37,0.32)] lg:hidden',
+          'shell-scrim fixed inset-0 z-30 bg-[rgba(14,21,37,0.4)] lg:hidden',
           isSidebarOpen ? 'shell-scrim--open pointer-events-auto' : 'shell-scrim--closed pointer-events-none',
         )}
       />
 
       <aside
         className={cn(
-          'shell-sidebar fixed inset-y-0 left-0 z-40 w-[min(88vw,var(--sidebar-w))] lg:sticky lg:inset-auto lg:top-0 lg:h-screen lg:w-[var(--sidebar-w)] lg:self-start lg:overflow-hidden',
+          'app-chrome shell-sidebar fixed inset-y-0 left-0 z-40 w-[min(88vw,var(--sidebar-w))] p-2 lg:sticky lg:inset-auto lg:top-0 lg:h-screen lg:w-[var(--sidebar-w)] lg:self-start lg:overflow-hidden lg:py-[14px] lg:pr-0 lg:pl-[14px]',
           isSidebarOpen ? 'shell-sidebar--open' : 'shell-sidebar--closed',
-          isSidebarCollapsed
-            ? 'lg:pointer-events-none lg:w-0! lg:opacity-0'
-            : 'lg:opacity-100',
+          isSidebarCollapsed ? 'lg:pointer-events-none lg:w-0! lg:p-0! lg:opacity-0' : 'lg:opacity-100',
         )}
       >
-        <div className="flex h-full flex-col gap-[22px] overflow-hidden bg-[var(--sidebar-background)] px-4 py-[22px]">
-          <button
-            type="button"
-            onClick={handleSidebarToggle}
-            aria-label={t('shell.toggle_navigation')}
-            className="flex items-center gap-2.5 px-2 text-left"
-          >
-            <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-xl bg-[var(--primary)] text-[15px] font-bold tracking-[-0.02em] text-white">
-              {getInitials(user?.name, user?.surname)}
+        <div className="flex h-full flex-col overflow-hidden rounded-[24px] bg-[var(--sb-bg)] px-3 pt-[18px] pb-3 shadow-[var(--sb-shadow)]">
+          {/* Brand */}
+          <div className="flex items-center gap-2.5 px-1.5 pb-4">
+            <span
+              className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[11px] text-[18px] font-bold text-white shadow-[0_8px_18px_-10px_rgba(43,89,255,0.9)]"
+              style={{ background: 'var(--primary-gradient)' }}
+              aria-hidden="true"
+            >
+              {env.appName.trim().charAt(0).toUpperCase() || 'C'}
             </span>
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-[18px] font-bold tracking-[-0.02em] text-[var(--shell-app-name-color)]">
-                {env.appName}
-              </span>
-              <span className="-mt-0.5 truncate text-[11px] text-[var(--muted)]">
-                {isOutboundCrmRoute ? 'Outbound CRM' : (user?.job_title?.trim() || user?.role || t('shell.user'))}
-              </span>
-            </span>
-          </button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[16px] leading-5 font-bold tracking-[-0.02em] text-white">{env.appName}</p>
+              <p className="truncate text-[11.5px] leading-4 text-[var(--sb-label)]">{subtitle}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSidebarToggle}
+              aria-label={t('shell.toggle_navigation')}
+              title={t('shell.toggle_navigation')}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[var(--sb-icon)] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            >
+              {isMobileViewport ? <X size={17} /> : <PanelLeftClose size={17} />}
+            </button>
+          </div>
 
-          {isOutboundCrmRoute ? (
-            <div className="-mx-1 flex-1 overflow-x-hidden overflow-y-auto px-1">
-              <p className={sidebarSectionLabel}>Outbound CRM</p>
-
-              <div className="flex flex-col gap-1">
+          {/* Navigation */}
+          <nav aria-label={t('shell.menu')} className="-mx-1 flex-1 overflow-x-hidden overflow-y-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {isOutboundCrmRoute ? (
+              <div className="flex flex-col gap-0.5">
+                <p className={sidebarSectionLabel}>Outbound CRM</p>
                 {outboundNavigation.map((item) => (
                   <NavLink
                     key={item.to}
@@ -320,200 +452,78 @@ export function AppSidebar() {
                     aria-label={item.label}
                     className={cn(sidebarItemBase, item.isActive(location.pathname) ? sidebarItemActive : sidebarItemInactive)}
                   >
-                    <NavGlyph name={item.glyph} />
+                    <NavGlyph name={item.glyph} className={sidebarIcon} />
                     <span className="flex-1 truncate text-left">{item.label}</span>
                   </NavLink>
                 ))}
-              </div>
 
-              {hasPermission(user, 'crm') ? (
-                <div className="mt-5 border-t border-[var(--border)] pt-4">
-                  <NavLink
-                    to="/crm"
-                    aria-label={t('outbound_crm.header.back_to_crm', 'Main CRM')}
-                    className={cn(sidebarItemBase, sidebarItemInactive)}
-                  >
-                    <NavGlyph name="exit" />
-                    <span className="flex-1 truncate text-left">{t('outbound_crm.header.back_to_crm', 'Main CRM')}</span>
-                  </NavLink>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="-mx-1 flex-1 overflow-x-hidden overflow-y-auto px-1">
-              <p className={sidebarSectionLabel}>{t('shell.menu')}</p>
-
-              <div className="flex flex-col gap-1">
-                {sidebarNavigation.map((item) => {
-                  const itemLabel = getNavigationLabel(item.to, item.label)
-
-                  if (item.to === '/projects') {
-                    return (
-                      <div key={item.to} className="flex flex-col gap-1">
-                        <div className="relative">
-                          <NavLink
-                            to={item.to}
-                            aria-label={itemLabel}
-                            onClick={() => setIsProjectsExpanded(true)}
-                            className={({ isActive }) =>
-                              cn(
-                                sidebarItemBase,
-                                isActive || isProjectsRoute ? sidebarItemActive : sidebarItemInactive,
-                                'pr-16',
-                              )
-                            }
-                          >
-                            <NavGlyph name={getNavigationGlyphName(item.to)} />
-                            <span className="flex-1 truncate text-left">{itemLabel}</span>
-                            {sidebarProjects.length > 0 && (
-                              <span
-                                className={cn(
-                                  'ml-auto rounded-full px-[7px] py-0.5 text-[11px] font-bold',
-                                  isProjectsRoute
-                                    ? 'bg-white/20 text-white'
-                                    : 'bg-[var(--lime)] text-[var(--lime-ink)]',
-                                )}
-                              >
-                                {sidebarProjects.length}
-                              </span>
-                            )}
-                          </NavLink>
-
-                          <button
-                            type="button"
-                            onClick={toggleProjectsExpanded}
-                            aria-label={isProjectsExpanded ? t('shell.collapse_projects') : t('shell.expand_projects')}
-                            className={cn(
-                              'absolute top-1/2 right-2.5 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg transition-colors',
-                              isProjectsRoute
-                                ? 'text-white hover:bg-white/15'
-                                : 'text-[var(--muted)] hover:bg-[var(--shell-nav-hover-bg)] hover:text-[var(--foreground)]',
-                            )}
-                          >
-                            <svg
-                              viewBox="0 0 16 16"
-                              className={cn('h-3.5 w-3.5 transition-transform duration-200', isProjectsExpanded && 'rotate-180')}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                            >
-                              <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                        </div>
-
-                        {isProjectsExpanded && (
-                          <div className="ml-4 flex flex-col gap-1 border-l border-[var(--border)] pl-3">
-                            {projectsQuery.isLoading ? (
-                              Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="skeleton h-9" />
-                              ))
-                            ) : projectsQuery.isError ? (
-                              <button
-                                type="button"
-                                onClick={() => void projectsQuery.refetch()}
-                                className={cn(
-                                  sidebarItemBase,
-                                  'font-medium text-[var(--danger-text)] hover:bg-[var(--danger-dim)]',
-                                )}
-                              >
-                                <span className="truncate">
-                                  {t('shell.failed_load_projects')} — {t('shell.retry')}
-                                </span>
-                              </button>
-                            ) : sidebarProjects.length === 0 ? (
-                              <div className={cn(sidebarItemBase, 'font-medium text-[var(--muted)]')}>
-                                <span className="truncate">{t('shell.no_projects')}</span>
-                              </div>
-                          ) : (
-                              sidebarProjects.map((project) => {
-                                const isActiveProject =
-                                  location.pathname === `/projects/${project.id}` ||
-                                  location.pathname.startsWith(`/projects/${project.id}/`) ||
-                                  location.pathname.startsWith(`/boards/`)
-                                const openCount = openTaskCountByProject.get(project.id) ?? 0
-
-                                return (
-                                  <NavLink
-                                    key={project.id}
-                                    to={`/projects/${project.id}`}
-                                    className={({ isActive }) =>
-                                      cn(
-                                        sidebarItemBase,
-                                        isActive || isActiveProject ? sidebarItemActive : sidebarItemInactive,
-                                        'gap-2.5 py-2 pl-3',
-                                      )
-                                    }
-                                  >
-                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-50" />
-                                    <span className="flex-1 truncate text-left">{project.project_name}</span>
-                                    {openCount > 0 && (
-                                      <span
-                                        className={cn(
-                                          'ml-auto rounded-full px-[7px] py-0.5 text-[11px] font-bold',
-                                          isActiveProject
-                                            ? 'bg-white/20 text-white'
-                                            : 'bg-[var(--lime)] text-[var(--lime-ink)]',
-                                        )}
-                                      >
-                                        {openCount}
-                                      </span>
-                                    )}
-                                  </NavLink>
-                                )
-                              })
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      aria-label={itemLabel}
-                      className={({ isActive }) =>
-                        cn(sidebarItemBase, isActive ? sidebarItemActive : sidebarItemInactive)
-                      }
-                    >
-                      <NavGlyph name={getNavigationGlyphName(item.to)} />
-                      <span className="flex-1 truncate text-left">{itemLabel}</span>
+                {hasPermission(user, 'crm') ? (
+                  <div className="mt-3 border-t border-[var(--sb-line)] pt-3">
+                    <NavLink to="/crm" aria-label={t('outbound_crm.header.back_to_crm', 'Main CRM')} className={cn(sidebarItemBase, sidebarItemInactive)}>
+                      <NavGlyph name="exit" className={sidebarIcon} />
+                      <span className="flex-1 truncate text-left">{t('outbound_crm.header.back_to_crm', 'Main CRM')}</span>
                     </NavLink>
-                  )
-                })}
+                  </div>
+                ) : null}
               </div>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={openMemberDialog}
-            disabled={!user}
-            className="flex items-center gap-3 rounded-[18px] bg-[var(--surface-inverse)] p-4 text-left transition-opacity hover:opacity-95 disabled:cursor-default disabled:opacity-80"
-            aria-label={t('profile.member_details')}
-          >
-            {resolvedUserProfileImage ? (
-              <img
-                src={resolvedUserProfileImage}
-                alt={user ? `${user.name} ${user.surname}` : t('shell.authenticated_user')}
-                className="h-10 w-10 shrink-0 rounded-full object-cover"
-              />
             ) : (
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--lime)] text-xs font-bold text-[var(--lime-ink)]">
-                {getInitials(user?.name, user?.surname)}
+              <div className="flex flex-col gap-4 [@media(max-height:900px)]:gap-2.5">
+                {groupedNavigation.map(({ group, items }) => (
+                  <div key={group} className="flex flex-col gap-0.5">
+                    <p className={sidebarSectionLabel}>{t(`shell.group.${group}`, groupFallback[group])}</p>
+                    {items.map(renderNavItem)}
+                  </div>
+                ))}
               </div>
             )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold text-white">
-                {user ? `${user.name} ${user.surname}` : t('shell.authenticated_user')}
-              </p>
-              <p className="truncate text-[11.5px] text-[var(--on-inverse-muted)]">
-                {user?.email ?? user?.role ?? t('shell.user')}
-              </p>
+          </nav>
+
+          {/* Signed-in user (+ language on phones, where the header has no room for it) */}
+          <div className="mt-3 border-t border-[var(--sb-line)] pt-3">
+            <div className="mb-2 flex gap-1 rounded-full bg-white/5 p-1 sm:hidden" role="group" aria-label={t('shell.language')}>
+              {(Object.keys(localeLabels) as AppLocale[]).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setLocale(value)}
+                  aria-pressed={locale === value}
+                  className={cn(
+                    'h-8 flex-1 rounded-full text-[12.5px] transition-colors',
+                    locale === value ? 'bg-white font-semibold text-[var(--sb-bg)]' : 'font-medium text-[var(--sb-text)] hover:text-white',
+                  )}
+                >
+                  {localeLabels[value]}
+                </button>
+              ))}
             </div>
-          </button>
+            <button
+              type="button"
+              onClick={openMemberDialog}
+              disabled={!user}
+              className="flex w-full items-center gap-2.5 rounded-[12px] px-1.5 py-1.5 text-left transition-colors hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-default"
+              aria-label={t('profile.member_details')}
+            >
+              {resolvedUserProfileImage ? (
+                <img
+                  src={resolvedUserProfileImage}
+                  alt={user ? `${user.name} ${user.surname}` : t('shell.authenticated_user')}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-[12px] font-bold text-white">
+                  {getInitials(user?.name, user?.surname)}
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13.5px] leading-5 font-semibold text-white">
+                  {user ? `${user.name} ${user.surname}` : t('shell.authenticated_user')}
+                </span>
+                <span className="block truncate text-[11.5px] leading-4 text-[var(--sb-label)]">
+                  {user?.email ?? user?.role ?? t('shell.user')}
+                </span>
+              </span>
+            </button>
+          </div>
         </div>
       </aside>
 

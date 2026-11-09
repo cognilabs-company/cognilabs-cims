@@ -8,14 +8,10 @@ import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { formatCompactNumber, formatCurrency, formatShortDate, formatShortDateTime } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
-import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../shared/ui/card'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
-import { DataTable } from '../../../shared/ui/data-table'
 import { Dialog } from '../../../shared/ui/dialog'
-import { IconButton } from '../../../shared/ui/icon-button'
-import { Skeleton } from '../../../shared/ui/skeleton'
 import { StatCard } from '../../../shared/ui/stat-card'
 import type { TabItem } from '../../../shared/ui/tabs'
 import type { Tone } from '../../../shared/ui/tone'
@@ -24,14 +20,11 @@ import { FunnelStages, type FunnelStage } from '../../../shared/ui/charts/funnel
 import { GaugeDonut, type GaugeSegment } from '../../../shared/ui/charts/gauge-donut'
 import { Leaderboard, type LeaderboardEntry } from '../../../shared/ui/charts/leaderboard'
 import { TaskList, type TaskRow } from '../../../shared/ui/charts/task-list'
-import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
-import { CrmDashboardCharts } from '../../crm/components/CrmDashboardCharts'
+import { ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { MessageComposerModal, type MessageComposerValues } from '../components/MessageComposerModal'
 import { PaymentFormModal, type PaymentFormValues } from '../components/PaymentFormModal'
 import { CompanyPaymentFormModal, type CompanyPaymentFormValues } from '../components/CompanyPaymentFormModal'
 import { WorkdayOverrideFormDialog } from '../components/WorkdayOverrideFormDialog'
-import { crmService } from '../../../shared/api/services/crm.service'
-import { Avatar } from '../../projects/components/Avatar'
 import { isDueDateOverdue } from '../../projects/lib/format'
 
 const initialBroadcastMessage: MessageComposerValues = {
@@ -139,36 +132,6 @@ function GlyphSmall({ d }: { d: string }) {
   )
 }
 
-function PencilIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-    </svg>
-  )
-}
-
-function SwapIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-      <path d="M1 4v6h6" />
-      <path d="M23 20v-6h-6" />
-      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" />
-    </svg>
-  )
-}
-
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true">
@@ -186,27 +149,6 @@ export function CeoDashboardPage() {
   const dashboardQuery = useAsyncData(() => ceoService.getDashboard(), [])
   const paymentsQuery = useAsyncData(() => ceoService.listPayments(), [])
   const companyPaymentsQuery = useAsyncData(() => ceoService.listCompanyPayments(), [])
-  const [chartCustomerType, setChartCustomerType] = useState('')
-  const chartsQuery = useAsyncData(
-    async () => {
-      const selectedCustomerType = chartCustomerType || undefined
-      const [weekly, monthly] = await Promise.all([
-        crmService.salesDashboardCharts({
-          days: 7,
-          customer_type: selectedCustomerType,
-          platform_limit: 8,
-        }),
-        crmService.salesDashboardCharts({
-          days: 30,
-          customer_type: selectedCustomerType,
-          platform_limit: 10,
-        }),
-      ])
-
-      return { weekly, monthly }
-    },
-    [chartCustomerType],
-  )
 
   const [broadcastValues, setBroadcastValues] = useState<MessageComposerValues>(initialBroadcastMessage)
   const [isBroadcastOpen, setIsBroadcastOpen] = useState(false)
@@ -395,7 +337,6 @@ export function CeoDashboardPage() {
       dashboardQuery.refetch(),
       paymentsQuery.refetch(),
       companyPaymentsQuery.refetch(),
-      chartsQuery.refetch(),
     ])
   }
 
@@ -792,7 +733,6 @@ export function CeoDashboardPage() {
         Number(left.payment) - Number(right.payment)
         || String(right.date ?? '').localeCompare(String(left.date ?? ''))
       ))
-      .slice(0, 6)
       .map((payment) => ({
         key: String(payment.id),
         title: payment.project,
@@ -802,6 +742,23 @@ export function CeoDashboardPage() {
         done: payment.payment,
       })),
     [payments],
+  )
+
+  const recurringTasks = useMemo<TaskRow[]>(
+    () => [...companyPayments]
+      .sort((left, right) => Number(right.is_active) - Number(left.is_active) || left.payment_day - right.payment_day)
+      .map((row) => ({
+        key: String(row.id),
+        title: row.title,
+        meta: [
+          t('ceo.recurring.day_meta', 'Day {{day}} · {{time}}', { day: row.payment_day, time: row.payment_time }),
+          row.is_active ? null : t('status.inactive', 'Inactive'),
+          row.note?.trim() || null,
+        ].filter(Boolean).join(' · '),
+        tag: formatCompactNumber(Number(row.amount ?? 0)),
+        tone: row.is_active ? ('blue' as const) : ('neutral' as const),
+      })),
+    [companyPayments, t],
   )
 
   const emptyHint = (
@@ -1087,31 +1044,57 @@ export function CeoDashboardPage() {
           </div>
         ) : null}
 
+        <Leaderboard
+          className="min-w-0 flex-[1_1_320px]"
+          title={t('ceo.overview.top_workload', 'Busiest teammates')}
+          badge={t('ceo.overview.workload_badge', 'Open tasks')}
+          entries={workloadEntries}
+          onSelect={(key) => void handleOpenUserTasks(Number(key))}
+          selectLabel={(entry) => t('ceo.overview.open_user_tasks', 'Open tasks of {{name}}', { name: entry.name })}
+          emptyState={
+            <p className="py-8 text-center text-[13px] text-[var(--on-inverse-muted)]">
+              {isLoadingTaskCounts ? t('common.loading', 'Loading...') : t('ceo.dashboard.tasks.no_tasks', 'No open tasks')}
+            </p>
+          }
+        />
+      </div>
+
+      <div className="grid gap-[18px] xl:grid-cols-2">
         <TaskList
-          className="min-w-0 flex-[1_1_300px]"
-          title={t('ceo.overview.payments_tasks', 'Payment checklist')}
+          className="min-w-0"
+          listClassName="max-h-[440px] overflow-y-auto pr-1"
+          title={t('ceo.dashboard.payments.title', 'Payments')}
           tasks={paymentTasks}
+          deleteLabel={t('customers.actions.delete', 'Delete')}
           onToggle={(key) => {
             const match = payments.find((row) => String(row.id) === key)
-            if (match) {
-              void handleTogglePayment(match)
-            }
+            if (match) void handleTogglePayment(match)
           }}
           onSelect={(key) => {
             const match = payments.find((row) => String(row.id) === key)
-            if (match) {
-              openEditPaymentModal(match)
-            }
+            if (match) openEditPaymentModal(match)
+          }}
+          onDelete={(key) => {
+            const match = payments.find((row) => String(row.id) === key)
+            if (match) void handleDeletePayment(match)
           }}
           action={
-            <button
-              type="button"
-              onClick={openCreatePaymentModal}
-              aria-label={t('ceo.dashboard.actions.create_payment')}
-              className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
-            >
-              <Glyph d={glyphPaths.plus} />
-            </button>
+            <div className="flex items-center gap-2">
+              {pendingPaymentsCount > 0 ? (
+                <span className="rounded-full bg-[var(--warning-dim)] px-2.5 py-1 text-xs font-semibold text-[var(--warning-text)]">
+                  {t('ceo.dashboard.payments.pending_count', { count: pendingPaymentsCount })}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                onClick={openCreatePaymentModal}
+                aria-label={t('ceo.dashboard.actions.create_payment')}
+                title={t('ceo.dashboard.actions.create_payment')}
+                className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
+              >
+                <Glyph d={glyphPaths.plus} />
+              </button>
+            </div>
           }
           emptyState={
             <p className="py-8 text-center text-[13px] text-[var(--muted)]">
@@ -1120,315 +1103,44 @@ export function CeoDashboardPage() {
           }
         />
 
-        <Leaderboard
-          className="min-w-0 flex-[1_1_300px]"
-          title={t('ceo.overview.top_workload', 'Busiest teammates')}
-          badge={t('ceo.overview.workload_badge', 'Open tasks')}
-          entries={workloadEntries}
+        <TaskList
+          className="min-w-0"
+          listClassName="max-h-[440px] overflow-y-auto pr-1"
+          checkable={false}
+          title={t('ceo.dashboard.recurring.title')}
+          tasks={recurringTasks}
+          deleteLabel={t('customers.actions.delete', 'Delete')}
+          onSelect={(key) => {
+            const match = companyPayments.find((row) => String(row.id) === key)
+            if (match) openEditCompanyPaymentModal(match)
+          }}
+          onDelete={(key) => {
+            const match = companyPayments.find((row) => String(row.id) === key)
+            if (match) void handleDeleteCompanyPayment(match)
+          }}
+          action={
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--blue-text)]">
+                {formatCurrency(companyPaymentsQuery.data?.totalAmount || 0)}
+              </span>
+              <button
+                type="button"
+                onClick={openCreateCompanyPaymentModal}
+                aria-label={t('ceo.dashboard.recurring.create')}
+                title={t('ceo.dashboard.recurring.create')}
+                className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
+              >
+                <Glyph d={glyphPaths.plus} />
+              </button>
+            </div>
+          }
           emptyState={
-            <p className="py-8 text-center text-[13px] text-[var(--on-inverse-muted)]">
-              {t('ceo.dashboard.tasks.no_tasks', 'No open tasks')}
+            <p className="py-8 text-center text-[13px] text-[var(--muted)]">
+              {t('ceo.dashboard.recurring.empty_title')}
             </p>
           }
         />
       </div>
-
-      <CrmDashboardCharts
-        weekly={chartsQuery.data?.weekly}
-        monthly={chartsQuery.data?.monthly}
-        customerType={chartCustomerType}
-        onCustomerTypeChange={setChartCustomerType}
-        isLoading={chartsQuery.isLoading}
-        isError={chartsQuery.isError}
-        onRetry={() => {
-          void chartsQuery.refetch()
-        }}
-      />
-
-      <div className="grid gap-[18px] xl:grid-cols-2">
-        <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>{t('ceo.dashboard.tasks.title', 'Task Overview')}</CardTitle>
-            <Badge variant="blue" dot>
-              {t('ceo.dashboard.tasks.user_count', { count: users.filter((u) => u.is_active).length, defaultValue: '{{count}} users' })}
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            {users.length === 0 ? (
-              <EmptyStateBlock
-                eyebrow={t('ceo.dashboard.header.eyebrow', 'CEO Workspace')}
-                title={t('ceo.dashboard.tasks.empty_users', 'No users found')}
-              />
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {users.map((user) => (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => void handleOpenUserTasks(user.id)}
-                    className="flex flex-col items-center gap-2.5 rounded-[18px] bg-[var(--accent-soft)] p-4 text-center transition-colors hover:bg-[var(--blue-dim)]"
-                  >
-                    <Avatar
-                      name={user.name}
-                      surname={user.surname}
-                      imageUrl={(user.profile_image as string | null | undefined) ?? null}
-                      size="lg"
-                    />
-                    <div className="w-full min-w-0">
-                      <p className="truncate text-sm font-semibold leading-snug text-[var(--foreground)]">
-                        {user.name} {user.surname}
-                      </p>
-                      {user.job_title && (
-                        <p className="mt-0.5 truncate text-xs text-[var(--muted)]">{user.job_title as string}</p>
-                      )}
-                      <div className="mt-2 flex justify-center">
-                        {isLoadingTaskCounts ? (
-                          <Skeleton rounded="full" className="h-[22px] w-16" />
-                        ) : (
-                          <Badge
-                            variant={userTaskCounts[user.id] ? 'warning' : 'secondary'}
-                            dot={Boolean(userTaskCounts[user.id])}
-                            size="sm"
-                          >
-                            {userTaskCounts[user.id] ?? 0} {t('ceo.dashboard.tasks.task_label', 'task')}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="flex flex-col gap-[18px]">
-          <Card noPadding>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-              <div className="space-y-1">
-                <CardTitle>{t('ceo.dashboard.recurring.title')}</CardTitle>
-              </div>
-              <Badge variant="blue" dot>
-                {formatCurrency(companyPaymentsQuery.data?.totalAmount || 0)}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                caption={t('ceo.dashboard.recurring.title')}
-                rows={companyPayments}
-                getRowKey={(row) => String(row.id)}
-                emptyState={
-                  <EmptyStateBlock
-                    eyebrow={t('ceo.dashboard.header.eyebrow', 'CEO Workspace')}
-                    title={t('ceo.dashboard.recurring.empty_title')}
-                  />
-                }
-                columns={[
-                  {
-                    key: 'title',
-                    header: t('ceo.recurring.form.title'),
-                    render: (row) => (
-                      <div>
-                        <p className="font-semibold text-[var(--foreground)]">{row.title}</p>
-                        {row.note && <p className="mt-1 text-xs text-[var(--muted)] line-clamp-1">{row.note}</p>}
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'amount',
-                    header: t('ceo.recurring.form.amount'),
-                    align: 'right',
-                    render: (row) => (
-                      <span className="font-semibold tabular-nums">{formatCurrency(row.amount)}</span>
-                    ),
-                  },
-                  {
-                    key: 'day',
-                    header: t('ceo.recurring.form.payment_day'),
-                    align: 'center',
-                    render: (row) => (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <span className="text-sm font-bold tabular-nums text-[var(--blue-text)]">{row.payment_day}</span>
-                        <span className="text-[11px] tabular-nums text-[var(--muted)]">{row.payment_time}</span>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'status',
-                    header: t('common.status'),
-                    render: (row) => (
-                      <Badge variant={row.is_active ? 'success' : 'secondary'} dot>
-                        {row.is_active ? t('status.active') : t('status.inactive')}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    key: 'actions',
-                    header: t('common.actions'),
-                    render: (row) => (
-                      <div className="flex items-center gap-1">
-                        <IconButton size="sm" label={t('common.edit')} onClick={() => openEditCompanyPaymentModal(row)}>
-                          <PencilIcon />
-                        </IconButton>
-                        <IconButton size="sm" tone="danger" label={t('customers.actions.delete')} onClick={() => void handleDeleteCompanyPayment(row)}>
-                          <TrashIcon />
-                        </IconButton>
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            </CardContent>
-          </Card>
-
-          <Card noPadding>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>{t('ceo.dashboard.payments.title')}</CardTitle>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="success" dot>
-                  {t('ceo.dashboard.payments.paid_count', { count: paidPaymentsCount })}
-                </Badge>
-                <Badge variant="warning" dot pulse={pendingPaymentsCount > 0}>
-                  {t('ceo.dashboard.payments.pending_count', { count: pendingPaymentsCount })}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                caption={t('ceo.dashboard.payments.title')}
-                rows={payments}
-                getRowKey={(row) => String(row.id)}
-                emptyState={
-                  <EmptyStateBlock
-                    eyebrow={t('ceo.dashboard.header.eyebrow', 'CEO Workspace')}
-                    title={t('ceo.dashboard.payments.empty_title')}
-                  />
-                }
-                columns={[
-                  {
-                    key: 'project',
-                    header: t('ceo.dashboard.table.project'),
-                    render: (row) => <span className="font-medium text-[var(--foreground)]">{row.project}</span>,
-                  },
-                  {
-                    key: 'date',
-                    header: t('ceo.dashboard.table.date'),
-                    render: (row) => (
-                      <span className="tabular-nums text-[var(--muted-strong)]">
-                        {row.date ? formatShortDate(row.date) : '-'}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: 'amount',
-                    header: t('ceo.dashboard.table.amount'),
-                    align: 'right',
-                    render: (row) => (
-                      <span className="font-semibold tabular-nums">{formatCurrency(Number(row.summ ?? 0))}</span>
-                    ),
-                  },
-                  {
-                    key: 'status',
-                    header: t('common.status'),
-                    render: (row) => (
-                      <Badge variant={row.payment ? 'success' : 'warning'} dot pulse={!row.payment}>
-                        {row.payment ? t('status.paid') : t('status.pending')}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    key: 'actions',
-                    header: t('common.actions'),
-                    render: (row) => (
-                      <div className="flex items-center gap-1">
-                        <IconButton size="sm" label={t('common.edit')} onClick={() => openEditPaymentModal(row)}>
-                          <PencilIcon />
-                        </IconButton>
-                        <IconButton size="sm" tone="primary" label={t('ceo.dashboard.actions.toggle')} onClick={() => void handleTogglePayment(row)}>
-                          <SwapIcon />
-                        </IconButton>
-                        <IconButton size="sm" tone="danger" label={t('customers.actions.delete')} onClick={() => void handleDeletePayment(row)}>
-                          <TrashIcon />
-                        </IconButton>
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {hasMedia && (
-        <Card noPadding>
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>{t('ceo.media.funnel_title', 'Instagram media funnel')}</CardTitle>
-            <Badge variant="blue" dot>
-              {mediaPosts.length} media
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-[18px]">
-            {mediaPosts.length === 0 ? (
-              <p className="rounded-[18px] bg-[var(--muted-surface)] py-6 text-center text-sm text-[var(--muted)]">{t('ceo.media.empty', 'No media context added yet.')}</p>
-            ) : (
-              <>
-                {mediaUnknownSent > 0 && (
-                  <Alert tone="warning">
-                    {t('ceo.media.unlinked_warning', 'Some Instagram media messages are not linked to a context. Add a post/reel/story link on the Media Contexts page.')}
-                  </Alert>
-                )}
-                <DataTable
-                  caption={t('ceo.media.posts_caption', 'Instagram media posts')}
-                  rows={mediaPosts}
-                  getRowKey={(row) => String(row.post_id)}
-                  emptyState={<EmptyStateBlock eyebrow={t('ceo.dashboard.header.eyebrow', 'CEO Workspace')} title={t('ceo.media.no_media', 'No media')} />}
-                  columns={[
-                    {
-                      key: 'title',
-                      header: t('ceo.media.post', 'Post'),
-                      render: (row) => (
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-[var(--foreground)]">{row.title}</p>
-                          <p className="text-xs capitalize text-[var(--muted)]">{row.media_type}</p>
-                        </div>
-                      ),
-                    },
-                    { key: 'sent', header: t('ceo.media.col_sent', 'Sent'), align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--blue-text)]">{row.sent_count}</span> },
-                    { key: 'leads', header: t('ceo.media.col_leads', 'Leads'), align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--success-text)]">{row.lead_count}</span> },
-                    { key: 'contacted', header: t('ceo.media.contacted', 'Contacted'), align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--blue-text)]">{row.contacted_count}</span> },
-                    { key: 'continuing', header: t('ceo.media.continuing', 'Continuing'), align: 'center', render: (row) => <span className="font-semibold tabular-nums text-[var(--violet-text)]">{row.continuing_count}</span> },
-                    {
-                      key: 'conversion',
-                      header: t('ceo.media.conversion', 'Conversion'),
-                      align: 'right',
-                      render: (row) => {
-                        const pct = row.sent_count > 0 ? ((row.lead_count / row.sent_count) * 100).toFixed(1) : '0.0'
-                        return <span className="rounded-full bg-[var(--success-dim)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--success-text)]">{pct}%</span>
-                      },
-                    },
-                    {
-                      key: 'link',
-                      header: '',
-                      render: (row) => (
-                        <a
-                          href={row.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-medium text-[var(--muted)] transition-colors underline-offset-2 hover:text-[var(--primary)] hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Instagram
-                        </a>
-                      ),
-                    },
-                  ]}
-                />
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       <Dialog
         open={isTaskDialogOpen}
