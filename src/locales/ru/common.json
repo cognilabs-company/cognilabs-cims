@@ -1501,5 +1501,9 @@
   "customers.archive.restored_partial": "Восстановлено: {{done}}, ошибок: {{failed}}",
   "customers.archive.search": "Имя, номер или платформа",
   "customers.archive.subtitle": "Скрыты из списка клиентов. Их можно восстановить или удалить навсегда.",
-  "customers.archive.title": "Архив"
+  "customers.archive.title": "Архив",
+  "shell.theme.label": "Оформление",
+  "shell.theme.auto": "Авто (система)",
+  "shell.theme.light": "Светлая",
+  "shell.theme.dark": "Тёмная"
 }

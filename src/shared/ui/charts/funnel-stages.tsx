@@ -51,7 +51,7 @@ export function FunnelStages({ stages, className }: FunnelStagesProps) {
             <span className={cn('text-[12.5px]', stage.hero ? 'text-[var(--lime-ink)]' : 'text-[var(--muted-strong)]')}>
               {stage.label}
             </span>
-            <span className="text-[17px] font-bold tracking-[-0.02em] tabular-nums text-[var(--foreground)]" data-ui-number="true">
+            <span className={cn('text-[17px] font-bold tracking-[-0.02em] tabular-nums', stage.hero ? 'text-[var(--lime-ink)]' : 'text-[var(--foreground)]')} data-ui-number="true">
               {stage.value}
             </span>
           </div>
@@ -59,7 +59,7 @@ export function FunnelStages({ stages, className }: FunnelStagesProps) {
           <div
             className={cn(
               'h-[5px] overflow-hidden rounded-full',
-              stage.hero ? 'bg-[rgba(14,21,37,0.12)]' : 'bg-[#E3E8F5]',
+              stage.hero ? 'bg-[rgba(14,21,37,0.12)]' : 'bg-[var(--track)]',
             )}
           >
             <div

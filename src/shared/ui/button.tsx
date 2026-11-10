@@ -36,11 +36,11 @@ const variants = {
 
   danger:
     'bg-[var(--danger-dim)] text-[var(--danger-text)] ' +
-    'hover:bg-[#FADFDF] active:bg-[#F7D2D2]',
+    'hover:bg-[var(--danger-dim-hover)] active:bg-[var(--danger-dim-active)]',
 
   success:
     'bg-[var(--success-dim)] text-[var(--success-text)] ' +
-    'hover:bg-[#DBF3E2] active:bg-[#CFEED8]',
+    'hover:bg-[var(--success-dim-hover)] active:bg-[var(--success-dim-active)]',
 }
 
 const sizes = {

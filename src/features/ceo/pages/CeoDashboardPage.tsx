@@ -1140,7 +1140,7 @@ export function CeoDashboardPage() {
                       event.stopPropagation()
                     }}
                     disabled={isCompletingTaskId === task.id}
-                    className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.6px] border-[#D3D7E0] bg-[var(--surface)] text-transparent transition-colors hover:border-transparent hover:bg-[var(--lime)] hover:text-[var(--lime-ink)] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.6px] border-[var(--control-border)] bg-[var(--surface)] text-transparent transition-colors hover:border-transparent hover:bg-[var(--lime)] hover:text-[var(--lime-ink)] disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={t('ceo.dashboard.tasks.mark_done', 'Mark task as done')}
                     title={t('ceo.dashboard.tasks.mark_done', 'Mark task as done')}
                   >

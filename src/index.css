@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* `dark:` utilities follow <html data-theme="dark"> (set by src/shared/theme/theme.ts). */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 /* ─── THEME SCALE ────────────────────────────────────────────── */
 @theme {
   --font-sans: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -176,7 +179,140 @@
   --sb-hover:     #F4F5F9;
   --sb-shadow:    0 1px 2px rgba(14, 21, 37, 0.04), 0 16px 36px -22px rgba(14, 21, 37, 0.22);
   --pill-shadow:  0 1px 2px rgba(14, 21, 37, 0.04);
+
+  /* Controls, tables, scrollbars, overlays */
+  --control-border:    #D3D7E0;
+  --track:             #E3E8F5;
+  --row-zebra:         #FAFBFC;
+  --row-hover:         #F3F6FF;
+  --row-selected:      #EEF3FF;
+  --danger-dim-hover:  #FADFDF;
+  --danger-dim-active: #F7D2D2;
+  --success-dim-hover: #DBF3E2;
+  --success-dim-active:#CFEED8;
+  --scroll-track:      rgba(14, 21, 37, 0.04);
+  --scroll-thumb:      rgba(14, 21, 37, 0.18);
+  --scroll-thumb-hover:rgba(14, 21, 37, 0.32);
+  --backdrop:          rgba(14, 21, 37, 0.32);
+  --selection:         rgba(43, 89, 255, 0.18);
+  --chart-hatch-a:     #F1F3F8;
+  --chart-hatch-b:     #E6E9F1;
 }
+
+/* ─── DARK THEME ─────────────────────────────────────────────── */
+/* Same CIMS navy + blue palette, inverted for low light. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background:        #0B0F17;
+  --background-strong: #0F141E;
+  --app-canvas:        #0B0F17;
+  --surface:           #131924;
+  --surface-elevated:  #19202C;
+  --surface-inverse:   #212B3F;
+  --card:              #131924;
+  --card-hover:        #171E2A;
+
+  --foreground:        #E8EBF2;
+  --muted:             #8189A0;
+  --muted-strong:      #B2B8C8;
+  --caption:           #6D758A;
+  --on-inverse:        #FFFFFF;
+  --on-inverse-muted:  #9AA1B5;
+
+  --border:            #222A38;
+  --border-hover:      #2D3647;
+  --border-focus:      #5B7FFF;
+  --border-subtle:     #1A2130;
+
+  --accent:            #E8EBF2;
+  --accent-soft:       #171E2A;
+  --accent-hover:      #1B2230;
+
+  --primary:           #4C74FF;
+  --primary-hover:     #5F83FF;
+  --primary-active:    #3D66F5;
+  --primary-gradient:  linear-gradient(150deg, #5A7FFF 0%, #3B63F7 100%);
+  --blue-dim:          #172246;
+  --blue-soft:         #1D2B57;
+  --blue-glow:         rgba(76, 116, 255, 0.35);
+  --blue-text:         #8EA8FF;
+  --blue-border:       #2A3C78;
+
+  --lime:              #B8F15A;
+  --lime-ink:          #2D4B00;
+  --lime-dim:          #1C2911;
+  --lime-text:         #A9E85A;
+  --lime-gradient:     linear-gradient(180deg, #C9F57E 0%, #A6E83B 100%);
+
+  --success:           #34C46F;
+  --success-dim:       #102A1C;
+  --success-soft:      #16291A;
+  --success-strong:    #143322;
+  --success-border:    #1F4A31;
+  --success-text:      #4FD885;
+  --success-rgb:       52, 196, 111;
+
+  --warning:           #F2994A;
+  --warning-dim:       #2D1D10;
+  --warning-soft:      #2C2411;
+  --warning-border:    #4F3218;
+  --warning-text:      #FDB47A;
+
+  --danger:            #F05656;
+  --danger-dim:        #2E1417;
+  --danger-border:     #522329;
+  --danger-text:       #FF8B8B;
+  --danger-strong:     #F2555A;
+
+  --violet-dim:        #211A3B;
+  --violet-border:     #372B63;
+  --violet-text:       #B8A2FF;
+
+  --input-surface:       #1A212D;
+  --input-surface-hover: #202835;
+  --muted-surface:       #181F2B;
+
+  --elev-sm:      0 1px 3px rgba(0, 0, 0, 0.35);
+  --elev-md:      0 2px 8px rgba(0, 0, 0, 0.4);
+  --elev-lg:      0 12px 32px -12px rgba(0, 0, 0, 0.6);
+  --elev-xl:      0 28px 70px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --elev-primary: 0 8px 22px -8px rgba(76, 116, 255, 0.65);
+  --elev-nav:     0 8px 20px -10px rgba(76, 116, 255, 0.8);
+  --elev-pill:    0 2px 6px rgba(0, 0, 0, 0.35);
+  --elev-seg:     0 1px 3px rgba(0, 0, 0, 0.45);
+
+  --sb-bg:        #131924;
+  --sb-line:      #222A38;
+  --sb-text:      #B2B8C8;
+  --sb-strong:    #E8EBF2;
+  --sb-icon:      #7D869B;
+  --sb-label:     #6D758A;
+  --sb-hover:     #1B2230;
+  --sb-shadow:    0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 36px -22px rgba(0, 0, 0, 0.7);
+  --pill-shadow:  0 1px 2px rgba(0, 0, 0, 0.3);
+
+  --control-border:    #3A4356;
+  --track:             #232C3D;
+  --row-zebra:         #151B26;
+  --row-hover:         #1A2236;
+  --row-selected:      #182446;
+  --danger-dim-hover:  #3A1A1E;
+  --danger-dim-active: #462127;
+  --success-dim-hover: #153523;
+  --success-dim-active:#1A402B;
+  --scroll-track:      rgba(255, 255, 255, 0.03);
+  --scroll-thumb:      rgba(255, 255, 255, 0.16);
+  --scroll-thumb-hover:rgba(255, 255, 255, 0.28);
+  --backdrop:          rgba(0, 0, 0, 0.6);
+  --selection:         rgba(91, 127, 255, 0.35);
+  --chart-hatch-a:     #1C2330;
+  --chart-hatch-b:     #242C3B;
+}
+
+/* Theme switch: a short crossfade (View Transitions API) instead of a hard flip. */
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 320ms; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
 
 /* ─── RESET ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
@@ -252,17 +388,17 @@ input:-webkit-autofill:focus {
   transition: background-color 9999s ease-out;
 }
 
-::selection { background: rgba(43, 89, 255, 0.18); }
+::selection { background: var(--selection); }
 
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-thumb {
   border-radius: 999px;
   border: 2px solid transparent;
-  background: rgba(14, 21, 37, 0.16);
+  background: var(--scroll-thumb);
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(14, 21, 37, 0.26);
+  background: var(--scroll-thumb-hover);
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-track { background: transparent; }
@@ -707,7 +843,7 @@ input:-webkit-autofill:focus {
     background: var(--surface);
     border-color: var(--border);
   }
-  .dialog-backdrop { background: rgba(14, 21, 37, 0.32); }
+  .dialog-backdrop { background: var(--backdrop); }
   .dialog-header-decor { display: none; }
   .dialog-eyebrow {
     color: var(--caption);
@@ -735,31 +871,31 @@ input:-webkit-autofill:focus {
   /* Scrollbars */
   .custom-scrollbar-visible::-webkit-scrollbar { width: 10px; height: 10px; }
   .custom-scrollbar-visible::-webkit-scrollbar-track {
-    background: rgba(14, 21, 37, 0.04);
+    background: var(--scroll-track);
     border-radius: 10px;
   }
   .custom-scrollbar-visible::-webkit-scrollbar-thumb {
-    background: rgba(14, 21, 37, 0.22);
+    background: var(--scroll-thumb);
     border-radius: 10px;
     border: 2px solid transparent;
     background-clip: padding-box;
   }
-  .custom-scrollbar-visible:hover::-webkit-scrollbar-thumb { background: rgba(14, 21, 37, 0.34); }
+  .custom-scrollbar-visible:hover::-webkit-scrollbar-thumb { background: var(--scroll-thumb-hover); }
 
   .horizontal-scrollbar-visible::-webkit-scrollbar { height: 14px; }
   .horizontal-scrollbar-visible::-webkit-scrollbar-track {
-    background: rgba(14, 21, 37, 0.05);
+    background: var(--scroll-track);
     border-radius: 10px;
     margin: 0 16px;
   }
   .horizontal-scrollbar-visible::-webkit-scrollbar-thumb {
-    background: rgba(14, 21, 37, 0.26);
+    background: var(--scroll-thumb);
     border-radius: 10px;
     border: 4px solid transparent;
     background-clip: padding-box;
   }
   .horizontal-scrollbar-visible:hover::-webkit-scrollbar-thumb {
-    background: rgba(14, 21, 37, 0.38);
+    background: var(--scroll-thumb-hover);
     border: 4px solid transparent;
     background-clip: padding-box;
   }
@@ -770,16 +906,16 @@ input:-webkit-autofill:focus {
   .boards-section::-webkit-scrollbar,
   .boards-section *::-webkit-scrollbar { width: 14px; height: 14px; }
   .boards-section *::-webkit-scrollbar-track {
-    background: rgba(14, 21, 37, 0.04);
+    background: var(--scroll-track);
     border-radius: 10px;
   }
   .boards-section *::-webkit-scrollbar-thumb {
-    background: rgba(14, 21, 37, 0.22);
+    background: var(--scroll-thumb);
     border-radius: 10px;
     border: 4px solid transparent;
     background-clip: padding-box;
   }
-  .boards-section *::-webkit-scrollbar-thumb:hover { background: rgba(14, 21, 37, 0.34); }
+  .boards-section *::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
 }
 
 /* ─── KEYFRAMES ──────────────────────────────────────────────── */
@@ -916,47 +1052,8 @@ input:-webkit-autofill:focus {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Phone UI theme: follows the system unless the Calls page switch picks light or dark. */
-@media (prefers-color-scheme: dark) {
-  .mac-phone:not([data-phone-theme="light"]) {
-    --mp-window: #1e1e1e;
-    --mp-toolbar: #262626;
-    --mp-text: #f5f5f7;
-    --mp-secondary: rgba(235, 235, 245, 0.6);
-    --mp-tertiary: rgba(235, 235, 245, 0.32);
-    --mp-separator: rgba(84, 84, 88, 0.5);
-    --mp-hover: rgba(255, 255, 255, 0.04);
-    --mp-selected: rgba(255, 255, 255, 0.09);
-    --mp-control: rgba(118, 118, 128, 0.26);
-    --mp-control-hover: rgba(118, 118, 128, 0.38);
-    --mp-menu: rgba(40, 40, 40, 0.92);
-    --mp-menu-border: rgba(255, 255, 255, 0.12);
-    --mp-blue: #0a84ff;
-    --mp-red: #ff453a;
-    --mp-green: #30d158;
-    --mp-orange: #ff9f0a;
-    --mp-purple: #bf9cff;
-    --mp-avatar: linear-gradient(180deg, #6e6e76 0%, #4b4b52 100%);
-    --mp-glass: rgba(255, 255, 255, 0.08);
-    --mp-glass-strong: rgba(255, 255, 255, 0.14);
-    --mp-glass-text: #f5f5f7;
-    --mp-glass-secondary: rgba(245, 245, 247, 0.62);
-    --mp-glass-line: rgba(255, 255, 255, 0.1);
-    --mp-group: rgba(255, 255, 255, 0.05);
-    --mp-segment: #636366;
-    --mp-dialer: linear-gradient(180deg, #2c2c30 0%, #1c1c1e 100%);
-    --mp-key-bg: rgba(118, 118, 128, 0.3);
-    --mp-hero-avatar: rgba(255, 255, 255, 0.1);
-    --mp-hero: linear-gradient(180deg,
-      hsl(var(--mp-hue, 220) 10% 62%) 0%,
-      hsl(calc(var(--mp-hue, 220) + 30) 22% 42%) 38%,
-      hsl(calc(var(--mp-hue, 220) + 45) 42% 27%) 70%,
-      hsl(calc(var(--mp-hue, 220) + 50) 48% 20%) 100%);
-    --mp-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.6), 0 24px 70px -18px rgba(0, 0, 0, 0.7);
-    color-scheme: dark;
-  }
-}
-.mac-phone[data-phone-theme="dark"] {
+/* Phone UI (Calls page) follows the app theme. */
+:root[data-theme="dark"] .mac-phone {
   --mp-window: #1e1e1e;
   --mp-toolbar: #262626;
   --mp-text: #f5f5f7;
@@ -1115,3 +1212,15 @@ input:-webkit-autofill:focus {
   100% { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) { .qa-panel { animation: none !important; } }
+
+/* Status / tag tint: pass the status colour as --tint. Lighter text and stronger fill in dark mode. */
+.status-tint {
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 8%, transparent);
+  border-color: color-mix(in srgb, var(--tint) 25%, transparent);
+}
+:root[data-theme="dark"] .status-tint {
+  color: color-mix(in srgb, var(--tint) 62%, white);
+  background: color-mix(in srgb, var(--tint) 17%, transparent);
+  border-color: color-mix(in srgb, var(--tint) 34%, transparent);
+}

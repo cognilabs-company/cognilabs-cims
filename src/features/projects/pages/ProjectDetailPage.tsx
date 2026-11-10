@@ -839,7 +839,7 @@ export function ProjectDetailPage() {
                        </div>
                     ) : expandedMemberTasks.length === 0 ? (
                        <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] py-16">
-                          <svg viewBox="0 0 24 24" className="mb-5 h-14 w-14 text-[#D3D7E0]" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M12 22c5.523 0 9-4.477 9-10S17.523 2 12 2 3 6.477 3 12s3.477 10 9 10z"/><path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round"/></svg>
+                          <svg viewBox="0 0 24 24" className="mb-5 h-14 w-14 text-[var(--control-border)]" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M12 22c5.523 0 9-4.477 9-10S17.523 2 12 2 3 6.477 3 12s3.477 10 9 10z"/><path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round"/></svg>
                           <p className="text-sm font-medium text-[var(--muted)]">{lt('No active tasks')}</p>
                        </div>
                     ) : (

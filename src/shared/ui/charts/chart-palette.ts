@@ -10,7 +10,7 @@ export const seriesStyles: SeriesStyle[] = [
   { bar: 'linear-gradient(180deg,#E3EAFF 0%,#C6D4FF 100%)', dot: '#C6D4FF', pill: '#FFFFFF', pillText: '#2B59FF' },
   { bar: 'linear-gradient(180deg,#5B80FF 0%,#2350F5 100%)', dot: '#2B59FF', pill: 'rgba(255,255,255,0.22)', pillText: '#FFFFFF' },
   { bar: 'linear-gradient(180deg,#DDEBF5 0%,#B7D3C6 100%)', dot: '#B7D3C6', pill: '#FFFFFF', pillText: '#2E6B55' },
-  { bar: 'repeating-linear-gradient(135deg,#F1F3F8 0 8px,#E6E9F1 8px 16px)', dot: '#D6DAE5', pill: '#FFFFFF', pillText: '#4A5165' },
+  { bar: 'repeating-linear-gradient(135deg,var(--chart-hatch-a) 0 8px,var(--chart-hatch-b) 8px 16px)', dot: 'var(--control-border)', pill: '#FFFFFF', pillText: '#4A5165' },
 ]
 
 export function seriesStyleAt(index: number): SeriesStyle {

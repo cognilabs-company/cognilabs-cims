@@ -212,7 +212,7 @@ function KanbanColumn({
   highlightedConvId?: number | null
 }) {
   return (
-    <div className="flex flex-col w-[296px] shrink-0 rounded-[14px] border border-[var(--border)] bg-[#F6F7FA] p-2.5 overflow-hidden h-full">
+    <div className="flex flex-col w-[296px] shrink-0 rounded-[14px] border border-[var(--border)] bg-[var(--muted-surface)] p-2.5 overflow-hidden h-full">
       <div className={cn('flex shrink-0 items-center justify-between gap-2 h-10 rounded-[8px] px-3', toneSurface[stage.tone])}>
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn('h-2 w-2 rounded-full shrink-0', toneDot[stage.tone])} />
@@ -252,7 +252,7 @@ function KanbanBoardSkeleton() {
     <div className="flex-1 overflow-hidden pb-[18px]">
       <div className="flex gap-[18px] px-7 h-full">
         {[0, 1, 2, 3, 4].map((column) => (
-          <div key={column} className="flex flex-col w-[296px] shrink-0 rounded-[14px] border border-[var(--border)] bg-[#F6F7FA] p-2.5">
+          <div key={column} className="flex flex-col w-[296px] shrink-0 rounded-[14px] border border-[var(--border)] bg-[var(--muted-surface)] p-2.5">
             <Skeleton rounded="lg" className="h-10 w-full" />
             <div className="mt-3 space-y-2.5">
               {[0, 1, 2].map((row) => (

@@ -1501,5 +1501,9 @@
   "customers.archive.restored_partial": "{{done}} ta tiklandi, {{failed}} ta xato",
   "customers.archive.search": "Ism, raqam yoki platforma",
   "customers.archive.subtitle": "Mijozlar ro'yxatida ko'rinmaydi. Tiklash yoki butunlay o'chirish mumkin.",
-  "customers.archive.title": "Arxiv"
+  "customers.archive.title": "Arxiv",
+  "shell.theme.label": "Ko'rinish",
+  "shell.theme.auto": "Avto (tizim)",
+  "shell.theme.light": "Yorug'",
+  "shell.theme.dark": "Qorong'i"
 }

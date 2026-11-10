@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Copy, Loader2, SlidersHorizontal, X, type LucideIcon } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn'
@@ -189,8 +189,8 @@ export function FilterToken({ children, onRemove, color, removeLabel }: { childr
 export function StatusPill({ label, color, icon: Icon }: { label: string; color: string; icon: LucideIcon }) {
   return (
     <span
-      className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] border px-1.5 py-[3px] text-[11.5px] leading-none font-semibold"
-      style={{ color, borderColor: `${color}40`, background: `${color}12` }}
+      className="status-tint inline-flex max-w-full items-center gap-1.5 rounded-[6px] border px-1.5 py-[3px] text-[11.5px] leading-none font-semibold"
+      style={{ '--tint': color } as CSSProperties}
     >
       <Icon size={12} strokeWidth={2.4} className="shrink-0" />
       <span className="truncate">{label}</span>

@@ -1501,5 +1501,9 @@
   "customers.archive.restored_partial": "{{done}} restored, {{failed}} failed",
   "customers.archive.search": "Name, phone or platform",
   "customers.archive.subtitle": "Hidden from the customers list. Restore them, or delete them for good.",
-  "customers.archive.title": "Archive"
+  "customers.archive.title": "Archive",
+  "shell.theme.label": "Appearance",
+  "shell.theme.auto": "Auto (system)",
+  "shell.theme.light": "Light",
+  "shell.theme.dark": "Dark"
 }

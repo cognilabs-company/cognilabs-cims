@@ -68,7 +68,7 @@ export function KanbanColumn({
       style={style}
       className={cn(
         'flex w-[calc(100vw-64px)] sm:w-[296px] shrink-0 flex-col overflow-hidden rounded-[14px] border border-[var(--border)]',
-        'bg-[#F6F7FA] transition-shadow duration-200',
+        'bg-[var(--muted-surface)] transition-shadow duration-200',
         isDragging && !isOverlay && 'opacity-40',
         isOverlay && 'rotate-[1.2deg] shadow-[0_28px_60px_-24px_rgba(14,21,37,0.55)]',
       )}

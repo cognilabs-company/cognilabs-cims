@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   AtSign,
   Bot,
@@ -474,7 +474,7 @@ export function CustomerQuickView({
                         selected ? 'bg-[var(--muted-surface)] text-[var(--foreground)]' : 'text-[var(--muted-strong)] hover:bg-[var(--muted-surface)] hover:text-[var(--foreground)]',
                       )}
                     >
-                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px]" style={{ color: choice.color, background: `${choice.color}18` }}>
+                      <span className="status-tint grid h-6 w-6 shrink-0 place-items-center rounded-[7px] border-0" style={{ '--tint': choice.color } as CSSProperties}>
                         {busy ? <Loader2 size={13} className="animate-spin" /> : <choice.icon size={13} strokeWidth={2.3} />}
                       </span>
                       <span className="min-w-0 flex-1 truncate">{choice.label}</span>

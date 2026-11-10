@@ -173,7 +173,7 @@ function Checkbox({ checked, indeterminate, onChange, label }: { checked: boolea
       onClick={(event) => { event.stopPropagation(); onChange() }}
       className={cn(
         'grid h-[16px] w-[16px] place-items-center rounded-[4px] border transition-all duration-150 active:scale-90',
-        checked || indeterminate ? 'border-[var(--primary)] bg-[var(--primary)] text-white' : 'border-[#CDD2DC] bg-[var(--surface)] hover:border-[var(--primary)]',
+        checked || indeterminate ? 'border-[var(--primary)] bg-[var(--primary)] text-white' : 'border-[var(--control-border)] bg-[var(--surface)] hover:border-[var(--primary)]',
       )}
     >
       {indeterminate ? <Minus size={11} strokeWidth={3.2} /> : checked ? <Check size={11} strokeWidth={3.2} /> : null}
@@ -431,7 +431,7 @@ export function DataGrid<T>({
         {selectedVisible.length > 0 ? (
           <span className="grid-row-in inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-[var(--blue-border)] bg-[var(--blue-dim)] pr-1 pl-2.5 text-[12.5px] font-semibold text-[var(--primary)]">
             {t('grid.selected', '{{count}} selected', { count: selectedVisible.length })}
-            <button type="button" onClick={() => setSelected(new Set())} aria-label={t('grid.clear_selection', 'Clear selection')} className="grid h-6 w-6 place-items-center rounded-[6px] hover:bg-white/70"><X size={13} /></button>
+            <button type="button" onClick={() => setSelected(new Set())} aria-label={t('grid.clear_selection', 'Clear selection')} className="grid h-6 w-6 place-items-center rounded-[6px] hover:bg-[var(--surface)]"><X size={13} /></button>
           </span>
         ) : null}
         {selectedVisible.length > 0 && selectionActions ? selectionActions(selectedVisible, () => setSelected(new Set())) : null}
@@ -641,8 +641,8 @@ export function DataGrid<T>({
               const isSelected = selected.has(key)
               const isFavorite = favoriteSet.has(key)
               const zebra = rowIndex % 2 === 1
-              const rowBg = isSelected ? 'bg-[#EEF3FF]' : zebra ? 'bg-[#FAFBFC]' : 'bg-[var(--surface)]'
-              const cellBase = cn('border-r border-b border-[var(--border-subtle)] transition-colors duration-150 group-hover/row:bg-[#F3F6FF]', rowBg, densityRow[state.density])
+              const rowBg = isSelected ? 'bg-[var(--row-selected)]' : zebra ? 'bg-[var(--row-zebra)]' : 'bg-[var(--surface)]'
+              const cellBase = cn('border-r border-b border-[var(--border-subtle)] transition-colors duration-150 group-hover/row:bg-[var(--row-hover)]', rowBg, densityRow[state.density])
               return (
                 <tr
                   key={key}
@@ -668,7 +668,7 @@ export function DataGrid<T>({
                         aria-pressed={isFavorite}
                         aria-label={t('grid.favorite', 'Favourite')}
                         onClick={(event) => { event.stopPropagation(); toggleFavorite(key) }}
-                        className={cn('mx-auto grid h-7 w-7 place-items-center rounded-[6px] transition-all duration-200 active:scale-75', isFavorite ? 'text-[#7C5CFC]' : 'text-[#C3C8D2] hover:text-[var(--muted-strong)]')}
+                        className={cn('mx-auto grid h-7 w-7 place-items-center rounded-[6px] transition-all duration-200 active:scale-75', isFavorite ? 'text-[#7C5CFC]' : 'text-[var(--control-border)] hover:text-[var(--muted-strong)]')}
                       >
                         <Star size={14} fill={isFavorite ? 'currentColor' : 'none'} className={cn(isFavorite && 'drop-shadow-[0_2px_4px_rgba(124,92,252,0.35)]')} />
                       </button>

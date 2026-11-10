@@ -4,7 +4,7 @@ const avatarTones = [
   'bg-[var(--violet-dim)] text-[var(--violet-text)]',
   'bg-[var(--success-dim)] text-[var(--success-text)]',
   'bg-[var(--warning-dim)] text-[var(--warning-text)]',
-  'bg-[#E9F7FB] text-[#0B7285]',
+  'bg-[#E9F7FB] text-[#0B7285] dark:bg-[#0E2F36] dark:text-[#7DD3E3]',
 ]
 
 export function avatarTone(name: string) {

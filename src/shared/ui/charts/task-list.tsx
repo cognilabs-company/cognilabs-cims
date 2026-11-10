@@ -79,7 +79,7 @@ export function TaskList({
                   'group/row flex w-full items-center gap-3 rounded-[16px] border p-3 transition-colors',
                   task.done
                     ? 'border-transparent bg-[var(--muted-surface)]'
-                    : 'border-[#EEF0F4] bg-[var(--surface)]',
+                    : 'border-[var(--border)] bg-[var(--surface)]',
                 )}
               >
                 {checkable ? (
@@ -91,7 +91,7 @@ export function TaskList({
                   aria-label={task.title}
                   className={cn(
                     'grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[7px] transition-colors',
-                    task.done ? 'bg-[var(--lime)]' : 'border-[1.6px] border-[#D3D7E0] bg-[var(--surface)]',
+                    task.done ? 'bg-[var(--lime)]' : 'border-[1.6px] border-[var(--control-border)] bg-[var(--surface)]',
                     onToggle ? 'cursor-pointer' : 'cursor-default',
                   )}
                 >

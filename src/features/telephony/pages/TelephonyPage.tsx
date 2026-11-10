@@ -14,7 +14,7 @@ import { MacAvatar, MacMenu, MacMenuItem, MacMenuLabel, MacMenuSeparator, RowCal
 import { useDismiss } from '../components/useDismiss'
 import { connectionLabel, formatPhone, formatRecentTime, groupRecents, sourceLabel, statusLabel, type RecentGroup } from '../components/telephonyFormat'
 import { CeoTelephonyPanel } from '../components/CeoTelephonyPanel'
-import { phoneThemeAttr, setPhoneTheme, usePhoneTheme, type PhoneTheme } from '../lib/phoneTheme'
+import { setThemePreference, useThemePreference, type ThemePreference } from '../../../shared/theme/theme'
 
 const statuses = ['ringing', 'answered', 'completed', 'missed', 'rejected', 'busy', 'failed']
 
@@ -150,8 +150,7 @@ export function TelephonyPage() {
   const isCeo = user?.role === 'CEO'
   const canCall = connection === 'Ready'
   const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, () => true)
-  const phoneTheme = usePhoneTheme()
-  const themeAttr = phoneThemeAttr(phoneTheme)
+  const themePreference = useThemePreference()
 
   useDismiss(viewRef, viewOpen, () => setViewOpen(false))
   useDismiss(filterRef, filterOpen, () => setFilterOpen(false))
@@ -276,7 +275,6 @@ export function TelephonyPage() {
 
   return (
     <div
-      data-phone-theme={themeAttr}
       className="mac-phone flex min-h-0 flex-col overflow-hidden rounded-[24px] bg-[var(--mp-window)] ring-1 ring-[var(--mp-separator)] transition-colors duration-300"
       style={{ height: 'var(--page-h)', minHeight: 360 }}
     >
@@ -312,18 +310,18 @@ export function TelephonyPage() {
             ['auto', Monitor, t('telephony.theme.auto', 'Auto')],
             ['light', Sun, t('telephony.theme.light', 'Light')],
             ['dark', Moon, t('telephony.theme.dark', 'Dark')],
-          ] as Array<[PhoneTheme, typeof Sun, string]>).map(([value, Icon, label]) => (
+          ] as Array<[ThemePreference, typeof Sun, string]>).map(([value, Icon, label]) => (
             <button
               key={value}
               type="button"
               role="radio"
-              aria-checked={phoneTheme === value}
+              aria-checked={themePreference === value}
               aria-label={label}
               title={label}
-              onClick={() => setPhoneTheme(value)}
+              onClick={() => setThemePreference(value)}
               className={cn(
                 'grid h-[26px] w-[30px] place-items-center rounded-full transition-all duration-200',
-                phoneTheme === value ? 'bg-[var(--mp-segment)] text-[var(--mp-text)] shadow-[0_1px_3px_rgba(0,0,0,0.2)]' : 'text-[var(--mp-secondary)] hover:text-[var(--mp-text)]',
+                themePreference === value ? 'bg-[var(--mp-segment)] text-[var(--mp-text)] shadow-[0_1px_3px_rgba(0,0,0,0.2)]' : 'text-[var(--mp-secondary)] hover:text-[var(--mp-text)]',
               )}
             >
               <Icon size={14} />
@@ -487,12 +485,12 @@ export function TelephonyPage() {
 
       {/* Mobile: keypad / contact card open as a full-screen sheet */}
       {!desktop && mobileSheet === 'call' && selectedGroup ? (
-        <div data-phone-theme={themeAttr} className="mac-phone fixed inset-0 z-[120] bg-[var(--mp-window)] p-2" role="dialog" aria-modal="true" aria-label={t('telephony.call_details', 'Call details')}>
+        <div className="mac-phone fixed inset-0 z-[120] bg-[var(--mp-window)] p-2" role="dialog" aria-modal="true" aria-label={t('telephony.call_details', 'Call details')}>
           <CallInspector key={selectedGroup.head.id} group={selectedGroup} canCall={canCall} onDial={dial} onBack={() => setMobileSheet(null)} />
         </div>
       ) : null}
       {!desktop && mobileSheet === 'dialer' ? (
-        <div data-phone-theme={themeAttr} className="mac-phone fixed inset-0 z-[120] bg-[var(--mp-window)] p-2" role="dialog" aria-modal="true" aria-label={t('telephony.keypad', 'Keypad')}>
+        <div className="mac-phone fixed inset-0 z-[120] bg-[var(--mp-window)] p-2" role="dialog" aria-modal="true" aria-label={t('telephony.keypad', 'Keypad')}>
           {dialer(() => setMobileSheet(null))}
         </div>
       ) : null}

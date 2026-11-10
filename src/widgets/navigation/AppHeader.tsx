@@ -12,6 +12,7 @@ import { cn } from '../../shared/lib/cn'
 import { hasPermission } from '../../shared/lib/permissions'
 import { resolveMediaUrl } from '../../shared/lib/media-url'
 import { openProfileDialog } from './profileEvents'
+import { ThemeMenu } from './ThemeMenu'
 
 function OutboundIcon() {
   return (
@@ -166,6 +167,8 @@ export function AppHeader() {
           {isOutboundCrmRoute ? t('outbound_crm.header.back_to_crm', 'Main CRM') : 'Outbound CRM'}
         </button>
       ) : null}
+
+      <ThemeMenu pillClassName={pill} />
 
       <div className={cn(pill, 'hidden gap-0.5 p-1 sm:inline-flex')} role="group" aria-label={t('shell.language')}>
         {(Object.keys(localeLabels) as AppLocale[]).map((value) => (

@@ -1216,7 +1216,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
         const name = getCustomerDisplayName(row)
         return (
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-bold ring-2 ring-white', avatarTone(name))}>{initialsFor(name)}</span>
+            <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-bold ring-2 ring-[var(--surface)]', avatarTone(name))}>{initialsFor(name)}</span>
             <span className="truncate font-semibold text-[var(--foreground)] transition-colors group-hover/row:text-[var(--primary)]">{name}</span>
           </span>
         )
@@ -1454,7 +1454,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   ]
 
   const tokens = hasAnyFilter ? (
-    <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] bg-[#FAFBFC] px-3 py-2">
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] bg-[var(--card-hover)] px-3 py-2">
       {selectedPeriod ? <FilterToken onRemove={() => { setSelectedPeriod(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{periodLabel}</FilterToken> : null}
       {dateStart || dateEnd ? (
         <FilterToken onRemove={() => { setDateStart(''); setDateEnd(''); setTablePage(1) }} removeLabel={t('common.clear', 'Clear')}>{`${dateStart || '…'} – ${dateEnd || '…'}`}</FilterToken>

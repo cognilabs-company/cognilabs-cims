@@ -11,7 +11,19 @@
       name="description"
       content="Cognilabs CIMS frontend workspace for auth, CRM, finance, CEO, and update tracking modules."
     />
+    <meta name="color-scheme" content="light dark" />
     <title>Cognilabs CIMS</title>
+    <script>
+      /* Apply the saved light / dark theme before first paint (see src/shared/theme/theme.ts). */
+      (function () {
+        try {
+          var p = localStorage.getItem('cims-theme') || localStorage.getItem('cims-phone-theme')
+          var dark = p === 'dark' || (p !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

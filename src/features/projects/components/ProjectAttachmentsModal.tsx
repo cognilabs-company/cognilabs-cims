@@ -225,7 +225,7 @@ export function ProjectAttachmentsModal({ open, onClose, projectId }: Props) {
             </div>
           ) : tabAttachments.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 rounded-[18px] bg-[var(--muted-surface)] py-10 text-[var(--muted)]">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10 text-[#D3D7E0]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10 text-[var(--control-border)]">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round" />
                 <polyline points="14 2 14 8 20 8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

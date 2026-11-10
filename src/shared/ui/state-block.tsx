@@ -31,7 +31,7 @@ function LoadingDots() {
 function EmptyIllustration() {
   return (
     <svg
-      className="h-12 w-12 text-[#D3D7E0]"
+      className="h-12 w-12 text-[var(--control-border)]"
       viewBox="0 0 48 48"
       fill="none"
       stroke="currentColor"

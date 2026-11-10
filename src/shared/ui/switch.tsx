@@ -38,7 +38,7 @@ export function Switch({ checked, onChange, disabled, size = 'md', tone = 'blue'
         ringColor,
         'disabled:cursor-not-allowed disabled:opacity-50',
         trackClass,
-        checked ? trackOn : 'bg-[#D3D7E0]',
+        checked ? trackOn : 'bg-[var(--control-border)]',
         className,
       )}
     >

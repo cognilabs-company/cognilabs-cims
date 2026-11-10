@@ -92,7 +92,7 @@ export function ActionsMenu({ items, label, triggerVariant = 'icon', className }
           triggerBase,
           'h-9 px-3.5 text-[13px] font-semibold',
           item.tone === 'danger'
-            ? 'bg-[var(--danger-dim)] text-[var(--danger-text)] hover:bg-[#FADFDF]'
+            ? 'bg-[var(--danger-dim)] text-[var(--danger-text)] hover:bg-[var(--danger-dim-hover)]'
             : 'border border-[var(--border-hover)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--input-surface)]',
           className,
         )}

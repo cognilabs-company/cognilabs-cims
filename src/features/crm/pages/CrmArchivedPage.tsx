@@ -174,7 +174,7 @@ export function CrmArchivedPage() {
         const name = getCustomerDisplayName(row)
         return (
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-bold opacity-80 ring-2 ring-white grayscale-[35%]', avatarTone(name))}>{initialsFor(name)}</span>
+            <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-bold opacity-80 ring-2 ring-[var(--surface)] grayscale-[35%]', avatarTone(name))}>{initialsFor(name)}</span>
             <span className="truncate font-semibold text-[var(--foreground)]">{name}</span>
           </span>
         )
