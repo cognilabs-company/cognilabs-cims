@@ -3,7 +3,9 @@ import { AppShellContext } from './AppShellContext'
 
 export function AppShellProvider({ children }: PropsWithChildren) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try { return window.localStorage.getItem('cims-sidebar-collapsed') === '1' } catch { return false }
+  })
 
   const openSidebar = useCallback(() => {
     setIsSidebarOpen(true)
@@ -18,7 +20,10 @@ export function AppShellProvider({ children }: PropsWithChildren) {
   }, [])
 
   const toggleSidebarCollapsed = useCallback(() => {
-    setIsSidebarCollapsed((current) => !current)
+    setIsSidebarCollapsed((current) => {
+      try { window.localStorage.setItem('cims-sidebar-collapsed', current ? '0' : '1') } catch { /* private mode */ }
+      return !current
+    })
   }, [])
 
   const value = useMemo(

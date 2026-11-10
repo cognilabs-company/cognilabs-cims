@@ -1,7 +1,7 @@
 import { startTransition, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useLocale } from '../../../app/hooks/useLocale'
-import { BrandLoader, LoadingBar } from '../../../shared/ui/loader'
+import { BrandLoader } from '../../../shared/ui/loader'
 import { useAuth } from '../hooks/useAuth'
 
 export function DashboardRedirectPage() {
@@ -42,11 +42,12 @@ export function DashboardRedirectPage() {
 
   return (
     <div role="status" aria-live="polite" className="grid min-h-[60vh] place-items-center">
-      <div className="flex flex-col items-center text-center">
-        <BrandLoader size={52} />
-        <p className="mt-5 text-[16px] font-semibold tracking-[-0.015em] text-[var(--foreground)]">{t('auth.redirect.title', 'Opening your workspace')}</p>
-        <p className="mt-1 text-[13px] text-[var(--muted)]">{t('auth.redirect.description', 'Picking the right dashboard for your role…')}</p>
-        <LoadingBar className="mt-5 w-36" />
+      <div className="flex flex-col items-center gap-3 text-center">
+        <BrandLoader size={26} />
+        <div>
+          <p className="text-[13.5px] font-semibold text-[var(--foreground)]">{t('auth.redirect.title', 'Opening your workspace')}</p>
+          <p className="mt-0.5 text-[12px] text-[var(--muted)]">{t('auth.redirect.description', 'Picking the right dashboard for your role…')}</p>
+        </div>
       </div>
     </div>
   )

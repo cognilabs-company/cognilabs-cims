@@ -58,7 +58,7 @@ export function AppHeader() {
   const { locale, setLocale, t } = useLocale()
   const { logout, user } = useAuth()
   const { showToast } = useToast()
-  const { isSidebarCollapsed, toggleSidebar, toggleSidebarCollapsed } = useAppShell()
+  const { toggleSidebar } = useAppShell()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false,
@@ -81,15 +81,11 @@ export function AppHeader() {
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
 
-  const shouldShowSidebarToggle = isMobileViewport || isSidebarCollapsed
+  // Phones only: on desktop the sidebar collapses into an icon rail with its own toggle.
+  const shouldShowSidebarToggle = isMobileViewport
 
   function handleSidebarToggle() {
-    if (isMobileViewport) {
-      toggleSidebar()
-      return
-    }
-
-    toggleSidebarCollapsed()
+    toggleSidebar()
   }
 
   const currentItem =

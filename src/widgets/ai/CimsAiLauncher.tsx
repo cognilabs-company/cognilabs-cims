@@ -25,7 +25,8 @@ export function CimsAiLauncher() {
   const buttonRef = useRef<HTMLButtonElement | null>(null)
 
   const canUseAi = isAuthenticated && hasPermission('ceo')
-  const isAiPage = location.pathname === '/ceo/ai'
+  // Hidden on full-screen AI pages: the CEO AI page itself and the messenger, where it would cover the send button
+  const isAiPage = location.pathname === '/ceo/ai' || location.pathname.startsWith('/cognilabsai/chat')
 
   function preloadWorkspace() {
     void loadCimsAiWorkspace()

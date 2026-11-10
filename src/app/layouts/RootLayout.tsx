@@ -11,7 +11,7 @@ function RootLayoutFrame() {
   const { isSidebarCollapsed } = useAppShell()
   const location = useLocation()
   const shellStyle = {
-    '--app-shell-sidebar-width': isSidebarCollapsed ? '0px' : 'var(--sidebar-w)',
+    '--app-shell-sidebar-width': isSidebarCollapsed ? 'var(--sidebar-rail-w)' : 'var(--sidebar-w)',
   } as CSSProperties
 
   return (

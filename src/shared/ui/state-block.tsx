@@ -108,11 +108,11 @@ export function StateBlock({
 /** Section loading: the CIMS loader with a short title — no box, it sits where the content will appear. */
 export function LoadingStateBlock({ title, description, className }: Omit<StateBlockProps, 'tone'>) {
   return (
-    <div role="status" aria-live="polite" className={cn('flex flex-col items-center justify-center gap-4 px-6 py-14 text-center', className)}>
-      <BrandLoader size={40} />
+    <div role="status" aria-live="polite" className={cn('flex flex-col items-center justify-center gap-3 px-6 py-12 text-center', className)}>
+      <BrandLoader size={22} />
       <div>
-        <p className="loading-text text-[14px] font-semibold text-[var(--foreground)]">{translateCurrentLiteral(title)}</p>
-        {description ? <p className="mt-1 max-w-sm text-[12.5px] text-[var(--muted)]">{translateCurrentLiteral(description)}</p> : null}
+        <p className="loading-text text-[13px] font-medium">{translateCurrentLiteral(title)}</p>
+        {description ? <p className="mt-0.5 max-w-sm text-[12px] text-[var(--muted)]">{translateCurrentLiteral(description)}</p> : null}
       </div>
     </div>
   )

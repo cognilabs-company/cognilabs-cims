@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, PanelLeftClose, X } from 'lucide-react'
+import { ChevronDown, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 import { useAppShell } from '../../app/hooks/useAppShell'
 import { useLocale } from '../../app/hooks/useLocale'
 import { useAuth } from '../../features/auth/hooks/useAuth'
@@ -44,14 +45,14 @@ type MemberProfileFormState = {
 }
 
 const sidebarItemBase =
-  'group relative flex w-full items-center gap-3 rounded-[12px] px-3 py-[9px] [@media(max-height:1000px)]:py-[7px] [@media(max-height:820px)]:py-[5px] text-[14px] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
+  'group relative flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] [@media(max-height:900px)]:py-[5.5px] [@media(max-height:760px)]:py-[4px] text-[13.5px] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
 const sidebarItemInactive =
   'font-medium text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)] [&_svg]:text-[var(--sb-icon)] hover:[&_svg]:text-[var(--sb-strong)]'
 const sidebarItemActive =
-  'bg-[var(--primary)] font-semibold text-white shadow-[0_10px_22px_-12px_rgba(43,89,255,0.95)] [&_svg]:text-white'
+  'bg-[var(--primary)] font-semibold text-white shadow-[0_8px_18px_-12px_rgba(43,89,255,0.9)] [&_svg]:text-white'
 const sidebarSubItem =
   'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] leading-5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
-const sidebarIcon = 'h-[18px] w-[18px] transition-colors'
+const sidebarIcon = 'h-[17px] w-[17px] shrink-0 transition-colors'
 
 type OutboundSidebarItem = {
   to: string
@@ -61,7 +62,9 @@ type OutboundSidebarItem = {
 }
 
 const sidebarSectionLabel =
-  'px-3 pt-1 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-[var(--sb-label)]'
+  'px-2.5 pt-0.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--sb-label)]'
+/** Collapsed rail: icon-only items */
+const railItem = 'justify-center px-0 [&>span.nav-label]:sr-only'
 
 type NavGroupKey = 'main' | 'sales' | 'work' | 'team' | 'ai' | 'system'
 const groupOrder: NavGroupKey[] = ['main', 'sales', 'work', 'team', 'ai', 'system']
@@ -98,6 +101,16 @@ export function AppSidebar() {
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
+
+  const rail = isSidebarCollapsed && !isMobileViewport
+  const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null)
+  const showTip = (label: string) => (event: ReactMouseEvent<HTMLElement>) => {
+    if (!rail) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    setTip({ label, top: rect.top + rect.height / 2, left: rect.right + 10 })
+  }
+  const hideTip = () => setTip(null)
+  const tipProps = (label: string) => ({ title: rail ? undefined : label, onMouseEnter: showTip(label), onMouseLeave: hideTip, onFocus: showTip(label) as never, onBlur: hideTip })
 
   const isOutboundCrmRoute = location.pathname === '/outbound-crm' || location.pathname.startsWith('/outbound-crm/')
   const outboundNavigation: OutboundSidebarItem[] = [
@@ -312,6 +325,15 @@ export function AppSidebar() {
   function renderNavItem(item: (typeof sidebarNavigation)[number]) {
     const itemLabel = getNavigationLabel(item.to, item.label)
 
+    if (item.to === '/projects' && rail) {
+      return (
+        <NavLink key={item.to} to={item.to} aria-label={itemLabel} {...tipProps(itemLabel)} className={cn(sidebarItemBase, railItem, isProjectsRoute ? sidebarItemActive : sidebarItemInactive)}>
+          <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
+          <span className="nav-label">{itemLabel}</span>
+        </NavLink>
+      )
+    }
+
     if (item.to === '/projects') {
       return (
         <div key={item.to} className="flex flex-col gap-0.5">
@@ -320,6 +342,7 @@ export function AppSidebar() {
               to={item.to}
               aria-label={itemLabel}
               onClick={() => setIsProjectsExpanded(true)}
+              title={itemLabel}
               className={({ isActive }) => cn(sidebarItemBase, isActive || isProjectsRoute ? sidebarItemActive : sidebarItemInactive, 'pr-[72px]')}
             >
               <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
@@ -345,7 +368,7 @@ export function AppSidebar() {
           </div>
 
           {isProjectsExpanded && (
-            <div className="my-1 ml-[22px] flex flex-col gap-0.5 border-l border-[var(--sb-line)] pl-2.5">
+            <div className="my-0.5 ml-[19px] flex flex-col gap-0.5 border-l border-[var(--sb-line)] pl-2">
               {projectsQuery.isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-8 rounded-[10px]" />)
               ) : projectsQuery.isError ? (
@@ -396,10 +419,11 @@ export function AppSidebar() {
         to={item.to}
         end={hasChildItem}
         aria-label={itemLabel}
-        className={({ isActive }) => cn(sidebarItemBase, isActive ? sidebarItemActive : sidebarItemInactive)}
+        {...tipProps(itemLabel)}
+        className={({ isActive }) => cn(sidebarItemBase, rail && railItem, isActive ? sidebarItemActive : sidebarItemInactive)}
       >
         <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
-        <span className="flex-1 truncate text-left">{itemLabel}</span>
+        <span className="nav-label flex-1 truncate text-left">{itemLabel}</span>
       </NavLink>
     )
   }
@@ -422,12 +446,12 @@ export function AppSidebar() {
         className={cn(
           'app-chrome shell-sidebar fixed inset-y-0 left-0 z-40 w-[min(88vw,var(--sidebar-w))] p-2 lg:sticky lg:inset-auto lg:top-0 lg:h-screen lg:w-[var(--sidebar-w)] lg:self-start lg:overflow-hidden lg:py-[14px] lg:pr-0 lg:pl-[14px]',
           isSidebarOpen ? 'shell-sidebar--open' : 'shell-sidebar--closed',
-          isSidebarCollapsed ? 'lg:pointer-events-none lg:w-0! lg:p-0! lg:opacity-0' : 'lg:opacity-100',
+          rail && 'lg:w-[var(--sidebar-rail-w)]',
         )}
       >
-        <div className="flex h-full flex-col overflow-hidden rounded-[24px] border border-[var(--sb-line)] bg-[var(--sb-bg)] px-3 pt-[18px] pb-3 shadow-[var(--sb-shadow)]">
+        <div className={cn('flex h-full flex-col overflow-hidden rounded-[22px] border border-[var(--sb-line)] bg-[var(--sb-bg)] pt-4 pb-3 shadow-[var(--sb-shadow)] transition-[padding] duration-200', rail ? 'px-2.5' : 'px-3')}>
           {/* Brand */}
-          <div className="flex items-center gap-2.5 px-1.5 pb-4">
+          <div className={cn('flex items-center gap-2.5 pb-3', rail ? 'flex-col px-0' : 'px-1.5')}>
             <span
               className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[11px] text-[18px] font-bold text-white shadow-[0_8px_18px_-10px_rgba(43,89,255,0.9)]"
               style={{ background: 'var(--primary-gradient)' }}
@@ -435,7 +459,7 @@ export function AppSidebar() {
             >
               {env.appName.trim().charAt(0).toUpperCase() || 'C'}
             </span>
-            <div className="min-w-0 flex-1">
+            <div className={cn('min-w-0 flex-1', rail && 'hidden')}>
               <p className="truncate text-[16px] leading-5 font-bold tracking-[-0.02em] text-[var(--sb-strong)]">{env.appName}</p>
               <p className="truncate text-[11.5px] leading-4 text-[var(--sb-label)]">{subtitle}</p>
             </div>
@@ -443,44 +467,47 @@ export function AppSidebar() {
               type="button"
               onClick={handleSidebarToggle}
               aria-label={t('shell.toggle_navigation')}
-              title={t('shell.toggle_navigation')}
+              {...tipProps(t('shell.toggle_navigation'))}
               className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[var(--sb-icon)] transition-colors hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35"
             >
-              {isMobileViewport ? <X size={17} /> : <PanelLeftClose size={17} />}
+              {isMobileViewport ? <X size={17} /> : rail ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
             </button>
           </div>
 
           {/* Navigation */}
-          <nav aria-label={t('shell.menu')} className="no-scrollbar -mx-1 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1">
+          <nav aria-label={t('shell.menu')} onScroll={hideTip} className="sidebar-fade no-scrollbar -mx-1 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1 py-1">
             {isOutboundCrmRoute ? (
               <div className="flex flex-col gap-0.5">
-                <p className={sidebarSectionLabel}>Outbound CRM</p>
+                {rail ? null : <p className={sidebarSectionLabel}>Outbound CRM</p>}
                 {outboundNavigation.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
                     aria-label={item.label}
-                    className={cn(sidebarItemBase, item.isActive(location.pathname) ? sidebarItemActive : sidebarItemInactive)}
+                    {...tipProps(item.label)}
+                    className={cn(sidebarItemBase, rail && railItem, item.isActive(location.pathname) ? sidebarItemActive : sidebarItemInactive)}
                   >
                     <NavGlyph name={item.glyph} className={sidebarIcon} />
-                    <span className="flex-1 truncate text-left">{item.label}</span>
+                    <span className="nav-label flex-1 truncate text-left">{item.label}</span>
                   </NavLink>
                 ))}
 
                 {hasPermission(user, 'crm') ? (
                   <div className="mt-3 border-t border-[var(--sb-line)] pt-3">
-                    <NavLink to="/crm" aria-label={t('outbound_crm.header.back_to_crm', 'Main CRM')} className={cn(sidebarItemBase, sidebarItemInactive)}>
+                    <NavLink to="/crm" aria-label={t('outbound_crm.header.back_to_crm', 'Main CRM')} {...tipProps(t('outbound_crm.header.back_to_crm', 'Main CRM'))} className={cn(sidebarItemBase, rail && railItem, sidebarItemInactive)}>
                       <NavGlyph name="exit" className={sidebarIcon} />
-                      <span className="flex-1 truncate text-left">{t('outbound_crm.header.back_to_crm', 'Main CRM')}</span>
+                      <span className="nav-label flex-1 truncate text-left">{t('outbound_crm.header.back_to_crm', 'Main CRM')}</span>
                     </NavLink>
                   </div>
                 ) : null}
               </div>
             ) : (
-              <div className="flex flex-col gap-4 [@media(max-height:1000px)]:gap-2.5 [@media(max-height:820px)]:gap-1.5">
-                {groupedNavigation.map(({ group, items }) => (
-                  <div key={group} className="flex flex-col gap-0.5">
-                    <p className={sidebarSectionLabel}>{t(`shell.group.${group}`, groupFallback[group])}</p>
+              <div className="flex flex-col gap-2.5 [@media(max-height:900px)]:gap-1.5">
+                {groupedNavigation.map(({ group, items }, index) => (
+                  <div key={group} className="flex flex-col gap-px">
+                    {rail
+                      ? (index > 0 ? <span aria-hidden="true" className="mx-auto mb-1.5 h-px w-7 bg-[var(--sb-line)]" /> : null)
+                      : <p className={sidebarSectionLabel}>{t(`shell.group.${group}`, groupFallback[group])}</p>}
                     {items.map(renderNavItem)}
                   </div>
                 ))}
@@ -489,7 +516,7 @@ export function AppSidebar() {
           </nav>
 
           {/* Signed-in user (+ language on phones, where the header has no room for it) */}
-          <div className="mt-3 border-t border-[var(--sb-line)] pt-3">
+          <div className="mt-2 border-t border-[var(--sb-line)] pt-2.5">
             <div className="mb-2 flex gap-1 rounded-full bg-[var(--sb-hover)] p-1 sm:hidden" role="group" aria-label={t('shell.language')}>
               {(Object.keys(localeLabels) as AppLocale[]).map((value) => (
                 <button
@@ -510,8 +537,9 @@ export function AppSidebar() {
               type="button"
               onClick={openMemberDialog}
               disabled={!user}
-              className="flex w-full items-center gap-2.5 rounded-[12px] px-1.5 py-1.5 text-left transition-colors hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 disabled:cursor-default"
+              className={cn('flex w-full items-center gap-2.5 rounded-[12px] py-1.5 text-left transition-colors hover:bg-[var(--sb-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 disabled:cursor-default', rail ? 'justify-center px-0' : 'px-1.5')}
               aria-label={t('profile.member_details')}
+              {...tipProps(user ? `${user.name} ${user.surname}` : t('profile.member_details'))}
             >
               {resolvedUserProfileImage ? (
                 <img
@@ -524,7 +552,7 @@ export function AppSidebar() {
                   {getInitials(user?.name, user?.surname)}
                 </span>
               )}
-              <span className="min-w-0 flex-1">
+              <span className={cn('min-w-0 flex-1', rail && 'hidden')}>
                 <span className="block truncate text-[13.5px] leading-5 font-semibold text-[var(--sb-strong)]">
                   {user ? `${user.name} ${user.surname}` : t('shell.authenticated_user')}
                 </span>
@@ -536,6 +564,19 @@ export function AppSidebar() {
           </div>
         </div>
       </aside>
+
+      {rail && tip && typeof document !== 'undefined'
+        ? createPortal(
+            <span
+              role="tooltip"
+              className="pointer-events-none fixed z-[70] -translate-y-1/2 rounded-[8px] bg-[var(--surface-inverse)] px-2.5 py-1.5 text-[12.5px] font-semibold whitespace-nowrap text-white shadow-[var(--elev-md)]"
+              style={{ top: tip.top, left: tip.left }}
+            >
+              {tip.label}
+            </span>,
+            document.body,
+          )
+        : null}
 
       <Dialog
         open={isMemberDialogOpen}

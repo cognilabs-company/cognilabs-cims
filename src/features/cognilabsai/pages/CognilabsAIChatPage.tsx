@@ -1,864 +1,89 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowDown, ArrowLeft, Bot, BotOff, Contact, KanbanSquare, Loader2, PanelRight } from 'lucide-react'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useToast } from '../../../shared/toast/useToast'
+import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { crmService } from '../../../shared/api/services/crm.service'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
-import { resolveMediaUrl } from '../../../shared/lib/media-url'
-import { Badge } from '../../../shared/ui/badge'
-import { Button } from '../../../shared/ui/button'
-import { Dialog } from '../../../shared/ui/dialog'
-import { IconButton } from '../../../shared/ui/icon-button'
-import { Input } from '../../../shared/ui/input'
-import { CalendarField } from '../../../shared/ui/calendar-field'
-import { Label } from '../../../shared/ui/label'
-import { Skeleton } from '../../../shared/ui/skeleton'
-import { Tabs, type TabItem } from '../../../shared/ui/tabs'
-import { Textarea } from '../../../shared/ui/textarea'
-import { toneDot, toneText, type Tone } from '../../../shared/ui/tone'
-import { SelectField } from '../../../shared/ui/select-field'
-import { ActionsMenu } from '../../../shared/ui/actions-menu'
-import { Switch } from '../../../shared/ui/switch'
-import { useConfirm } from '../../../shared/confirm/useConfirm'
-import Lottie from 'lottie-react'
 import {
   cognilabsaiService,
   type ConversationItem,
   type MessageItem,
-  type TelegramSearchResult,
   type WsEvent,
 } from '../../../shared/api/services/cognilabsai.service'
-
-type ChannelTab = 'all' | 'instagram' | 'telegram' | 'website'
-
-type FollowUpMode = 'global' | 'custom'
-
-type FollowUpDraft = {
-  enabled: boolean
-  mode: FollowUpMode
-  delay_minutes: string
-  message: string
-}
-
-function createFollowUpDraft(conv: ConversationItem | null): FollowUpDraft {
-  return {
-    enabled: Boolean(conv?.follow_up_enabled),
-    mode: conv?.follow_up_mode === 'custom' ? 'custom' : 'global',
-    delay_minutes: conv?.follow_up_delay_minutes != null ? String(conv.follow_up_delay_minutes) : '',
-    message: conv?.follow_up_message ?? '',
-  }
-}
-
-function getFollowUpModeLabel(mode: FollowUpMode | null | undefined) {
-  if (mode === 'custom') return 'Custom'
-  if (mode === 'global') return 'Global'
-  return '—'
-}
-
-function getClientName(conv: ConversationItem): string {
-  return conv.client_display_name || conv.client_full_name || conv.client_username || `#${conv.id}`
-}
-
-function getConversationIdFromChatUrl(value?: string | null) {
-  const match = value?.match(/conversation_id=(\d+)/)
-  return match ? Number(match[1]) : null
-}
-
-function getConversationTab(channel: string): Exclude<ChannelTab, 'all'> | null {
-  if (channel === 'instagram') return 'instagram'
-  if (channel === 'telegram') return 'telegram'
-  if (channel === 'website_ai' || channel === 'website') return 'website'
-  return null
-}
-
-function getConversationActivityTime(conv: ConversationItem): number {
-  const value = conv.last_message_at ?? conv.updated_at ?? conv.created_at
-  const time = value ? new Date(value).getTime() : 0
-  return Number.isFinite(time) ? time : 0
-}
-
-function sortConversationsByActivity(conversations: ConversationItem[]): ConversationItem[] {
-  return [...conversations].sort((a, b) => getConversationActivityTime(b) - getConversationActivityTime(a))
-}
-
-function upsertConversation(conversations: ConversationItem[], nextConversation: ConversationItem): ConversationItem[] {
-  const exists = conversations.some((conversation) => conversation.id === nextConversation.id)
-  const next = exists
-    ? conversations.map((conversation) => (conversation.id === nextConversation.id ? nextConversation : conversation))
-    : [nextConversation, ...conversations]
-
-  return sortConversationsByActivity(next)
-}
-
-function getChannelLabel(channel: string) {
-  if (channel === 'instagram') return 'Instagram'
-  if (channel === 'telegram') return 'Telegram'
-  if (channel === 'website_ai' || channel === 'website') return 'Website'
-  return channel
-}
-
-function getChannelBadgeClass(channel: string) {
-  if (channel === 'instagram') return 'bg-[var(--violet-text)]'
-  if (channel === 'telegram') return 'bg-[var(--primary)]'
-  if (channel === 'website_ai' || channel === 'website') return 'bg-[var(--success-text)]'
-  return 'bg-[var(--muted)]'
-}
-
-function getPresenceTone(status: string | null | undefined): Tone {
-  if (status === 'online') return 'success'
-  if (status === 'recently') return 'warning'
-  return 'neutral'
-}
-
-function formatPresenceLabel(
-  status: string | null | undefined,
-  isOnline: boolean | null | undefined,
-  lastSeenAt: string | null | undefined,
-): string | null {
-  if (isOnline === true || status === 'online') return 'Online'
-  if (!status) return null
-  if (status === 'recently') return 'Recently active'
-  if (status === 'last_week') return 'Active this week'
-  if (status === 'last_month') return 'Active this month'
-  if (status === 'offline') {
-    if (!lastSeenAt) return 'Offline'
-    const date = new Date(lastSeenAt)
-    if (Number.isNaN(date.getTime())) return 'Offline'
-    return `Last seen ${date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-  }
-  return status
-}
-
-function formatConvTime(isoString: string | null): string {
-  if (!isoString) return ''
-  const date = new Date(isoString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-  if (diffDays < 7) {
-    return date.toLocaleDateString([], { weekday: 'short' })
-  }
-  return date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' })
-}
-
-function isStickerMediaType(value?: string | null) {
-  return value === 'sticker' || value === 'animated_sticker' || value === 'video_sticker'
-}
-
-function shouldShowStickerCaption(text?: string | null) {
-  const normalized = (text ?? '').trim()
-  if (!normalized) {
-    return false
-  }
-
-  return !/^\[(?:Animated Sticker|Sticker|Video Sticker).*]$/i.test(normalized)
-}
-
-function AvatarOrInitials({
-  avatarUrl,
-  name,
-  size = 'md',
-}: {
-  avatarUrl?: string | null
-  name: string
-  size?: 'sm' | 'md' | 'lg'
-}) {
-  const [failed, setFailed] = useState(false)
-  const resolved = avatarUrl ? cognilabsaiService.buildAvatarUrl(avatarUrl) ?? resolveMediaUrl(avatarUrl) : null
-
-  const sizeClass = size === 'sm' ? 'h-9 w-9 text-[13px]' : size === 'lg' ? 'h-14 w-14 text-lg' : 'h-11 w-11 text-[15px]'
-
-  if (resolved && !failed) {
-    return (
-      <img
-        src={resolved}
-        alt={name}
-        onError={() => setFailed(true)}
-        className={cn(sizeClass, 'shrink-0 rounded-full bg-[var(--muted-surface)] object-cover')}
-      />
-    )
-  }
-
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || '?'
-
-  return (
-    <div
-      className={cn(
-        sizeClass,
-        'flex shrink-0 items-center justify-center rounded-full bg-[var(--blue-dim)] font-semibold tracking-[-0.01em] text-[var(--blue-text)] select-none',
-      )}
-    >
-      {initials}
-    </div>
-  )
-}
-
-function ChannelIcon({ channel }: { channel: string }) {
-  if (channel === 'all') {
-    return (
-      <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="currentColor" aria-hidden="true">
-        <path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z" />
-      </svg>
-    )
-  }
-
-  if (channel === 'instagram') {
-    return (
-      <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="currentColor" aria-hidden="true">
-        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-      </svg>
-    )
-  }
-  if (channel === 'telegram') {
-    return (
-      <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="currentColor" aria-hidden="true">
-        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.932z"/>
-      </svg>
-    )
-  }
-  if (channel === 'website' || channel === 'website_ai') {
-    return (
-      <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M3 12h18" strokeLinecap="round" />
-        <path d="M12 3a14.5 14.5 0 0 1 0 18M12 3a14.5 14.5 0 0 0 0 18" strokeLinecap="round" />
-      </svg>
-    )
-  }
-  return (
-    <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="currentColor" aria-hidden="true">
-      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.932z"/>
-    </svg>
-  )
-}
-
-function ChannelFilterIcon({ channel, label }: { channel: ChannelTab; label: string }) {
-  return (
-    <span
-      role="img"
-      aria-label={label}
-      title={label}
-      className="inline-flex h-5 w-5 items-center justify-center"
-    >
-      <ChannelIcon channel={channel} />
-    </span>
-  )
-}
-
-function PauseReasonBadge({ reason }: { reason: string | null }) {
-  if (!reason) return null
-  return (
-    <Badge variant="warning" size="sm">
-      {reason}
-    </Badge>
-  )
-}
-
-function AiFollowUpBadge({ dueAt, sentAt }: { dueAt: string | null; sentAt: string | null }) {
-  if (sentAt) {
-    return (
-      <Badge variant="blue" size="sm">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        AI Follow-up ✓
-      </Badge>
-    )
-  }
-  if (dueAt) {
-    return (
-      <Badge variant="violet" size="sm">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l3 3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        AI Follow-up
-      </Badge>
-    )
-  }
-  return null
-}
-
-const STAGE_LABEL_MAP: Record<string, string> = {
-  'instagram_media_inquiry': "Instagram so'rovi",
-  'returned_client': "Qaytgan mijoz",
-  'phone provided': "Telefon berildi",
-  'phone_provided': "Telefon berildi",
-  'greeted': "Salomlashildi",
-  'Greeted': "Salomlashildi",
-  'new': "Yangi",
-  'service_interest': "Xizmatga qiziqdi",
-  'business_field': "Sohasini yozdi",
-  'experience_years': "Sohadagi yil etildi",
-  'phone_discussion': "Telefon orqali muhokama",
-  'phone_collected': "Telefon olindi",
-  'call_time_collected': "Qulay vaqt olindi",
-  'name_collected': "Ism olindi",
-  'agreement_confirmed': "Kelishuv tasdiqlandi",
-  'lead_created': "Lead yaratildi",
-  'lost': "Yo'qotildi",
-  'interested_ai': "AI qiziqdi",
-  'interested_crm': "CRM qiziqdi",
-  'interested_website': "Website qiziqdi",
-  'interested_automation': "Avtomatika qiziqdi",
-  'interested_other': "Boshqa qiziqish",
-  'phone_received': "Telefon olindi",
-  'not_fit': "Mos emas",
-}
-
-function translateStageLabel(stage: string | null, label: string | null): string {
-  const raw = label || stage || ''
-  return STAGE_LABEL_MAP[raw] ?? STAGE_LABEL_MAP[raw.toLowerCase()] ?? raw.replaceAll('_', ' ')
-}
-
-function AiStageBadge({ stage, label }: { stage: string | null; label: string | null }) {
-  if (!stage) return null
-  return (
-    <Badge variant="violet" size="sm" className="capitalize">
-      {translateStageLabel(stage, label)}
-    </Badge>
-  )
-}
-
-function PresenceBadge({
-  status,
+import {
+  createFollowUpDraft,
+  dayKey,
+  formatDayPill,
+  formatMessageTime,
+  getChannelLabel,
+  getClientName,
+  getConversationIdFromChatUrl,
+  getConversationTab,
   isOnline,
-  lastSeenAt,
-}: {
-  status: string | null | undefined
-  isOnline: boolean | null | undefined
-  lastSeenAt: string | null | undefined
-}) {
-  const label = formatPresenceLabel(status, isOnline, lastSeenAt)
+  presenceOf,
+  sortConversationsByActivity,
+  upsertConversation,
+  type ChannelTab,
+  type FollowUpDraft,
+} from '../components/chat/chatUtils'
+import { DateDivider, MessageRow, ServicePill, TgAvatar, UnreadDivider } from '../components/chat/TgParts'
+import { TgSidebar } from '../components/chat/TgSidebar'
+import { TgComposer } from '../components/chat/TgComposer'
+import { TgInfoPanel } from '../components/chat/TgInfoPanel'
+import { TelegramSearchDialog } from '../components/chat/TelegramSearchDialog'
 
-  if (!label) return null
+const PAGE_SIZE = 50
+const INFO_KEY = 'cims-aichat-info'
 
-  const tone = getPresenceTone(isOnline === true ? 'online' : status)
-
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 text-[11.5px] font-medium', toneText[tone])}>
-      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', toneDot[tone])} />
-      <span className="truncate">{label}</span>
-    </span>
-  )
+function subscribeNarrow(callback: () => void) {
+  const query = window.matchMedia('(max-width: 767px)')
+  query.addEventListener('change', callback)
+  return () => query.removeEventListener('change', callback)
 }
+const isNarrow = () => window.matchMedia('(max-width: 767px)').matches
 
-function ConversationListItem({
-  conv,
-  isActive,
-  onSelect,
-  crmCustomerId,
-  onOpenCrm,
-  onDelete,
-}: {
-  conv: ConversationItem
-  isActive: boolean
-  onSelect: () => void
-  crmCustomerId: number | null
-  onOpenCrm: () => void
-  onDelete: () => void
-}) {
-  const name = getClientName(conv)
-  const timeLabel = formatConvTime(conv.last_message_at)
-  const presenceLabel = conv.channel === 'telegram'
-    ? formatPresenceLabel(conv.telegram_presence_status, conv.telegram_is_online, conv.telegram_last_seen_at)
-    : null
-
+function HeaderIcon({ label, onClick, active, children }: { label: string; onClick: () => void; active?: boolean; children: ReactNode }) {
   return (
     <button
       type="button"
-      onClick={onSelect}
-      className={cn(
-        'group relative flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors duration-150',
-        isActive
-          ? 'bg-[var(--blue-dim)]'
-          : 'hover:bg-[var(--accent-soft)]',
-      )}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      aria-pressed={active}
+      className={cn('grid h-10 w-10 place-items-center rounded-full transition-colors hover:bg-[var(--tg-hover)]', active ? 'text-[var(--tg-primary)]' : 'text-[var(--tg-secondary)]')}
     >
-      {isActive && (
-        <div className="absolute left-0 top-1/2 h-7 w-0.5 -translate-y-1/2 rounded-r-full bg-[var(--primary)]" />
-      )}
-
-      <div className="relative ml-1 shrink-0">
-        <AvatarOrInitials avatarUrl={conv.client_avatar_url} name={name} size="md" />
-        <div className={cn(
-          'absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--surface)] text-white',
-          getChannelBadgeClass(conv.channel)
-        )}>
-          <ChannelIcon channel={conv.channel} />
-        </div>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-1.5">
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="truncate text-sm leading-snug font-semibold tracking-[-0.01em] text-[var(--foreground)]">
-              {name}
-            </p>
-            {conv.unread_count > 0 ? (
-              <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-[11px] font-bold tabular-nums text-white">
-                {conv.unread_count > 99 ? '99+' : conv.unread_count}
-              </span>
-            ) : null}
-          </div>
-          {timeLabel && (
-            <span className={cn(
-              'shrink-0 text-[11.5px] font-medium tabular-nums group-hover:hidden',
-              isActive ? 'text-[var(--muted-strong)]' : 'text-[var(--caption)]'
-            )}>
-              {timeLabel}
-            </span>
-          )}
-          <div className="hidden group-hover:flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            {crmCustomerId ? (
-              <button
-                type="button"
-                onClick={onOpenCrm}
-                className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--success-dim)] px-2.5 text-[11.5px] font-semibold text-[var(--success-text)] transition-colors hover:bg-[var(--success-strong)]"
-                title="CRM"
-              >
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                  <path d="M2.5 5.25A1.75 1.75 0 0 1 4.25 3.5h7.5A1.75 1.75 0 0 1 13.5 5.25v5.5a1.75 1.75 0 0 1-1.75 1.75h-7.5A1.75 1.75 0 0 1 2.5 10.75z" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M5 6.25h6M5 8h3.25" strokeLinecap="round" />
-                </svg>
-                CRM
-              </button>
-            ) : null}
-            <ActionsMenu
-              label={`Actions for ${getClientName(conv)}`}
-              items={[
-                { label: "O'chirish", onSelect: onDelete, tone: 'danger' },
-              ]}
-            />
-          </div>
-        </div>
-
-        <div className="mt-0.5 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className={cn(
-              'truncate text-[12.5px] leading-snug',
-              isActive ? 'text-[var(--muted-strong)]' : 'text-[var(--muted)]'
-            )}>
-              {conv.last_message_preview || <span className="italic text-[var(--caption)]">Xabar yo'q</span>}
-            </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 empty:hidden">
-              {presenceLabel ? (
-                <PresenceBadge
-                  status={conv.telegram_presence_status}
-                  isOnline={conv.telegram_is_online}
-                  lastSeenAt={conv.telegram_last_seen_at}
-                />
-              ) : null}
-              {conv.ai_stage && !isActive ? (
-                <AiStageBadge stage={conv.ai_stage} label={conv.ai_stage_label} />
-              ) : null}
-              {!conv.crm_customer_id && !conv.lead_phone_number && (conv.ai_follow_up_due_at || conv.ai_follow_up_sent_at) ? (
-                <AiFollowUpBadge dueAt={conv.ai_follow_up_due_at} sentAt={conv.ai_follow_up_sent_at} />
-              ) : null}
-            </div>
-          </div>
-          {conv.pause_reason && !isActive ? (
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning-text)]" />
-          ) : null}
-        </div>
-      </div>
+      {children}
     </button>
   )
 }
 
-function MessageBubble({ msg, isNextSameSender }: { msg: MessageItem; isNextSameSender: boolean }) {
-  const isClient = msg.sender_type === 'client'
-  const isAi = msg.sender_type === 'ai'
-  const isSystem = msg.sender_type === 'system'
-  const isSticker = isStickerMediaType(msg.media_type)
-  const isAnimatedSticker = msg.media_type === 'animated_sticker'
-  const isStaticSticker = msg.media_type === 'sticker' || msg.media_type === 'video_sticker'
-  const mediaUrl = isSticker ? resolveMediaUrl(msg.media_url) : null
-  const [animationData, setAnimationData] = useState<unknown | null>(null)
-
-  useEffect(() => {
-    if (!isAnimatedSticker || !mediaUrl) {
-      return
-    }
-
-    const controller = new AbortController()
-
-    void fetch(mediaUrl, { signal: controller.signal })
-      .then((response) => response.json())
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setAnimationData(data)
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setAnimationData(null)
-        }
-      })
-
-    return () => {
-      controller.abort()
-    }
-  }, [isAnimatedSticker, mediaUrl])
-
-  if (isSystem) {
-    return (
-      <div className="my-3 flex justify-center">
-        <div className="max-w-[78%] rounded-[18px] bg-[var(--surface)] px-[18px] py-3 text-center">
-          <div className="mb-1.5 flex items-center justify-center">
-            <Badge variant="secondary" size="sm">Auto follow-up</Badge>
-          </div>
-          <p className="whitespace-pre-wrap wrap-break-word text-[12.5px] text-[var(--muted-strong)]">{msg.text}</p>
-        </div>
-      </div>
-    )
-  }
-
-  const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  const isUnreadClientMessage = isClient && msg.is_read === false
-  const showStickerCaption = Boolean(mediaUrl && shouldShowStickerCaption(msg.text))
-
-  return (
-    <div className={cn(
-      'flex w-full group relative',
-      isClient ? 'justify-start' : 'justify-end',
-      isNextSameSender ? 'mb-0.5' : 'mb-3'
-    )}>
-      <div
-        className={cn(
-          'relative max-w-[75%] px-3.5 py-2.5 text-[13.5px] leading-relaxed sm:max-w-[62%]',
-          isClient
-            ? 'rounded-[18px] rounded-bl-[7px] bg-[var(--surface)] text-[var(--foreground)]'
-            : 'rounded-[18px] rounded-br-[7px] bg-[var(--primary)] text-white',
-        )}
-      >
-        {(isAi || msg.sender_type === 'operator') && (
-          <p className={cn('mb-0.5 text-[11px] font-bold tracking-wide uppercase', isClient ? 'text-[var(--muted)]' : 'text-white/70')}>
-            {isAi ? 'AI' : msg.operator_name_snapshot || 'Operator'}
-          </p>
-        )}
-        {isUnreadClientMessage ? (
-          <p className="mb-1 text-[11px] font-bold tracking-[0.18em] uppercase text-[var(--primary)]">
-            New
-          </p>
-        ) : null}
-
-        <div className="flex flex-col gap-2">
-          {isAnimatedSticker && mediaUrl && animationData ? (
-            <div className="overflow-hidden rounded-[14px] bg-[var(--muted-surface)] p-1">
-              <div className="h-[180px] w-[180px] sm:h-[220px] sm:w-[220px]">
-                <Lottie animationData={animationData as object} loop autoplay />
-              </div>
-            </div>
-          ) : isStaticSticker && mediaUrl ? (
-            <div className="overflow-hidden rounded-[14px] bg-[var(--muted-surface)]">
-              <img
-                src={mediaUrl}
-                alt={msg.text?.trim() || 'Sticker'}
-                className="block max-h-[180px] max-w-[180px] object-contain sm:max-h-[220px] sm:max-w-[220px]"
-                loading="lazy"
-                draggable={false}
-              />
-            </div>
-          ) : null}
-
-          {!isSticker || !mediaUrl || showStickerCaption || (isAnimatedSticker && !animationData) ? (
-            <p className="whitespace-pre-wrap wrap-break-word">{msg.text}</p>
-          ) : null}
-        </div>
-
-        <div className={cn(
-          'mt-1 flex items-center gap-1',
-          isClient ? 'justify-start' : 'justify-end'
-        )}>
-          <span className={cn('text-[11px] font-medium tabular-nums', isClient ? 'text-[var(--caption)]' : 'text-white/70')}>{timeStr}</span>
-          {!isClient && (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5 text-white/70">
-              <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function DateSeparator({ date }: { date: string }) {
-  return (
-    <div className="sticky top-2 z-20 my-4 flex justify-center">
-      <span className="rounded-full bg-[var(--surface)] px-4 py-1.5 text-[11.5px] font-semibold text-[var(--muted)]">
-        {date}
-      </span>
-    </div>
-  )
-}
-
-function TelegramSearchModal({
-  onClose,
-  onStartChat,
-  onNewChatStarted,
-  initialQuery = '',
-  onBackToCrm,
-}: {
-  onClose: () => void
-  onStartChat: (conversationId: number) => void
-  onNewChatStarted?: () => void
-  initialQuery?: string
-  onBackToCrm?: () => void
-}) {
-  const [query, setQuery] = useState(initialQuery)
-  const [results, setResults] = useState<TelegramSearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [selectedPeer, setSelectedPeer] = useState<TelegramSearchResult | null>(null)
-  const [messageText, setMessageText] = useState('')
-  const [isSending, setIsSending] = useState(false)
-  const { showToast } = useToast()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    setQuery(initialQuery)
-  }, [initialQuery])
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([])
-      return
-    }
-
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(async () => {
-      setIsSearching(true)
-      try {
-        const res = await cognilabsaiService.telegramSearchList(query.trim(), 10)
-        setResults(res.items)
-      } catch {
-        setResults([])
-      } finally {
-        setIsSearching(false)
-      }
-    }, 400)
-  }, [query])
-
-  async function handleStart() {
-    if (!selectedPeer || !messageText.trim()) return
-    setIsSending(true)
-    try {
-      if (selectedPeer.existing_conversation_id) {
-        onStartChat(selectedPeer.existing_conversation_id)
-        return
-      }
-      await cognilabsaiService.telegramStart(selectedPeer.peer, messageText.trim(), selectedPeer.full_name ?? undefined)
-      showToast({ title: 'Chat boshlandi', tone: 'success' })
-      onNewChatStarted?.()
-      onClose()
-    } catch (err) {
-      showToast({ title: 'Xatolik', description: getApiErrorMessage(err), tone: 'error' })
-    } finally {
-      setIsSending(false)
-    }
-  }
-
-  return (
-    <Dialog
-      open
-      onClose={onClose}
-      title="Yangi Telegram Chat"
-      description="Username, @handle yoki link qidiring"
-      className="max-w-[460px]"
-      headerIcon={
-        <span className="flex h-9 w-9 items-center justify-center rounded-[11px] bg-[var(--blue-dim)] text-[var(--primary)]">
-          <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="currentColor" aria-hidden="true">
-            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.932z"/>
-          </svg>
-        </span>
-      }
-      footer={
-        <>
-          {onBackToCrm ? (
-            <Button
-              variant="ghost"
-              onClick={onBackToCrm}
-              disabled={isSending}
-              leftIcon={
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
-                  <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              }
-            >
-              CRM ga qaytish
-            </Button>
-          ) : null}
-          <Button variant="secondary" onClick={onClose} disabled={isSending}>
-            Bekor qilish
-          </Button>
-          {selectedPeer ? (
-            <Button
-              onClick={() => {
-                if (selectedPeer.existing_conversation_id) {
-                  onStartChat(selectedPeer.existing_conversation_id)
-                } else {
-                  void handleStart()
-                }
-              }}
-              disabled={isSending || (!selectedPeer.existing_conversation_id && !messageText.trim())}
-            >
-              {selectedPeer.existing_conversation_id
-                ? 'Chatni ochish'
-                : isSending
-                  ? 'Yuborilmoqda...'
-                  : 'Boshlash'}
-            </Button>
-          ) : null}
-        </>
-      }
-    >
-      <div className="space-y-[18px]">
-        {/* Search */}
-        <div className="relative">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <Input
-            placeholder="dev949, @username, t.me/link..."
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setSelectedPeer(null)
-            }}
-            className="pl-10"
-            autoFocus
-          />
-        </div>
-
-        {/* Results */}
-        <div>
-          {isSearching ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3 rounded-[14px] px-3 py-2.5">
-                  <Skeleton rounded="full" className="h-11 w-11 shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton rounded="full" className="h-3 w-2/5" />
-                    <Skeleton rounded="full" className="h-3 w-3/4" />
-                  </div>
-                </div>
-              ))}
-              <p className="pt-1 text-center text-[12.5px] text-[var(--muted)]">Qidirilmoqda...</p>
-            </div>
-          ) : results.length > 0 ? (
-            <div className="custom-scrollbar-visible max-h-[260px] space-y-1 overflow-y-auto">
-              {results.map((item) => (
-                <button
-                  key={item.peer}
-                  type="button"
-                  onClick={() => setSelectedPeer(item)}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors',
-                    selectedPeer?.peer === item.peer
-                      ? 'bg-[var(--blue-dim)]'
-                      : 'hover:bg-[var(--accent-soft)]',
-                  )}
-                >
-                  <AvatarOrInitials avatarUrl={item.avatar_url} name={item.full_name || item.username || item.peer} size="md" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold tracking-[-0.01em] text-[var(--foreground)]">{item.full_name || item.username || item.peer}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {item.username && (
-                        <p className="truncate text-[12.5px] text-[var(--muted)]">@{item.username}</p>
-                      )}
-                      {item.presence_status || item.is_online === true ? (
-                        <PresenceBadge
-                          status={item.presence_status}
-                          isOnline={item.is_online}
-                          lastSeenAt={item.last_seen_at}
-                        />
-                      ) : null}
-                      {item.existing_conversation_id && (
-                        <Badge variant="success" size="sm">
-                          Mavjud chat
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  {selectedPeer?.peer === item.peer && (
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--primary)]">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-2.5 w-2.5 text-white">
-                        <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          ) : query.trim() && !isSearching ? (
-            <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] px-6 py-8 text-center">
-              <div className="mb-2.5 flex h-11 w-11 items-center justify-center rounded-[14px] bg-[var(--surface)]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-[var(--muted)]">
-                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-                </svg>
-              </div>
-              <p className="text-[13px] font-semibold text-[var(--foreground)]">Natija topilmadi</p>
-              <p className="mt-1 text-[12.5px] text-[var(--muted)]">Boshqa username yoki link kiriting</p>
-            </div>
-          ) : !query.trim() ? (
-            <div className="flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] px-6 py-6 text-center">
-              <p className="text-[12.5px] text-[var(--muted)]">Username yoki Telegram link kiriting</p>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Message input (new chat) */}
-        {selectedPeer && !selectedPeer.existing_conversation_id ? (
-          <Textarea
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            rows={3}
-            placeholder="Birinchi xabarni yozing..."
-          />
-        ) : null}
-      </div>
-    </Dialog>
-  )
-}
-
+/** Cognilabs AI chats — a Telegram-style messenger (chat list · conversation · profile panel). */
 export function CognilabsAIChatPage() {
+  const { t, locale } = useLocale()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
   const { user } = useAuth()
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, () => false)
 
   const [activeTab, setActiveTab] = useState<ChannelTab>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedConversationId, setSelectedConversationId] = useState<number | null>(
-    () => {
-      const id = searchParams.get('conversation_id')
-      return id ? Number(id) : null
-    },
-  )
+  const [selectedConversationId, setSelectedConversationId] = useState<number | null>(() => {
+    const id = searchParams.get('conversation_id')
+    return id ? Number(id) : null
+  })
   const returnCustomerId = useMemo(() => {
-    const raw = searchParams.get('return_customer_id')
-    if (!raw) return null
-
-    const parsed = Number(raw)
+    const parsed = Number(searchParams.get('return_customer_id'))
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null
   }, [searchParams])
-
   const returnToKanban = searchParams.get('return_to') === 'kanban'
+
   const [messages, setMessages] = useState<MessageItem[]>([])
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [messageText, setMessageText] = useState('')
@@ -875,12 +100,12 @@ export function CognilabsAIChatPage() {
   const [showPauseUntil, setShowPauseUntil] = useState(false)
   const [pauseUntilDate, setPauseUntilDate] = useState('')
   const [followUpDraft, setFollowUpDraft] = useState<FollowUpDraft>(() => createFollowUpDraft(null))
+  const [infoOpen, setInfoOpen] = useState(() => { try { return localStorage.getItem(INFO_KEY) === '1' } catch { return false } })
+  const [atBottom, setAtBottom] = useState(true)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const wsRef = useRef<WebSocket | null>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const conversationsQuery = useAsyncData(
-    () => cognilabsaiService.listConversations(undefined, 50, conversationsPage * 50),
+    () => cognilabsaiService.listConversations(undefined, PAGE_SIZE, conversationsPage * PAGE_SIZE),
     [conversationsPage],
     {
       onSuccess: (data) => {
@@ -891,16 +116,12 @@ export function CognilabsAIChatPage() {
   )
   const crmDashboardQuery = useAsyncData(() => crmService.dashboardWithAllCustomers(), [])
 
+  // ?telegram_search=… opens the new-chat dialog (coming from CRM)
   useEffect(() => {
     const telegramSearchQuery = (searchParams.get('telegram_search') ?? '').trim()
-
-    if (!telegramSearchQuery) {
-      return
-    }
-
+    if (!telegramSearchQuery) return
     setNewTelegramInitialQuery(telegramSearchQuery)
     setShowNewTelegramModal(true)
-
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       next.delete('telegram_search')
@@ -909,24 +130,13 @@ export function CognilabsAIChatPage() {
   }, [searchParams, setSearchParams])
 
   const refetchConversationsRef = useRef(conversationsQuery.refetch)
-  useEffect(() => {
-    refetchConversationsRef.current = conversationsQuery.refetch
-  }, [conversationsQuery.refetch])
-
+  useEffect(() => { refetchConversationsRef.current = conversationsQuery.refetch }, [conversationsQuery.refetch])
   const conversationsRef = useRef<ConversationItem[]>([])
-  useEffect(() => {
-    conversationsRef.current = conversations
-  }, [conversations])
+  useEffect(() => { conversationsRef.current = conversations }, [conversations])
 
-  useAsyncData(
-    () => cognilabsaiService.getIntegrations(),
-    [],
-    {
-      onSuccess: (data) => {
-        if (data.websocket_api_key) setWsKey(data.websocket_api_key)
-      },
-    },
-  )
+  useAsyncData(() => cognilabsaiService.getIntegrations(), [], {
+    onSuccess: (data) => { if (data.websocket_api_key) setWsKey(data.websocket_api_key) },
+  })
 
   const selectedConversation = useMemo(
     () => selectedConversationDetail ?? conversations.find((c) => c.id === selectedConversationId) ?? null,
@@ -934,55 +144,38 @@ export function CognilabsAIChatPage() {
   )
   const crmCustomerIdByConversationId = useMemo(() => {
     const map = new Map<number, number>()
-
     for (const customer of crmDashboardQuery.data?.customers ?? []) {
       const conversationId = getConversationIdFromChatUrl(customer.chat_url)
-      if (conversationId) {
-        map.set(conversationId, customer.id)
-      }
+      if (conversationId) map.set(conversationId, customer.id)
     }
-
     return map
   }, [crmDashboardQuery.data?.customers])
 
   const filteredConversations = useMemo(() => {
     let list = conversations
     if (activeTab !== 'all') list = list.filter((c) => getConversationTab(c.channel) === activeTab)
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      list = list.filter(
-        (c) =>
-          getClientName(c).toLowerCase().includes(q) ||
-          c.client_username?.toLowerCase().includes(q) ||
-          c.last_message_preview?.toLowerCase().includes(q),
-      )
-    }
+    const q = searchQuery.trim().toLowerCase()
+    if (q) list = list.filter((c) => getClientName(c).toLowerCase().includes(q) || c.client_username?.toLowerCase().includes(q) || c.last_message_preview?.toLowerCase().includes(q))
     return list
   }, [conversations, activeTab, searchQuery])
 
+  // messages of the open chat
   useEffect(() => {
     if (!selectedConversationId) return
     setIsLoadingMessages(true)
-    cognilabsaiService
-      .listMessages(selectedConversationId)
+    cognilabsaiService.listMessages(selectedConversationId)
       .then((nextMessages) => {
         setMessages(nextMessages)
-        setConversations((prev) =>
-          prev.map((conversation) =>
-            conversation.id === selectedConversationId
-              ? { ...conversation, unread_count: 0 }
-              : conversation,
-          ),
-        )
+        setConversations((prev) => prev.map((conversation) => (conversation.id === selectedConversationId ? { ...conversation, unread_count: 0 } : conversation)))
       })
       .catch(() => setMessages([]))
       .finally(() => setIsLoadingMessages(false))
   }, [selectedConversationId])
 
+  // full conversation detail (follow-up settings etc.)
   useEffect(() => {
     if (!selectedConversationId) return
     let cancelled = false
-
     cognilabsaiService.getConversation(selectedConversationId)
       .then((detail) => {
         if (cancelled) return
@@ -990,15 +183,9 @@ export function CognilabsAIChatPage() {
         setFollowUpDraft(createFollowUpDraft(detail))
       })
       .catch(() => {
-        if (!cancelled) {
-          const fallbackConversation = conversationsRef.current.find((conversation) => conversation.id === selectedConversationId) ?? null
-          setFollowUpDraft(createFollowUpDraft(fallbackConversation))
-        }
+        if (!cancelled) setFollowUpDraft(createFollowUpDraft(conversationsRef.current.find((c) => c.id === selectedConversationId) ?? null))
       })
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [selectedConversationId])
 
   useEffect(() => {
@@ -1010,91 +197,56 @@ export function CognilabsAIChatPage() {
     }, { replace: true })
   }, [selectedConversationId, setSearchParams])
 
+  // stick to the newest message
   useEffect(() => {
     const container = messagesContainerRef.current
-    if (!container) return
-    container.scrollTop = container.scrollHeight
+    if (container) container.scrollTop = container.scrollHeight
   }, [messages])
 
   const selectedConversationIdRef = useRef(selectedConversationId)
-  useEffect(() => {
-    selectedConversationIdRef.current = selectedConversationId
-  }, [selectedConversationId])
+  useEffect(() => { selectedConversationIdRef.current = selectedConversationId }, [selectedConversationId])
 
+  // live updates
   useEffect(() => {
     if (!wsKey) return
-
     let socket: WebSocket | null = null
-    let isComponentMounted = true
-    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
+    let mounted = true
+    let reconnect: ReturnType<typeof setTimeout> | null = null
 
     function connect() {
-      if (!isComponentMounted) return
-
+      if (!mounted) return
       const sock = cognilabsaiService.createWebSocket(wsKey!)
       socket = sock
-      wsRef.current = sock
-
       sock.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data as string) as WsEvent
           if (data.type === 'message.created') {
             if (data.conversation_id === selectedConversationIdRef.current) {
               setMessages((prev) => {
-                // Avoid duplicates by checking ID
-                if (prev.some((m) => m.id === data.message.id)) {
-                  return prev
-                }
-
-                // Check for optimistic message match (same text and sender, and has a temporary ID)
-                // We use a large ID (> 1e12) as a heuristic for Date.now() temporary IDs
-                const optimisticIdx = prev.findIndex(
-                  (m) =>
-                    m.id > 1000000000000 &&
-                    m.text === data.message.text &&
-                    m.sender_type === data.message.sender_type,
-                )
-
+                if (prev.some((m) => m.id === data.message.id)) return prev
+                const optimisticIdx = prev.findIndex((m) => m.id > 1_000_000_000_000 && m.text === data.message.text && m.sender_type === data.message.sender_type)
                 if (optimisticIdx !== -1) {
-                  const newMessages = [...prev]
-                  newMessages[optimisticIdx] = data.message
-                  return newMessages
+                  const next = [...prev]
+                  next[optimisticIdx] = data.message
+                  return next
                 }
-
                 return [...prev, data.message]
               })
             }
             const convId = data.conversation_id
             if (conversationsRef.current.some((c) => c.id === convId)) {
-              setConversations((prev) =>
-                sortConversationsByActivity(
-                  prev.map((c) =>
-                    c.id === convId
-                      ? {
-                          ...c,
-                          last_message_at: data.message.created_at,
-                          last_message_preview: data.message.text,
-                          unread_count:
-                            data.message.sender_type === 'client' && convId !== selectedConversationIdRef.current
-                              ? (c.unread_count ?? 0) + 1
-                              : c.unread_count,
-                        }
-                      : c,
-                  ),
-                )
-              )
-            } else {
-              void cognilabsaiService
-                .getConversation(convId)
-                .then((conversation) => {
-                  if (!isComponentMounted) return
-                  setConversations((prev) => upsertConversation(prev, conversation))
-                })
-                .catch(() => {
-                  if (isComponentMounted) {
-                    void refetchConversationsRef.current()
+              setConversations((prev) => sortConversationsByActivity(prev.map((c) => (c.id === convId
+                ? {
+                    ...c,
+                    last_message_at: data.message.created_at,
+                    last_message_preview: data.message.text,
+                    unread_count: data.message.sender_type === 'client' && convId !== selectedConversationIdRef.current ? (c.unread_count ?? 0) + 1 : c.unread_count,
                   }
-                })
+                : c))))
+            } else {
+              void cognilabsaiService.getConversation(convId)
+                .then((conversation) => { if (mounted) setConversations((prev) => upsertConversation(prev, conversation)) })
+                .catch(() => { if (mounted) void refetchConversationsRef.current() })
             }
           } else if (data.type === 'conversation.updated') {
             setConversations((prev) => upsertConversation(prev, data.conversation))
@@ -1104,46 +256,39 @@ export function CognilabsAIChatPage() {
             }
           }
         } catch {
-          // ignore
+          // ignore malformed events
         }
       }
-
       sock.onerror = () => {}
-      sock.onclose = () => {
-        if (isComponentMounted) {
-          reconnectTimeout = setTimeout(connect, 5000)
-        }
-      }
+      sock.onclose = () => { if (mounted) reconnect = setTimeout(connect, 5000) }
     }
 
     connect()
-
     return () => {
-      isComponentMounted = false
-      if (reconnectTimeout) clearTimeout(reconnectTimeout)
-      if (socket) {
-        socket.close()
-      }
+      mounted = false
+      if (reconnect) clearTimeout(reconnect)
+      socket?.close()
     }
   }, [wsKey])
 
   const handleSelectConversation = useCallback((id: number) => {
-    const nextConversation = conversations.find((c) => c.id === id) ?? null
+    const next = conversations.find((c) => c.id === id) ?? null
     setSelectedConversationId(id)
     setMessageText('')
     setShowPauseUntil(false)
     setPauseUntilDate('')
-    setSelectedConversationDetail(nextConversation)
-    setFollowUpDraft(createFollowUpDraft(nextConversation))
+    setSelectedConversationDetail(next)
+    setFollowUpDraft(createFollowUpDraft(next))
   }, [conversations])
 
+  const toastError = (error: unknown) => showToast({ title: t('common.error', 'Error'), description: getApiErrorMessage(error), tone: 'error' })
+
   async function handleDeleteConversation(conv: ConversationItem) {
-    const name = getClientName(conv)
     const approved = await confirm({
-      title: `Suhbatni o'chirish?`,
-      description: `${name} bilan suhbat butunlay o'chiriladi.`,
+      title: t('aichat.delete_title', 'Delete this chat?'),
+      description: t('aichat.delete_description', 'The chat with {{name}} will be deleted for good.', { name: getClientName(conv) }),
       tone: 'danger',
-      confirmLabel: `O'chirish`,
+      confirmLabel: t('aichat.delete_chat', 'Delete chat'),
     })
     if (!approved) return
     try {
@@ -1154,19 +299,14 @@ export function CognilabsAIChatPage() {
         setMessages([])
         setSelectedConversationDetail(null)
       }
-      showToast({ title: `Suhbat o'chirildi`, tone: 'success' })
+      showToast({ title: t('aichat.deleted', 'Chat deleted'), tone: 'success' })
     } catch (error) {
-      showToast({ title: `O'chirishda xato`, description: getApiErrorMessage(error), tone: 'error' })
+      toastError(error)
     }
   }
 
-  function resolveVisibleCrmCustomerId(conv: ConversationItem) {
-    return crmCustomerIdByConversationId.get(conv.id) ?? null
-  }
-
-  function handleOpenCrm(customerId: number) {
-    navigate(`/crm?customer_id=${customerId}`)
-  }
+  const resolveCrmCustomerId = (conv: ConversationItem) => crmCustomerIdByConversationId.get(conv.id) ?? null
+  const handleOpenCrm = (customerId: number) => navigate(`/crm?customer_id=${customerId}`)
 
   async function handleSend() {
     if (!selectedConversationId || !messageText.trim() || isSending) return
@@ -1184,17 +324,17 @@ export function CognilabsAIChatPage() {
       instagram_message_id: null,
       telegram_message_id: null,
       text,
-      is_read: true,
-      read_at: new Date().toISOString(),
+      is_read: false,
+      read_at: null,
       created_at: new Date().toISOString(),
     }
     setMessages((prev) => [...prev, optimistic])
     try {
       await cognilabsaiService.sendMessage(selectedConversationId, text)
-    } catch (err) {
+    } catch (error) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
       setMessageText(text)
-      showToast({ title: 'Xatolik', description: getApiErrorMessage(err), tone: 'error' })
+      toastError(error)
     } finally {
       setIsSending(false)
     }
@@ -1204,15 +344,12 @@ export function CognilabsAIChatPage() {
     if (!selectedConversationId || isTogglingAi) return
     setIsTogglingAi(true)
     try {
-      const updated =
-        action === 'pause'
-          ? await cognilabsaiService.pause(selectedConversationId)
-          : await cognilabsaiService.resume(selectedConversationId)
+      const updated = action === 'pause' ? await cognilabsaiService.pause(selectedConversationId) : await cognilabsaiService.resume(selectedConversationId)
       setConversations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
       setSelectedConversationDetail(updated)
-      showToast({ title: action === 'pause' ? "AI to'xtatildi" : 'AI faollashdi', tone: 'success' })
-    } catch (err) {
-      showToast({ title: 'Xatolik', description: getApiErrorMessage(err), tone: 'error' })
+      showToast({ title: action === 'pause' ? t('aichat.ai_paused_toast', 'AI paused') : t('aichat.ai_resumed_toast', 'AI is answering again'), tone: 'success' })
+    } catch (error) {
+      toastError(error)
     } finally {
       setIsTogglingAi(false)
     }
@@ -1223,9 +360,9 @@ export function CognilabsAIChatPage() {
     setIsTogglingAi(true)
     try {
       await cognilabsaiService.retryAi(selectedConversationId)
-      showToast({ title: 'AI qayta ishga tushdi', tone: 'success' })
-    } catch (err) {
-      showToast({ title: 'Xatolik', description: getApiErrorMessage(err), tone: 'error' })
+      showToast({ title: t('aichat.ai_retried', 'AI is replying again'), tone: 'success' })
+    } catch (error) {
+      toastError(error)
     } finally {
       setIsTogglingAi(false)
     }
@@ -1235,17 +372,14 @@ export function CognilabsAIChatPage() {
     if (!selectedConversationId || !pauseUntilDate || isTogglingAi) return
     setIsTogglingAi(true)
     try {
-      const updated = await cognilabsaiService.pauseUntil(
-        selectedConversationId,
-        new Date(pauseUntilDate).toISOString(),
-      )
+      const updated = await cognilabsaiService.pauseUntil(selectedConversationId, new Date(pauseUntilDate).toISOString())
       setConversations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
       setSelectedConversationDetail(updated)
       setShowPauseUntil(false)
       setPauseUntilDate('')
-      showToast({ title: "AI vaqtinchalik to'xtatildi", tone: 'success' })
-    } catch (err) {
-      showToast({ title: 'Xatolik', description: getApiErrorMessage(err), tone: 'error' })
+      showToast({ title: t('aichat.ai_paused_until', 'AI paused for a while'), tone: 'success' })
+    } catch (error) {
+      toastError(error)
     } finally {
       setIsTogglingAi(false)
     }
@@ -1253,62 +387,37 @@ export function CognilabsAIChatPage() {
 
   async function handleSaveFollowUp() {
     if (!selectedConversationId || isSavingFollowUp) return
-    if (!followUpDraft.enabled) return
-
     if (followUpDraft.enabled && followUpDraft.mode === 'custom') {
       const delay = Number(followUpDraft.delay_minutes)
       if (!Number.isFinite(delay) || delay <= 0) {
-        showToast({ title: 'Xatolik', description: 'Custom mode uchun delay_minutes 0 dan katta bo‘lishi kerak.', tone: 'error' })
+        showToast({ title: t('common.error', 'Error'), description: t('aichat.follow_up_delay_error', 'Delay must be more than 0 minutes.'), tone: 'error' })
         return
       }
       if (!followUpDraft.message.trim()) {
-        showToast({ title: 'Xatolik', description: 'Custom mode uchun message bo‘sh bo‘lmasligi kerak.', tone: 'error' })
+        showToast({ title: t('common.error', 'Error'), description: t('aichat.follow_up_message_error', 'Write the reminder text.'), tone: 'error' })
         return
       }
     }
-
     setIsSavingFollowUp(true)
     try {
       const updated = await cognilabsaiService.updateConversationFollowUp(
         selectedConversationId,
         followUpDraft.enabled
           ? followUpDraft.mode === 'custom'
-            ? {
-                enabled: true,
-                mode: 'custom',
-                delay_minutes: Number(followUpDraft.delay_minutes),
-                message: followUpDraft.message.trim(),
-              }
+            ? { enabled: true, mode: 'custom', delay_minutes: Number(followUpDraft.delay_minutes), message: followUpDraft.message.trim() }
             : { enabled: true, mode: 'global' }
           : { enabled: false },
       )
-
       setConversations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
       setSelectedConversationDetail(updated)
       setFollowUpDraft(createFollowUpDraft(updated))
-      showToast({ title: 'Follow-up saqlandi', tone: 'success' })
-    } catch (err) {
-      showToast({ title: 'Xatolik', description: getApiErrorMessage(err), tone: 'error' })
+      showToast({ title: t('aichat.follow_up_saved', 'Follow-up saved'), tone: 'success' })
+    } catch (error) {
+      toastError(error)
     } finally {
       setIsSavingFollowUp(false)
     }
   }
-
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-  const showChat = selectedConversationId !== null
-  const supportsAi = selectedConversation?.supports_ai ?? false
-  const aiPaused = selectedConversation?.chat_mode !== 'instagram_ai' || Boolean(selectedConversation?.pause_reason)
-  const followUpModeLabel = getFollowUpModeLabel(selectedConversation?.follow_up_mode as FollowUpMode | null | undefined)
-  const followUpStatusLabel = selectedConversation?.follow_up_enabled
-    ? `${followUpModeLabel}${selectedConversation?.follow_up_sent_at ? ' · Sent' : selectedConversation?.follow_up_due_at ? ' · Pending' : ''}`
-    : 'Disabled'
-
-  const tabItems: TabItem<ChannelTab>[] = [
-    { value: 'all', label: <ChannelFilterIcon channel="all" label="All" /> },
-    { value: 'instagram', label: <ChannelFilterIcon channel="instagram" label="Instagram" /> },
-    { value: 'telegram', label: <ChannelFilterIcon channel="telegram" label="Telegram" /> },
-    { value: 'website', label: <ChannelFilterIcon channel="website" label="Website" /> },
-  ]
 
   function handleReturnToCrm() {
     const returnTo = searchParams.get('return_to')
@@ -1316,573 +425,204 @@ export function CognilabsAIChatPage() {
     navigate(returnTo && allowed.includes(returnTo) ? returnTo : '/crm/customers')
   }
 
+  function toggleInfo() {
+    setInfoOpen((open) => {
+      try { localStorage.setItem(INFO_KEY, open ? '0' : '1') } catch { /* private mode */ }
+      return !open
+    })
+  }
+
+  /* ── derived view data ─────────────────────────────── */
+  const showChat = selectedConversationId !== null
+  const supportsAi = selectedConversation?.supports_ai ?? false
+  const aiPaused = selectedConversation?.chat_mode !== 'instagram_ai' || Boolean(selectedConversation?.pause_reason)
+  const crmCustomerId = selectedConversation ? (selectedConversation.crm_customer_id ?? resolveCrmCustomerId(selectedConversation)) : null
+
+  const presenceText = useCallback((presence: ReturnType<typeof presenceOf>) => {
+    switch (presence.kind) {
+      case 'online': return t('aichat.presence.online', 'online')
+      case 'recently': return t('aichat.presence.recently', 'last seen recently')
+      case 'week': return t('aichat.presence.week', 'last seen within a week')
+      case 'month': return t('aichat.presence.month', 'last seen within a month')
+      case 'seen': {
+        const at = presence.at!
+        const day = formatDayPill(at, locale, { today: t('aichat.today', 'today'), yesterday: t('aichat.yesterday', 'yesterday') })
+        return t('aichat.presence.seen', 'last seen {{when}}', { when: `${day.charAt(0).toLowerCase()}${day.slice(1)} ${formatMessageTime(at)}` })
+      }
+      case 'offline': return t('aichat.presence.offline', 'last seen a long time ago')
+      default: return ''
+    }
+  }, [locale, t])
+
+  const headerStatus = useMemo(() => {
+    if (!selectedConversation) return ''
+    const presence = selectedConversation.channel === 'telegram'
+      ? presenceText(presenceOf(selectedConversation.telegram_presence_status, selectedConversation.telegram_is_online, selectedConversation.telegram_last_seen_at))
+      : ''
+    const ai = supportsAi ? (aiPaused ? t('aichat.ai_paused', 'AI paused') : t('aichat.ai_active', 'AI is answering')) : ''
+    return presence || [getChannelLabel(selectedConversation.channel), ai].filter(Boolean).join(' · ')
+  }, [aiPaused, presenceText, selectedConversation, supportsAi, t])
+  const headerOnline = Boolean(selectedConversation && selectedConversation.channel === 'telegram' && isOnline(selectedConversation))
+
+  const followUpStatus = selectedConversation?.follow_up_enabled
+    ? `${selectedConversation.follow_up_mode === 'custom' ? t('aichat.follow_up_custom', 'Custom for this chat') : t('aichat.follow_up_global', 'Global settings')}${selectedConversation.follow_up_sent_at ? ` · ${t('aichat.follow_up_sent', 'sent')}` : selectedConversation.follow_up_due_at ? ` · ${t('aichat.follow_up_pending', 'scheduled')}` : ''}`
+    : t('aichat.follow_up_off', 'Off')
+
+  const firstUnreadId = messages.find((m) => m.sender_type === 'client' && m.is_read === false)?.id ?? null
+  const messageLabels = { ai: 'AI', operator: t('aichat.operator_label', 'Operator'), autoFollowUp: t('aichat.auto_follow_up', 'Auto follow-up') }
+  const dayLabels = { today: t('aichat.today_pill', 'Today'), yesterday: t('aichat.yesterday_pill', 'Yesterday') }
+
+  const rows: ReactNode[] = []
+  messages.forEach((msg, index) => {
+    const prev = messages[index - 1]
+    const next = messages[index + 1]
+    const sameDayAsPrev = prev ? dayKey(prev.created_at) === dayKey(msg.created_at) : false
+    if (!sameDayAsPrev) rows.push(<DateDivider key={`day-${msg.id}`} label={formatDayPill(msg.created_at, locale, dayLabels)} />)
+    if (msg.id === firstUnreadId) rows.push(<UnreadDivider key="unread" label={t('aichat.unread_messages', 'Unread messages')} />)
+    const first = !prev || !sameDayAsPrev || prev.sender_type !== msg.sender_type || prev.sender_type === 'system' || msg.id === firstUnreadId
+    const last = !next || dayKey(next.created_at) !== dayKey(msg.created_at) || next.sender_type !== msg.sender_type || next.sender_type === 'system' || next.id === firstUnreadId
+    rows.push(<MessageRow key={msg.id} msg={msg} first={first} last={last} labels={messageLabels} />)
+  })
+
+  const pageCount = Math.max(1, Math.ceil(conversationsTotal / PAGE_SIZE))
+
   return (
-    <div
-      className="flex min-h-0 flex-col bg-[var(--background)] text-[var(--foreground)] font-sans -mx-7 -mt-[26px] -mb-10"
-      style={{ height: 'var(--page-h-bleed)' }}
-    >
-      <div className="flex min-h-0 w-full flex-1 gap-[18px] overflow-hidden p-[18px]">
+    <div className="tg relative flex overflow-hidden rounded-[20px] border border-[var(--tg-border)] bg-[var(--tg-bg)] shadow-[var(--elev-sm)]" style={{ height: 'var(--page-h)', minHeight: 480 }}>
+      <TgSidebar
+        className={cn('w-full shrink-0 border-r border-[var(--tg-border)] md:w-[340px] lg:w-[380px] xl:w-[400px]', showChat && narrow && 'hidden')}
+        conversations={filteredConversations}
+        allConversations={conversations}
+        loading={conversationsQuery.isLoading}
+        selectedId={selectedConversationId}
+        tab={activeTab}
+        onTabChange={setActiveTab}
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSelect={handleSelectConversation}
+        onNewChat={() => { setNewTelegramInitialQuery(''); setShowNewTelegramModal(true) }}
+        crmCustomerIdFor={resolveCrmCustomerId}
+        onOpenCrm={handleOpenCrm}
+        onDelete={(conv) => void handleDeleteConversation(conv)}
+        page={conversationsPage}
+        pageCount={pageCount}
+        onPageChange={setConversationsPage}
+      />
 
-        {/* Left panel – conversations list */}
-        <div
-          className={cn(
-            'flex w-full shrink-0 flex-col overflow-hidden rounded-[24px] bg-[var(--surface)] md:w-[340px] lg:w-[400px] xl:w-[440px]',
-            showChat && isMobile ? 'hidden' : 'flex',
-          )}
-        >
-          {/* Header */}
-          <div className="shrink-0 px-[18px] pt-[18px] pb-4">
-            <div className="mb-[18px] flex items-center justify-between gap-3">
-              <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--foreground)]">Xabarlar</h2>
-              <IconButton
-                tone="primary"
-                label="Yangi Telegram chat"
-                className="bg-[var(--blue-dim)] hover:bg-[var(--blue-soft)]"
-                onClick={() => {
-                  setNewTelegramInitialQuery('')
-                  setShowNewTelegramModal(true)
-                }}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
-                  <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </IconButton>
-            </div>
-
-            {/* Filter tabs */}
-            <Tabs
-              items={tabItems}
-              value={activeTab}
-              onChange={setActiveTab}
-              className="mb-3"
-            />
-
-            {/* Pagination */}
-            {conversationsTotal > 50 && (
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <span className="text-[11.5px] font-medium tabular-nums text-[var(--muted)]">
-                  {conversationsPage * 50 + 1}–{Math.min((conversationsPage + 1) * 50, conversationsTotal)} / {conversationsTotal}
+      <main className={cn('tg-wallpaper relative flex min-w-0 flex-1 flex-col', !showChat && narrow && 'hidden')}>
+        {!selectedConversation ? (
+          <div className="grid flex-1 place-items-center p-6">
+            <ServicePill className="px-3 py-1">{t('aichat.select_chat', 'Select a chat to start messaging')}</ServicePill>
+          </div>
+        ) : (
+          <>
+            {/* header */}
+            <header className="tg-header relative z-10 flex h-[56px] shrink-0 items-center gap-1 pr-2 pl-2 md:pl-4">
+              {narrow ? (
+                <HeaderIcon label={t('aichat.back', 'Back')} onClick={() => setSelectedConversationId(null)}><ArrowLeft size={22} /></HeaderIcon>
+              ) : null}
+              {returnCustomerId ? (
+                <button type="button" onClick={handleReturnToCrm} className="mr-1 inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-[var(--tg-hover)] px-3 text-[13px] font-semibold text-[var(--tg-primary)] hover:brightness-95">
+                  <ArrowLeft size={15} /> CRM
+                </button>
+              ) : null}
+              <button type="button" onClick={toggleInfo} className="flex min-w-0 flex-1 items-center gap-3 rounded-[10px] py-1 text-left">
+                <TgAvatar url={selectedConversation.client_avatar_url} name={getClientName(selectedConversation)} size={42} />
+                <span className="min-w-0">
+                  <span className="block truncate text-[16px] leading-[21px] font-semibold text-[var(--tg-text)]">{getClientName(selectedConversation)}</span>
+                  <span data-i18n-skip="true" className={cn('block truncate text-[14px] leading-[18px]', headerOnline ? 'text-[var(--tg-primary)]' : 'text-[var(--tg-secondary)]')}>{headerStatus}</span>
                 </span>
-                <div className="flex items-center gap-1">
-                  <IconButton
-                    size="sm"
-                    label="Oldingi"
-                    onClick={() => setConversationsPage((p) => Math.max(0, p - 1))}
-                    disabled={conversationsPage === 0 || conversationsQuery.isLoading}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
-                      <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </IconButton>
-                  <IconButton
-                    size="sm"
-                    label="Keyingi"
-                    onClick={() => setConversationsPage((p) => p + 1)}
-                    disabled={(conversationsPage + 1) * 50 >= conversationsTotal || conversationsQuery.isLoading}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
-                      <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </IconButton>
-                </div>
-              </div>
-            )}
+              </button>
+              {returnToKanban ? (
+                <HeaderIcon label={t('aichat.back_to_kanban', 'Back to kanban')} onClick={() => navigate(`/cognilabsai/kanban?highlight=${selectedConversation.id}`)}><KanbanSquare size={21} /></HeaderIcon>
+              ) : null}
+              {crmCustomerId ? (
+                <HeaderIcon label={t('aichat.open_crm', 'Open in CRM')} onClick={() => handleOpenCrm(crmCustomerId)}><Contact size={21} /></HeaderIcon>
+              ) : null}
+              {supportsAi ? (
+                <HeaderIcon label={aiPaused ? t('aichat.ai_resume', 'Turn AI on') : t('aichat.ai_pause', 'Pause AI')} onClick={() => void handleToggleAi(aiPaused ? 'resume' : 'pause')} active={!aiPaused}>
+                  {isTogglingAi ? <Loader2 size={20} className="animate-spin" /> : aiPaused ? <BotOff size={21} /> : <Bot size={21} />}
+                </HeaderIcon>
+              ) : null}
+              <HeaderIcon label={t('aichat.info', 'Info')} onClick={toggleInfo} active={infoOpen}><PanelRight size={21} /></HeaderIcon>
+            </header>
 
-            {/* Search */}
-            <div className="relative">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <Input
-                placeholder="Qidiruv..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="min-h-9 rounded-[11px] pl-9 text-[13px]"
-              />
+            {/* messages */}
+            <div
+              ref={messagesContainerRef}
+              onScroll={(event) => {
+                const el = event.currentTarget
+                setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120)
+              }}
+              className="tg-scroll relative min-h-0 flex-1 overflow-y-auto"
+            >
+              <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col justify-end px-3 pt-2 pb-2 md:px-5">
+                {messages.length === 0 && !isLoadingMessages ? (
+                  <div className="flex flex-1 items-center justify-center py-10">
+                    <ServicePill>{t('aichat.no_messages_yet', 'No messages here yet')}</ServicePill>
+                  </div>
+                ) : rows}
+              </div>
+              {isLoadingMessages ? (
+                <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                  <span className="tg-service grid h-12 w-12 place-items-center rounded-full"><Loader2 size={24} className="animate-spin text-white" /></span>
+                </div>
+              ) : null}
             </div>
-          </div>
 
-          {/* Chat list */}
-          <div className="custom-scrollbar-visible flex-1 overflow-y-auto px-[10px] pb-[18px]">
-            {conversationsQuery.isLoading ? (
-              <div className="space-y-1">
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} className="flex gap-3 rounded-[14px] px-3 py-2.5">
-                    <Skeleton rounded="full" className="h-11 w-11 shrink-0" />
-                    <div className="flex-1 space-y-2 py-1">
-                      <Skeleton rounded="full" className="h-2.5 w-2/5" />
-                      <Skeleton rounded="full" className="h-2.5 w-3/4" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : filteredConversations.length === 0 ? (
-              <div className="mx-2 mt-2 flex flex-col items-center justify-center rounded-[18px] bg-[var(--muted-surface)] px-6 py-14 text-center">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 h-10 w-10 text-[var(--caption)]">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <p className="text-[13px] font-semibold text-[var(--muted-strong)]">Chatlar topilmadi</p>
-              </div>
-            ) : (
-              <div className="space-y-0.5">
-                {filteredConversations.map((conv) => (
-                  <ConversationListItem
-                    key={conv.id}
-                    conv={conv}
-                    isActive={selectedConversationId === conv.id}
-                    onSelect={() => handleSelectConversation(conv.id)}
-                    crmCustomerId={resolveVisibleCrmCustomerId(conv)}
-                    onOpenCrm={() => {
-                      const customerId = resolveVisibleCrmCustomerId(conv)
-                      if (customerId) {
-                        handleOpenCrm(customerId)
-                      }
-                    }}
-                    onDelete={() => void handleDeleteConversation(conv)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right panel – chat */}
-        <div
-          className={cn(
-            'relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[var(--surface)]',
-            !showChat && isMobile ? 'hidden' : 'flex',
-          )}
-        >
-          {!selectedConversation ? (
-            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[18px] bg-[var(--muted-surface)]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-8 w-8 text-[var(--muted)]">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <h3 className="mb-1 text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">Chat tanlang</h3>
-              <p className="max-w-xs text-[13px] text-[var(--muted)]">Chap tomondagi ro'yxatdan suhbatni tanlang</p>
-            </div>
-          ) : (
-            <>
-              {/* Chat Header */}
-              <div className="z-30 flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-[22px] py-3.5">
-                <div className="flex items-center gap-3 min-w-0">
-                  {isMobile ? (
-                    <IconButton
-                      size="sm"
-                      label="Orqaga"
-                      onClick={() => setSelectedConversationId(null)}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
-                        <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </IconButton>
-                  ) : null}
-                  <div className="relative shrink-0">
-                    <AvatarOrInitials avatarUrl={selectedConversation.client_avatar_url} name={getClientName(selectedConversation)} size="sm" />
-                    <div className={cn(
-                      'absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--surface)] text-white',
-                      getChannelBadgeClass(selectedConversation.channel)
-                    )}>
-                      <ChannelIcon channel={selectedConversation.channel} />
-                    </div>
-                    </div>
-                  {returnCustomerId ? (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleReturnToCrm}
-                      className="shrink-0 px-2.5 text-[12px]"
-                      title="Back to CRM"
-                      leftIcon={
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4" aria-hidden="true">
-                          <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      }
-                    >
-                      CRM
-                    </Button>
-                  ) : null}
-                    <div className="min-w-0">
-                      <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{getClientName(selectedConversation)}</h3>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--muted)]">
-                          <ChannelIcon channel={selectedConversation.channel} />
-                          {getChannelLabel(selectedConversation.channel)}
-                        </span>
-                        {selectedConversation.channel === 'telegram' && (
-                          <>
-                            <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
-                            <PresenceBadge
-                              status={selectedConversation.telegram_presence_status}
-                              isOnline={selectedConversation.telegram_is_online}
-                              lastSeenAt={selectedConversation.telegram_last_seen_at}
-                            />
-                          </>
-                        )}
-                        {selectedConversation.pause_reason && (
-                          <>
-                            <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
-                          <PauseReasonBadge reason={selectedConversation.pause_reason} />
-                        </>
-                      )}
-                      {selectedConversation.last_operator_name && (
-                        <>
-                          <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
-                          <span className="text-[11.5px] font-medium text-[var(--muted)]">{selectedConversation.last_operator_name}</span>
-                        </>
-                      )}
-                      {selectedConversation.ai_stage && (
-                        <>
-                          <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
-                          <AiStageBadge stage={selectedConversation.ai_stage} label={selectedConversation.ai_stage_label} />
-                        </>
-                      )}
-                      {!selectedConversation.crm_customer_id && !selectedConversation.lead_phone_number && (selectedConversation.ai_follow_up_due_at || selectedConversation.ai_follow_up_sent_at) && (
-                        <>
-                          <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--caption)]" />
-                          <AiFollowUpBadge dueAt={selectedConversation.ai_follow_up_due_at} sentAt={selectedConversation.ai_follow_up_sent_at} />
-                        </>
-                      )}
-                    </div>
-                    {/* Lead info row */}
-                    {(selectedConversation.lead_phone_number || selectedConversation.lead_full_name) && (
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {selectedConversation.lead_phone_number && (
-                          <Badge variant="success" size="sm" className="tabular-nums">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-2.5 w-2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                            {selectedConversation.lead_phone_number}
-                          </Badge>
-                        )}
-                        {selectedConversation.lead_full_name && (
-                          <Badge variant="secondary" size="sm">
-                            {selectedConversation.lead_full_name}
-                          </Badge>
-                        )}
-                        {selectedConversation.lead_business_field && (
-                          <Badge variant="secondary" size="sm">
-                            {selectedConversation.lead_business_field}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {returnToKanban && selectedConversationId ? (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => navigate(`/cognilabsai/kanban?highlight=${selectedConversationId}`)}
-                      className="text-[12px]"
-                      title="Kanbanga qaytish"
-                      leftIcon={
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5" aria-hidden="true">
-                          <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      }
-                    >
-                      Kanban
-                    </Button>
-                  ) : null}
-                  {selectedConversation.crm_customer_id ? (
-                    <Button
-                      size="sm"
-                      variant="success"
-                      onClick={() => handleOpenCrm(selectedConversation.crm_customer_id!)}
-                      className="text-[12px]"
-                      title="CRM da ko'rish"
-                      leftIcon={
-                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                          <path d="M2.5 5.25A1.75 1.75 0 0 1 4.25 3.5h7.5A1.75 1.75 0 0 1 13.5 5.25v5.5a1.75 1.75 0 0 1-1.75 1.75h-7.5A1.75 1.75 0 0 1 2.5 10.75z" strokeLinecap="round" strokeLinejoin="round" />
-                          <path d="M5 6.25h6M5 8h3.25" strokeLinecap="round" />
-                        </svg>
-                      }
-                    >
-                      CRM
-                    </Button>
-                  ) : null}
-                  {supportsAi && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleToggleAi(aiPaused ? 'resume' : 'pause')}
-                      disabled={isTogglingAi}
-                      className={cn(
-                        'text-[12px]',
-                        aiPaused
-                          ? 'bg-[var(--success-dim)] text-[var(--success-text)] hover:bg-[var(--success-strong)] hover:text-[var(--success-text)]'
-                          : 'bg-[var(--warning-dim)] text-[var(--warning-text)] hover:bg-[var(--warning-soft)] hover:text-[var(--warning-text)]'
-                      )}
-                    >
-                      {isTogglingAi ? '...' : aiPaused ? 'AI yoqish' : "AI to'xtatish"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Follow-up */}
-              <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-[18px] py-[18px] sm:px-[22px]">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-[var(--accent-soft)] px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-[13px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">Follow-up</h4>
-                      <Badge variant="secondary" size="sm">
-                        {followUpStatusLabel}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5">
-                    <Switch
-                      checked={followUpDraft.enabled}
-                      onChange={(v) => setFollowUpDraft((prev) => ({ ...prev, enabled: v }))}
-                      label="Follow-up enabled"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => void handleSaveFollowUp()}
-                      disabled={isSavingFollowUp || !followUpDraft.enabled}
-                    >
-                      {isSavingFollowUp ? 'Saving...' : 'Save follow-up'}
-                    </Button>
-                  </div>
-                </div>
-
-                {followUpDraft.enabled ? (
-                  <div className="mt-[18px] grid gap-[18px] lg:grid-cols-[170px_1fr]">
-                    <div>
-                      <Label className="mb-1.5 block">Mode</Label>
-                      <SelectField
-                        value={followUpDraft.mode}
-                        onValueChange={(value) => setFollowUpDraft((prev) => ({ ...prev, mode: value as FollowUpMode }))}
-                        options={[
-                          { value: 'global', label: 'Global' },
-                          { value: 'custom', label: 'Custom' },
-                        ]}
-                      />
-                    </div>
-
-                    <div className="grid gap-[18px] sm:grid-cols-2">
-                      <div className={followUpDraft.mode === 'global' ? 'opacity-60' : ''}>
-                        <Label className="mb-1.5 block">Delay (minutes)</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          disabled={followUpDraft.mode !== 'custom'}
-                          value={followUpDraft.mode === 'custom' ? followUpDraft.delay_minutes : ''}
-                          onChange={(e) => setFollowUpDraft((prev) => ({ ...prev, delay_minutes: e.target.value }))}
-                          placeholder="60"
-                          className="tabular-nums"
-                        />
-                      </div>
-
-                      <div className={followUpDraft.mode === 'global' ? 'opacity-60 sm:col-span-2' : 'sm:col-span-2'}>
-                        <Label className="mb-1.5 block">Message</Label>
-                        <Textarea
-                          disabled={followUpDraft.mode !== 'custom'}
-                          value={followUpDraft.mode === 'custom' ? followUpDraft.message : ''}
-                          onChange={(e) => setFollowUpDraft((prev) => ({ ...prev, message: e.target.value }))}
-                          placeholder="Assalomu alaykum, yozishganingiz bo'yicha yana eslatib o'tmoqchi edik."
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Messages */}
-              <div
-                ref={messagesContainerRef}
-                className="custom-scrollbar-visible relative flex-1 overflow-y-auto bg-[var(--accent-soft)] px-[18px] py-[18px] sm:px-[22px]"
+            {!atBottom ? (
+              <button
+                type="button"
+                onClick={() => { const el = messagesContainerRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }) }}
+                aria-label={t('aichat.scroll_down', 'Scroll to the latest message')}
+                className="tg-send absolute right-5 bottom-[92px] z-10 grid h-[48px] w-[48px] place-items-center rounded-full text-[var(--tg-secondary)] transition-transform hover:scale-105"
               >
-                <div className="flex min-h-full flex-col">
-                  <div className="flex-1" />
-                  {messages.length === 0 && !isLoadingMessages ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
-                      <div className="rounded-full bg-[var(--surface)] px-4 py-2">
-                        <p className="text-[13px] font-medium text-[var(--muted)]">Xabarlar ko'rsatiladi</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      {messages.reduce((acc: React.ReactNode[], msg, idx) => {
-                        const prevMsg = messages[idx - 1]
-                        const nextMsg = messages[idx + 1]
-                        const msgDate = new Date(msg.created_at).toLocaleDateString([], { month: 'long', day: 'numeric' })
-                        const prevMsgDate = prevMsg ? new Date(prevMsg.created_at).toLocaleDateString([], { month: 'long', day: 'numeric' }) : null
+                <ArrowDown size={22} />
+              </button>
+            ) : null}
 
-                        if (msgDate !== prevMsgDate) {
-                          acc.push(<DateSeparator key={`date-${msg.created_at}`} date={msgDate} />)
-                        }
+            {/* composer */}
+            <div className="relative z-10 mx-auto w-full max-w-[760px] shrink-0 px-3 pt-1 pb-4 md:px-5">
+              <TgComposer value={messageText} onChange={setMessageText} onSend={() => void handleSend()} sending={isSending} />
+            </div>
+          </>
+        )}
+      </main>
 
-                        const isNextSameSender = Boolean(
-                          nextMsg &&
-                          nextMsg.sender_type === msg.sender_type &&
-                          new Date(nextMsg.created_at).toLocaleDateString([], { month: 'long', day: 'numeric' }) === msgDate
-                        )
-
-                        acc.push(<MessageBubble key={msg.id} msg={msg} isNextSameSender={isNextSameSender} />)
-                        return acc
-                      }, [])}
-                    </div>
-                  )}
-                  {isLoadingMessages ? (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--accent-soft)]/70">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--border-hover)] border-t-[var(--primary)]" />
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* AI Controls bar (Instagram only) */}
-              {supportsAi && (
-                <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--border)] bg-[var(--surface)] px-[18px] py-2.5 sm:px-[22px]">
-                  <span className="ui-eyebrow">AI:</span>
-
-                  <button
-                    type="button"
-                    onClick={() => handleToggleAi(aiPaused ? 'resume' : 'pause')}
-                    disabled={isTogglingAi}
-                    className={cn(
-                      'inline-flex h-[30px] items-center gap-1.5 rounded-[9px] px-2.5 text-[12px] font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40',
-                      aiPaused
-                        ? 'bg-[var(--success-dim)] text-[var(--success-text)] hover:bg-[var(--success-strong)]'
-                        : 'bg-[var(--warning-dim)] text-[var(--warning-text)] hover:bg-[var(--warning-soft)]'
-                    )}
-                  >
-                    {aiPaused ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                        <path d="M5 3l14 9-14 9V3z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                        <path d="M10 4H6v16h4V4zM18 4h-4v16h4V4z" strokeLinecap="round" />
-                      </svg>
-                    )}
-                    {aiPaused ? 'AI yoqish' : "AI to'xtatish"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleRetryAi()}
-                    disabled={isTogglingAi}
-                    className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--blue-dim)] px-2.5 text-[12px] font-semibold text-[var(--blue-text)] transition-colors hover:bg-[var(--blue-soft)] disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                      <path d="M1 4v6h6M23 20v-6h-6" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    Qayta urinish
-                  </button>
-
-                  {/* Pause until */}
-                  {showPauseUntil ? (
-                    <div className="flex items-center gap-1.5">
-                      <CalendarField mode="datetime" value={pauseUntilDate} onValueChange={setPauseUntilDate} className="h-[30px] min-h-[30px] w-auto rounded-[9px] px-2 py-0 text-[12px] tabular-nums" />
-                      <button
-                        type="button"
-                        onClick={() => void handlePauseUntil()}
-                        disabled={isTogglingAi || !pauseUntilDate}
-                        className="inline-flex h-[30px] items-center rounded-[9px] bg-[var(--warning-dim)] px-2.5 text-[12px] font-semibold text-[var(--warning-text)] transition-colors hover:bg-[var(--warning-soft)] disabled:pointer-events-none disabled:opacity-40"
-                      >
-                        Tasdiqlash
-                      </button>
-                      <IconButton
-                        size="sm"
-                        label="Bekor qilish"
-                        onClick={() => { setShowPauseUntil(false); setPauseUntilDate('') }}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-                        </svg>
-                      </IconButton>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowPauseUntil(true)}
-                      disabled={isTogglingAi}
-                      className="inline-flex h-[30px] items-center gap-1.5 rounded-[9px] bg-[var(--input-surface)] px-2.5 text-[12px] font-semibold text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface-hover)] disabled:pointer-events-none disabled:opacity-40"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      Muddat belgilash
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Composer */}
-              <div className="z-30 shrink-0 border-t border-[var(--border)] bg-[var(--surface)] px-[18px] py-[18px] sm:px-[22px]">
-                <div className="flex items-end gap-2.5 rounded-[18px] bg-[var(--input-surface)] px-3 py-2 transition-colors focus-within:bg-[var(--surface)] focus-within:ring-2 focus-within:ring-[var(--primary)]/20">
-                  <textarea
-                    ref={textareaRef}
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        void handleSend()
-                      }
-                    }}
-                    placeholder="Xabar yozing..."
-                    rows={1}
-                    className="custom-scrollbar-none max-h-[200px] flex-1 resize-none overflow-y-auto border-0 bg-transparent py-1.5 text-[13.5px] leading-relaxed text-[var(--foreground)] outline-none placeholder:text-[var(--muted)] focus:ring-0"
-                    style={{ fieldSizing: 'content' } as React.CSSProperties}
-                  />
-                  <button
-                    onClick={() => void handleSend()}
-                    disabled={isSending || !messageText.trim()}
-                    className={cn(
-                      "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] transition-colors duration-150",
-                      messageText.trim()
-                        ? "bg-[var(--primary)] text-white shadow-[var(--elev-primary)] hover:bg-[var(--primary-hover)]"
-                        : "cursor-not-allowed bg-[var(--surface)] text-[var(--caption)]"
-                    )}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cn("h-4 w-4", messageText.trim() && "ml-0.5")}>
-                      {messageText.trim() ? (
-                        <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
-                      ) : (
-                        <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-                      )}
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+      {selectedConversation && infoOpen ? (
+        <TgInfoPanel
+          className="absolute inset-y-0 right-0 z-20 w-full shadow-[-8px_0_24px_rgba(0,0,0,0.12)] sm:w-[360px] xl:static xl:z-auto xl:shrink-0 xl:border-l xl:border-[var(--tg-border)] xl:shadow-none"
+          conversation={selectedConversation}
+          presence={headerStatus}
+          online={headerOnline}
+          onClose={toggleInfo}
+          supportsAi={supportsAi}
+          aiPaused={aiPaused}
+          aiBusy={isTogglingAi}
+          onToggleAi={() => void handleToggleAi(aiPaused ? 'resume' : 'pause')}
+          onRetryAi={() => void handleRetryAi()}
+          pauseUntilOpen={showPauseUntil}
+          onPauseUntilOpen={setShowPauseUntil}
+          pauseUntil={pauseUntilDate}
+          onPauseUntilChange={setPauseUntilDate}
+          onPauseUntilConfirm={() => void handlePauseUntil()}
+          followUp={followUpDraft}
+          onFollowUpChange={setFollowUpDraft}
+          followUpSaving={isSavingFollowUp}
+          followUpStatus={followUpStatus}
+          onFollowUpSave={() => void handleSaveFollowUp()}
+          crmCustomerId={crmCustomerId}
+          onOpenCrm={() => crmCustomerId && handleOpenCrm(crmCustomerId)}
+          onDelete={() => void handleDeleteConversation(selectedConversation)}
+        />
+      ) : null}
 
       {showNewTelegramModal ? (
-        <TelegramSearchModal
+        <TelegramSearchDialog
           initialQuery={newTelegramInitialQuery}
-          onBackToCrm={
-            returnCustomerId
-              ? () => {
-                  setShowNewTelegramModal(false)
-                  setNewTelegramInitialQuery('')
-                  handleReturnToCrm()
-                }
-              : undefined
-          }
-          onClose={() => {
-            setShowNewTelegramModal(false)
-            setNewTelegramInitialQuery('')
-          }}
-          onStartChat={(id) => {
-            handleSelectConversation(id)
-            setShowNewTelegramModal(false)
-            setNewTelegramInitialQuery('')
-          }}
+          presenceText={presenceText}
+          onBackToCrm={returnCustomerId ? () => { setShowNewTelegramModal(false); setNewTelegramInitialQuery(''); handleReturnToCrm() } : undefined}
+          onClose={() => { setShowNewTelegramModal(false); setNewTelegramInitialQuery('') }}
+          onStartChat={(id) => { handleSelectConversation(id); setShowNewTelegramModal(false); setNewTelegramInitialQuery('') }}
           onNewChatStarted={() => void conversationsQuery.refetch()}
         />
       ) : null}
