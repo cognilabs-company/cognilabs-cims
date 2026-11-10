@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { translateCurrentLiteral } from '../i18n/translations'
 import { cn } from '../lib/cn'
 import { Button } from './button'
+import { BrandLoader } from './loader'
 
 type StateBlockProps = {
   eyebrow: string
@@ -9,23 +10,9 @@ type StateBlockProps = {
   description?: string
   actionLabel?: string
   onAction?: () => void
-  tone?: 'loading' | 'empty' | 'error'
+  tone?: 'empty' | 'error'
   className?: string
   children?: ReactNode
-}
-
-function LoadingDots() {
-  return (
-    <div className="flex items-center gap-1.5" aria-hidden="true">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--primary)]"
-          style={{ animationDelay: `${i * 120}ms`, animationDuration: '900ms' }}
-        />
-      ))}
-    </div>
-  )
 }
 
 function EmptyIllustration() {
@@ -76,7 +63,6 @@ export function StateBlock({
   className,
   children,
 }: StateBlockProps) {
-  const isLoading = tone === 'loading'
   const isError = tone === 'error'
 
   return (
@@ -88,13 +74,7 @@ export function StateBlock({
       )}
     >
       <div className="mb-1">
-        {isLoading ? (
-          <LoadingDots />
-        ) : isError ? (
-          <ErrorIllustration />
-        ) : (
-          <EmptyIllustration />
-        )}
+        {isError ? <ErrorIllustration /> : <EmptyIllustration />}
       </div>
 
       <div>
@@ -125,8 +105,17 @@ export function StateBlock({
   )
 }
 
-export function LoadingStateBlock(props: Omit<StateBlockProps, 'tone'>) {
-  return <StateBlock {...props} tone="loading" />
+/** Section loading: the CIMS loader with a short title — no box, it sits where the content will appear. */
+export function LoadingStateBlock({ title, description, className }: Omit<StateBlockProps, 'tone'>) {
+  return (
+    <div role="status" aria-live="polite" className={cn('flex flex-col items-center justify-center gap-4 px-6 py-14 text-center', className)}>
+      <BrandLoader size={40} />
+      <div>
+        <p className="loading-text text-[14px] font-semibold text-[var(--foreground)]">{translateCurrentLiteral(title)}</p>
+        {description ? <p className="mt-1 max-w-sm text-[12.5px] text-[var(--muted)]">{translateCurrentLiteral(description)}</p> : null}
+      </div>
+    </div>
+  )
 }
 
 export function EmptyStateBlock(props: Omit<StateBlockProps, 'tone'>) {

@@ -347,7 +347,7 @@ export function AppSidebar() {
           {isProjectsExpanded && (
             <div className="my-1 ml-[22px] flex flex-col gap-0.5 border-l border-[var(--sb-line)] pl-2.5">
               {projectsQuery.isLoading ? (
-                Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 animate-pulse rounded-[10px] bg-[var(--sb-hover)]" />)
+                Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-8 rounded-[10px]" />)
               ) : projectsQuery.isError ? (
                 <button type="button" onClick={() => void projectsQuery.refetch()} className={cn(sidebarSubItem, 'text-[var(--danger-text)] hover:bg-[var(--danger-dim)]')}>
                   <span className="truncate">{t('shell.failed_load_projects')} — {t('shell.retry')}</span>

@@ -5,6 +5,7 @@ import { Label } from '../../../shared/ui/label'
 import { Modal } from '../../../shared/ui/modal'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useTranslation } from 'react-i18next'
+import { TimeField } from '../../../shared/ui/time-field'
 
 export type CompanyPaymentFormValues = {
   title: string
@@ -89,10 +90,10 @@ export function CompanyPaymentFormModal({
 
           <Label className="grid gap-2">
             <span className="ui-input-label">{t('ceo.recurring.form.payment_time')}</span>
-            <Input
-              type="time"
+            <TimeField
               value={values.paymentTime}
-              onChange={(event) => onChange('paymentTime', event.target.value)}
+              onValueChange={(value) => onChange('paymentTime', value)}
+              aria-label={t('ceo.recurring.form.payment_time')}
             />
           </Label>
         </div>

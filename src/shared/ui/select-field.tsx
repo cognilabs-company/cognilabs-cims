@@ -1,10 +1,17 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { Check, ChevronDown, Search, type LucideIcon } from 'lucide-react'
+import { translateCurrent } from '../i18n/translations'
 import { cn } from '../lib/cn'
 
 export type SelectFieldOption = {
   value: string
   label: string
+  /** Optional leading icon or colour dot. */
+  icon?: LucideIcon
+  color?: string
+  /** Small grey text under / beside the label. */
+  hint?: string
 }
 
 type SelectFieldProps = {
@@ -20,14 +27,17 @@ type SelectFieldProps = {
   emptyMessage?: string
   className?: string
   disabled?: boolean
+  size?: 'sm' | 'md'
+  /** Icon shown inside the trigger, before the value. */
+  leadingIcon?: ReactNode
+  id?: string
+  'aria-label'?: string
   children?: ReactNode
 }
 
-type MenuPosition = {
-  top: number
-  left: number
-  width: number
-}
+type MenuPosition = CSSProperties & { '--popover-origin'?: string }
+
+const OPTION_HEIGHT = 36
 
 function normalizeOptionValue(value?: string | null) {
   return String(value ?? '')
@@ -36,19 +46,26 @@ function normalizeOptionValue(value?: string | null) {
     .replace(/[^a-z0-9]+/g, '')
 }
 
-function getMenuPosition(trigger: HTMLButtonElement, optionCount: number, extraHeight = 0): MenuPosition {
+/** Opens below the trigger, or above it when there isn't room. Anchors by bottom when above, so the real height never matters. */
+function menuPosition(trigger: HTMLElement, optionCount: number, extra: number): MenuPosition {
   const rect = trigger.getBoundingClientRect()
-  const menuHeight = Math.min(optionCount, 6) * 40 + 12 + extraHeight
-  const openAbove = rect.bottom + menuHeight + 8 > window.innerHeight && rect.top - menuHeight - 8 >= 8
-  const top = openAbove
-    ? Math.max(8, rect.top - menuHeight - 8)
-    : Math.min(rect.bottom + 8, window.innerHeight - menuHeight - 8)
+  const estimate = Math.min(optionCount, 7) * OPTION_HEIGHT + 12 + extra
+  const spaceBelow = window.innerHeight - rect.bottom
+  const above = spaceBelow < estimate + 12 && rect.top > spaceBelow
+  const width = Math.max(rect.width, 200)
+  const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8)
+  return above
+    ? { left, width, bottom: window.innerHeight - rect.top + 6, maxHeight: Math.min(320, rect.top - 16), '--popover-origin': 'bottom center' }
+    : { left, width, top: rect.bottom + 6, maxHeight: Math.min(320, spaceBelow - 16), '--popover-origin': 'top center' }
+}
 
-  return {
-    top,
-    left: Math.max(8, rect.left),
-    width: rect.width,
+function OptionMark({ option }: { option: SelectFieldOption }) {
+  if (option.icon) {
+    const Icon = option.icon
+    return <Icon size={15} className="shrink-0" style={option.color ? { color: option.color } : undefined} />
   }
+  if (option.color) return <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: option.color }} />
+  return null
 }
 
 export function SelectField({
@@ -64,236 +81,203 @@ export function SelectField({
   emptyMessage = 'No options found',
   className,
   disabled = false,
+  size = 'md',
+  leadingIcon,
+  id,
+  'aria-label': ariaLabel,
 }: SelectFieldProps) {
   const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const [isOpen, setIsOpen] = useState(false)
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const searchRef = useRef<HTMLInputElement | null>(null)
+  const [position, setPosition] = useState<MenuPosition | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [position, setPosition] = useState<MenuPosition>({ top: 0, left: 0, width: 0 })
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const isOpen = position !== null
   const isMultiple = multiple && Array.isArray(values)
   const selectedValues = isMultiple ? values : []
 
   const normalizedValue = normalizeOptionValue(value)
   const normalizedSelectedValues = new Set(selectedValues.map((item) => normalizeOptionValue(item)))
-  const selectedOption =
-    options.find((option) => option.value === value) ??
-    options.find((option) =>
-      normalizeOptionValue(option.value) === normalizedValue ||
-      normalizeOptionValue(option.label) === normalizedValue,
-    )
-  const selectedOptions = isMultiple
-    ? options.filter((option) => {
-        const normalizedOptionValue = normalizeOptionValue(option.value)
-        const normalizedOptionLabel = normalizeOptionValue(option.label)
-        return normalizedSelectedValues.has(normalizedOptionValue) || normalizedSelectedValues.has(normalizedOptionLabel)
-      })
-    : []
+  const isOptionSelected = (option: SelectFieldOption) => isMultiple
+    ? normalizedSelectedValues.has(normalizeOptionValue(option.value)) || normalizedSelectedValues.has(normalizeOptionValue(option.label))
+    : option.value === value || normalizeOptionValue(option.value) === normalizedValue || (normalizedValue !== '' && normalizeOptionValue(option.label) === normalizedValue)
 
-  const normalizedSearchQuery = normalizeOptionValue(searchQuery)
-  const visibleOptions = searchable && normalizedSearchQuery
-    ? options.filter((option) => {
-        const normalizedOptionLabel = normalizeOptionValue(option.label)
-        const normalizedOptionValue = normalizeOptionValue(option.value)
+  const selectedOption = isMultiple ? undefined : options.find((option) => option.value === value) ?? options.find(isOptionSelected)
+  const selectedOptions = isMultiple ? options.filter(isOptionSelected) : []
 
-        return normalizedOptionLabel.includes(normalizedSearchQuery) || normalizedOptionValue.includes(normalizedSearchQuery)
-      })
+  const query = normalizeOptionValue(searchQuery)
+  const visibleOptions = searchable && query
+    ? options.filter((option) => normalizeOptionValue(option.label).includes(query) || normalizeOptionValue(option.value).includes(query))
     : options
 
-  useEffect(() => {
-    if (!isOpen || !triggerRef.current) {
+  const extraHeight = (searchable ? 48 : 0) + (isMultiple ? 48 : 0)
+
+  function open() {
+    if (disabled || !triggerRef.current) return
+    setSearchQuery('')
+    setActiveIndex(Math.max(0, options.findIndex(isOptionSelected)))
+    setPosition(menuPosition(triggerRef.current, options.length, extraHeight))
+  }
+
+  function close(focusTrigger = false) {
+    setPosition(null)
+    setSearchQuery('')
+    if (focusTrigger) triggerRef.current?.focus()
+  }
+
+  function choose(option: SelectFieldOption) {
+    if (isMultiple) {
+      if (!onValuesChange) return
+      const normalized = normalizeOptionValue(option.value)
+      onValuesChange(normalizedSelectedValues.has(normalized)
+        ? selectedValues.filter((item) => normalizeOptionValue(item) !== normalized)
+        : [...selectedValues, option.value])
       return
     }
+    close(true)
+    onValueChange?.(option.value)
+  }
 
-    const updatePosition = () => {
-      if (!triggerRef.current) {
-        return
-      }
-
-      setPosition(getMenuPosition(triggerRef.current, visibleOptions.length, isMultiple ? 48 : 0))
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false)
-      }
-    }
-
-    updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isMultiple, isOpen, visibleOptions.length])
-
+  // Follow the trigger while the page scrolls / resizes; close on Escape
   useEffect(() => {
-    if (!isOpen) {
-      setSearchQuery('')
+    if (!isOpen) return
+    const update = () => { if (triggerRef.current) setPosition(menuPosition(triggerRef.current, options.length, extraHeight)) }
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    if (searchable) searchRef.current?.focus()
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
     }
-  }, [isOpen])
+  }, [extraHeight, isOpen, options.length, searchable])
+
+  // Keep the highlighted option in view
+  useEffect(() => {
+    if (!isOpen || activeIndex < 0) return
+    listRef.current?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [activeIndex, isOpen])
+
+  function onKeyDown(event: ReactKeyboardEvent) {
+    if (!isOpen) {
+      if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) { event.preventDefault(); open() }
+      return
+    }
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); return }
+    if (event.key === 'Tab') { close(); return }
+    if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((index) => Math.min(visibleOptions.length - 1, index + 1)); return }
+    if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex((index) => Math.max(0, index - 1)); return }
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      const option = visibleOptions[activeIndex]
+      if (option) choose(option)
+    }
+  }
+
+  const triggerText = isMultiple
+    ? (selectedOptions.length === 0 ? placeholder : selectedOptions.length === 1 ? selectedOptions[0]?.label : translateCurrent('picker.selected_count', '{{count}} selected', { count: selectedOptions.length }))
+    : (selectedOption?.label ?? placeholder)
+  const hasValue = isMultiple ? selectedOptions.length > 0 : Boolean(selectedOption && selectedOption.value !== '')
 
   return (
     <>
       <button
         ref={triggerRef}
+        id={id}
         data-ui-control="true"
         type="button"
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        onClick={() => {
-          if (!disabled) {
-            setIsOpen((current) => !current)
-          }
-        }}
+        aria-label={ariaLabel}
+        onClick={() => (isOpen ? close() : open())}
+        onKeyDown={onKeyDown}
         className={cn(
-          'flex min-h-11 w-full items-center justify-between gap-3 rounded-[14px] border border-transparent bg-[var(--input-surface)] px-3.5 py-2 text-sm text-[var(--foreground)]',
-          'outline-none',
-          'transition-[border-color,box-shadow,background-color,transform] duration-150',
-          'hover:bg-[var(--input-surface-hover)]',
-          'focus-visible:border-[var(--primary)] focus-visible:bg-[var(--surface)]',
-          'focus-visible:ring-0 focus-visible:shadow-[0_0_0_3px_rgba(43,89,255,0.12)]',
+          'control-field flex w-full min-w-0 items-center gap-2 text-left',
+          size === 'sm' ? 'h-8 rounded-[8px] px-2.5 text-[12.5px]' : 'min-h-10 rounded-[10px] px-3 text-[13.5px]',
           'disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}
       >
-        <span className={cn('truncate text-left', (isMultiple ? selectedOptions.length > 0 : Boolean(selectedOption)) ? 'text-[var(--foreground)]' : 'text-[var(--muted)]')}>
-          {isMultiple
-            ? (selectedOptions.length > 0
-                ? (selectedOptions.length === 1
-                    ? selectedOptions[0]?.label
-                    : `${selectedOptions.length} selected`)
-                : placeholder)
-            : (selectedOption?.label ?? placeholder)}
-        </span>
-        <svg
-          viewBox="0 0 16 16"
-          className={cn(
-            'h-4 w-4 shrink-0 fill-current text-[var(--muted)] transition-transform duration-200',
-            isOpen && 'rotate-180 text-[var(--foreground)]',
-          )}
-          aria-hidden="true"
-        >
-          <path d="M4.22 5.97a.75.75 0 0 1 1.06 0L8 8.69l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.03a.75.75 0 0 1 0-1.06Z" />
-        </svg>
+        {leadingIcon ? <span className="shrink-0 text-[var(--muted)]">{leadingIcon}</span> : null}
+        {!isMultiple && selectedOption && (selectedOption.icon || selectedOption.color) ? <OptionMark option={selectedOption} /> : null}
+        <span className={cn('min-w-0 flex-1 truncate', hasValue ? 'text-[var(--foreground)]' : 'text-[var(--caption)]')}>{triggerText}</span>
+        <ChevronDown size={size === 'sm' ? 14 : 16} className={cn('shrink-0 text-[var(--muted)] transition-transform duration-200', isOpen && 'rotate-180 text-[var(--primary)]')} />
       </button>
 
       {isOpen && typeof document !== 'undefined'
         ? createPortal(
-            <>
-              <div className="fixed inset-0 z-[119]" onClick={() => setIsOpen(false)} aria-hidden="true" />
+            <div data-floating-layer="true">
+              <div className="fixed inset-0 z-[119]" onPointerDown={() => close()} aria-hidden="true" />
               <div
                 data-ui-surface="true"
-                className="fixed z-[120] max-h-72 overflow-y-auto rounded-[14px] bg-[var(--surface)] p-1.5 text-[var(--foreground)] shadow-[var(--elev-lg)] ring-1 ring-[var(--border)]"
-                style={position}
-                role="listbox"
-                aria-multiselectable={isMultiple || undefined}
+                className="popover-panel fixed z-[120] flex flex-col overflow-hidden"
+                style={position ?? undefined}
+                onKeyDown={onKeyDown}
               >
                 {searchable ? (
-                  <div className="sticky top-0 z-10 bg-[var(--surface)] p-1 pb-2">
+                  <label className="relative flex shrink-0 items-center border-b border-[var(--border)]">
+                    <Search size={14} className="pointer-events-none absolute left-3 text-[var(--muted)]" />
                     <input
+                      ref={searchRef}
                       type="text"
                       value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
+                      onChange={(event) => { setSearchQuery(event.target.value); setActiveIndex(0) }}
                       placeholder={searchPlaceholder}
-                      className="w-full rounded-[11px] border border-transparent bg-[var(--input-surface)] px-3 py-2 text-sm text-[var(--foreground)] outline-none transition-[border-color,box-shadow] focus-visible:border-[var(--primary)] focus-visible:shadow-[0_0_0_3px_rgba(43,89,255,0.12)]"
+                      aria-label={searchPlaceholder}
+                      className="h-10 w-full bg-transparent pr-3 pl-8 text-[13px] text-[var(--foreground)] outline-none placeholder:text-[var(--caption)]"
                     />
-                  </div>
+                  </label>
                 ) : null}
 
-                {visibleOptions.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-[var(--muted)]">{emptyMessage}</div>
-                ) : null}
-
-                {visibleOptions.map((option) => {
-                  const isSelected =
-                    isMultiple
-                      ? normalizedSelectedValues.has(normalizeOptionValue(option.value)) ||
-                        normalizedSelectedValues.has(normalizeOptionValue(option.label))
-                      : option.value === value ||
-                        normalizeOptionValue(option.value) === normalizedValue ||
-                        normalizeOptionValue(option.label) === normalizedValue
-
-                  return (
-                    <button
-                      key={`${option.value}-${option.label}`}
-                      data-ui-control="true"
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      onClick={() => {
-                        if (isMultiple) {
-                          if (!onValuesChange) {
-                            return
-                          }
-
-                          const normalized = normalizeOptionValue(option.value)
-                          const nextValues = normalizedSelectedValues.has(normalized)
-                            ? selectedValues.filter((item) => normalizeOptionValue(item) !== normalized)
-                            : [...selectedValues, option.value]
-
-                          onValuesChange(nextValues)
-                          return
-                        }
-
-                        setIsOpen(false)
-                        onValueChange?.(option.value)
-                      }}
-                      className={cn(
-                        'flex w-full items-center justify-between gap-3 rounded-[11px] px-3 py-2.5 text-sm font-medium transition-colors',
-                        isSelected
-                          ? 'border border-transparent bg-[var(--blue-dim)] text-[var(--blue-text)]'
-                          : 'border border-transparent text-[var(--foreground)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]',
-                      )}
-                    >
-                      <span className="flex items-center gap-2 truncate">
-                        <span
-                          className={cn(
-                            'inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--muted)]/40',
-                            isSelected && 'bg-[var(--blue-text)]',
-                          )}
-                        />
-                        <span className="truncate">{option.label}</span>
-                      </span>
-                      {isSelected ? (
-                        <svg
-                          viewBox="0 0 16 16"
-                          className="h-4 w-4 shrink-0 fill-current text-[var(--blue-text)]"
-                          aria-hidden="true"
-                        >
-                          <path d="M6.6 11.2 3.4 8a.75.75 0 1 0-1.06 1.06l3.73 3.73a.75.75 0 0 0 1.06 0l6.53-6.53A.75.75 0 1 0 12.64 5.2L6.6 11.2Z" />
-                        </svg>
-                      ) : null}
-                    </button>
-                  )
-                })}
+                <div ref={listRef} role="listbox" aria-multiselectable={isMultiple || undefined} className="min-h-0 flex-1 overflow-y-auto p-1">
+                  {visibleOptions.length === 0 ? (
+                    <p className="px-3 py-3 text-center text-[12.5px] text-[var(--muted)]">{emptyMessage}</p>
+                  ) : visibleOptions.map((option, index) => {
+                    const selected = isOptionSelected(option)
+                    const active = index === activeIndex
+                    return (
+                      <button
+                        key={`${option.value}-${option.label}`}
+                        data-index={index}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        onClick={() => choose(option)}
+                        className={cn(
+                          'flex min-h-9 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-left text-[13px] transition-colors',
+                          active ? 'bg-[var(--input-surface)]' : 'bg-transparent',
+                          selected ? 'font-semibold text-[var(--foreground)]' : 'font-medium text-[var(--muted-strong)]',
+                        )}
+                      >
+                        {isMultiple ? (
+                          <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded-[4px] border transition-colors', selected ? 'border-[var(--primary)] bg-[var(--primary)] text-white' : 'border-[var(--control-border)]')}>
+                            {selected ? <Check size={11} strokeWidth={3} /> : null}
+                          </span>
+                        ) : null}
+                        <OptionMark option={option} />
+                        <span className="min-w-0 flex-1 truncate">
+                          {option.label}
+                          {option.hint ? <span className="ml-1.5 text-[11.5px] font-normal text-[var(--muted)]">{option.hint}</span> : null}
+                        </span>
+                        {!isMultiple && selected ? <Check size={15} className="shrink-0 text-[var(--primary)]" strokeWidth={2.4} /> : null}
+                      </button>
+                    )
+                  })}
+                </div>
 
                 {isMultiple ? (
-                  <div className="sticky bottom-0 mt-1 flex items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--surface)] p-2">
-                    <button
-                      type="button"
-                      className="rounded-full bg-[var(--input-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--muted-strong)] transition hover:text-[var(--foreground)]"
-                      onClick={() => {
-                        onValuesChange?.([])
-                        setIsOpen(false)
-                      }}
-                    >
-                      Clear
+                  <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--border)] px-2 py-1.5">
+                    <button type="button" onClick={() => onValuesChange?.([])} className="rounded-[7px] px-2 py-1 text-[12px] font-semibold text-[var(--muted-strong)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]">
+                      {translateCurrent('common.clear', 'Clear')}
                     </button>
-                    <button
-                      type="button"
-                      className="rounded-full bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-semibold text-[var(--blue-text)] transition hover:bg-[var(--blue-soft)]"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Done
+                    <button type="button" onClick={() => close(true)} className="rounded-[7px] bg-[var(--primary)] px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-[var(--primary-hover)]">
+                      {translateCurrent('common.done', 'Done')}
                     </button>
                   </div>
                 ) : null}
               </div>
-            </>,
+            </div>,
             document.body,
           )
         : null}

@@ -44,9 +44,9 @@ const variants = {
 }
 
 const sizes = {
-  sm: 'min-h-9 gap-2 rounded-[11px] px-3.5 text-[13px]',
-  md: 'min-h-11 gap-2 rounded-[14px] px-4 text-sm',
-  lg: 'min-h-12 gap-2.5 rounded-[14px] px-5 text-[15px]',
+  sm: 'min-h-8 gap-1.5 rounded-[9px] px-3 text-[12.5px]',
+  md: 'min-h-10 gap-2 rounded-[10px] px-4 text-[13.5px]',
+  lg: 'min-h-11 gap-2 rounded-[12px] px-5 text-[14.5px]',
 }
 
 const baseClassName =

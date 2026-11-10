@@ -34,7 +34,7 @@ export function AudioPlayerModal({ src, name, onClose }: AudioPlayerModalProps) 
           </IconButton>
         </div>
 
-        <div className="rounded-[24px] bg-[var(--card)] p-[18px] shadow-[var(--elev-xl)]">
+        <div className="modal-pop rounded-[20px] bg-[var(--card)] p-4 shadow-[var(--elev-xl)] ring-1 ring-[var(--border)]">
           <AudioPlayerCard src={src} name={name} />
         </div>
       </div>

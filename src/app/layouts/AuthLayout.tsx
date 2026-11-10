@@ -1,156 +1,123 @@
+import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Bot, KanbanSquare, PhoneCall, ShieldCheck, UsersRound, type LucideIcon } from 'lucide-react'
 import { useLocale } from '../hooks/useLocale'
-import { translateCurrentLiteral } from '../../shared/i18n/translations'
-import { Badge } from '../../shared/ui/badge'
-import { Button } from '../../shared/ui/button'
+import { type AppLocale, localeLabels } from '../../shared/i18n/translations'
+import { cn } from '../../shared/lib/cn'
+import { ThemeMenu } from '../../widgets/navigation/ThemeMenu'
 
-const routeCopy = {
-  '/auth/login': {
-    eyebrow: 'Cognilabs CIMS',
-    title: 'Secure access for your operations team.',
-    description:
-      'A focused login surface with animated depth, session-safe entry, and no extra register clutter in the header.',
-    badge: 'Live access portal',
-  },
-  '/auth/forgot-password': {
-    eyebrow: 'Recovery Flow',
-    title: 'Recover credentials without leaving the secure zone.',
-    description:
-      'Password recovery stays inside the same protected auth surface so users can reset access without distraction.',
-    badge: 'Reset support',
-  },
-  '/auth/reset-password': {
-    eyebrow: 'Recovery Flow',
-    title: 'Set a new password and get back into the workspace.',
-    description:
-      'Verification and password update are kept in one controlled flow with the same visual shell and security hints.',
-    badge: 'Password reset',
-  },
-  '/auth/verify-email': {
-    eyebrow: 'Verification Flow',
-    title: 'Activate the account and move straight into the app.',
-    description:
-      'Email verification is presented in the same immersive auth environment, without tabs competing for attention.',
-    badge: 'Email check',
-  },
-} as const
+const pill = 'inline-flex h-10 shrink-0 items-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] backdrop-blur-md'
 
-const previewStats = [
-  { label: 'Session control', value: 'Realtime token guard' },
-  { label: 'Permission model', value: 'Role-based access' },
-  { label: 'Recovery', value: 'Verify and reset ready' },
-  { label: 'Environment', value: 'Single workspace entry' },
-]
+/** The rotating word in the headline ("one workspace for … customers / calls / projects …"). */
+function RotatingWord({ words }: { words: string[] }) {
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = window.setInterval(() => setIndex((value) => (value + 1) % words.length), 2400)
+    return () => window.clearInterval(timer)
+  }, [words.length])
+  return (
+    <span className="relative inline-block">
+      <span key={index} className="login-word login-gradient-text">{words[index % words.length]}</span>
+    </span>
+  )
+}
 
 export function AuthLayout() {
-  const { locale } = useLocale()
+  const { t, locale, setLocale } = useLocale()
   const location = useLocation()
-  const copy = routeCopy[location.pathname as keyof typeof routeCopy] ?? routeCopy['/auth/login']
-  const isLoginRoute = location.pathname === '/auth/login'
-  const routeAnimationKey = `${location.pathname}${location.search}`
-  const tr = (en: string, uz: string, ru: string) => {
-    if (locale === 'ru') return ru
-    if (locale === 'uz') return uz
-    return en
-  }
-  const tl = (value: string) => translateCurrentLiteral(value)
-  const badgeText = (() => {
-    switch (copy.badge) {
-      case 'Live access portal':
-        return tr('Live access portal', 'Jonli kirish portali', 'Портал прямого доступа')
-      case 'Reset support':
-        return tr('Reset support', 'Tiklash yordami', 'Поддержка восстановления')
-      case 'Password reset':
-        return tr('Password reset', 'Parolni tiklash', 'Сброс пароля')
-      default:
-        return tl(copy.badge)
-    }
-  })()
-  const panelEyebrow = isLoginRoute
-    ? tl('Direct access')
-    : tr('Support flow', 'Yordam oqimi', 'Сценарий поддержки')
-  const panelDescription = isLoginRoute
-    ? tr(
-        'Use your work credentials to continue into the platform.',
-        'Platformaga davom etish uchun ish akkauntingiz maʼlumotlaridan foydalaning.',
-        'Используйте рабочие учётные данные, чтобы продолжить вход в платформу.',
-      )
-    : tr(
-        'The extra header buttons are removed, but recovery and verification remain available here.',
-        'Headerdagi qo‘shimcha tugmalar olib tashlangan, lekin tiklash va tasdiqlash shu yerda mavjud.',
-        'Дополнительные кнопки в шапке убраны, но восстановление и подтверждение по-прежнему доступны здесь.',
-      )
 
-  void panelDescription
+  const words = [
+    t('auth.hero.word_customers', 'customers'),
+    t('auth.hero.word_calls', 'calls'),
+    t('auth.hero.word_projects', 'projects'),
+    t('auth.hero.word_team', 'your team'),
+    t('auth.hero.word_ai', 'AI assistants'),
+  ]
+  const modules: Array<[LucideIcon, string, string, string]> = [
+    [UsersRound, t('auth.hero.module_crm', 'CRM'), t('auth.hero.module_crm_hint', 'Leads & customers'), '#2B59FF'],
+    [PhoneCall, t('auth.hero.module_calls', 'Calls'), t('auth.hero.module_calls_hint', 'Browser telephony'), '#16A34A'],
+    [KanbanSquare, t('auth.hero.module_projects', 'Projects'), t('auth.hero.module_projects_hint', 'Boards & tasks'), '#F59E0B'],
+    [Bot, t('auth.hero.module_ai', 'Cognilabs AI'), t('auth.hero.module_ai_hint', 'Chats & automation'), '#8B5CF6'],
+  ]
 
   return (
-    <div className="auth-portal">
-      <div className="auth-portal__glow auth-portal__glow--primary" />
-      <div className="auth-portal__glow auth-portal__glow--secondary" />
+    <div className="login-page">
+      <div className="login-aurora" aria-hidden="true"><span /><span /><span /></div>
+      <div className="login-dots" aria-hidden="true" />
 
-      <div className="auth-stage">
-        <section className="auth-visual-panel order-2 lg:order-1">
-          <div key={`visual-${routeAnimationKey}`} className="auth-route-pane auth-route-pane--visual">
-            <div className="relative z-10 max-w-xl">
-              <p className="ui-eyebrow text-[var(--lime)]">{tl(copy.eyebrow)}</p>
-              <h1 className="ui-page-title mt-[18px] max-w-xl text-white">{tl(copy.title)}</h1>
-            </div>
+      {/* top bar */}
+      <header className="relative z-20 flex items-center justify-between gap-3 px-5 pt-5 sm:px-8 sm:pt-6">
+        <Link to="/auth/login" className="flex items-center gap-2.5" aria-label="Cognilabs CIMS">
+          <span className="grid h-10 w-10 place-items-center rounded-[12px] text-[18px] font-bold text-white shadow-[0_10px_24px_-12px_var(--blue-glow)]" style={{ background: 'var(--primary-gradient)' }}>C</span>
+          <span className="leading-tight">
+            <span className="block text-[15px] font-bold tracking-[-0.02em] text-[var(--foreground)]">Cognilabs CIMS</span>
+            <span className="block text-[11.5px] text-[var(--muted)]">{t('auth.hero.tagline', 'Company workspace')}</span>
+          </span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeMenu pillClassName={pill} />
+          <div className={cn(pill, 'gap-0.5 p-1')} role="group" aria-label={t('shell.language')}>
+            {(Object.keys(localeLabels) as AppLocale[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setLocale(value)}
+                aria-pressed={locale === value}
+                className={cn(
+                  'inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[12px] transition-colors',
+                  locale === value ? 'bg-[var(--surface-inverse)] font-semibold text-white' : 'font-medium text-[var(--muted)] hover:text-[var(--foreground)]',
+                )}
+              >
+                {localeLabels[value]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
 
-            <div className="auth-preview-card">
-              <div className="auth-preview-card__grid" />
-
-              <div className="relative z-10 space-y-[18px]">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="ui-eyebrow text-[var(--lime)]">{badgeText}</p>
-                    <h2 className="ui-section-title mt-3 max-w-sm text-white">
-                      {tl('Permissions, sessions, and recovery stay inside one motion-driven surface.')}
-                    </h2>
-                  </div>
-                  <Badge variant="lime" dot>
-                    {tl('Online')}
-                  </Badge>
-                </div>
-
-                <div className="grid gap-[18px] sm:grid-cols-2">
-                  {previewStats.map((item) => (
-                    <div key={item.label} className="rounded-[18px] bg-[var(--card)] p-4">
-                      <p className="ui-card-label text-[var(--muted)]">{tl(item.label)}</p>
-                      <p className="ui-body mt-2 font-semibold text-[var(--foreground)]">
-                        {item.value === 'Realtime token guard'
-                          ? tr('Realtime token guard', 'Realtime token himoyasi', 'Защита токена в реальном времени')
-                          : item.value === 'Role-based access'
-                            ? tr('Role-based access', 'Rolga asoslangan kirish', 'Доступ по ролям')
-                            : item.value === 'Verify and reset ready'
-                              ? tr('Verify and reset ready', 'Tasdiqlash va tiklash tayyor', 'Подтверждение и сброс готовы')
-                              : tr('Single workspace entry', 'Yagona workspace kirishi', 'Единая точка входа в рабочее пространство')}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+      <main className="relative z-10 mx-auto grid w-full max-w-[1180px] flex-1 items-center gap-14 px-5 py-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_440px]">
+        {/* hero */}
+        <section className="login-hero hidden lg:block">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--muted-strong)] backdrop-blur-md">
+            <span className="status-live h-2 w-2 rounded-full bg-[var(--success)] text-[var(--success)]" />
+            {t('auth.hero.badge', 'One workspace for the whole company')}
+          </span>
+          <h1 data-i18n-skip="true" className="mt-6 max-w-[560px] text-[52px] leading-[1.05] font-bold tracking-[-0.045em] text-[var(--foreground)]">
+            {t('auth.hero.title', 'All in one place:')}
+            <br />
+            <RotatingWord words={words} />
+          </h1>
+          <p className="mt-5 max-w-[480px] text-[15.5px] leading-relaxed text-[var(--muted-strong)]">
+            {t('auth.hero.subtitle', 'CRM, calls, projects, attendance and AI assistants — sign in and pick up where you left off.')}
+          </p>
+          <div className="mt-9 grid max-w-[560px] grid-cols-2 gap-3">
+            {modules.map(([Icon, title, hint, color]) => (
+              <div key={title} className="login-module flex items-center gap-3 rounded-[16px] border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_72%,transparent)] p-3 backdrop-blur-md">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px]" style={{ color, background: `color-mix(in srgb, ${color} 14%, transparent)` }}>
+                  <Icon size={19} strokeWidth={2.1} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[13.5px] font-semibold text-[var(--foreground)]">{title}</span>
+                  <span className="block truncate text-[12px] text-[var(--muted)]">{hint}</span>
+                </span>
               </div>
-            </div>
+            ))}
           </div>
         </section>
 
-        <section className="auth-form-panel order-1 lg:order-2">
-          <div className="auth-form-wrap">
-            <div key={`form-${routeAnimationKey}`} className="auth-route-pane auth-route-pane--form">
-              <div className="mb-[18px] flex items-center justify-between gap-4">
-                <Badge variant="secondary">{panelEyebrow}</Badge>
-
-                {!isLoginRoute ? (
-                  <Button asChild variant="secondary" size="sm">
-                    <Link to="/auth/login">{tl('Back to login')}</Link>
-                  </Button>
-                ) : null}
-              </div>
-
-              <Outlet />
-            </div>
+        {/* form card */}
+        <section className="mx-auto w-full max-w-[440px]">
+          <div key={location.pathname} className="login-card p-6 sm:p-8">
+            <Outlet />
           </div>
         </section>
-      </div>
+      </main>
+
+      <footer className="relative z-10 flex flex-wrap items-center justify-between gap-2 px-5 pb-5 text-[12px] text-[var(--muted)] sm:px-8 sm:pb-6">
+        <span>© {new Date().getFullYear()} Cognilabs</span>
+        <span className="inline-flex items-center gap-1.5"><ShieldCheck size={14} className="text-[var(--success)]" />{t('auth.footer.secure', 'Encrypted connection')}</span>
+      </footer>
     </div>
   )
 }

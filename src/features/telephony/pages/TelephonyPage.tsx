@@ -15,6 +15,7 @@ import { useDismiss } from '../components/useDismiss'
 import { connectionLabel, formatPhone, formatRecentTime, groupRecents, sourceLabel, statusLabel, type RecentGroup } from '../components/telephonyFormat'
 import { CeoTelephonyPanel } from '../components/CeoTelephonyPanel'
 import { setThemePreference, useThemePreference, type ThemePreference } from '../../../shared/theme/theme'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 
 const statuses = ['ringing', 'answered', 'completed', 'missed', 'rejected', 'busy', 'failed']
 
@@ -104,12 +105,12 @@ function RecentRow({ group, selected, showSeller, canCall, onSelect, onCall }: {
 function RowSkeleton() {
   return (
     <li className="flex items-center gap-3 px-2.5 py-[9px]" aria-hidden="true">
-      <span className="h-9 w-9 animate-pulse rounded-full bg-[var(--mp-control)]" />
+      <span className="skeleton h-9 w-9 rounded-full" />
       <span className="flex-1 space-y-1.5">
-        <span className="block h-3 w-40 animate-pulse rounded bg-[var(--mp-control)]" />
-        <span className="block h-2.5 w-24 animate-pulse rounded bg-[var(--mp-control)]" />
+        <span className="skeleton block h-3 w-40 rounded-full" />
+        <span className="skeleton block h-2.5 w-24 rounded-full" />
       </span>
-      <span className="h-2.5 w-10 animate-pulse rounded bg-[var(--mp-control)]" />
+      <span className="skeleton h-2.5 w-10 rounded-full" />
     </li>
   )
 }
@@ -363,9 +364,9 @@ export function TelephonyPage() {
                   <MacMenuLabel>{t('telephony.filter.date_range', 'Date range')}</MacMenuLabel>
                   <div className="grid grid-cols-[38px_1fr] items-center gap-x-2 gap-y-1.5 px-2 pb-1.5">
                     <label htmlFor="calls-from" className="text-[12px] text-[var(--mp-secondary)]">{t('telephony.filter.from', 'From')}</label>
-                    <input id="calls-from" type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => { setDateFrom(event.target.value); resetPage() }} className="h-7 rounded-[7px] bg-[var(--mp-control)] px-2 text-[12.5px] text-[var(--mp-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mp-blue)]/60" />
+                    <CalendarField id="calls-from" value={dateFrom} max={dateTo || undefined} onValueChange={(value) => { setDateFrom(value); resetPage() }} placeholder="—" className="min-h-7 rounded-[7px] px-2 text-[12.5px]" />
                     <label htmlFor="calls-to" className="text-[12px] text-[var(--mp-secondary)]">{t('telephony.filter.to', 'To')}</label>
-                    <input id="calls-to" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => { setDateTo(event.target.value); resetPage() }} className="h-7 rounded-[7px] bg-[var(--mp-control)] px-2 text-[12.5px] text-[var(--mp-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mp-blue)]/60" />
+                    <CalendarField id="calls-to" value={dateTo} min={dateFrom || undefined} onValueChange={(value) => { setDateTo(value); resetPage() }} placeholder="—" className="min-h-7 rounded-[7px] px-2 text-[12.5px]" />
                   </div>
                   {extraFilters > 0 || status ? (
                     <>

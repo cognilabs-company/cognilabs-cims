@@ -92,33 +92,33 @@ export function SalaryEstimateDrawer({
       />
 
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-3 sm:p-6">
-        <div className="modal-pop pointer-events-auto flex max-h-full w-full max-w-[860px] flex-col overflow-hidden rounded-[22px] bg-[var(--surface)] shadow-[var(--elev-xl)]">
-          <div className="flex items-start justify-between gap-4 bg-[var(--surface)] px-5 py-[18px] sm:px-6">
+        <div className="modal-pop pointer-events-auto flex max-h-[min(86vh,860px)] w-full max-w-[720px] flex-col overflow-hidden rounded-[20px] bg-[var(--surface)] shadow-[var(--elev-xl)] ring-1 ring-[var(--border)]">
+          <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-3.5">
             <div className="min-w-0">
-              <p className="ui-eyebrow">
+              <p className="text-[11px] font-semibold tracking-[0.06em] text-[var(--muted)] uppercase">
                 {tr('Salary estimate', 'Maosh hisobi', 'Оценка зарплаты')}
               </p>
-              <h2 className="mt-1.5 truncate text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">
+              <h2 className="mt-0.5 truncate text-[16px] font-semibold tracking-[-0.015em] text-[var(--foreground)]">
                 {report.fullName}
               </h2>
-              <p className="mt-1 text-[12.5px] text-[var(--muted)]">
+              <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">
                 {getMonthName(month)} {year} {lt('snapshot')}
               </p>
             </div>
 
-            <IconButton size="lg" label={lt('Close salary drawer')} onClick={onClose}>
+            <IconButton size="md" label={lt('Close salary drawer')} onClick={onClose}>
               <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <path d="M4 4l8 8M12 4 4 12" strokeLinecap="round" />
               </svg>
             </IconButton>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-[18px] overflow-y-auto bg-[var(--app-canvas)] px-5 py-[18px] sm:px-6">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[var(--app-canvas)] px-4 py-4 sm:px-5">
             <Card>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm text-[var(--muted)]">{report.label}</p>
-                  <h3 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[var(--foreground)]">{report.fullName}</h3>
+                  <h3 className="mt-1 text-[20px] font-bold tracking-[-0.025em] text-[var(--foreground)]">{report.fullName}</h3>
                   <p className="mt-1 text-sm text-[var(--muted)]">{report.roleLabel}</p>
                 </div>
 

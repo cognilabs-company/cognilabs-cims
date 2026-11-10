@@ -132,10 +132,10 @@ export function CardDetailModal({
       />
 
       {/* Main Container */}
-      <div className="relative z-10 flex h-full max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] bg-[var(--surface)] shadow-[var(--elev-xl)] boards-section">
+      <div className="modal-pop relative z-10 flex h-full max-h-[min(86vh,860px)] w-full max-w-[900px] flex-col overflow-hidden rounded-[20px] bg-[var(--surface)] shadow-[var(--elev-xl)] ring-1 ring-[var(--border)] boards-section">
 
         {/* Header Section */}
-        <div className="relative z-10 flex flex-col gap-4 border-b border-[var(--border-subtle)] p-[22px] sm:px-7 sm:py-6">
+        <div className="relative z-10 flex flex-col gap-3 border-b border-[var(--border)] px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -149,7 +149,7 @@ export function CardDetailModal({
                   <span className="ui-eyebrow">{boardName}</span>
                 )}
               </div>
-              <h2 className="text-[22px] leading-tight font-bold tracking-[-0.03em] text-[var(--foreground)] sm:text-3xl">
+              <h2 className="text-[18px] leading-tight font-semibold tracking-[-0.02em] text-[var(--foreground)] sm:text-[20px]">
                 {card.title}
               </h2>
             </div>
@@ -157,15 +157,15 @@ export function CardDetailModal({
             <div className="flex shrink-0 items-center gap-2">
               {canManage && (
                 <div className="hidden items-center gap-2 sm:flex">
-                  <Button variant="secondary" size="md" onClick={onEdit}>
+                  <Button variant="secondary" size="sm" onClick={onEdit}>
                     {lt('Edit')}
                   </Button>
-                  <Button variant="danger" size="md" onClick={onDelete}>
+                  <Button variant="danger" size="sm" onClick={onDelete}>
                     {lt('Delete')}
                   </Button>
                 </div>
               )}
-              <IconButton label={lt('Close')} size="lg" onClick={onClose}>
+              <IconButton label={lt('Close')} size="md" onClick={onClose}>
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
                 </svg>
@@ -200,7 +200,7 @@ export function CardDetailModal({
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
 
             {/* Main Column */}
-            <div className="space-y-[18px] p-[22px] sm:p-7">
+            <div className="space-y-4 p-5">
 
               {/* Media Viewer */}
               {selectedImage && (
@@ -250,7 +250,7 @@ export function CardDetailModal({
               <div className="space-y-3">
                 <h3 className="ui-section-title text-[var(--foreground)]">{lt('Description')}</h3>
                 {card.description ? (
-                  <div className="rounded-[18px] bg-[var(--accent-soft)] p-[22px]">
+                  <div className="rounded-[14px] bg-[var(--accent-soft)] p-4">
                     <p className="text-[15px] leading-[1.7] whitespace-pre-wrap text-[var(--foreground)] selection:bg-[var(--blue-soft)]">
                       {card.description}
                     </p>
@@ -265,7 +265,7 @@ export function CardDetailModal({
             </div>
 
             {/* Sidebar metadata */}
-            <div className="space-y-[18px] bg-[var(--muted-surface)] p-[22px] sm:p-7">
+            <div className="space-y-4 bg-[var(--muted-surface)] p-5">
 
               {/* Assignment Card */}
               <div className="space-y-[18px]">

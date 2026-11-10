@@ -43,6 +43,7 @@ import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../sh
 import { Tabs } from '../../../shared/ui/tabs'
 import { Textarea } from '../../../shared/ui/textarea'
 import { resolveTone, toneText } from '../../../shared/ui/tone'
+import { TimeField } from '../../../shared/ui/time-field'
 
 const TABS = [
   'salary_estimates',
@@ -1333,21 +1334,21 @@ function WorkSchedulesTab({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Work Start</Label>
-              <Input type="time" step="1" value={form.work_start_time} onChange={(e) => setForm((f) => ({ ...f, work_start_time: e.target.value }))} required />
+              <TimeField value={form.work_start_time} onValueChange={(value) => setForm((f) => ({ ...f, work_start_time: value ? `${value}:00` : '' }))} />
             </div>
             <div className="space-y-1.5">
               <Label>Work End</Label>
-              <Input type="time" step="1" value={form.work_end_time} onChange={(e) => setForm((f) => ({ ...f, work_end_time: e.target.value }))} required />
+              <TimeField value={form.work_end_time} onValueChange={(value) => setForm((f) => ({ ...f, work_end_time: value ? `${value}:00` : '' }))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Break Start <span className="text-[var(--muted)]">(optional)</span></Label>
-              <Input type="time" step="1" value={form.free_start_time} onChange={(e) => setForm((f) => ({ ...f, free_start_time: e.target.value }))} />
+              <TimeField value={form.free_start_time} onValueChange={(value) => setForm((f) => ({ ...f, free_start_time: value ? `${value}:00` : '' }))} clearable />
             </div>
             <div className="space-y-1.5">
               <Label>Break End <span className="text-[var(--muted)]">(optional)</span></Label>
-              <Input type="time" step="1" value={form.free_end_time} onChange={(e) => setForm((f) => ({ ...f, free_end_time: e.target.value }))} />
+              <TimeField value={form.free_end_time} onValueChange={(value) => setForm((f) => ({ ...f, free_end_time: value ? `${value}:00` : '' }))} clearable />
             </div>
           </div>
           <div className="space-y-1.5">

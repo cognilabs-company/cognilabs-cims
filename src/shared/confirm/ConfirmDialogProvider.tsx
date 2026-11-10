@@ -3,17 +3,10 @@ import {
   ConfirmDialogContext,
   type ConfirmOptions,
 } from './ConfirmDialogContext'
-import { translateCurrentLiteral } from '../i18n/translations'
+import { translateCurrent, translateCurrentLiteral } from '../i18n/translations'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
-
-function DangerHeaderIcon() {
-  return (
-    <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-[var(--danger-dim)]">
-      <span className="ui-dialog-title font-bold leading-none text-[var(--danger-text)]">!</span>
-    </div>
-  )
-}
+import { CircleHelp, TriangleAlert } from 'lucide-react'
 
 export function ConfirmDialogProvider({ children }: PropsWithChildren) {
   const [options, setOptions] = useState<ConfirmOptions | null>(null)
@@ -42,19 +35,20 @@ export function ConfirmDialogProvider({ children }: PropsWithChildren) {
         title={translateCurrentLiteral(options?.title ?? 'Confirm action')}
         description={options?.description}
         tone={options?.tone ?? 'default'}
-        eyebrow={translateCurrentLiteral(options?.tone === 'danger' ? 'Danger zone' : 'Workspace dialog')}
-        headerIcon={options?.tone === 'danger' ? <DangerHeaderIcon /> : undefined}
+        headerIcon={options?.tone === 'danger' ? <TriangleAlert /> : <CircleHelp />}
+        className="sm:max-w-[420px]"
         footer={
           <>
-            <Button variant="secondary" className="min-w-[96px]" onClick={() => closeWith(false)}>
-              {translateCurrentLiteral(options?.cancelLabel ?? 'Cancel')}
+            <Button variant="secondary" onClick={() => closeWith(false)}>
+              {options?.cancelLabel ? translateCurrentLiteral(options.cancelLabel) : translateCurrent('common.cancel', 'Cancel')}
             </Button>
             <Button
               variant={options?.tone === 'danger' ? 'danger' : 'primary'}
-              className={options?.tone === 'danger' ? 'min-w-[156px]' : 'min-w-[132px]'}
+              autoFocus
+              className={options?.tone === 'danger' ? 'bg-[var(--danger)] text-white hover:bg-[var(--danger)] hover:brightness-110 active:bg-[var(--danger)]' : undefined}
               onClick={() => closeWith(true)}
             >
-              {translateCurrentLiteral(options?.confirmLabel ?? 'Confirm')}
+              {options?.confirmLabel ? translateCurrentLiteral(options.confirmLabel) : translateCurrent('common.confirm', 'Confirm')}
             </Button>
           </>
         }

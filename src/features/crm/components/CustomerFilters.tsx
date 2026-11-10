@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import { isInFloatingLayer } from '../../../shared/lib/floating'
+import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Check, ChevronDown, Copy, Loader2, SlidersHorizontal, X, type LucideIcon } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn'
 import { gridButton, gridPanel } from '../../../shared/ui/data-grid-styles'
@@ -47,8 +49,8 @@ export function FilterPanel<P extends string>({
 
   useEffect(() => {
     if (!open) return
-    const onPointer = (event: PointerEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false) }
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
+    const onPointer = (event: PointerEvent) => { if (ref.current && !ref.current.contains(event.target as Node) && !isInFloatingLayer(event.target)) setOpen(false) }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented) setOpen(false) }
     document.addEventListener('pointerdown', onPointer)
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey) }
@@ -100,11 +102,11 @@ export function FilterPanel<P extends string>({
               <div className="flex flex-col gap-1.5 px-1">
                 <label className="flex flex-col gap-1 text-[11.5px] text-[var(--muted)]">
                   {labels.from}
-                  <input type="date" value={dateStart} max={dateEnd || undefined} onChange={(event) => { onPeriodChange(periodOptions[0].value); onDatesChange(event.target.value, dateEnd) }} className="h-8 w-full rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-2 text-[12.5px] text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none" />
+                  <CalendarField value={dateStart} max={dateEnd || undefined} onValueChange={(value) => { onPeriodChange(periodOptions[0].value); onDatesChange(value, dateEnd) }} placeholder="—" className="min-h-8 rounded-[8px] px-2 text-[12.5px]" aria-label={labels.from} />
                 </label>
                 <label className="flex flex-col gap-1 text-[11.5px] text-[var(--muted)]">
                   {labels.to}
-                  <input type="date" value={dateEnd} min={dateStart || undefined} onChange={(event) => { onPeriodChange(periodOptions[0].value); onDatesChange(dateStart, event.target.value) }} className="h-8 w-full rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-2 text-[12.5px] text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none" />
+                  <CalendarField value={dateEnd} min={dateStart || undefined} onValueChange={(value) => { onPeriodChange(periodOptions[0].value); onDatesChange(dateStart, value) }} placeholder="—" className="min-h-8 rounded-[8px] px-2 text-[12.5px]" aria-label={labels.to} />
                 </label>
               </div>
             </div>
@@ -256,7 +258,7 @@ export function StatusSelect({ current, label, color, icon, options, onChange, s
     const inside = (target: EventTarget | null) => Boolean(target instanceof Node && (menuRef.current?.contains(target) || buttonRef.current?.contains(target)))
     const onPointer = (event: PointerEvent) => { if (!inside(event.target)) setPosition(null) }
     const onScroll = (event: Event) => { if (!inside(event.target)) setPosition(null) }
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setPosition(null) }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented) setPosition(null) }
     document.addEventListener('pointerdown', onPointer)
     window.addEventListener('scroll', onScroll, true)
     window.addEventListener('resize', onScroll)

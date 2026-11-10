@@ -6,6 +6,7 @@ import {
 import { useLocale } from '../../app/hooks/useLocale'
 import { cn } from '../lib/cn'
 import { gridButton, gridPanel } from './data-grid-styles'
+import { SelectField } from './select-field'
 
 /* ──────────────────────────────────────────────────────────────
    DataGrid — a clean CRM-style table each user can shape.
@@ -704,8 +705,16 @@ export function DataGrid<T>({
         {pageRows.length === 0 ? (
           <div className="px-5 py-12">
             {loading ? (
-              <div className="mx-auto flex max-w-[560px] flex-col gap-2" aria-busy="true">
-                {Array.from({ length: 7 }, (_, index) => <div key={index} className="h-8 animate-pulse rounded-[8px] bg-[var(--muted-surface)]" style={{ animationDelay: `${index * 80}ms` }} />)}
+              <div className="-my-7 flex flex-col" role="status" aria-busy="true">
+                {Array.from({ length: 8 }, (_, index) => (
+                  <div key={index} className="flex items-center gap-4 border-b border-[var(--border-subtle)] py-3 last:border-b-0">
+                    <span className="skeleton block h-7 w-7 shrink-0 rounded-full" />
+                    <span className={cn('skeleton block h-3 rounded-full', index % 3 === 0 ? 'w-40' : index % 3 === 1 ? 'w-32' : 'w-48')} />
+                    <span className="skeleton hidden h-3 w-28 rounded-full sm:block" />
+                    <span className="skeleton hidden h-3 w-20 rounded-full md:block" />
+                    <span className="ml-auto skeleton block h-5 w-24 rounded-[6px]" />
+                  </div>
+                ))}
               </div>
             ) : emptyState}
           </div>
@@ -737,16 +746,17 @@ export function DataGrid<T>({
           <PageButton label={t('grid.last_page', 'Last page')} disabled={currentPage >= pageCount} onClick={() => onPageChange(pageCount)}><ChevronsRight size={15} /></PageButton>
         </nav>
         {onPageSizeChange ? (
-          <label className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-2">
             <span>{t('grid.rows_per_page', 'Rows / page')}:</span>
-            <select
-              value={pageSize}
-              onChange={(event) => { onPageSizeChange(Number(event.target.value)); onPageChange(1) }}
-              className="h-8 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-2 text-[12.5px] font-semibold text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none"
-            >
-              {PAGE_SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-          </label>
+            <SelectField
+              size="sm"
+              value={String(pageSize)}
+              onValueChange={(value) => { onPageSizeChange(Number(value)); onPageChange(1) }}
+              options={PAGE_SIZES.map((size) => ({ value: String(size), label: String(size) }))}
+              className="w-[76px] font-semibold"
+              aria-label={t('grid.rows_per_page', 'Rows / page')}
+            />
+          </div>
         ) : <span />}
       </div>
     </section>

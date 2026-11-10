@@ -1,5 +1,6 @@
-import { startTransition, useMemo, useState, type FormEvent } from 'react'
+import { startTransition, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowRight, Loader2, LockKeyhole, LogIn, Mail, TriangleAlert } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { authService } from '../../../shared/api/services/auth.service'
 import { Button } from '../../../shared/ui/button'
@@ -34,6 +35,8 @@ export function LoginPage() {
   const [statusMessage, setStatusMessage] = useState(initialMessage)
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [capsLock, setCapsLock] = useState(false)
+  const trackCaps = (event: KeyboardEvent<HTMLInputElement>) => setCapsLock(event.getModifierState('CapsLock'))
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -67,6 +70,7 @@ export function LoginPage() {
       eyebrow={t('auth.login.eyebrow', 'Login')}
       title={t('auth.login.title', 'Login to your account')}
       description={t('auth.login.description', 'Enter your email below to login to your account.')}
+      icon={<LogIn size={22} strokeWidth={2} />}
       footerLinks={[]}
     >
       <form className="grid gap-[18px]" onSubmit={handleSubmit}>
@@ -79,6 +83,8 @@ export function LoginPage() {
           type="email"
           autoComplete="email"
           placeholder="user@example.com"
+          leadingIcon={<Mail size={17} />}
+          className="min-h-12 rounded-[13px] text-[14.5px]"
           value={values.username}
           error={errors.username}
           onChange={(event) =>
@@ -105,6 +111,11 @@ export function LoginPage() {
             name="password"
             autoComplete="current-password"
             placeholder={t('auth.password.enter', 'Enter your password')}
+            leadingIcon={<LockKeyhole size={17} />}
+            className="min-h-12 rounded-[13px] text-[14.5px]"
+            onKeyUp={trackCaps}
+            onKeyDown={trackCaps}
+            onBlur={() => setCapsLock(false)}
             value={values.password}
             error={errors.password}
             onChange={(event) =>
@@ -116,11 +127,19 @@ export function LoginPage() {
           />
         </div>
 
-        <Button size="lg" type="submit" disabled={isSubmitting} className="w-full">
+        {capsLock ? (
+          <p className="-mt-2 flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--warning-text)]">
+            <TriangleAlert size={14} /> {t('auth.caps_lock', 'Caps Lock is on')}
+          </p>
+        ) : null}
+
+        <Button size="lg" type="submit" disabled={isSubmitting} className="group/submit mt-1 h-12 w-full rounded-[13px] text-[15px] font-semibold shadow-[var(--elev-primary)]">
+          {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
           {isSubmitting ? t('auth.signing_in', 'Signing in...') : t('auth.login_button', 'Login')}
+          {!isSubmitting ? <ArrowRight size={18} className="transition-transform duration-200 group-hover/submit:translate-x-1" /> : null}
         </Button>
 
-        <div className="text-center text-[12.5px] text-[var(--muted)]">
+        <div className="border-t border-[var(--border)] pt-4 text-center text-[12.5px] text-[var(--muted)]">
           {t('auth.verify_prompt', 'Email not verified?')}{' '}
           <Link
             className="font-semibold text-[var(--primary)] transition-colors hover:text-[var(--primary-hover)]"

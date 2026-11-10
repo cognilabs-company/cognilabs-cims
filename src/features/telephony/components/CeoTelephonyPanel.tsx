@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { ceoService, type CeoUserRecord } from '../../../shared/api/services/ceo.service'
 import { telephonyService, type RecordingStorage, type TelephonyExtension } from '../../../shared/api/services/telephony.service'
 import { MacAvatar, ToolbarButton } from './MacPrimitives'
+import { SelectField } from '../../../shared/ui/select-field'
 
 type ExtensionFilter = 'all' | 'active' | 'inactive'
 
@@ -237,18 +238,19 @@ export function CeoTelephonyPanel() {
         >
           {/* New extension row */}
           <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-            <label htmlFor="new-extension-user" className="sr-only">{t('telephony.system.select_user', 'Select user')}</label>
-            <select
-              id="new-extension-user"
-              value={newUserId}
-              onChange={(event) => setNewUserId(event.target.value)}
-              className="h-7 min-w-[220px] flex-1 rounded-[7px] bg-[var(--mp-control)] px-2.5 text-[13px] text-[var(--mp-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mp-blue)]/60 sm:max-w-[320px]"
-            >
-              <option value="">{t('telephony.system.select_user', 'Select user')}</option>
-              {availableUsers.map((item) => (
-                <option key={item.id} value={String(item.id)}>{`${item.name} ${item.surname}`.trim() || item.email}</option>
-              ))}
-            </select>
+            <div className="min-w-[220px] flex-1 sm:max-w-[320px]">
+              <SelectField
+                id="new-extension-user"
+                size="sm"
+                value={newUserId}
+                onValueChange={setNewUserId}
+                placeholder={t('telephony.system.select_user', 'Select user')}
+                aria-label={t('telephony.system.select_user', 'Select user')}
+                searchable
+                searchPlaceholder={t('common.search', 'Search')}
+                options={availableUsers.map((item) => ({ value: String(item.id), label: `${item.name} ${item.surname}`.trim() || item.email, hint: String(item.role ?? '') }))}
+              />
+            </div>
             <button
               type="button"
               onClick={() => void createExtension()}

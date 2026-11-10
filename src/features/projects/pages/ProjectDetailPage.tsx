@@ -813,21 +813,21 @@ export function ProjectDetailPage() {
               />
 
               {/* Center Modal */}
-              <Card noPadding className="relative z-10 w-full max-w-5xl overflow-hidden rounded-[24px] shadow-[var(--elev-xl)] page-enter">
-                 <div className="flex items-center justify-between border-b border-[var(--border)] p-[22px]">
+              <Card noPadding className="modal-pop relative z-10 w-full max-w-[760px] overflow-hidden rounded-[20px] shadow-[var(--elev-xl)] ring-1 ring-[var(--border)]">
+                 <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
                     <div className="flex items-center gap-4">
-                       <Avatar name={expandedMember.name} surname={expandedMember.surname} imageUrl={expandedMember.profile_image} size="lg" className="ring-2 ring-[var(--blue-dim)]" />
+                       <Avatar name={expandedMember.name} surname={expandedMember.surname} imageUrl={expandedMember.profile_image} size="md" className="ring-2 ring-[var(--blue-dim)]" />
                        <div>
-                          <p className="text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">{expandedMember.name} {expandedMember.surname}</p>
+                          <p className="text-[16px] font-semibold tracking-[-0.015em] text-[var(--foreground)]">{expandedMember.name} {expandedMember.surname}</p>
                           <p className="mt-1 text-[12.5px] font-medium text-[var(--muted)]">{expandedMember.job_title || lt('Member')}</p>
                        </div>
                     </div>
-                    <IconButton size="lg" label={lt('Close Dashboard')} onClick={() => setExpandedMemberId(null)}>
+                    <IconButton size="md" label={lt('Close Dashboard')} onClick={() => setExpandedMemberId(null)}>
                        <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/></svg>
                     </IconButton>
                  </div>
 
-                 <div className="max-h-[70vh] overflow-y-auto p-[22px] custom-scrollbar-visible boards-section">
+                 <div className="max-h-[70vh] overflow-y-auto p-5 custom-scrollbar-visible boards-section">
                     <div className="mb-[18px] flex items-center justify-between">
                        <h4 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{lt('Active Tasks Assignment')}</h4>
                        <Badge variant="blue">{expandedMemberTasks.length} {lt('Items')}</Badge>
@@ -907,18 +907,18 @@ export function ProjectDetailPage() {
             className="dialog-backdrop absolute inset-0 cursor-default"
             onClick={() => setIsKpiOpen(false)}
           />
-          <Card noPadding className="relative z-10 w-full max-w-5xl overflow-hidden rounded-[24px] shadow-[var(--elev-xl)] page-enter">
-            <div className="flex items-center justify-between border-b border-[var(--border)] p-[22px]">
+          <Card noPadding className="modal-pop relative z-10 w-full max-w-[760px] overflow-hidden rounded-[20px] shadow-[var(--elev-xl)] ring-1 ring-[var(--border)]">
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
               <div>
-                <p className="ui-eyebrow">Developer KPI</p>
-                <p className="mt-1.5 text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">{project.project_name}</p>
+                <p className="text-[11px] font-semibold tracking-[0.06em] text-[var(--muted)] uppercase">Developer KPI</p>
+                <p className="mt-0.5 text-[16px] font-semibold tracking-[-0.015em] text-[var(--foreground)]">{project.project_name}</p>
               </div>
-              <IconButton size="lg" label="Close" onClick={() => setIsKpiOpen(false)}>
+              <IconButton size="md" label="Close" onClick={() => setIsKpiOpen(false)}>
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/></svg>
               </IconButton>
             </div>
 
-            <div className="max-h-[75vh] overflow-y-auto p-[22px] space-y-[18px]">
+            <div className="max-h-[72vh] overflow-y-auto p-5 space-y-4">
               {/* Features */}
               <div>
                 <div className="mb-3 flex items-center justify-between">

@@ -1,7 +1,7 @@
 import { startTransition, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useLocale } from '../../../app/hooks/useLocale'
-import { Card } from '../../../shared/ui/card'
+import { BrandLoader, LoadingBar } from '../../../shared/ui/loader'
 import { useAuth } from '../hooks/useAuth'
 
 export function DashboardRedirectPage() {
@@ -41,14 +41,13 @@ export function DashboardRedirectPage() {
   }, [location.hash, location.pathname, location.search, navigate, resolveDashboardPath, status])
 
   return (
-    <div className="grid min-h-[55vh] place-items-center">
-      <Card className="max-w-xl bg-transparent p-10 text-center">
-        <p className="ui-eyebrow">{t('auth.redirect.eyebrow', 'Redirecting')}</p>
-        <h1 className="ui-page-title mt-6 text-[var(--foreground)]">{t('auth.redirect.title', 'Accessing Dashboard')}</h1>
-        <p className="mt-6 text-sm leading-relaxed font-medium text-[var(--muted)]">
-          {t('auth.redirect.description', 'We are determining the best entry point for your account role. One moment...')}
-        </p>
-      </Card>
+    <div role="status" aria-live="polite" className="grid min-h-[60vh] place-items-center">
+      <div className="flex flex-col items-center text-center">
+        <BrandLoader size={52} />
+        <p className="mt-5 text-[16px] font-semibold tracking-[-0.015em] text-[var(--foreground)]">{t('auth.redirect.title', 'Opening your workspace')}</p>
+        <p className="mt-1 text-[13px] text-[var(--muted)]">{t('auth.redirect.description', 'Picking the right dashboard for your role…')}</p>
+        <LoadingBar className="mt-5 w-36" />
+      </div>
     </div>
   )
 }

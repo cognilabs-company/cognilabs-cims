@@ -14,10 +14,11 @@ import { MemberAvatar } from '../../../shared/ui/member-avatar'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import { StatCard } from '../../../shared/ui/stat-card'
-import { StateBlock } from '../../../shared/ui/state-block'
+import { LoadingStateBlock, StateBlock } from '../../../shared/ui/state-block'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useToast } from '../../../shared/toast/useToast'
 import { cn } from '../../../shared/lib/cn'
+import { MonthField } from '../../../shared/ui/month-field'
 
 const TASHKENT_TIMEZONE = 'Asia/Tashkent'
 const PAGE_SIZE = 100
@@ -288,7 +289,7 @@ export function AttendanceManagementPage() {
 
       <Card>
         <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-[170px_150px_minmax(220px,1fr)_180px_160px]">
-          <FilterLabel label="Month"><Input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></FilterLabel>
+          <FilterLabel label="Month"><MonthField value={month} onValueChange={setMonth} aria-label="Month" /></FilterLabel>
           <FilterLabel label="Day"><Input type="number" min="1" max="31" value={day} onChange={(event) => setDay(event.target.value)} placeholder="All days" /></FilterLabel>
           <FilterLabel label="Employee"><SelectField value={employeeId} options={employeeOptions} onValueChange={setEmployeeId} searchable searchPlaceholder="Search employee..." disabled={employeesQuery.isLoading} /></FilterLabel>
           <FilterLabel label="Status"><SelectField value={status} options={statusOptions} onValueChange={setStatus} /></FilterLabel>
@@ -297,7 +298,7 @@ export function AttendanceManagementPage() {
       </Card>
 
       {recordsQuery.isLoading ? (
-        <StateBlock tone="loading" eyebrow="Attendance" title="Loading attendance records" />
+        <LoadingStateBlock eyebrow="Attendance" title="Loading attendance records" />
       ) : recordsQuery.isError ? (
         <StateBlock tone="error" eyebrow="Attendance" title="Unable to load attendance" description={getErrorMessage(recordsQuery.error)} actionLabel="Retry" onAction={() => void recordsQuery.refetch()} />
       ) : records.length === 0 ? (
@@ -363,7 +364,7 @@ export function AttendanceManagementPage() {
         footer={<Button variant="ghost" size="md" onClick={() => setSelectedEmployeeRecord(null)}>Close</Button>}
       >
         {employeeDetailQuery.isLoading ? (
-          <StateBlock tone="loading" eyebrow="Attendance" title="Loading employee attendance" />
+          <LoadingStateBlock eyebrow="Attendance" title="Loading employee attendance" />
         ) : employeeDetailQuery.isError ? (
           <StateBlock tone="error" eyebrow="Attendance" title="Unable to load employee attendance" description={getErrorMessage(employeeDetailQuery.error)} actionLabel="Retry" onAction={() => void employeeDetailQuery.refetch()} />
         ) : employeeDetailQuery.data ? (
