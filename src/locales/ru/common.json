@@ -1467,10 +1467,6 @@
   "customers.recall.unit_hours": "{{n}} ч",
   "customers.recall.unit_min_short": "мин",
   "customers.recall.unit_minutes": "{{n}} мин",
-  "telephony.theme.label": "Оформление",
-  "telephony.theme.auto": "Авто (система)",
-  "telephony.theme.light": "Светлая",
-  "telephony.theme.dark": "Тёмная",
   "customers.archive.back": "Назад к клиентам",
   "customers.archive.delete_confirm": "Удалить навсегда",
   "customers.archive.delete_description": "Все данные клиента будут удалены без возможности восстановления.",
@@ -1502,10 +1498,6 @@
   "customers.archive.search": "Имя, номер или платформа",
   "customers.archive.subtitle": "Скрыты из списка клиентов. Их можно восстановить или удалить навсегда.",
   "customers.archive.title": "Архив",
-  "shell.theme.label": "Оформление",
-  "shell.theme.auto": "Авто (система)",
-  "shell.theme.light": "Светлая",
-  "shell.theme.dark": "Тёмная",
   "auth.hero.word_customers": "клиенты",
   "auth.hero.word_calls": "звонки",
   "auth.hero.word_projects": "проекты",
@@ -1624,5 +1616,7 @@
   "aichat.type_to_search": "Введите username или ссылку",
   "aichat.unread_messages": "Непрочитанные сообщения",
   "aichat.yesterday": "вчера",
-  "aichat.yesterday_pill": "Вчера"
+  "aichat.yesterday_pill": "Вчера",
+  "shell.theme.to_light": "Включить светлую тему",
+  "shell.theme.to_dark": "Включить тёмную тему"
 }

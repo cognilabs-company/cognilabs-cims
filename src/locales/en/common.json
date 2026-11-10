@@ -1467,10 +1467,6 @@
   "customers.recall.unit_hours": "{{n}} h",
   "customers.recall.unit_min_short": "min",
   "customers.recall.unit_minutes": "{{n}} min",
-  "telephony.theme.label": "Appearance",
-  "telephony.theme.auto": "Auto (system)",
-  "telephony.theme.light": "Light",
-  "telephony.theme.dark": "Dark",
   "customers.archive.back": "Back to customers",
   "customers.archive.delete_confirm": "Delete for good",
   "customers.archive.delete_description": "All of this customer’s data is removed and can’t be restored.",
@@ -1502,10 +1498,6 @@
   "customers.archive.search": "Name, phone or platform",
   "customers.archive.subtitle": "Hidden from the customers list. Restore them, or delete them for good.",
   "customers.archive.title": "Archive",
-  "shell.theme.label": "Appearance",
-  "shell.theme.auto": "Auto (system)",
-  "shell.theme.light": "Light",
-  "shell.theme.dark": "Dark",
   "auth.hero.word_customers": "customers",
   "auth.hero.word_calls": "calls",
   "auth.hero.word_projects": "projects",
@@ -1624,5 +1616,7 @@
   "aichat.type_to_search": "Type a username or a link",
   "aichat.unread_messages": "Unread messages",
   "aichat.yesterday": "yesterday",
-  "aichat.yesterday_pill": "Yesterday"
+  "aichat.yesterday_pill": "Yesterday",
+  "shell.theme.to_light": "Switch to light mode",
+  "shell.theme.to_dark": "Switch to dark mode"
 }

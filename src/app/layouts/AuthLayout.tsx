@@ -4,7 +4,7 @@ import { Bot, KanbanSquare, PhoneCall, ShieldCheck, UsersRound, type LucideIcon 
 import { useLocale } from '../hooks/useLocale'
 import { type AppLocale, localeLabels } from '../../shared/i18n/translations'
 import { cn } from '../../shared/lib/cn'
-import { ThemeMenu } from '../../widgets/navigation/ThemeMenu'
+import { ThemeToggle } from '../../widgets/navigation/ThemeToggle'
 
 const pill = 'inline-flex h-10 shrink-0 items-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] backdrop-blur-md'
 
@@ -56,7 +56,7 @@ export function AuthLayout() {
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          <ThemeMenu pillClassName={pill} />
+          <ThemeToggle pillClassName={pill} />
           <div className={cn(pill, 'gap-0.5 p-1')} role="group" aria-label={t('shell.language')}>
             {(Object.keys(localeLabels) as AppLocale[]).map((value) => (
               <button

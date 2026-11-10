@@ -1467,10 +1467,6 @@
   "customers.recall.unit_hours": "{{n}} soat",
   "customers.recall.unit_min_short": "daq",
   "customers.recall.unit_minutes": "{{n}} daqiqa",
-  "telephony.theme.label": "Ko'rinish",
-  "telephony.theme.auto": "Avto (tizim)",
-  "telephony.theme.light": "Yorug'",
-  "telephony.theme.dark": "Qorong'i",
   "customers.archive.back": "Mijozlarga qaytish",
   "customers.archive.delete_confirm": "Butunlay o'chirish",
   "customers.archive.delete_description": "Mijozning barcha ma'lumotlari o'chiriladi va ularni tiklab bo'lmaydi.",
@@ -1502,10 +1498,6 @@
   "customers.archive.search": "Ism, raqam yoki platforma",
   "customers.archive.subtitle": "Mijozlar ro'yxatida ko'rinmaydi. Tiklash yoki butunlay o'chirish mumkin.",
   "customers.archive.title": "Arxiv",
-  "shell.theme.label": "Ko'rinish",
-  "shell.theme.auto": "Avto (tizim)",
-  "shell.theme.light": "Yorug'",
-  "shell.theme.dark": "Qorong'i",
   "auth.hero.word_customers": "mijozlar",
   "auth.hero.word_calls": "qo'ng'iroqlar",
   "auth.hero.word_projects": "loyihalar",
@@ -1624,5 +1616,7 @@
   "aichat.type_to_search": "Username yoki havolani yozing",
   "aichat.unread_messages": "O'qilmagan xabarlar",
   "aichat.yesterday": "kecha",
-  "aichat.yesterday_pill": "Kecha"
+  "aichat.yesterday_pill": "Kecha",
+  "shell.theme.to_light": "Yorug' rejimga o'tish",
+  "shell.theme.to_dark": "Qorong'i rejimga o'tish"
 }

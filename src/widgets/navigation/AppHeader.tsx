@@ -12,7 +12,7 @@ import { cn } from '../../shared/lib/cn'
 import { hasPermission } from '../../shared/lib/permissions'
 import { resolveMediaUrl } from '../../shared/lib/media-url'
 import { openProfileDialog } from './profileEvents'
-import { ThemeMenu } from './ThemeMenu'
+import { ThemeToggle } from './ThemeToggle'
 
 function OutboundIcon() {
   return (
@@ -164,7 +164,7 @@ export function AppHeader() {
         </button>
       ) : null}
 
-      <ThemeMenu pillClassName={pill} />
+      <ThemeToggle pillClassName={pill} />
 
       <div className={cn(pill, 'hidden gap-0.5 p-1 sm:inline-flex')} role="group" aria-label={t('shell.language')}>
         {(Object.keys(localeLabels) as AppLocale[]).map((value) => (
