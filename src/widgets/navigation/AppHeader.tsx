@@ -128,7 +128,7 @@ export function AppHeader() {
   const profileImage = resolveMediaUrl(user?.profile_image) ?? user?.profile_image ?? null
 
   return (
-    <header className="app-chrome relative z-10 flex h-[76px] shrink-0 items-center gap-3 px-4 pt-2 sm:px-7">
+    <header className="app-chrome relative z-30 flex h-[76px] shrink-0 items-center gap-3 px-4 pt-2 sm:px-7">
       {shouldShowSidebarToggle ? (
         <button
           type="button"
