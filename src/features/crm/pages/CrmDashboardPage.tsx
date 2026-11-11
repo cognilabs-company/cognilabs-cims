@@ -30,7 +30,7 @@ import { useAuth } from '../../auth/hooks/useAuth'
 import { platformVisual } from '../lib/platformIcon'
 import { avatarTone, initialsFor } from '../lib/customerAvatar'
 import { MetricTile } from '../../../shared/ui/metric-tile'
-import { AlarmIcon, UsersThreeIcon } from '@phosphor-icons/react'
+import { UsersThreeIcon } from '@phosphor-icons/react'
 import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { statusIconFor, statusKpiIconFor } from '../lib/statusIcon'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
@@ -1430,12 +1430,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     else if (recall.toDateString() === todayString) entry.today += 1
     dueByStatus.set(key, entry)
   }
-  let recallToday = 0
-  let recallOverdue = 0
-  for (const entry of dueByStatus.values()) {
-    recallToday += entry.today
-    recallOverdue += entry.overdue
-  }
   const preferredCards = statusCardKeys
     .map((key) => allChipStatuses.find((option) => normalizeStatusKey(option.value) === key))
     .filter((option): option is (typeof allChipStatuses)[number] => Boolean(option))
@@ -1549,18 +1543,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           accent="#2B59FF"
           onClick={() => { setStatusFilters([]); setTablePage(1) }}
         />
-        {/* Wide screens (1920…) have room for one more: callbacks due today */}
-        <div className="hidden min-[1800px]:block [&>*]:h-full [&>*]:w-full">
-          <MetricTile
-            label={t('customers.recall_card.label', 'Callbacks today')}
-            value={recallToday}
-            caption={recallOverdue
-              ? t('customers.recall_card.overdue', 'Overdue: {{count}}', { count: recallOverdue })
-              : t('customers.recall_card.none_overdue', 'Nothing overdue')}
-            icon={AlarmIcon}
-            accent="#E8590C"
-          />
-        </div>
       </div>
 
       <DataGrid
