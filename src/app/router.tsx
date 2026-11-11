@@ -1,5 +1,6 @@
 import { Suspense, lazy, type ReactElement } from 'react'
 import { Navigate, createBrowserRouter } from 'react-router-dom'
+import { RedirectKeepingQuery } from './RedirectKeepingQuery'
 import { AuthLayout } from './layouts/AuthLayout'
 import { RootLayout } from './layouts/RootLayout'
 import { GuestRoute } from '../features/auth/components/GuestRoute'
@@ -68,19 +69,15 @@ const CeoAiChatPage = lazyPage(
   'CeoAiChatPage',
 )
 const CimsTeamPage = lazyPage(() => import('../features/ceo/pages/CimsTeamPage'), 'CimsTeamPage')
-const CeoManagementPage = lazyPage(
-  () => import('../features/ceo/pages/CeoManagementPage'),
-  'CeoManagementPage',
+const SettingsPage = lazyPage(
+  () => import('../features/settings/pages/SettingsPage'),
+  'SettingsPage',
 )
 const CeoTeamUpdatesPage = lazyPage(
   () => import('../features/ceo/pages/CeoTeamUpdatesPage'),
   'CeoTeamUpdatesPage',
 )
 const CeoUsersPage = lazyPage(() => import('../features/ceo/pages/CeoUsersPage'), 'CeoUsersPage')
-const WebsiteStatsPage = lazyPage(
-  () => import('../features/ceo/pages/WebsiteStatsPage'),
-  'WebsiteStatsPage',
-)
 const CeoWorkdayOverridesPage = lazyPage(
   () => import('../features/ceo/pages/CeoWorkdayOverridesPage'),
   'CeoWorkdayOverridesPage',
@@ -129,7 +126,7 @@ const FaultsMemberDetailPage = lazyPage(
   () => import('../features/faults/pages/FaultsMemberDetailPage'),
   'FaultsMemberDetailPage',
 )
-const FaultsPage = lazyPage(() => import('../features/faults/pages/FaultsPage'), 'FaultsPage')
+const SalaryKpiPage = lazyPage(() => import('../features/faults/pages/SalaryKpiPage'), 'SalaryKpiPage')
 const MemberDashboardPage = lazyPage(
   () => import('../features/member/pages/MemberDashboardPage'),
   'MemberDashboardPage',
@@ -159,14 +156,6 @@ const CognilabsAIChatPage = lazyPage(
   () => import('../features/cognilabsai/pages/CognilabsAIChatPage'),
   'CognilabsAIChatPage',
 )
-const CognilabsAIIntegrationsPage = lazyPage(
-  () => import('../features/cognilabsai/pages/CognilabsAIIntegrationsPage'),
-  'CognilabsAIIntegrationsPage',
-)
-const CognilabsAIMediaContextsPage = lazyPage(
-  () => import('../features/cognilabsai/pages/CognilabsAIMediaContextsPage'),
-  'CognilabsAIMediaContextsPage',
-)
 const CognilabsAIKanbanPage = lazyPage(
   () => import('../features/cognilabsai/pages/CognilabsAIKanbanPage'),
   'CognilabsAIKanbanPage',
@@ -178,10 +167,6 @@ const CognilabsAICommentAutomationPage = lazyPage(
 const AuditLogsPage = lazyPage(
   () => import('../features/auditLogs/pages/AuditLogsPage'),
   'AuditLogsPage',
-)
-const DeveloperKpiPage = lazyPage(
-  () => import('../features/developer-kpi/pages/DeveloperKpiPage'),
-  'DeveloperKpiPage',
 )
 const AttendanceManagementPage = lazyPage(
   () => import('../features/attendance/pages/AttendanceManagementPage'),
@@ -293,25 +278,13 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'ceo/management',
-                element: (
-                  <ProtectedRoute permissionKey="ceo">
-                    {withPageLoader(<CeoManagementPage />)}
-                  </ProtectedRoute>
-                ),
+                element: <RedirectKeepingQuery to="/settings" tab="management" />,
               },
               {
                 path: 'ceo/team-updates',
                 element: (
                   <ProtectedRoute permissionKey="ceo">
                     {withPageLoader(<CeoTeamUpdatesPage />)}
-                  </ProtectedRoute>
-                ),
-              },
-              {
-                path: 'ceo/website-stats',
-                element: (
-                  <ProtectedRoute permissionKey="ceo">
-                    {withPageLoader(<WebsiteStatsPage />)}
                   </ProtectedRoute>
                 ),
               },
@@ -413,9 +386,21 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'faults',
+                element: <RedirectKeepingQuery to="/salary" tab="salary" />,
+              },
+              {
+                path: 'settings',
                 element: (
-                  <ProtectedRoute permissionKey="ceo">
-                    {withPageLoader(<FaultsPage />)}
+                  <ProtectedRoute>
+                    {withPageLoader(<SettingsPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'salary',
+                element: (
+                  <ProtectedRoute>
+                    {withPageLoader(<SalaryKpiPage />)}
                   </ProtectedRoute>
                 ),
               },
@@ -477,19 +462,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'cognilabsai/integrations',
-                element: (
-                  <ProtectedRoute permissionKey="cognilabsai_integrations">
-                    {withPageLoader(<CognilabsAIIntegrationsPage />)}
-                  </ProtectedRoute>
-                ),
-              },
-              {
-                path: 'cognilabsai/media-contexts',
-                element: (
-                  <ProtectedRoute permissionKey="cognilabsai_chat">
-                    {withPageLoader(<CognilabsAIMediaContextsPage />)}
-                  </ProtectedRoute>
-                ),
+                element: <RedirectKeepingQuery to="/settings" tab="ai" />,
               },
               {
                 path: 'cognilabsai/kanban',
@@ -525,11 +498,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'developer-kpi',
-                element: (
-                  <ProtectedRoute>
-                    {withPageLoader(<DeveloperKpiPage />)}
-                  </ProtectedRoute>
-                ),
+                element: <RedirectKeepingQuery to="/salary" tab="kpi" />,
               },
             ],
           },

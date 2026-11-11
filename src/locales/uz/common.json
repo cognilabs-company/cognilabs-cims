@@ -1766,5 +1766,10 @@
   "telephony.ext_settings.timeout": "Jiringlash (soniya)",
   "telephony.ext_settings.open": "Liniya sozlamalari",
   "telephony.view_only.title": "Faqat ko'rish",
-  "telephony.view_only.text": "Qo'ng'iroqlar tarixini ko'rishingiz mumkin. Qo'ng'iroq qilish uchun administratordan “Qo'ng'iroqlar · yaratish” ruxsatini so'rang."
+  "telephony.view_only.text": "Qo'ng'iroqlar tarixini ko'rishingiz mumkin. Qo'ng'iroq qilish uchun administratordan “Qo'ng'iroqlar · yaratish” ruxsatini so'rang.",
+  "rbac.denied.title": "Bu sahifaga ruxsat yo'q",
+  "rbac.denied.text": "Rolingizda “{{permission}}” ruxsati yo'q. Administratordan qo'shib berishni so'rang.",
+  "rbac.denied.home": "Bosh sahifamga o'tish",
+  "nav./settings.label": "Sozlamalar",
+  "nav./salary.label": "Maosh va KPI"
 }

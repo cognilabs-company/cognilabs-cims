@@ -328,7 +328,7 @@ export function FaultsMemberDetailPage({
     ? lt('Retrieving your monthly update context, estimate snapshot and activity details.')
     : lt('Retrieving member estimate, penalties, bonuses, and monthly update context.')
   const errorActionLabel = isMemberUpdatesMode ? lt('Back to dashboard') : lt('Back to salary estimates')
-  const backTarget = isMemberUpdatesMode ? '/member/dashboard' : `/faults?year=${year}&month=${month}`
+  const backTarget = isMemberUpdatesMode ? '/member/dashboard' : `/salary?tab=salary&year=${year}&month=${month}`
   const topHeaderEyebrow = isMemberUpdatesMode ? lt('My Update Detail') : lt('CEO Salary Detail')
   const showCompensationActions = !isMemberUpdatesMode
   const canCreateCompensation = showCompensationActions && can('salary', 'create')

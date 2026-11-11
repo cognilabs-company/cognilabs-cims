@@ -10,7 +10,7 @@ import { env } from '../../shared/config/env'
 import { type AppLocale, localeLabels } from '../../shared/i18n/translations'
 import { useAsyncData } from '../../shared/hooks/useAsyncData'
 import { cn } from '../../shared/lib/cn'
-import { canReadManagedProjects, getAccessibleNavigation } from '../../shared/lib/permissions'
+import { canReadManagedProjects, getAccessibleNavigation, resolveNavRoute } from '../../shared/lib/permissions'
 import { getApiErrorMessage } from '../../shared/lib/api-error'
 import { resolveMediaUrl } from '../../shared/lib/media-url'
 import { useToast } from '../../shared/toast/useToast'
@@ -93,6 +93,33 @@ const rbacIconGlyphs: Record<string, GlyphName> = {
 type SidebarItem = { to: string; label: string; icon?: string | null }
 type SidebarGroup = { key: string; label: string; items: SidebarItem[] }
 
+/** Pages taken out of the menu. */
+const hiddenRoutes = new Set(['/ceo/website-stats', '/cognilabsai/media-contexts'])
+/** Pages shown as one menu item (tabs on the merged page); the item sits where the last of them was. */
+const mergedRoutes: Array<{ to: string; from: string[]; label: [string, string] }> = [
+  { to: '/settings', from: ['/cognilabsai/integrations', '/ceo/management'], label: ['nav./settings.label', 'Settings'] },
+  { to: '/salary', from: ['/faults', '/developer-kpi'], label: ['nav./salary.label', 'Salary & KPI'] },
+]
+
+function consolidate(groups: SidebarGroup[], t: (key: string, fallback: string) => string): SidebarGroup[] {
+  const lastIndex = new Map<string, string>()
+  groups.forEach((group, groupIndex) => group.items.forEach((item, itemIndex) => {
+    const merged = mergedRoutes.find((entry) => entry.from.includes(item.to))
+    if (merged) lastIndex.set(merged.to, `${groupIndex}:${itemIndex}`)
+  }))
+  return groups
+    .map((group, groupIndex) => ({
+      ...group,
+      items: group.items.flatMap((item, itemIndex) => {
+        if (hiddenRoutes.has(item.to)) return []
+        const merged = mergedRoutes.find((entry) => entry.from.includes(item.to))
+        if (!merged) return [item]
+        return lastIndex.get(merged.to) === `${groupIndex}:${itemIndex}` ? [{ to: merged.to, label: t(merged.label[0], merged.label[1]) }] : []
+      }),
+    }))
+    .filter((group) => group.items.length > 0)
+}
+
 function navGroupOf(path: string): NavGroupKey {
   if (path === '/member/dashboard' || path === '/ceo/dashboard') return 'main'
   if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony')) return 'sales'
@@ -164,19 +191,19 @@ export function AppSidebar() {
   // Without RBAC the old per-role list is used.
   const sidebarGroups = useMemo<SidebarGroup[]>(() => {
     if (access) {
-      return access.navigation.map((group, index) => {
+      return consolidate(access.navigation.map((group, index) => {
         const key = rbacGroupKeys[group.group.trim().toLowerCase()]
         return {
           key: `${group.group}-${index}`,
           label: key ? t(`shell.group.${key}`, groupFallback[key]) : group.group,
-          items: group.items.map((item) => ({ to: item.route_path, label: item.display_name, icon: item.icon })),
+          items: group.items.map((item) => ({ to: resolveNavRoute(item), label: item.display_name, icon: item.icon })),
         }
-      })
+      }), t)
     }
     const legacy = getAccessibleNavigation(user, { sidebarOnly: true })
-    return groupOrder
+    return consolidate(groupOrder
       .map((group) => ({ key: group, label: t(`shell.group.${group}`, groupFallback[group]), items: legacy.filter((item) => navGroupOf(item.to) === group) }))
-      .filter((entry) => entry.items.length > 0)
+      .filter((entry) => entry.items.length > 0), t)
   }, [access, t, user])
   const sidebarNavigation = useMemo(() => sidebarGroups.flatMap((group) => group.items), [sidebarGroups])
   const hasProjectsAccess = sidebarNavigation.some((item) => item.to === '/projects')

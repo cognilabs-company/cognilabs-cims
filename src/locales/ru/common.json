@@ -1766,5 +1766,10 @@
   "telephony.ext_settings.timeout": "Звонить (секунд)",
   "telephony.ext_settings.open": "Настройки линии",
   "telephony.view_only.title": "Только просмотр",
-  "telephony.view_only.text": "Вы видите историю звонков. Чтобы звонить, попросите у администратора право «Звонки · создание»."
+  "telephony.view_only.text": "Вы видите историю звонков. Чтобы звонить, попросите у администратора право «Звонки · создание».",
+  "rbac.denied.title": "Нет доступа к странице",
+  "rbac.denied.text": "В вашей роли нет права «{{permission}}». Попросите администратора добавить его.",
+  "rbac.denied.home": "На мою главную",
+  "nav./settings.label": "Настройки",
+  "nav./salary.label": "Зарплата и KPI"
 }

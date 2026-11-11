@@ -1766,5 +1766,10 @@
   "telephony.ext_settings.timeout": "Ring for (seconds)",
   "telephony.ext_settings.open": "Line settings",
   "telephony.view_only.title": "View only",
-  "telephony.view_only.text": "You can see the call history. Ask an admin for the “calls · create” permission to make calls."
+  "telephony.view_only.text": "You can see the call history. Ask an admin for the “calls · create” permission to make calls.",
+  "rbac.denied.title": "No access to this page",
+  "rbac.denied.text": "Your role does not include the “{{permission}}” permission. Ask an administrator to add it.",
+  "rbac.denied.home": "Go to my home page",
+  "nav./settings.label": "Settings",
+  "nav./salary.label": "Salary & KPI"
 }

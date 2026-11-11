@@ -4,7 +4,8 @@ import { translateCurrent } from '../../../shared/i18n/translations'
 import { useAuth } from '../hooks/useAuth'
 import { AppSplash } from '../../../shared/ui/loader'
 import type { NavigationAudience } from '../../../shared/config/navigation'
-import { canOpenPath, hasAudienceAccess } from '../../../shared/lib/permissions'
+import { canOpenPath, hasAudienceAccess, moduleForPath } from '../../../shared/lib/permissions'
+import { AccessDenied } from './AccessDenied'
 
 type ProtectedRouteProps = {
   permissionKey?: string
@@ -43,9 +44,11 @@ export function ProtectedRoute({ permissionKey, audience, children }: ProtectedR
   }
 
   // Pages that belong to an RBAC module: effective_permissions[module] must include "view".
-  const rbacAnswer = canOpenPath(user, access, location.pathname)
+  // Only the per-page guard (the one wrapping a page) asks RBAC, so "no access" renders inside the app layout.
+  const rbacAnswer = children ? canOpenPath(user, access, location.pathname) : null
   if (rbacAnswer === false) {
-    return <Navigate to="/dashboard-redirect" replace />
+    // Say why instead of silently bouncing to another page.
+    return <AccessDenied module={moduleForPath(location.pathname, access) ?? ''} />
   }
   if (rbacAnswer === true) {
     return children ? <>{children}</> : <Outlet />

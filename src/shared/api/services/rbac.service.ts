@@ -94,8 +94,10 @@ function listOf(value: unknown, keys: string[]): unknown[] {
 /** `{crm: ["view"]}`, `[{module: "crm", actions: ["view"]}]` or `[{module_name, action}]` → `{crm: ["view"]}`. */
 export function normalizePermissions(raw: unknown): PermissionSet {
   const result: PermissionSet = {}
-  const add = (module: string, actions: string[]) => {
+  const add = (rawModule: string, rawActions: string[]) => {
+    const module = rawModule.trim().toLowerCase()
     if (!module) return
+    const actions = rawActions.map((action) => action.trim().toLowerCase()).filter(Boolean)
     const current = result[module] ?? []
     result[module] = [...new Set([...current, ...actions])]
   }
@@ -129,11 +131,11 @@ function normalizeNavigation(raw: unknown): RbacNavGroup[] {
       const route = asString(item.route_path ?? item.path ?? item.route)
       if (!route) return []
       return [{
-        name: asString(item.name ?? item.module),
+        name: asString(item.name ?? item.module).trim().toLowerCase(),
         display_name: asString(item.display_name ?? item.label ?? item.name),
         route_path: route.startsWith('/') ? route : `/${route}`,
         icon: asStringOrNull(item.icon),
-        actions: asStrings(item.actions),
+        actions: asStrings(item.actions).map((action) => action.toLowerCase()),
       }]
     })
     return items.length ? [{ group: asString(entry.group ?? entry.name ?? entry.title), items }] : []

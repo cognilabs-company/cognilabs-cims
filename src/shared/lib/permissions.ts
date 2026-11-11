@@ -34,14 +34,34 @@ function matchesPrefix(path: string, prefix: string) {
   return path === prefix || path.startsWith(`${prefix}/`)
 }
 
+/** The app's own page for a module (first entry of the map above). */
+const canonicalModuleRoute = new Map<string, string>()
+for (const [prefix, module] of moduleRoutes) if (!canonicalModuleRoute.has(module)) canonicalModuleRoute.set(module, prefix)
+
+/** A route this app actually has (so a backend path like "/customers" can be told apart). */
+function isAppRoute(path: string) {
+  return navigationItems.some((item) => item.to === path) || moduleRoutes.some(([prefix]) => matchesPrefix(path, prefix))
+}
+
+/**
+ * Where a backend navigation item should link: its own route_path when the app has that page,
+ * otherwise the app's page for the same module (e.g. "/customers" → "/crm/customers").
+ */
+export function resolveNavRoute(item: { name: string; route_path: string }) {
+  const route = item.route_path.length > 1 ? item.route_path.replace(/\/+$/, '') : item.route_path
+  if (isAppRoute(route)) return route
+  return canonicalModuleRoute.get(item.name) ?? route
+}
+
 /** RBAC module of a path: the backend navigation first (it knows its own routes), then the built-in map. */
 export function moduleForPath(pathname: string, access?: UserAccess | null): RbacModuleName | null {
   const path = pathname.split(/[?#]/, 1)[0] || '/'
   let best: { module: string; length: number } | null = null
   for (const group of access?.navigation ?? []) {
     for (const item of group.items) {
-      if (item.name && item.route_path !== '/' && matchesPrefix(path, item.route_path) && item.route_path.length > (best?.length ?? 0)) {
-        best = { module: item.name, length: item.route_path.length }
+      const route = resolveNavRoute(item)
+      if (item.name && route !== '/' && matchesPrefix(path, route) && route.length > (best?.length ?? 0)) {
+        best = { module: item.name, length: route.length }
       }
     }
   }
@@ -82,7 +102,16 @@ export function hasRbacAccess(access: UserAccess | null | undefined): access is 
 /** Can the user perform `action` in `module`? */
 export function canAccessModule(user: CurrentUser | null, access: UserAccess | null | undefined, module: RbacModuleName, action = 'view') {
   if (!user) return false
-  if (hasRbacAccess(access)) return access.effective_permissions[module]?.includes(action) ?? false
+  if (hasRbacAccess(access)) {
+    // The module under our name, plus whatever name the backend gave to the same page (e.g. "telephony" for /telephony).
+    const key = module.toLowerCase()
+    const home = canonicalModuleRoute.get(key)
+    const items = access.navigation.flatMap((group) => group.items).filter((item) => item.name === key || (home !== undefined && resolveNavRoute(item) === home))
+    const keys = new Set([key, ...items.map((item) => item.name)])
+    if ([...keys].some((name) => access.effective_permissions[name]?.includes(action))) return true
+    // The navigation lists actions too — a module the backend shows in the menu is never locked out of "view".
+    return items.some((item) => item.actions.includes(action) || (action === 'view' && item.actions.length === 0))
+  }
   return legacyModuleAccess(user, module)
 }
 
@@ -215,7 +244,8 @@ export function getDefaultDashboardPath(user: CurrentUser | null, access?: UserA
   }
 
   // With RBAC the first page of the user's own navigation is a safe landing page.
-  const firstNavigationRoute = hasRbacAccess(access) ? access.navigation[0]?.items[0]?.route_path : undefined
+  const firstNavItem = hasRbacAccess(access) ? access.navigation[0]?.items[0] : undefined
+  const firstNavigationRoute = firstNavItem ? resolveNavRoute(firstNavItem) : undefined
   if (firstNavigationRoute) {
     return firstNavigationRoute
   }
