@@ -81,7 +81,7 @@ export function CallDayPicker({ value, onChange, onClear }: Props) {
         className={cn(
           'group/day inline-flex h-10 items-center rounded-[13px] ring-1 transition-[background-color,box-shadow,color] duration-200',
           value
-            ? 'bg-[var(--blue-dim)] text-[var(--primary)] ring-[var(--primary)]/40 shadow-[0_6px_18px_-12px_rgba(43,89,255,0.8)]'
+            ? 'bg-[var(--blue-dim)] text-[var(--primary)] ring-[var(--blue-border)]'
             : 'bg-[var(--surface)] text-[var(--foreground)] ring-[var(--border)] hover:ring-[var(--border-hover)]',
         )}
       >
@@ -114,10 +114,9 @@ export function CallDayPicker({ value, onChange, onClear }: Props) {
           className="cal-pop absolute top-[calc(100%+8px)] left-0 z-40 w-[308px] overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--elev-xl)] max-sm:-left-2"
         >
           {/* Header: the chosen (or today's) day, large */}
-          <div className="relative overflow-hidden px-4 pt-3.5 pb-4 text-white" style={{ background: 'linear-gradient(135deg, #2b59ff 0%, #6d4bff 100%)' }}>
-            <span aria-hidden="true" className="absolute -top-10 -right-8 h-28 w-28 rounded-full bg-white/15 blur-xl" />
-            <p className="text-[12px] font-medium tracking-wide text-white/75 uppercase">{header.weekday}</p>
-            <p key={value || today} className="cal-slide-left text-[22px] leading-7 font-bold tracking-[-0.02em]">{header.date}</p>
+          <div className="border-b border-[var(--border-subtle)] px-4 pt-3.5 pb-3">
+            <p className="text-[12px] font-medium text-[var(--muted)]">{header.weekday}</p>
+            <p key={value || today} className="cal-slide-left text-[20px] leading-7 font-bold tracking-[-0.02em] text-[var(--foreground)]">{header.date}</p>
           </div>
 
           <div className="px-3 pt-3 pb-2">
@@ -134,8 +133,8 @@ export function CallDayPicker({ value, onChange, onClear }: Props) {
             </div>
 
             <div className="grid grid-cols-7 pb-1">
-              {weekdays.map((name, index) => (
-                <span key={name} className={cn('text-center text-[11px] font-semibold tracking-wide uppercase', index >= 5 ? 'text-[var(--danger-text)]/70' : 'text-[var(--caption)]')}>{name}</span>
+              {weekdays.map((name) => (
+                <span key={name} className={cn('text-center text-[11px] font-semibold tracking-wide uppercase', 'text-[var(--caption)]')}>{name}</span>
               ))}
             </div>
 
@@ -155,14 +154,13 @@ export function CallDayPicker({ value, onChange, onClear }: Props) {
                     className={cn(
                       'relative mx-auto grid h-9 w-9 place-items-center rounded-full text-[13px] tabular-nums transition-[background-color,color,transform,box-shadow] duration-200',
                       selected
-                        ? 'cal-picked font-bold text-white shadow-[0_8px_18px_-8px_rgba(43,89,255,0.9)]'
+                        ? 'cal-picked bg-[var(--primary)] font-bold text-white'
                         : cell.inMonth
-                          ? 'font-semibold text-[var(--foreground)] hover:scale-110 hover:bg-[var(--blue-dim)] hover:text-[var(--primary)]'
+                          ? 'font-semibold text-[var(--foreground)] hover:bg-[var(--blue-dim)] hover:text-[var(--primary)]'
                           : 'text-[var(--caption)] hover:bg-[var(--input-surface)]',
                       isToday && !selected && 'ring-1 ring-[var(--primary)]/60',
                       future && 'pointer-events-none opacity-25',
                     )}
-                    style={selected ? { background: 'linear-gradient(135deg, #2b59ff 0%, #6d4bff 100%)' } : undefined}
                   >
                     {cell.date}
                     {isToday && !selected ? <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[var(--primary)]" /> : null}

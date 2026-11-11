@@ -191,7 +191,7 @@ export function callKindLabel(call: Pick<TelephonyCall, 'direction' | 'status' |
 
 export type CallTone = 'incoming' | 'outgoing' | 'missed' | 'live'
 
-/** Colour family of a call in lists and badges: blue in, violet out, red unanswered, green live. */
+/** Colour family of a call in lists and badges: blue in, cyan out, red unanswered, green live. */
 export function callTone(call: Pick<TelephonyCall, 'direction' | 'status' | 'talk_seconds'>): CallTone {
   if (call.status === 'ringing' || call.status === 'answered') return 'live'
   if (isUnanswered(call)) return 'missed'
@@ -202,7 +202,7 @@ export function callTone(call: Pick<TelephonyCall, 'direction' | 'status' | 'tal
 export function hueOf(value: string) {
   let hash = 0
   for (let i = 0; i < value.length; i += 1) hash = (hash * 31 + value.charCodeAt(i)) >>> 0
-  return 200 + (hash % 80) // keep it in the calm blue → violet range
+  return 195 + (hash % 35) // calm blue range only (no violet)
 }
 
 export function initialOf(name: string | null | undefined) {

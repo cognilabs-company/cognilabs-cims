@@ -1061,79 +1061,18 @@ input:-webkit-autofill:focus {
 
   --calls-in: var(--primary);
   --calls-in-dim: var(--blue-dim);
-  --calls-out: #7c4dff;
-  --calls-out-dim: var(--violet-dim);
+  --calls-out: #0e7490;
+  --calls-out-dim: #e3f4f8;
   --calls-miss: var(--danger);
   --calls-miss-dim: var(--danger-dim);
   --calls-live: var(--success);
   --calls-live-dim: var(--success-dim);
-  --calls-hero-ink: #0e1525;
 }
 :root[data-theme="dark"] .calls-ui {
-  --calls-out: #a688ff;
+  --calls-out: #67d4ea;
+  --calls-out-dim: #10303a;
   --mp-avatar: linear-gradient(150deg, #4a66d8 0%, #2a45b8 100%);
 }
-
-.calls-hero {
-  --calls-hero-bg: #13204a;
-  position: relative;
-  isolation: isolate;
-  color: #fff;
-  background: linear-gradient(135deg, #0f1a3d 0%, #162a6e 55%, #2a1c6c 100%);
-  box-shadow: 0 22px 44px -28px rgba(22, 42, 110, 0.85);
-}
-:root[data-theme="dark"] .calls-hero {
-  --calls-hero-bg: #111a36;
-  background: linear-gradient(135deg, #0d152f 0%, #13225a 55%, #221858 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-/* Two soft lights drifting slowly behind the content (clipped to the card, popovers are not). */
-.calls-hero-glow {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  border-radius: inherit;
-  pointer-events: none;
-}
-.calls-hero-glow::before,
-.calls-hero-glow::after {
-  content: "";
-  position: absolute;
-  width: 46%;
-  aspect-ratio: 1;
-  border-radius: 9999px;
-  filter: blur(60px);
-  opacity: 0.55;
-  animation: calls-drift 16s ease-in-out infinite alternate;
-}
-.calls-hero-glow::before { top: -45%; right: -6%; background: #3b6bff; }
-.calls-hero-glow::after { bottom: -60%; left: 8%; background: #8b5cf6; opacity: 0.4; animation-duration: 21s; animation-direction: alternate-reverse; }
-@keyframes calls-drift {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(-6%, 8%, 0) scale(1.12); }
-  100% { transform: translate3d(5%, -4%, 0) scale(0.94); }
-}
-
-/* Colourful counter tiles: one shape, one gradient per call type, a light sweep on hover. */
-.calls-tile {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms ease, opacity 200ms ease;
-}
-.calls-tile::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%);
-  transform: translateX(-120%);
-  transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.calls-tile:hover::after { transform: translateX(120%); }
-.calls-tile:hover { transform: translateY(-2px); }
-.calls-tile[aria-pressed="true"] { transform: translateY(-3px); }
 
 /* Day picker popover + month slide */
 @keyframes cal-pop { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: none; } }
@@ -1145,8 +1084,7 @@ input:-webkit-autofill:focus {
 .cal-slide-right { animation: cal-slide-right 280ms cubic-bezier(0.16, 1, 0.3, 1); }
 .cal-picked { animation: cal-pick 320ms cubic-bezier(0.16, 1, 0.3, 1); }
 @media (prefers-reduced-motion: reduce) {
-  .calls-hero-glow::before, .calls-hero-glow::after, .cal-pop, .cal-slide-left, .cal-slide-right, .cal-picked { animation: none; }
-  .calls-tile, .calls-tile::after { transition: none; }
+  .cal-pop, .cal-slide-left, .cal-slide-right, .cal-picked { animation: none; }
 }
 
 .calls-scroll { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
