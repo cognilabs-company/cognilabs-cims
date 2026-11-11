@@ -3,6 +3,7 @@ import { AppShellContext } from './AppShellContext'
 
 export function AppShellProvider({ children }: PropsWithChildren) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try { return window.localStorage.getItem('cims-sidebar-collapsed') === '1' } catch { return false }
   })
@@ -34,8 +35,10 @@ export function AppShellProvider({ children }: PropsWithChildren) {
       closeSidebar,
       toggleSidebar,
       toggleSidebarCollapsed,
+      headerSlot,
+      setHeaderSlot,
     }),
-    [closeSidebar, isSidebarCollapsed, isSidebarOpen, openSidebar, toggleSidebar, toggleSidebarCollapsed],
+    [closeSidebar, headerSlot, isSidebarCollapsed, isSidebarOpen, openSidebar, toggleSidebar, toggleSidebarCollapsed],
   )
 
   return (

@@ -58,7 +58,7 @@ export function AppHeader() {
   const { locale, setLocale, t } = useLocale()
   const { logout, user, can } = useAuth()
   const { showToast } = useToast()
-  const { toggleSidebar } = useAppShell()
+  const { toggleSidebar, setHeaderSlot } = useAppShell()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false,
@@ -143,6 +143,9 @@ export function AppHeader() {
       </p>
 
       <div className="min-w-0 flex-1" />
+
+      {/* Page buttons (HeaderActions) land here */}
+      <div ref={setHeaderSlot} className="hidden shrink-0 items-center gap-2 empty:hidden md:flex" />
 
       {showCrmSwitch ? (
         <button

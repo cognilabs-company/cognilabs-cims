@@ -28,6 +28,8 @@ import { CompanyPaymentFormModal, type CompanyPaymentFormValues } from '../compo
 import { WorkdayOverrideFormDialog } from '../components/WorkdayOverrideFormDialog'
 import { isDueDateOverdue } from '../../projects/lib/format'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { HeaderActions } from '../../../widgets/navigation/HeaderActions'
+import { cn } from '../../../shared/lib/cn'
 
 const initialBroadcastMessage: MessageComposerValues = {
   subject: '',
@@ -801,11 +803,12 @@ export function CeoDashboardPage() {
 
   return (
     <section className="stagger-in flex flex-col gap-[18px]">
-      <div className="flex items-center justify-end">
-        <h1 className="sr-only">{t('ceo.overview.title', 'CEO dashboard')}</h1>
-
+      <h1 className="sr-only">{t('ceo.overview.title', 'CEO dashboard')}</h1>
+      <HeaderActions>
         <ActionsMenu
           label={t('common.actions')}
+          // A top-bar pill: round "…" for several actions, a labelled pill when only Refresh is there.
+          className={cn('h-11 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] shadow-[var(--pill-shadow)]', canCreate ? 'w-11' : 'px-4')}
           items={[
             {
               label: t('common.refresh'),
@@ -856,7 +859,7 @@ export function CeoDashboardPage() {
             ] : []),
           ]}
         />
-      </div>
+      </HeaderActions>
 
       {/* The four numbers a CEO checks first — the same tiles as the Customers page */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -37,6 +37,8 @@ import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
 import { useCrmScope } from '../lib/crmScope'
 import { getCustomerActionErrorMessage, getCustomerUnavailableTitle } from '../lib/customerErrors'
+import { HeaderActions } from '../../../widgets/navigation/HeaderActions'
+
 const emptyCustomers: CustomerSummary[] = []
 const emptyStatuses: DynamicStatusOption[] = []
 function getCrmReturnStateKey(scopeKey: string) {
@@ -1182,12 +1184,12 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   if (view === 'overview') {
     return (
       <section className="stagger-in flex flex-col gap-[18px]">
-        <div className="flex items-center justify-end">
-          <h1 className="sr-only">{listTitle}</h1>
-          <Button onClick={() => navigate(`${routeBasePath}/customers`)} rightIcon={<ArrowRight size={16} />}>
+        <h1 className="sr-only">{listTitle}</h1>
+        <HeaderActions>
+          <Button onClick={() => navigate(`${routeBasePath}/customers`)} rightIcon={<ArrowRight size={16} />} className="min-h-11 rounded-full px-5">
             {t('customers.page.open_list', 'Customer list')}
           </Button>
-        </div>
+        </HeaderActions>
 
         <CrmDashboardOverview
           statusLabels={Object.fromEntries(statusOptions.map((option) => [option.value, option.label]))}
