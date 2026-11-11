@@ -1,4 +1,5 @@
-import type { EdgeStyle, MindMap, MindNode } from './types'
+import { computeLayout, freeSpot, hubChildDir, isHub, nextBranch } from './layout'
+import type { Dir, EdgeStyle, MindMap, MindNode } from './types'
 
 export function uid() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -33,6 +34,26 @@ export function isFloating(map: MindMap, id: string) {
 
 export function floatingIds(map: MindMap) {
   return Object.values(map.nodes).filter((node) => node.parentId === null && node.id !== map.rootId).map((node) => node.id)
+}
+
+/** Side for a new branch of a hub: right or left, whichever has fewer branches (right first). */
+export function pickDir(map: MindMap, hubId: string): Dir {
+  const kids = map.nodes[hubId]?.children ?? []
+  const count = (dir: Dir) => kids.filter((child) => hubChildDir(map, hubId, child) === dir).length
+  return count('left') < count('right') ? 'left' : 'right'
+}
+
+/** Old maps: write the current side of every hub branch, so branches never jump when others are added. */
+export function ensureDirs(map: MindMap): MindMap {
+  const hubs = Object.values(map.nodes).filter((node) => isHub(map, node.id))
+  const missing = hubs.flatMap((hub) => hub.children.filter((child) => map.nodes[child] && !map.nodes[child].dir).map((child) => [hub.id, child] as const))
+  const rootKids = map.nodes[map.rootId]?.children ?? []
+  const noBranch = rootKids.filter((child) => map.nodes[child] && map.nodes[child].branch === undefined)
+  if (!missing.length && !noBranch.length) return map
+  const nodes = { ...map.nodes }
+  for (const [hubId, child] of missing) nodes[child] = { ...nodes[child], dir: hubChildDir(map, hubId, child) }
+  for (const child of noBranch) nodes[child] = { ...nodes[child], branch: rootKids.indexOf(child) }
+  return { ...map, nodes }
 }
 
 export function depthOf(map: MindMap, id: string) {
@@ -75,8 +96,10 @@ export function subtreeIds(map: MindMap, id: string): string[] {
   return out
 }
 
-export function addChild(map: MindMap, parentId: string, text: string, id?: string): [MindMap, string] {
+export function addChild(map: MindMap, parentId: string, text: string, id?: string, dir?: Dir): [MindMap, string] {
   const child = makeNode(parentId, text, id)
+  if (isHub(map, parentId)) child.dir = dir ?? pickDir(map, parentId)
+  if (parentId === map.rootId) child.branch = nextBranch(map)
   const next = edit(map, [parentId], (nodes) => {
     nodes[parentId].children.push(child.id)
     nodes[parentId].collapsed = false
@@ -90,6 +113,8 @@ export function addSibling(map: MindMap, id: string, text: string, newId?: strin
   if (!node?.parentId) return addChild(map, id, text, newId)
   const parentId = node.parentId
   const sibling = makeNode(parentId, text, newId)
+  if (isHub(map, parentId)) sibling.dir = hubChildDir(map, parentId, id)
+  if (parentId === map.rootId) sibling.branch = nextBranch(map)
   const next = edit(map, [parentId], (nodes) => {
     const list = nodes[parentId].children
     list.splice(list.indexOf(id) + 1, 0, sibling.id)
@@ -104,6 +129,8 @@ export function addSiblingAbove(map: MindMap, id: string, text: string, newId?: 
   if (!node?.parentId) return addChild(map, id, text, newId)
   const parentId = node.parentId
   const sibling = makeNode(parentId, text, newId)
+  if (isHub(map, parentId)) sibling.dir = hubChildDir(map, parentId, id)
+  if (parentId === map.rootId) sibling.branch = nextBranch(map)
   const next = edit(map, [parentId], (nodes) => {
     const list = nodes[parentId].children
     list.splice(list.indexOf(id), 0, sibling.id)
@@ -117,7 +144,12 @@ export function insertParent(map: MindMap, id: string, text: string, newId?: str
   const node = map.nodes[id]
   if (!node?.parentId) return [map, id]
   const parentId = node.parentId
-  const middle = { ...makeNode(parentId, text, newId), children: [id] }
+  const middle = {
+    ...makeNode(parentId, text, newId),
+    children: [id],
+    ...(isHub(map, parentId) ? { dir: hubChildDir(map, parentId, id) } : {}),
+    ...(parentId === map.rootId ? { branch: node.branch } : {}),
+  }
   const next = edit(map, [parentId, id], (nodes) => {
     const list = nodes[parentId].children
     list.splice(list.indexOf(id), 1, middle.id)
@@ -135,13 +167,52 @@ export function addFloating(map: MindMap, x: number, y: number, text: string, ne
 }
 
 /** Cut the line to the parent: the node (with its subtree) stays where it is as a free node. */
-export function detach(map: MindMap, id: string, center: { x: number; y: number }): MindMap {
+export function detach(map: MindMap, id: string, center: { x: number; y: number }, dir: Dir = 'right'): MindMap {
+  const node = map.nodes[id]
+  if (!node?.parentId) return map
+  const parentId = node.parentId
+  return edit(map, [parentId, id, ...node.children], (nodes) => {
+    nodes[parentId].children = nodes[parentId].children.filter((child) => child !== id)
+    nodes[id] = { ...nodes[id], parentId: null, x: Math.round(center.x), y: Math.round(center.y), dx: 0, dy: 0, dir: undefined }
+    // It is a hub now: its branches keep growing the way they did.
+    for (const child of node.children) if (nodes[child]) nodes[child] = { ...nodes[child], dir }
+  })
+}
+
+/** Moves a free node (with its subtree) to the nearest place where it overlaps nothing. */
+export function settleFree(map: MindMap, id: string): MindMap {
+  const node = map.nodes[id]
+  if (!node || node.parentId !== null || id === map.rootId) return map
+  const { dx, dy } = freeSpot(computeLayout(map), new Set(subtreeIds(map, id)))
+  if (!dx && !dy) return map
+  return edit(map, [id], (nodes) => { nodes[id] = { ...nodes[id], x: (nodes[id].x ?? 0) + dx, y: (nodes[id].y ?? 0) + dy } })
+}
+
+/** A hub branch moves to another side (or place within its side): `beforeId` = the sibling it goes before. */
+export function moveInHub(map: MindMap, id: string, dir: Dir, beforeId: string | null): MindMap {
+  const node = map.nodes[id]
+  if (!node?.parentId || !isHub(map, node.parentId)) return map
+  const parentId = node.parentId
+  return edit(map, [parentId, id], (nodes) => {
+    const list = nodes[parentId].children.filter((child) => child !== id)
+    const at = beforeId ? list.indexOf(beforeId) : -1
+    list.splice(at === -1 ? list.length : at, 0, id)
+    nodes[parentId].children = list
+    nodes[id] = { ...nodes[id], dir, dx: 0, dy: 0 }
+  })
+}
+
+/** Reorder among siblings (dropping a node back into its branch): before `beforeId`, or last. */
+export function reorder(map: MindMap, id: string, beforeId: string | null): MindMap {
   const node = map.nodes[id]
   if (!node?.parentId) return map
   const parentId = node.parentId
   return edit(map, [parentId, id], (nodes) => {
-    nodes[parentId].children = nodes[parentId].children.filter((child) => child !== id)
-    nodes[id] = { ...nodes[id], parentId: null, x: Math.round(center.x), y: Math.round(center.y), dx: 0, dy: 0 }
+    const list = nodes[parentId].children.filter((child) => child !== id)
+    const at = beforeId ? list.indexOf(beforeId) : -1
+    list.splice(at === -1 ? list.length : at, 0, id)
+    nodes[parentId].children = list
+    nodes[id] = { ...nodes[id], dx: 0, dy: 0 }
   })
 }
 
@@ -190,7 +261,7 @@ export function moveAmongSiblings(map: MindMap, id: string, delta: -1 | 1): Mind
 }
 
 /** Drop `id` onto `newParentId` (not onto itself or its own subtree). */
-export function reparent(map: MindMap, id: string, newParentId: string): MindMap {
+export function reparent(map: MindMap, id: string, newParentId: string, dir?: Dir): MindMap {
   const node = map.nodes[id]
   if (!node || id === map.rootId || id === newParentId || !map.nodes[newParentId] || isDescendant(map, newParentId, id) || node.parentId === newParentId) return map
   const oldParentId = node.parentId
@@ -198,7 +269,17 @@ export function reparent(map: MindMap, id: string, newParentId: string): MindMap
     if (oldParentId) nodes[oldParentId].children = nodes[oldParentId].children.filter((child) => child !== id)
     nodes[newParentId].children.push(id)
     nodes[newParentId].collapsed = false
-    nodes[id] = { ...nodes[id], parentId: newParentId, dx: 0, dy: 0, x: undefined, y: undefined }
+    const keepBranch = node.branch !== undefined && !nodes[newParentId].children.some((child) => child !== id && map.nodes[child]?.branch === node.branch)
+    nodes[id] = {
+      ...nodes[id],
+      parentId: newParentId,
+      dx: 0,
+      dy: 0,
+      x: undefined,
+      y: undefined,
+      dir: isHub(map, newParentId) ? dir ?? pickDir(map, newParentId) : undefined,
+      branch: newParentId === map.rootId ? (keepBranch ? node.branch : nextBranch(map, id)) : node.branch,
+    }
   })
 }
 
@@ -249,6 +330,8 @@ export function importMap(raw: unknown): MindMap | null {
       dx: Number(node.dx) || 0,
       dy: Number(node.dy) || 0,
       ...(Number.isFinite(Number(node.x)) && Number.isFinite(Number(node.y)) && node.x !== undefined ? { x: Number(node.x), y: Number(node.y) } : {}),
+      ...(node.dir === 'right' || node.dir === 'left' || node.dir === 'up' || node.dir === 'down' ? { dir: node.dir } : {}),
+      ...(Number.isInteger(node.branch) && Number(node.branch) >= 0 ? { branch: Number(node.branch) } : {}),
       task: node.task && typeof node.task === 'object' ? node.task : null,
     }
   }

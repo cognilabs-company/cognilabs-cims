@@ -39,7 +39,7 @@ import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { cn } from '../../../shared/lib/cn'
 import { useToast } from '../../../shared/toast/useToast'
 import { exportJson, exportMarkdown, exportPng, exportSvg } from '../lib/export'
-import { computeLayout, type Layout } from '../lib/layout'
+import { computeLayout, isHub, type Layout } from '../lib/layout'
 import {
   addChild,
   addSibling,
@@ -56,11 +56,15 @@ import {
   addFloating,
   addSiblingAbove,
   detach,
+  ensureDirs,
   floatingIds,
   insertParent,
+  moveInHub,
+  reorder,
+  settleFree,
   updateNode,
 } from '../lib/tree'
-import type { MindMap, MindNode, NodeTask } from '../lib/types'
+import type { Dir, MindMap, MindNode, NodeTask } from '../lib/types'
 import { useMapHistory } from '../lib/useMapHistory'
 import { clampZoom, type View } from '../lib/view'
 import { MindCanvas } from './MindCanvas'
@@ -139,7 +143,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   const navigate = useNavigate()
   const { confirm } = useConfirm()
   const { showToast } = useToast()
-  const { map, apply, undo, redo, canUndo, canRedo } = useMapHistory(initial)
+  const { map, apply, undo, redo, canUndo, canRedo } = useMapHistory(useMemo(() => ensureDirs(initial), [initial]))
   const layout = useMemo(() => computeLayout(map), [map])
 
   const [selectedId, setSelectedId] = useState(initial.rootId)
@@ -159,6 +163,8 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   const [animateView, setAnimateView] = useState(false)
   const animateTimer = useRef<number | undefined>(undefined)
   const [leavingIds, setLeavingIds] = useState<Set<string>>(() => new Set())
+  // A selected line (by its child's id): Delete / ✂ cuts it.
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
   const [prefs, setPrefs] = useState(readPrefs)
   const [query, setQuery] = useState('')
   const [matchIndex, setMatchIndex] = useState(0)
@@ -280,6 +286,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
 
   function select(id: string) {
     setSelectedId(id)
+    setSelectedEdge(null)
   }
 
   function startEdit(id: string, typed?: string) {
@@ -307,11 +314,12 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     else ensureVisible(state.id, layout)
   }
 
-  function addNode(kind: 'child' | 'sibling' | 'above' | 'parent', from = selected) {
+  function addNode(kind: 'child' | 'sibling' | 'above' | 'parent', from = selected, dir?: Dir) {
     const id = uid()
-    if (kind === 'parent' && !map.nodes[from]?.parentId) { addNode('child', from); return }
+    // Around a hub (central topic / free node) every add is a new branch.
+    if (kind !== 'child' && isHub(map, from)) { addNode('child', from, dir); return }
     const [next] = kind === 'child'
-      ? addChild(map, from, newNodeText, id)
+      ? addChild(map, from, newNodeText, id, dir)
       : kind === 'above'
         ? addSiblingAbove(map, from, newNodeText, id)
         : kind === 'parent'
@@ -326,13 +334,90 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     ensureVisible(id, nextLayout)
   }
 
+  /** "+" on a side of a node: around a hub a branch that way; otherwise child (outer), parent (inner), sibling (sides). */
+  function sideAdd(id: string, side: Dir) {
+    const box = layout.boxes.get(id)
+    if (!box) return
+    if (isHub(map, id)) { addNode('child', id, side); return }
+    const opposite: Record<Dir, Dir> = { right: 'left', left: 'right', up: 'down', down: 'up' }
+    if (side === box.dir) addNode('child', id)
+    else if (side === opposite[box.dir]) addNode('parent', id)
+    else addNode(side === 'up' || side === 'left' ? 'above' : 'sibling', id)
+  }
+
+  function sideLabel(id: string, side: Dir) {
+    const box = layout.boxes.get(id)
+    const names: Record<Dir, string> = {
+      right: t('mindmap.dir.right', 'right'), left: t('mindmap.dir.left', 'left'), up: t('mindmap.dir.up', 'up'), down: t('mindmap.dir.down', 'down'),
+    }
+    if (!box || isHub(map, id)) return t('mindmap.add_branch', 'New branch ({{side}})', { side: names[side] })
+    const opposite: Record<Dir, Dir> = { right: 'left', left: 'right', up: 'down', down: 'up' }
+    if (side === box.dir) return `${t('mindmap.add_child', 'Child (to the side)')} · Tab`
+    if (side === opposite[box.dir]) return `${t('mindmap.add_parent', 'Parent (in between)')} · Shift+Tab`
+    return side === 'up' || side === 'left' ? `${t('mindmap.add_above', 'Above (sibling)')} · Shift+Enter` : `${t('mindmap.add_below', 'Below (sibling)')} · Enter`
+  }
+
+  /**
+   * A dragged node was released. On a node → it is connected there. In empty space a free node moves;
+   * a branch of a hub goes to the side it was dropped on; any other node snaps back into its branch, in the new order.
+   */
+  function dropNode(id: string, center: { x: number; y: number }, targetId: string | null) {
+    const node = map.nodes[id]
+    const box = layout.boxes.get(id)
+    if (!node || !box) return
+    if (targetId && targetId === node.parentId && !isHub(map, targetId)) return
+    if (targetId) {
+      const target = layout.boxes.get(targetId)
+      let dir: Dir | undefined
+      if (target && isHub(map, targetId)) {
+        const dx = center.x - (target.x + target.w / 2)
+        const dy = center.y - (target.y + target.h / 2)
+        dir = Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up')
+      }
+      // Dropped on its own hub: it only changes side.
+      commit(targetId === node.parentId && dir ? moveInHub(map, id, dir, null) : reparent(map, id, targetId, dir))
+      setSelectedId(id)
+      return
+    }
+    if (id === map.rootId || !node.parentId) {
+      commit(updateNode(map, id, { dx: node.dx + center.x - (box.x + box.w / 2), dy: node.dy + center.y - (box.y + box.h / 2) }))
+      return
+    }
+    const parent = layout.boxes.get(node.parentId)
+    if (!parent) return
+    if (isHub(map, node.parentId)) {
+      const dx = center.x - (parent.x + parent.w / 2)
+      const dy = center.y - (parent.y + parent.h / 2)
+      const dir: Dir = Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up')
+      const along = dir === 'right' || dir === 'left' ? center.y : center.x
+      const siblings = map.nodes[node.parentId].children.filter((child) => child !== id && layout.boxes.get(child)?.dir === dir)
+      const before = siblings.find((child) => {
+        const sibling = layout.boxes.get(child)!
+        return along < (dir === 'right' || dir === 'left' ? sibling.y + sibling.h / 2 : sibling.x + sibling.w / 2)
+      }) ?? null
+      commit(moveInHub(map, id, dir, before))
+    } else {
+      const horizontal = box.dir === 'right' || box.dir === 'left'
+      const along = horizontal ? center.y : center.x
+      const siblings = map.nodes[node.parentId].children.filter((child) => child !== id && layout.boxes.has(child))
+      const before = siblings.find((child) => {
+        const sibling = layout.boxes.get(child)!
+        return along < (horizontal ? sibling.y + sibling.h / 2 : sibling.x + sibling.w / 2)
+      }) ?? null
+      commit(reorder(map, id, before))
+    }
+    setSelectedId(id)
+  }
+
   /** A free node at a canvas point (double-click on empty space, or the centre of the view). */
   function addFree(x?: number, y?: number) {
     const { w, h } = sizeRef.current
     const px = x ?? (w / 2 - view.x) / view.k
     const py = y ?? (h / 2 - view.y) / view.k
     const id = uid()
-    const [next] = addFloating(map, px, py, newNodeText, id)
+    const [added] = addFloating(map, px, py, newNodeText, id)
+    // From the toolbar (centre of the view): next to whatever is there, not on top of it.
+    const next = x === undefined ? settleFree(added, id) : added
     commit(next)
     const state = { id, original: newNodeText, selectAll: true, fresh: true }
     editingRef.current = state
@@ -345,7 +430,9 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     const box = layout.boxes.get(id)
     if (!box || !map.nodes[id]?.parentId) return
     // Step it a little outward, so it does not sit on the sibling that moves into its place.
-    commit(detach(map, id, { x: box.x + box.w / 2 + box.side * (box.w / 2 + 70), y: box.y + box.h / 2 - 28 }))
+    const step = { right: [box.w / 2 + 70, -28], left: [-(box.w / 2 + 70), -28], down: [60, box.h / 2 + 50], up: [60, -(box.h / 2 + 50)] }[box.dir]
+    commit(settleFree(detach(map, id, { x: box.x + box.w / 2 + step[0], y: box.y + box.h / 2 + step[1] }, box.dir), id))
+    setSelectedEdge(null)
     setSelectedId(id)
     showToast({ title: t('mindmap.cut_done', 'Line removed — drag the node onto another one to connect it again'), tone: 'info' })
   }
@@ -376,33 +463,32 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
 
   function nudge(dx: number, dy: number) {
     const current = map.nodes[selected]
+    // Connected nodes stay in their branch (drag them to reorder); only free nodes and the map itself move.
+    if (current?.parentId) return
     apply((m) => updateNode(m, selected, { dx: current.dx + dx, dy: current.dy + dy }), `nudge:${selected}`)
   }
 
+  /** Arrow keys: the nearest node in that direction (works the same on every side of the map). */
   function navigateSelection(key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown') {
     const box = layout.boxes.get(selected)
-    const current = map.nodes[selected]
-    if (!box || !current) return
-    const visibleKids = current.collapsed ? [] : current.children.filter((child) => layout.boxes.has(child))
-    const towards = (side: 1 | -1) => {
-      if (selected === map.rootId) return visibleKids.find((child) => layout.boxes.get(child)?.side === side) ?? null
-      if (box.side === side) return visibleKids[0] ?? null
-      return current.parentId
+    if (!box) return
+    const cx = box.x + box.w / 2
+    const cy = box.y + box.h / 2
+    const [ux, uy] = key === 'ArrowRight' ? [1, 0] : key === 'ArrowLeft' ? [-1, 0] : key === 'ArrowDown' ? [0, 1] : [0, -1]
+    let best: { id: string; score: number } | null = null
+    for (const other of layout.boxes.values()) {
+      if (other.id === selected) continue
+      const dx = other.x + other.w / 2 - cx
+      const dy = other.y + other.h / 2 - cy
+      const along = dx * ux + dy * uy
+      if (along <= 4) continue
+      const across = Math.abs(dx * uy - dy * ux)
+      const score = along + across * 2
+      if (!best || score < best.score) best = { id: other.id, score }
     }
-    let target: string | null = null
-    if (key === 'ArrowRight') target = towards(1)
-    else if (key === 'ArrowLeft') target = towards(-1)
-    else if (current.parentId) {
-      const siblings = map.nodes[current.parentId].children
-        .map((child) => layout.boxes.get(child))
-        .filter((item): item is NonNullable<typeof item> => Boolean(item) && item!.side === box.side)
-        .sort((a, b) => a.y - b.y)
-      const index = siblings.findIndex((item) => item.id === selected)
-      target = siblings[index + (key === 'ArrowDown' ? 1 : -1)]?.id ?? null
-    }
-    if (target) {
-      setSelectedId(target)
-      ensureVisible(target, layout)
+    if (best) {
+      setSelectedId(best.id)
+      ensureVisible(best.id, layout)
     }
   }
 
@@ -475,7 +561,12 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
       if (event.key === ' ') { event.preventDefault(); setSpacePan(true); return }
       if (event.key === 'Tab') { event.preventDefault(); addNode(event.shiftKey ? 'parent' : 'child'); return }
       if (event.key === 'Enter') { event.preventDefault(); addNode(event.shiftKey ? 'above' : 'sibling'); return }
-      if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); deleteSelected(); return }
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault()
+        if (selectedEdge && map.nodes[selectedEdge]?.parentId) detachNode(selectedEdge)
+        else deleteSelected()
+        return
+      }
       if (event.key === 'F2') { event.preventDefault(); startEdit(selected); return }
       if (event.key.startsWith('Arrow')) {
         event.preventDefault()
@@ -488,7 +579,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
         }
         return
       }
-      if (event.key === 'Escape') { setQuery(''); return }
+      if (event.key === 'Escape') { setQuery(''); setSelectedEdge(null); return }
       if (event.key.length === 1 && !event.altKey) {
         event.preventDefault()
         startEdit(selected, event.key)
@@ -698,18 +789,18 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
             spacePan={spacePan}
             showMinimap={prefs.minimap}
             labels={{
-              addChild: t('mindmap.child', 'Child'),
               collapse: t('mindmap.collapse', 'Collapse'),
               expand: t('mindmap.expand', 'Expand'),
               openLink: t('mindmap.open_link', 'Open link'),
               openTask: t('mindmap.open_task', 'Open task'),
               note: t('mindmap.has_note', 'Has a note'),
               remove: t('mindmap.remove', 'Delete'),
-              addAbove: t('mindmap.add_above', 'Above (sibling)'),
-              addBelow: t('mindmap.add_below', 'Below (sibling)'),
               cut: t('mindmap.cut', 'Remove the line to the parent'),
+              side: sideLabel,
             }}
-            onAddSibling={(id, where) => addNode(where === 'above' ? 'above' : 'sibling', id)}
+            onSideAdd={sideAdd}
+            selectedEdge={selectedEdge}
+            onSelectEdge={(id) => { setSelectedEdge(id); if (id) setSelectedId(id) }}
             onDetach={detachNode}
             onCreateFree={(x, y) => addFree(x, y)}
             leavingIds={leavingIds}
@@ -720,10 +811,8 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
             onStartEdit={(id) => startEdit(id)}
             onEditText={(id, text) => apply((m) => updateNode(m, id, { text }), `text:${id}`)}
             onFinishEdit={finishEdit}
-            onAddChild={(id) => addNode('child', id)}
             onToggleCollapse={toggleCollapse}
-            onMoveNode={(id, dx, dy) => { const current = map.nodes[id]; if (current) commit(updateNode(map, id, { dx: current.dx + dx, dy: current.dy + dy })) }}
-            onReparent={(id, targetId) => { commit(reparent(map, id, targetId)); setSelectedId(id) }}
+            onDropNode={dropNode}
             onOpenTask={openTask}
           />
           {/* View controls float over the canvas (bottom-left), the hint next to them. */}
@@ -750,7 +839,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
                 <ToolButton iconOnly flat icon={<QuestionIcon size={16} />} label={t('mindmap.help', 'How it works')} onClick={() => setHelpOpen((open) => !open)} active={helpOpen} />
                 <span className={cn('absolute bottom-[calc(100%+10px)] left-0 w-[300px] rounded-[12px] border border-[var(--border)] bg-[var(--card)] p-3 text-[12px] leading-relaxed text-[var(--muted-strong)] shadow-[var(--elev-lg)]', helpOpen ? 'block' : 'hidden group-hover/help:block')}>
                   {hint.split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
-                  {t('mindmap.hint_more', 'Double-click empty space — a free node · hover a line and press ✂ to cut it · drop a free node onto another node to connect it · Shift+Enter — above, Shift+Tab — parent').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
+                  {t('mindmap.hint_v2', 'Select a node — “+” on every side adds there (around the central topic: a branch that way) · click a line and press Delete or ✂ to cut it · drag a node onto another to connect, onto empty space next to its parent to change its place or side').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
                   <span className="mt-1.5 block text-[var(--muted)]">{t('mindmap.edit_tip', 'Double-click or start typing to edit')} · Tab / Enter / Delete · Ctrl+Z</span>
                 </span>
               </span>

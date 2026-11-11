@@ -2178,5 +2178,11 @@
   "calendar.view.list": "List",
   "calendar.refresh": "Refresh",
   "calendar.tip": "Double-click a day or an hour to add an event · ← → to move · T — today",
-  "nav./calendar.label": "Calendar"
+  "nav./calendar.label": "Calendar",
+  "mindmap.add_branch": "New branch ({{side}})",
+  "mindmap.dir.right": "right",
+  "mindmap.dir.left": "left",
+  "mindmap.dir.up": "up",
+  "mindmap.dir.down": "down",
+  "mindmap.hint_v2": "Select a node — “+” on every side adds there (around the central topic: a branch that way) · click a line and press Delete or ✂ to cut it · drag a node onto another to connect, onto empty space next to its parent to change its place or side"
 }

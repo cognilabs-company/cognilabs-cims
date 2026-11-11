@@ -2178,5 +2178,11 @@
   "calendar.view.list": "Ro'yxat",
   "calendar.refresh": "Yangilash",
   "calendar.tip": "Kun yoki soatni ikki marta bosib tadbir qo'shing · ← → — o'tish · T — bugun",
-  "nav./calendar.label": "Kalendar"
+  "nav./calendar.label": "Kalendar",
+  "mindmap.add_branch": "Yangi tarmoq ({{side}})",
+  "mindmap.dir.right": "o'ngga",
+  "mindmap.dir.left": "chapga",
+  "mindmap.dir.up": "tepaga",
+  "mindmap.dir.down": "pastga",
+  "mindmap.hint_v2": "Tugunni tanlang — har tomondagi «+» o'sha tomonga qo'shadi (markaziy mavzu atrofida — o'sha tomonga yangi tarmoq) · chiziqni bosing va Delete yoki ✂ bilan uzing · tugunni boshqa tugunga tashlasangiz ulanadi, bo'sh joyga tashlasangiz o'rni yoki tomoni o'zgaradi"
 }

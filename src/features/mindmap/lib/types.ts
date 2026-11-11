@@ -26,8 +26,19 @@ export type MindNode = {
   /** Free (unconnected) node: its centre on the canvas. Unused for connected nodes. */
   x?: number
   y?: number
+  /**
+   * Which way this branch grows from the central topic (or from a free node). Stored only on
+   * children of the central topic / free nodes; deeper nodes follow their branch.
+   */
+  dir?: Dir
+  /** Palette slot of a central-topic branch, so its colour never changes when other branches move. */
+  branch?: number
   task: NodeTask | null
 }
+
+/** Branch direction around the central topic. */
+export type Dir = 'right' | 'left' | 'up' | 'down'
+export const DIRS: Dir[] = ['right', 'left', 'up', 'down']
 
 /** How branches are drawn. */
 export type EdgeStyle = 'curved' | 'straight' | 'elbow'
