@@ -3,23 +3,18 @@ import { Monitor, PhoneForwarded, Settings2, Smartphone } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
-import {
-  normalizePhone, telephonyService,
-  type ForwardingMode, type ForwardingTargetType, type OutboundMode, type TelephonyExtension, type TelephonyExtensionUpdate,
-} from '../../../shared/api/services/telephony.service'
+import { normalizePhone, telephonyService, type OutboundMode, type TelephonyExtension, type TelephonyExtensionUpdate } from '../../../shared/api/services/telephony.service'
 import { Button } from '../../../shared/ui/button'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Input } from '../../../shared/ui/input'
-import { SelectField } from '../../../shared/ui/select-field'
 import { Switch } from '../../../shared/ui/switch'
+import { ForwardingTargets } from './ForwardingTargets'
 
 type Props = {
   extension: TelephonyExtension
   onClose: () => void
   onSaved: (next: TelephonyExtension) => void
 }
-
-const forwardingModes: ForwardingMode[] = ['always', 'busy', 'no_answer', 'offline']
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -50,28 +45,15 @@ export function ExtensionSettingsDialog({ extension, onClose, onSaved }: Props) 
   const [active, setActive] = useState(extension.is_active !== false)
   const [mode, setMode] = useState<OutboundMode>(extension.outbound_mode === 'mobile' ? 'mobile' : 'webrtc')
   const [mobile, setMobile] = useState(extension.mobile_number ?? '')
+  // Master switch; the numbers themselves are saved one by one in <ForwardingTargets>.
   const [forwarding, setForwarding] = useState(Boolean(extension.forwarding_enabled))
-  const [forwardMode, setForwardMode] = useState<ForwardingMode>((forwardingModes as string[]).includes(extension.forwarding_mode ?? '') ? extension.forwarding_mode as ForwardingMode : 'always')
-  const [targetType, setTargetType] = useState<ForwardingTargetType>(extension.forwarding_target_type === 'extension' ? 'extension' : 'phone')
-  const [target, setTarget] = useState(extension.forwarding_target ?? '')
-  const [timeout, setTimeoutSeconds] = useState(String(extension.forwarding_timeout_seconds ?? 20))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const mobileDigits = normalizePhone(mobile)
-  const timeoutValue = Number(timeout)
   const problems = [
     mode === 'mobile' && (mobileDigits.length < 7 || mobileDigits.length > 32) ? t('telephony.ext_settings.need_mobile', 'Enter the mobile number for mobile mode.') : null,
-    forwarding && (target.trim().length < 3 || target.trim().length > 32) ? t('telephony.ext_settings.need_target', 'Enter where calls are forwarded.') : null,
-    forwarding && forwardMode === 'no_answer' && !(timeoutValue >= 5 && timeoutValue <= 60) ? t('telephony.ext_settings.bad_timeout', 'Ring time must be 5–60 seconds.') : null,
   ].filter(Boolean)
-
-  const modeLabels: Record<ForwardingMode, string> = {
-    always: t('telephony.forwarding.always', 'Always forwarded'),
-    busy: t('telephony.forwarding.busy', 'Forward when busy'),
-    no_answer: t('telephony.forwarding.no_answer', 'Forward if no answer'),
-    offline: t('telephony.forwarding.offline', 'Forward when offline'),
-  }
 
   async function save() {
     if (problems.length) { setError(String(problems[0])); return }
@@ -80,12 +62,6 @@ export function ExtensionSettingsDialog({ extension, onClose, onSaved }: Props) 
       outbound_mode: mode,
       mobile_number: mobileDigits ? mobileDigits : null,
       forwarding_enabled: forwarding,
-      ...(forwarding ? {
-        forwarding_mode: forwardMode,
-        forwarding_target_type: targetType,
-        forwarding_target: targetType === 'phone' ? normalizePhone(target) : target.trim(),
-        forwarding_timeout_seconds: forwardMode === 'no_answer' ? timeoutValue : undefined,
-      } : {}),
     }
     setSaving(true)
     setError(null)
@@ -168,37 +144,13 @@ export function ExtensionSettingsDialog({ extension, onClose, onSaved }: Props) 
           onChange={setForwarding}
         />
 
-        {forwarding ? (
-          <div className="grid gap-3 rounded-[14px] bg-[var(--muted-surface)] p-3.5 sm:grid-cols-2">
-            <Field label={t('telephony.ext_settings.when', 'When')}>
-              <SelectField value={forwardMode} onValueChange={(value) => setForwardMode(value as ForwardingMode)} options={forwardingModes.map((value) => ({ value, label: modeLabels[value] }))} aria-label={t('telephony.ext_settings.when', 'When')} />
-            </Field>
-            <Field label={t('telephony.ext_settings.target_type', 'Forward to')}>
-              <SelectField
-                value={targetType}
-                onValueChange={(value) => setTargetType(value as ForwardingTargetType)}
-                options={[
-                  { value: 'phone', label: t('telephony.ext_settings.to_phone', 'Phone number') },
-                  { value: 'extension', label: t('telephony.ext_settings.to_extension', 'Another extension') },
-                ]}
-                aria-label={t('telephony.ext_settings.target_type', 'Forward to')}
-              />
-            </Field>
-            <Field label={targetType === 'phone' ? t('telephony.ext_settings.to_phone', 'Phone number') : t('telephony.ext_settings.to_extension', 'Another extension')}>
-              <Input
-                value={target}
-                onChange={(event) => setTarget(event.target.value)}
-                inputMode={targetType === 'phone' ? 'tel' : 'numeric'}
-                placeholder={targetType === 'phone' ? '998901234567' : '102'}
-              />
-            </Field>
-            {forwardMode === 'no_answer' ? (
-              <Field label={t('telephony.ext_settings.timeout', 'Ring for (seconds)')} hint="5–60">
-                <Input type="number" min={5} max={60} value={timeout} onChange={(event) => setTimeoutSeconds(event.target.value)} />
-              </Field>
-            ) : null}
+        <div className="rounded-[14px] bg-[var(--muted-surface)] p-3.5">
+          <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[12.5px] font-semibold text-[var(--muted-strong)]">{t('telephony.targets.title', 'Forwarding numbers')}</p>
+            <p className="text-[11.5px] text-[var(--muted)]">{t('telephony.targets.hint', '“Always” rings together with the browser — the first to answer wins; the others follow the browser’s result.')}</p>
           </div>
-        ) : null}
+          <ForwardingTargets userId={extension.user_id} initial={extension.forwarding_targets} disabled={!forwarding} />
+        </div>
 
         {error ? <p role="alert" className="rounded-[12px] bg-[var(--danger-dim)] px-3.5 py-2.5 text-[13px] text-[var(--danger-text)]">{error}</p> : null}
       </div>

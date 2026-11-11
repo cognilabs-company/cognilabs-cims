@@ -337,6 +337,14 @@ export function TelephonyPage() {
     />
   )
 
+  // Forwarding shown in the header: the enabled targets (any number), or the old single target.
+  const activeTargets = (config?.forwarding_targets ?? []).filter((target) => target.enabled)
+  const forwardingSummary = !config?.forwarding_enabled
+    ? null
+    : activeTargets.length
+      ? { mode: activeTargets[0].mode, target: activeTargets[0].target, count: activeTargets.length }
+      : config.forwarding_target ? { mode: config.forwarding_mode ?? null, target: config.forwarding_target, count: 1 } : null
+
   const hero = (
     <CallsHero
       isCeo={isCeo}
@@ -349,7 +357,7 @@ export function TelephonyPage() {
       canDialOut={mayCall}
       outboundMode={outboundMode}
       mobileNumber={config?.mobile_number}
-      forwarding={config?.forwarding_enabled ? { mode: config.forwarding_mode ?? null, target: config.forwarding_target ?? null } : null}
+      forwarding={forwardingSummary}
       period={period}
       onPeriodChange={changePeriod}
       customFrom={customFrom}

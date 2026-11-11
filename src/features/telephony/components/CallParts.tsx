@@ -112,7 +112,15 @@ export function CallRow({ call, selected, showSeller, canCall, showCall = true, 
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {call.has_recording ? (
-            <AudioLines size={15} className="hidden text-[var(--muted)] sm:block" aria-label={t('telephony.recorded', 'recorded')} />
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); onSelect() }}
+              aria-label={t('telephony.recording_play', 'Listen to the recording')}
+              title={t('telephony.recording_play', 'Listen to the recording')}
+              className="hidden h-8 w-8 place-items-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--blue-dim)] hover:text-[var(--primary)] sm:grid"
+            >
+              <AudioLines size={15} />
+            </button>
           ) : null}
           <CallResult call={call} className="hidden sm:inline-flex" />
           {showCall ? (

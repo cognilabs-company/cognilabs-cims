@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Bot, KanbanSquare, PhoneCall, ShieldCheck, UsersRound, type LucideIcon } from 'lucide-react'
 import { useLocale } from '../hooks/useLocale'
 import { type AppLocale, localeLabels } from '../../shared/i18n/translations'
+import { BrandMark, BrandWordmark } from '../../shared/ui/brand-logo'
 import { cn } from '../../shared/lib/cn'
 import { ThemeToggle } from '../../widgets/navigation/ThemeToggle'
 
@@ -49,10 +50,10 @@ export function AuthLayout() {
       {/* top bar */}
       <header className="relative z-20 flex items-center justify-between gap-3 px-5 pt-5 sm:px-8 sm:pt-6">
         <Link to="/auth/login" className="flex items-center gap-2.5" aria-label="Cognilabs CIMS">
-          <span className="grid h-10 w-10 place-items-center rounded-[12px] text-[18px] font-bold text-white shadow-[0_10px_24px_-12px_var(--blue-glow)]" style={{ background: 'var(--primary-gradient)' }}>C</span>
+          <BrandMark size={40} />
           <span className="leading-tight">
-            <span className="block text-[15px] font-bold tracking-[-0.02em] text-[var(--foreground)]">Cognilabs CIMS</span>
-            <span className="block text-[11.5px] text-[var(--muted)]">{t('auth.hero.tagline', 'Company workspace')}</span>
+            <BrandWordmark height={24} className="text-[var(--foreground)]" />
+            <span className="mt-0.5 block text-[11.5px] text-[var(--muted)]">CIMS · {t('auth.hero.tagline', 'Company workspace')}</span>
           </span>
         </Link>
         <div className="flex items-center gap-2">

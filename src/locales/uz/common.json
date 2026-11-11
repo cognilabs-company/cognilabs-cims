@@ -1771,5 +1771,15 @@
   "rbac.denied.text": "Rolingizda “{{permission}}” ruxsati yo'q. Administratordan qo'shib berishni so'rang.",
   "rbac.denied.home": "Bosh sahifamga o'tish",
   "nav./settings.label": "Sozlamalar",
-  "nav./salary.label": "Maosh va KPI"
+  "nav./salary.label": "Maosh va KPI",
+  "telephony.hud.restored_api": "Sahifa yangilangandan keyin tiklandi — “Tugatish” qo'ng'iroqni barcha qurilmalarda yopadi.",
+  "telephony.hud.note_failed": "Izohni saqlab bo'lmadi",
+  "telephony.targets.title": "Yo'naltirish raqamlari",
+  "telephony.targets.hint": "“Doim” brauzer bilan birga jiringlaydi — birinchi javob bergan qoladi; qolganlari brauzer natijasiga qarab ishlaydi.",
+  "telephony.targets.empty": "Hali yo'naltirish raqami yo'q.",
+  "telephony.targets.add": "Raqam qo'shish",
+  "telephony.targets.toggle": "Shu raqamga yo'naltirish",
+  "telephony.targets.seconds": "{{count}} s",
+  "telephony.targets.count": "{{count}} ta raqamga yo'naltiriladi",
+  "telephony.recording_play": "Yozuvni tinglash"
 }

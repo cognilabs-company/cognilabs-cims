@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { createPortal } from 'react-dom'
-import { BellOff, Mic, MicOff, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing, Smartphone, UserRound, X } from 'lucide-react'
+import { BellOff, Check, Mic, MicOff, NotebookPen, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing, Smartphone, UserRound, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
-import { leadPath } from '../../../shared/api/services/telephony.service'
+import { leadPath, telephonyService } from '../../../shared/api/services/telephony.service'
 import { useTelephony } from '../TelephonyContext'
 import { preloadRingtone, startRingtone, stopRingtone } from '../lib/ringtone'
-import { formatDuration, formatPhone, hueOf, initialOf, sourceLabel } from './telephonyFormat'
+import { connectionLabel, formatDuration, formatPhone, hueOf, initialOf, sourceLabel } from './telephonyFormat'
 
 /* ──────────────────────────────────────────────────────────────
    Call island — incoming, outgoing and active calls appear at the
@@ -79,7 +79,11 @@ function Wave() {
 
 export function ActiveCallPanel() {
   const { t } = useLocale()
-  const { call, lead, sessionStatus, sessionDirection, confirmedAt, muted, error, outboundMode, mobileCall, answer, reject, hangup, toggleMute, clearCall } = useTelephony()
+  const { call, lead, sessionStatus, sessionDirection, confirmedAt, muted, error, outboundMode, mobileCall, connection, answer, reject, hangup, toggleMute, clearCall } = useTelephony()
+  // Call note (saved to the call and, when linked, to the CRM lead)
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const [noteState, setNoteState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [now, setNow] = useState(() => Date.now())
   const [silencedKey, setSilencedKey] = useState<string | null>(null)
   const [closing, setClosing] = useState<IslandView | null>(null)
@@ -149,8 +153,25 @@ export function ActiveCallPanel() {
   const seconds = view.confirmedAt ? Math.max(0, Math.floor((now - new Date(view.confirmedAt).getTime()) / 1000)) : 0
   const hue = hueOf(view.rawName || view.number || 'call')
   const initial = initialOf(view.rawName)
-  const calling = (view.live || view.onPhone) && !view.isIncoming && !view.connected
-  const ended = !view.live && !view.onPhone
+  // "remote": the server knows the call but this browser has no audio session for it
+  // (mobile mode, forwarded leg, or restored after a reload) — it can still be ended through the API.
+  const remote = !view.live && (view.onPhone || Boolean(call))
+  const callId = call?.id ?? null
+  const calling = (view.live || remote) && !view.isIncoming && !view.connected
+  const ended = !view.live && !remote
+
+  async function saveNote() {
+    if (!callId || !noteText.trim()) return
+    setNoteState('saving')
+    try {
+      await telephonyService.addNote(callId, noteText.trim())
+      setNoteText('')
+      setNoteState('saved')
+    } catch (cause) {
+      console.warn('Call note failed', cause)
+      setNoteState('error')
+    }
+  }
 
   const statusLine = view.connected ? (
     <span className="flex items-center gap-2 text-[#30D158]">
@@ -193,6 +214,10 @@ export function ActiveCallPanel() {
             <div className="flex h-7 items-center justify-between gap-3 text-[12.5px] font-medium">
               {statusLine}
               <span className="flex items-center gap-1.5">
+                <span className="hidden items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/70 sm:inline-flex" title={t('telephony.phone_state', 'Phone: {{state}}', { state: connectionLabel(connection) })}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', outboundMode === 'mobile' || connection === 'Ready' ? 'bg-[#30D158]' : /connect/i.test(connection) ? 'bg-[#FF9F0A]' : 'bg-[#FF453A]')} />
+                  {outboundMode === 'mobile' ? t('telephony.mobile.label', 'Mobile phone') : connectionLabel(connection)}
+                </span>
                 {view.source ? <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/75">{view.source}</span> : null}
                 {view.leadStatus ? <span className="max-w-[140px] truncate rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/75">{view.leadStatus}</span> : null}
                 {view.ringing ? (
@@ -231,22 +256,21 @@ export function ActiveCallPanel() {
               </div>
 
               <div className="flex shrink-0 items-center gap-2.5">
-                {view.ringing && !view.onPhone ? (
+                {view.ringing ? (
                   <>
-                    <RoundButton label={t('telephony.hud.decline', 'Decline')} tone="red" onClick={reject} disabled={!view.live}><PhoneOff size={20} /></RoundButton>
-                    <RoundButton label={t('telephony.hud.accept', 'Accept')} tone="green" onClick={answer} disabled={!view.live} halo><Phone size={20} fill="currentColor" strokeWidth={0} /></RoundButton>
+                    <RoundButton label={t('telephony.hud.decline', 'Decline')} tone="red" onClick={reject} disabled={!view.live && !callId}><PhoneOff size={20} /></RoundButton>
+                    {view.live ? <RoundButton label={t('telephony.hud.accept', 'Accept')} tone="green" onClick={answer} halo><Phone size={20} fill="currentColor" strokeWidth={0} /></RoundButton> : null}
                   </>
-                ) : view.onPhone ? (
-                  view.path ? (
-                    <Link to={view.path} aria-label={t('telephony.open_lead', 'Open lead')} title={t('telephony.open_lead', 'Open lead')} className="grid h-12 w-12 place-items-center rounded-full bg-white/12 text-white transition-[transform,background-color] duration-200 hover:scale-105 hover:bg-white/20 active:scale-95">
-                      <UserRound size={19} />
-                    </Link>
-                  ) : null
-                ) : view.live ? (
+                ) : view.live || remote ? (
                   <>
-                    {view.connected ? (
+                    {view.live && view.connected ? (
                       <RoundButton label={view.muted ? t('telephony.hud.unmute', 'Unmute') : t('telephony.hud.mute', 'Mute')} tone="glass" pressed={view.muted} onClick={toggleMute}>
                         {view.muted ? <MicOff size={19} /> : <Mic size={19} />}
+                      </RoundButton>
+                    ) : null}
+                    {callId ? (
+                      <RoundButton label={t('telephony.hud.note_label', 'Call note')} tone="glass" pressed={noteOpen} onClick={() => setNoteOpen((open) => !open)}>
+                        <NotebookPen size={18} />
                       </RoundButton>
                     ) : null}
                     {view.path ? (
@@ -254,13 +278,39 @@ export function ActiveCallPanel() {
                         <UserRound size={19} />
                       </Link>
                     ) : null}
-                    <RoundButton label={t('telephony.hud.end', 'End')} tone="red" onClick={hangup}><PhoneOff size={20} /></RoundButton>
+                    {view.live || callId ? <RoundButton label={t('telephony.hud.end', 'End')} tone="red" onClick={hangup}><PhoneOff size={20} /></RoundButton> : null}
                   </>
                 ) : null}
               </div>
             </div>
 
             {error ? <p role="alert" className="mt-3 truncate text-[12px] text-[#FF6961]">{error}</p> : null}
+            {noteOpen && callId && !closing ? (
+              <div className="mt-3 rounded-[16px] bg-white/[0.07] p-2.5 ring-1 ring-white/10">
+                <textarea
+                  value={noteText}
+                  onChange={(event) => { setNoteText(event.target.value); if (noteState !== 'idle') setNoteState('idle') }}
+                  onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) void saveNote() }}
+                  rows={2}
+                  autoFocus
+                  placeholder={t('telephony.hud.note_placeholder', 'Add a note about this call…')}
+                  aria-label={t('telephony.hud.note_label', 'Call note')}
+                  className="w-full resize-none bg-transparent px-1 text-[13px] leading-snug text-white placeholder:text-white/40 focus:outline-none"
+                />
+                <div className="mt-1.5 flex items-center justify-end gap-2">
+                  {noteState === 'saved' ? <span className="mr-auto flex items-center gap-1 text-[11.5px] text-[#30D158]"><Check size={12} />{t('telephony.hud.saved', 'Saved')}</span> : null}
+                  {noteState === 'error' ? <span className="mr-auto text-[11.5px] text-[#FF6961]">{t('telephony.hud.note_failed', 'Could not save the note')}</span> : null}
+                  <button
+                    type="button"
+                    onClick={() => void saveNote()}
+                    disabled={!noteText.trim() || noteState === 'saving'}
+                    className="h-8 rounded-full bg-white px-3.5 text-[12.5px] font-semibold text-black transition-opacity disabled:opacity-40"
+                  >
+                    {noteState === 'saving' ? t('telephony.saving', 'Saving…') : t('telephony.hud.save_note', 'Save note')}
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {view.onPhone ? (
               <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-white/55">
                 <Smartphone size={12} className="shrink-0" />
@@ -269,7 +319,7 @@ export function ActiveCallPanel() {
                   : t('telephony.hud.mobile_active', 'The call is on your phone — use it to mute or hang up.')}
               </p>
             ) : null}
-            {ended && call ? <p className="mt-2 text-[11.5px] text-white/45">{t('telephony.hud.restored', 'Restored after a page reload — browser call controls are unavailable.')}</p> : null}
+            {remote && !view.onPhone ? <p className="mt-2 text-[11.5px] text-white/45">{t('telephony.hud.restored_api', 'Restored after a page reload — “End” closes the call on every device.')}</p> : null}
           </div>
         </div>
       </div>

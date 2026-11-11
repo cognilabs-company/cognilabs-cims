@@ -302,7 +302,22 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
     try { session.answer({ mediaConstraints: { audio: true, video: false }, pcConfig: { iceServers: configRef.current?.ice_servers ?? [] } }) }
     catch (cause) { setError(statusError(cause instanceof Error ? cause.message : cause)) }
   }, [])
-  const hangup = useCallback(() => { sessionRef.current?.terminate() }, [])
+  // Hang-up / reject go through the API as well: it closes the browser leg and every forwarded leg
+  // (mobile phone, other extensions). Without a call id yet, only the browser session can be closed.
+  const endViaApi = useCallback((kind: 'hangup' | 'reject') => {
+    const session = sessionRef.current
+    const callId = callRef.current?.id
+    if (callId) {
+      void (kind === 'reject' ? telephonyService.rejectCall(callId) : telephonyService.hangupCall(callId))
+        .catch((cause: unknown) => { console.warn(`Telephony ${kind} failed`, cause); setError(getApiErrorMessage(cause)) })
+    }
+    if (session && !session.isEnded()) {
+      try { session.terminate() } catch { /* Already ending. */ }
+    }
+    if (!session && !callId) setMobileCall(null)
+  }, [])
+  const hangup = useCallback(() => endViaApi('hangup'), [endViaApi])
+  const reject = useCallback(() => endViaApi('reject'), [endViaApi])
   const toggleMute = useCallback(() => {
     const tracks = sessionRef.current?.connection?.getSenders().flatMap((sender) => sender.track?.kind === 'audio' ? [sender.track] : []) ?? []
     if (tracks.length === 0) return
@@ -317,8 +332,8 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     config, connection, error, call, lead, sessionStatus, sessionDirection, confirmedAt, muted, historyVersion,
     outboundMode, mobileCall, canDial,
-    dial, answer, reject: hangup, hangup, toggleMute, clearCall,
-  }), [config, connection, error, call, lead, sessionStatus, sessionDirection, confirmedAt, muted, historyVersion, outboundMode, mobileCall, canDial, dial, answer, hangup, toggleMute, clearCall])
+    dial, answer, reject, hangup, toggleMute, clearCall,
+  }), [config, connection, error, call, lead, sessionStatus, sessionDirection, confirmedAt, muted, historyVersion, outboundMode, mobileCall, canDial, dial, answer, reject, hangup, toggleMute, clearCall])
 
   return (
     <TelephonyContext.Provider value={value}>

@@ -57,7 +57,7 @@ type CallsHeroProps = {
   outboundMode?: OutboundMode
   mobileNumber?: string | null
   /** Call forwarding of the user's extension, when it is on. */
-  forwarding?: { mode: string | null; target: string | null } | null
+  forwarding?: { mode: string | null; target: string | null; count: number } | null
 }
 
 /** Navy header of the Calls page: line state, dial button, period presets and per-type counters. */
@@ -113,11 +113,17 @@ export function CallsHero(props: CallsHeroProps) {
                   title={t('telephony.forwarding.title', 'Call forwarding is on')}
                 >
                   <PhoneForwarded size={12} className="text-[#b8f15a]" />
-                  {forwardingModeLabel(props.forwarding.mode)}
-                  {/* the number only when it differs from the line's own mobile */}
-                  {props.forwarding.target && normalizePhone(props.forwarding.target) !== normalizePhone(props.mobileNumber) ? (
-                    <span className="text-white/55 tabular-nums">→ {formatPhone(props.forwarding.target)}</span>
-                  ) : null}
+                  {props.forwarding.count > 1 ? (
+                    t('telephony.targets.count', 'Forwarded to {{count}} numbers', { count: props.forwarding.count })
+                  ) : (
+                    <>
+                      {forwardingModeLabel(props.forwarding.mode)}
+                      {/* the number only when it differs from the line's own mobile */}
+                      {props.forwarding.target && normalizePhone(props.forwarding.target) !== normalizePhone(props.mobileNumber) ? (
+                        <span className="text-white/55 tabular-nums">→ {formatPhone(props.forwarding.target)}</span>
+                      ) : null}
+                    </>
+                  )}
                 </span>
               ) : null}
             </div>

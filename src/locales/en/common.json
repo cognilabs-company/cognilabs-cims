@@ -1771,5 +1771,15 @@
   "rbac.denied.text": "Your role does not include the “{{permission}}” permission. Ask an administrator to add it.",
   "rbac.denied.home": "Go to my home page",
   "nav./settings.label": "Settings",
-  "nav./salary.label": "Salary & KPI"
+  "nav./salary.label": "Salary & KPI",
+  "telephony.hud.restored_api": "Restored after a page reload — “End” closes the call on every device.",
+  "telephony.hud.note_failed": "Could not save the note",
+  "telephony.targets.title": "Forwarding numbers",
+  "telephony.targets.hint": "“Always” rings together with the browser — the first to answer wins; the others follow the browser’s result.",
+  "telephony.targets.empty": "No forwarding numbers yet.",
+  "telephony.targets.add": "Add number",
+  "telephony.targets.toggle": "Forward to this number",
+  "telephony.targets.seconds": "{{count}} s",
+  "telephony.targets.count": "Forwarded to {{count}} numbers",
+  "telephony.recording_play": "Listen to the recording"
 }

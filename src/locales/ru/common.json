@@ -1771,5 +1771,15 @@
   "rbac.denied.text": "В вашей роли нет права «{{permission}}». Попросите администратора добавить его.",
   "rbac.denied.home": "На мою главную",
   "nav./settings.label": "Настройки",
-  "nav./salary.label": "Зарплата и KPI"
+  "nav./salary.label": "Зарплата и KPI",
+  "telephony.hud.restored_api": "Восстановлено после перезагрузки — «Завершить» закроет звонок на всех устройствах.",
+  "telephony.hud.note_failed": "Не удалось сохранить заметку",
+  "telephony.targets.title": "Номера переадресации",
+  "telephony.targets.hint": "«Всегда» звонит вместе с браузером — остаётся тот, кто ответил первым; остальные срабатывают по результату браузера.",
+  "telephony.targets.empty": "Номеров переадресации пока нет.",
+  "telephony.targets.add": "Добавить номер",
+  "telephony.targets.toggle": "Переадресовывать на этот номер",
+  "telephony.targets.seconds": "{{count}} с",
+  "telephony.targets.count": "Переадресация на {{count}} номера",
+  "telephony.recording_play": "Прослушать запись"
 }

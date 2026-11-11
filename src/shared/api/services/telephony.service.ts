@@ -7,8 +7,35 @@ export type OutboundMode = 'webrtc' | 'mobile'
 export type ForwardingMode = 'always' | 'busy' | 'no_answer' | 'offline'
 export type ForwardingTargetType = 'extension' | 'phone'
 
+/**
+ * One place a call is forwarded to. "always" targets ring together with the browser (first answer wins);
+ * "busy" / "no_answer" / "offline" ones act on the browser's result. Any number of targets.
+ */
+export type ForwardingTarget = {
+  id: number
+  extension_id: number
+  enabled: boolean
+  mode: ForwardingMode
+  target_type: ForwardingTargetType
+  target: string
+  timeout_seconds: number
+  position: number
+  created_at: string
+  updated_at: string
+}
+
+export type ForwardingTargetPayload = {
+  enabled?: boolean
+  mode?: ForwardingMode
+  target_type?: ForwardingTargetType
+  target?: string
+  timeout_seconds?: number
+  position?: number
+}
+
 /** Mobile phone + call forwarding settings, shared by the config and every extension. */
 export type TelephonyRouting = {
+  forwarding_targets?: ForwardingTarget[]
   mobile_number?: string | null
   outbound_mode?: OutboundMode | (string & {})
   forwarding_enabled?: boolean
@@ -126,6 +153,16 @@ export const telephonyService = {
   extensions: () => request<TelephonyExtension[] | { items: TelephonyExtension[] }>({ path: '/telephony/extensions' }),
   createExtension: (userId: number) => request<TelephonyExtension>({ path: `/telephony/extensions/${userId}`, method: 'POST' }),
   updateExtension: (userId: number, payload: TelephonyExtensionUpdate) => request<TelephonyExtension>({ path: `/telephony/extensions/${userId}`, method: 'PATCH', body: payload }),
+  /** Closes every leg of the call (browser + forwarded phones). */
+  hangupCall: (callId: number) => request<{ call_id: number; status: string; channels: number }>({ path: `/telephony/calls/${callId}/hangup`, method: 'POST' }),
+  rejectCall: (callId: number) => request<{ call_id: number; status: string; channels: number }>({ path: `/telephony/calls/${callId}/reject`, method: 'POST' }),
+  forwardingTargets: async (userId: number) => {
+    const data = await request<ForwardingTarget[] | { items: ForwardingTarget[] }>({ path: `/telephony/extensions/${userId}/forwarding-targets` })
+    return Array.isArray(data) ? data : data.items ?? []
+  },
+  addForwardingTarget: (userId: number, payload: ForwardingTargetPayload) => request<ForwardingTarget>({ path: `/telephony/extensions/${userId}/forwarding-targets`, method: 'POST', body: payload }),
+  updateForwardingTarget: (userId: number, targetId: number, payload: ForwardingTargetPayload) => request<ForwardingTarget>({ path: `/telephony/extensions/${userId}/forwarding-targets/${targetId}`, method: 'PATCH', body: payload }),
+  deleteForwardingTarget: (userId: number, targetId: number) => request<unknown>({ path: `/telephony/extensions/${userId}/forwarding-targets/${targetId}`, method: 'DELETE' }),
   /** Mobile mode: the PBX rings the user's mobile first, then connects the customer (company caller ID + recording kept). */
   dialMobile: (destination: string) => request<unknown>({ path: '/telephony/dial', method: 'POST', body: { destination } }),
   eventsUrl: () => {

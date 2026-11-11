@@ -288,7 +288,13 @@ export function CeoTelephonyPanel() {
                       ) : null}
                       {item.forwarding_enabled ? (
                         <span className="inline-flex items-center gap-1 text-[var(--blue-text)]">
-                          <PhoneForwarded size={12} />{item.forwarding_target ? formatPhone(item.forwarding_target) : t('telephony.forwarding.title', 'Call forwarding is on')}
+                          <PhoneForwarded size={12} />
+                          {(() => {
+                            const active = (item.forwarding_targets ?? []).filter((target) => target.enabled)
+                            if (active.length > 1) return t('telephony.targets.count', 'Forwarded to {{count}} numbers', { count: active.length })
+                            const one = active[0]?.target ?? item.forwarding_target
+                            return one ? formatPhone(one) : t('telephony.forwarding.title', 'Call forwarding is on')
+                          })()}
                         </span>
                       ) : null}
                     </p>
