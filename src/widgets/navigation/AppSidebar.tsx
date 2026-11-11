@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 import { useAppShell } from '../../app/hooks/useAppShell'
 import { useLocale } from '../../app/hooks/useLocale'
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { authService } from '../../shared/api/services/auth.service'
 import { env } from '../../shared/config/env'
 import { type AppLocale, localeLabels } from '../../shared/i18n/translations'
-import { useAsyncData } from '../../shared/hooks/useAsyncData'
 import { cn } from '../../shared/lib/cn'
-import { canReadManagedProjects, getAccessibleNavigation, resolveNavRoute } from '../../shared/lib/permissions'
+import { getAccessibleNavigation, resolveNavRoute } from '../../shared/lib/permissions'
 import { getApiErrorMessage } from '../../shared/lib/api-error'
 import { resolveMediaUrl } from '../../shared/lib/media-url'
 import { useToast } from '../../shared/toast/useToast'
@@ -19,13 +18,10 @@ import { Button } from '../../shared/ui/button'
 import { Dialog } from '../../shared/ui/dialog'
 import { Input } from '../../shared/ui/input'
 import { BrandMark, BrandWordmark } from '../../shared/ui/brand-logo'
-import { PROJECTS_NAVIGATION_UPDATED_EVENT } from '../../features/projects/lib/navigationSync'
-import { projectGradient, projectHue, projectInitial } from '../../features/projects/lib/projectLook'
 import { NavGlyph } from './NavGlyph'
 import { getNavigationGlyphName, type GlyphName } from './navGlyphMap'
 import { OPEN_PROFILE_EVENT } from './profileEvents'
 
-const DONE_COLUMN_PATTERN = /\b(done|complete|completed|closed|finished|resolved)\b/i
 
 function getInitials(name?: string, surname?: string) {
   return `${name?.charAt(0) ?? ''}${surname?.charAt(0) ?? ''}`.toUpperCase() || 'CI'
@@ -52,8 +48,6 @@ const sidebarItemInactive =
   'font-medium text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)] [&_svg]:text-[var(--sb-icon)] hover:[&_svg]:text-[var(--sb-strong)]'
 const sidebarItemActive =
   'bg-[var(--primary)] font-semibold text-white shadow-[0_8px_18px_-12px_rgba(43,89,255,0.9)] [&_svg]:text-white'
-const sidebarSubItem =
-  'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] leading-5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35'
 const sidebarIcon = 'h-[17px] w-[17px] shrink-0 transition-colors'
 
 type OutboundSidebarItem = {
@@ -216,7 +210,6 @@ export function AppSidebar() {
       .filter((entry) => entry.items.length > 0), t)
   }, [access, t, user])
   const sidebarNavigation = useMemo(() => sidebarGroups.flatMap((group) => group.items), [sidebarGroups])
-  const hasProjectsAccess = sidebarNavigation.some((item) => item.to === '/projects')
   const isProjectsRoute =
     location.pathname === '/projects' ||
     location.pathname.startsWith('/projects/') ||
@@ -231,9 +224,6 @@ export function AppSidebar() {
     new_password: '',
   })
   const [isSavingMember, setIsSavingMember] = useState(false)
-  const [isProjectsExpanded, setIsProjectsExpanded] = useState(isProjectsRoute)
-  const shouldLoadProjects = hasProjectsAccess && Boolean(user) && (isProjectsExpanded || isProjectsRoute)
-  const [projectsRefreshKey, setProjectsRefreshKey] = useState(0)
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null)
   const profileImageInputRef = useRef<HTMLInputElement>(null)
   const openMemberDialogRef = useRef<() => void>(() => {})
@@ -248,52 +238,6 @@ export function AppSidebar() {
 
   const getNavigationLabel = (path: string, fallback: string) => t(`nav.${path}.label`, fallback)
 
-  const projectsQuery = useAsyncData(
-    async () => {
-      const { projectsService } = await import('../../shared/api/services/projects.service')
-      return projectsService.listReadableProjects(user?.id)
-    },
-    [projectsRefreshKey, shouldLoadProjects, user?.id],
-    { enabled: shouldLoadProjects },
-  )
-
-  const isCeoOrAdmin = canReadManagedProjects(user)
-
-  const openCardsQuery = useAsyncData(
-    async () => {
-      if (!user?.id) return { cards: [], total_count: 0 }
-      const { projectsService } = await import('../../shared/api/services/projects.service')
-      if (isCeoOrAdmin) {
-        const users = await projectsService.getAllUsers()
-        const results = await Promise.allSettled(users.map((u) => projectsService.listUserOpenCards(u.id)))
-        const all = results.flatMap((r) => r.status === 'fulfilled' ? r.value.cards : [])
-        const unique = new Map(all.map((c) => [c.id, c]))
-        return { cards: Array.from(unique.values()), total_count: unique.size }
-      }
-      return projectsService.listUserOpenCards(user.id)
-    },
-    [projectsRefreshKey, shouldLoadProjects, user?.id, isCeoOrAdmin],
-    { enabled: shouldLoadProjects },
-  )
-
-  const openTaskCountByProject = useMemo(() => {
-    const map = new Map<number, number>()
-    for (const card of openCardsQuery.data?.cards ?? []) {
-      const isDone = card.completed_at !== null || DONE_COLUMN_PATTERN.test(card.column_name.trim())
-      if (!isDone) {
-        map.set(card.project_id, (map.get(card.project_id) ?? 0) + 1)
-      }
-    }
-    return map
-  }, [openCardsQuery.data?.cards])
-
-  const sidebarProjects = useMemo(
-    () =>
-      [...(projectsQuery.data?.projects ?? [])].sort((left, right) =>
-        left.project_name.localeCompare(right.project_name),
-      ),
-    [projectsQuery.data?.projects],
-  )
 
   const resolvedUserProfileImage = resolveMediaUrl(user?.profile_image) ?? user?.profile_image ?? null
   const profilePreviewUrl = useMemo(() => {
@@ -302,16 +246,7 @@ export function AppSidebar() {
   }, [profileImageFile, resolvedUserProfileImage])
 
   useEffect(() => { closeSidebar() }, [closeSidebar, location.pathname])
-  useEffect(() => { if (isProjectsRoute) setIsProjectsExpanded(true) }, [isProjectsRoute])
 
-  useEffect(() => {
-    if (!hasProjectsAccess) return
-    function handleProjectsNavigationUpdated() {
-      setProjectsRefreshKey((c) => c + 1)
-    }
-    window.addEventListener(PROJECTS_NAVIGATION_UPDATED_EVENT, handleProjectsNavigationUpdated)
-    return () => window.removeEventListener(PROJECTS_NAVIGATION_UPDATED_EVENT, handleProjectsNavigationUpdated)
-  }, [hasProjectsAccess])
 
   useEffect(() => {
     if (!profileImageFile || !profilePreviewUrl?.startsWith('blob:')) return
@@ -326,9 +261,6 @@ export function AppSidebar() {
     setIsMemberDialogOpen(true)
   }
 
-  function toggleProjectsExpanded() {
-    setIsProjectsExpanded((c) => !c)
-  }
 
   function closeMemberDialog() {
     setIsMemberDialogOpen(false)
@@ -401,100 +333,19 @@ export function AppSidebar() {
   function renderNavItem(item: SidebarItem) {
     const itemLabel = getNavigationLabel(item.to, item.label)
 
-    if (item.to === '/projects' && rail) {
-      return (
-        <NavLink key={item.to} to={item.to} aria-label={itemLabel} {...tipProps(itemLabel)} className={cn(sidebarItemBase, railItem, isProjectsRoute ? sidebarItemActive : sidebarItemInactive)}>
-          <NavGlyph name={glyphFor(item)} className={sidebarIcon} />
-          <span className="nav-label">{itemLabel}</span>
-        </NavLink>
-      )
-    }
-
+    // Projects: a plain menu item (no project list under it); also active on /boards/… pages.
     if (item.to === '/projects') {
       return (
-        <div key={item.to} className="flex flex-col gap-0.5">
-          <div className="relative">
-            <NavLink
-              to={item.to}
-              aria-label={itemLabel}
-              onClick={() => setIsProjectsExpanded(true)}
-              title={itemLabel}
-              className={({ isActive }) => cn(sidebarItemBase, isActive || isProjectsRoute ? sidebarItemActive : sidebarItemInactive, 'pr-[72px]')}
-            >
-              <NavGlyph name={glyphFor(item)} className={sidebarIcon} />
-              <span className="flex-1 truncate text-left">{itemLabel}</span>
-              {sidebarProjects.length > 0 && (
-                <span className={cn('ml-auto rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums', isProjectsRoute ? 'bg-white/20 text-white' : 'bg-[var(--sb-hover)] text-[var(--sb-text)]')}>
-                  {sidebarProjects.length}
-                </span>
-              )}
-            </NavLink>
-            <button
-              type="button"
-              onClick={toggleProjectsExpanded}
-              aria-label={isProjectsExpanded ? t('shell.collapse_projects') : t('shell.expand_projects')}
-              aria-expanded={isProjectsExpanded}
-              className={cn(
-                'absolute top-1/2 right-2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] transition-colors',
-                isProjectsRoute ? 'text-white hover:bg-white/15' : 'text-[var(--sb-icon)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)]',
-              )}
-            >
-              <ChevronDown size={15} className={cn('transition-transform duration-200', isProjectsExpanded && 'rotate-180')} />
-            </button>
-          </div>
-
-          {/* Projects open below with a smooth height animation; each one with its own colour tile */}
-          <div className="sb-collapse" data-open={isProjectsExpanded}>
-            <div>
-              <div className="mt-1 mb-1.5 ml-1 flex flex-col gap-0.5 rounded-[14px] bg-[var(--sb-hover)] p-1.5">
-                {projectsQuery.isLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-9 rounded-[10px]" />)
-                ) : projectsQuery.isError ? (
-                  <button type="button" onClick={() => void projectsQuery.refetch()} className={cn(sidebarSubItem, 'text-[var(--danger-text)] hover:bg-[var(--danger-dim)]')}>
-                    <span className="truncate">{t('shell.failed_load_projects')} — {t('shell.retry')}</span>
-                  </button>
-                ) : sidebarProjects.length === 0 ? (
-                  <div className={cn(sidebarSubItem, 'text-[var(--sb-label)]')}>
-                    <span className="truncate">{t('shell.no_projects')}</span>
-                  </div>
-                ) : (
-                  sidebarProjects.map((project, index) => {
-                    const isActiveProject =
-                      location.pathname === `/projects/${project.id}` ||
-                      location.pathname.startsWith(`/projects/${project.id}/`)
-                    const openCount = openTaskCountByProject.get(project.id) ?? 0
-                    const hue = projectHue(project.project_name)
-
-                    return (
-                      <NavLink
-                        key={project.id}
-                        to={`/projects/${project.id}`}
-                        style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
-                        className={({ isActive }) => cn(
-                          'kb-in group/proj flex w-full items-center gap-2.5 rounded-[10px] px-1.5 py-1.5 text-[13px] leading-5 font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35',
-                          isActive || isActiveProject
-                            ? 'bg-[var(--sb-bg)] font-semibold text-[var(--sb-strong)] shadow-[0_6px_16px_-10px_rgba(14,21,37,0.45)]'
-                            : 'text-[var(--sb-text)] hover:bg-[var(--sb-bg)] hover:text-[var(--sb-strong)]',
-                        )}
-                      >
-                        <span
-                          className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] text-[11px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] transition-transform duration-300 group-hover/proj:scale-110 group-hover/proj:-rotate-6"
-                          style={{ background: projectGradient(hue) }}
-                        >
-                          {projectInitial(project.project_name)}
-                        </span>
-                        <span className="flex-1 truncate text-left">{project.project_name}</span>
-                        {openCount > 0 ? (
-                          <span className="ml-auto rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums text-white" style={{ background: `hsl(${hue} 70% 52%)` }}>{openCount}</span>
-                        ) : null}
-                      </NavLink>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <NavLink
+          key={item.to}
+          to={item.to}
+          aria-label={itemLabel}
+          {...tipProps(itemLabel)}
+          className={({ isActive }) => cn(sidebarItemBase, rail && railItem, isActive || isProjectsRoute ? sidebarItemActive : sidebarItemInactive)}
+        >
+          <NavGlyph name={glyphFor(item)} className={sidebarIcon} />
+          <span className="nav-label flex-1 truncate text-left">{itemLabel}</span>
+        </NavLink>
       )
     }
 

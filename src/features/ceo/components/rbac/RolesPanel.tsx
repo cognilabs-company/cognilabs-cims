@@ -3,7 +3,7 @@ import { Copy, Lock, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound } 
 import { useLocale } from '../../../../app/hooks/useLocale'
 import { cn } from '../../../../shared/lib/cn'
 import { getApiErrorMessage } from '../../../../shared/lib/api-error'
-import { rbacService, type RbacCatalog, type RbacRole } from '../../../../shared/api/services/rbac.service'
+import { normalizeCatalog, rbacService, type RbacCatalog, type RbacRole } from '../../../../shared/api/services/rbac.service'
 import { useConfirm } from '../../../../shared/confirm/useConfirm'
 import { useToast } from '../../../../shared/toast/useToast'
 import { Button } from '../../../../shared/ui/button'
@@ -22,8 +22,12 @@ type RolesPanelProps = {
 }
 
 /** Roles list: what each role may do, how many people have it; create / edit / copy / delete. */
-export function RolesPanel({ catalog, roles, loading, error, onChanged, canCreate, canEdit, canDelete }: RolesPanelProps) {
+/** If GET /rbac/catalog fails, the matrix still works with the modules/actions listed in the contract. */
+const FALLBACK_CATALOG = normalizeCatalog(null)
+
+export function RolesPanel({ catalog: loadedCatalog, roles, loading, error, onChanged, canCreate, canEdit, canDelete }: RolesPanelProps) {
   const { t } = useLocale()
+  const catalog = loadedCatalog ?? FALLBACK_CATALOG
   const { confirm } = useConfirm()
   const { showToast } = useToast()
   const [editing, setEditing] = useState<RbacRole | 'new' | null>(null)
@@ -59,7 +63,7 @@ export function RolesPanel({ catalog, roles, loading, error, onChanged, canCreat
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={14} />} onClick={onChanged}>{t('common.refresh', 'Refresh')}</Button>
-          {canCreate ? <Button size="sm" leftIcon={<Plus size={15} />} onClick={() => setEditing('new')} disabled={!catalog}>{t('rbac.role.create', 'Create role')}</Button> : null}
+          {canCreate ? <Button size="sm" leftIcon={<Plus size={15} />} onClick={() => setEditing('new')}>{t('rbac.role.create', 'Create role')}</Button> : null}
         </div>
       </div>
 
@@ -83,7 +87,7 @@ export function RolesPanel({ catalog, roles, loading, error, onChanged, canCreat
               <article key={role.id} className={cn('flex flex-col rounded-[18px] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[0_1px_2px_rgba(14,21,37,0.04)]', !role.is_active && 'opacity-70')}>
                 <header className="flex items-start gap-3">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-[var(--blue-dim)] text-[var(--primary)]">
-                    {role.is_system ? <Lock size={17} /> : <ShieldCheck size={18} />}
+                    {role.is_locked ? <Lock size={17} /> : <ShieldCheck size={18} />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-semibold text-[var(--foreground)]">{role.display_name}</p>
@@ -99,27 +103,27 @@ export function RolesPanel({ catalog, roles, loading, error, onChanged, canCreat
                   </div>
                 </header>
                 {role.description ? <p className="mt-2.5 line-clamp-2 text-[12.5px] text-[var(--muted-strong)]">{role.description}</p> : null}
-                <p className="mt-3 text-[12px] font-medium text-[var(--muted)]">{role.is_system ? t('rbac.role.full_access', 'Full access · protected') : permissionSummary(role.permissions)}</p>
+                <p className="mt-3 text-[12px] font-medium text-[var(--muted)]">{role.is_locked ? t('rbac.role.full_access', 'Full access · protected') : permissionSummary(role.permissions)}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {modules.slice(0, 6).map(([module, actions]) => (
                     <span key={module} title={actions.map(actionLabel).join(', ')} className="rounded-full bg-[var(--muted-surface)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--foreground)] ring-1 ring-[var(--border)]">
-                      {moduleLabel(catalog?.modules.find((item) => item.name === module) ?? module)}
+                      {moduleLabel(catalog.modules.find((item) => item.name === module) ?? module)}
                     </span>
                   ))}
                   {modules.length > 6 ? <span className="rounded-full px-1.5 py-0.5 text-[11.5px] font-semibold text-[var(--muted)]">+{modules.length - 6}</span> : null}
                 </div>
                 <footer className="mt-auto flex items-center gap-1 pt-4">
-                  {canEdit && !role.is_system ? (
-                    <Button variant="secondary" size="sm" leftIcon={<Pencil size={13} />} onClick={() => setEditing(role)} disabled={!catalog}>{t('common.edit', 'Edit')}</Button>
+                  {canEdit && !role.is_locked ? (
+                    <Button variant="secondary" size="sm" leftIcon={<Pencil size={13} />} onClick={() => setEditing(role)}>{t('common.edit', 'Edit')}</Button>
                   ) : null}
                   {canCreate ? (
                     <Button variant="ghost" size="sm" leftIcon={<Copy size={13} />} onClick={() => setCloning(role)}>{t('rbac.role.clone', 'Copy')}</Button>
                   ) : null}
-                  {canDelete && !role.is_system ? (
+                  {canDelete && !role.is_locked ? (
                     <button
                       type="button"
                       onClick={() => void remove(role)}
-                      disabled={deletingId === role.id}
+                      disabled={deletingId === role.id || Boolean(role.user_count)}
                       aria-label={`${t('common.delete', 'Delete')} · ${role.display_name}`}
                       title={role.user_count ? t('rbac.role.in_use', 'People still have this role') : t('common.delete', 'Delete')}
                       className="ml-auto grid h-8 w-8 place-items-center rounded-[9px] text-[var(--muted)] transition-colors hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)] disabled:opacity-40"
@@ -134,7 +138,7 @@ export function RolesPanel({ catalog, roles, loading, error, onChanged, canCreat
         </div>
       )}
 
-      {editing && catalog ? (
+      {editing ? (
         <RoleEditorDialog
           catalog={catalog}
           role={editing === 'new' ? null : editing}

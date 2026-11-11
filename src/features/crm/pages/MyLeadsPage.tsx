@@ -128,25 +128,25 @@ export function MyLeadsPage() {
             solid
             label="Total Assigned"
             value={summary.total_assigned}
-            icon={<UsersThreeIcon className="h-[18px] w-[18px]" weight="bold" />}
+            icon={<UsersThreeIcon />}
           />
           <StatCard
             label="Active Leads"
             value={summary.active_leads}
             iconTone="success"
-            icon={<TrendUpIcon className="h-[18px] w-[18px]" weight="bold" />}
+            icon={<TrendUpIcon />}
           />
           <StatCard
             label="Archived"
             value={summary.archived_leads}
             iconTone="neutral"
-            icon={<ArchiveIcon className="h-[18px] w-[18px]" weight="bold" />}
+            icon={<ArchiveIcon />}
           />
           <StatCard
             label="Counted"
             value={summary.counted_leads}
             iconTone="violet"
-            icon={<ListChecksIcon className="h-[18px] w-[18px]" weight="bold" />}
+            icon={<ListChecksIcon />}
           />
         </div>
       ) : null}

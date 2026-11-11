@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { CheckSquareIcon, ImagesIcon, LinkBreakIcon, LinkIcon } from '@phosphor-icons/react'
 import { managementService } from '../../../shared/api/services/management.service'
 import type {
   ManagementImageCategory,
@@ -132,30 +133,6 @@ function EditGlyph() {
 function TrashGlyph() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
-  )
-}
-
-function ImagesGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3.5" /><circle cx="9" cy="9" r="1.6" /><path d="M21 15.5 16 10.5 5 21" /></svg>
-  )
-}
-
-function LinkGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true"><path d="M9.5 17H7.5a5 5 0 0 1 0-10h2" /><path d="M14.5 7h2a5 5 0 0 1 0 10h-2" /><path d="M8.5 12h7" /></svg>
-  )
-}
-
-function UnlinkGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true"><path d="M9.5 17H7.5a5 5 0 0 1-.9-9.9" /><path d="M14.5 7h2a5 5 0 0 1 3.9 8.1" /><path d="M4 4l16 16" /></svg>
-  )
-}
-
-function SelectGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4.5" /><path d="M8 12.4l2.9 2.9L16.5 9.6" /></svg>
   )
 }
 
@@ -1266,27 +1243,27 @@ export function CeoManagementPage() {
           <div className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-4">
             <SummaryCard
               solid
-              icon={<ImagesGlyph />}
+              icon={<ImagesIcon />}
               label={tr('Images loaded', 'Yuklangan rasmlar', 'Zagruzhennye izobrazheniya')}
               value={imagesQuery.data?.total_count ?? imageItems.length}
               hint={tr('Current category and reference filters bilan yuklangan rasmlar.', 'Joriy kategoriya va boglanish filtrlari bilan yuklangan rasmlar.', 'Izobrazheniya, zagruzhennye s tekushchimi filtrami kategorii i ssylok.')}
             />
             <SummaryCard
-              icon={<LinkGlyph />}
+              icon={<LinkIcon />}
               iconTone="success"
               label={tr('Referenced', 'Boglangan', 'Svyazannye')}
               value={referencedImagesCount}
               hint={tr('DB ichida kamida bitta reference bor.', 'DB ichida kamida bitta boglanish bor.', 'V BD est khotya by odna svyaz.')}
             />
             <SummaryCard
-              icon={<UnlinkGlyph />}
+              icon={<LinkBreakIcon />}
               iconTone="warning"
               label={tr('Unreferenced', 'Boglanmagan', 'Nesvyazannye')}
               value={unreferencedImagesCount}
               hint={tr('DB da ishlatilmayotgan rasmlar.', 'DB da ishlatilmayotgan rasmlar.', 'Izobrazheniya, kotorye ne ispolzuyutsya v BD.')}
             />
             <SummaryCard
-              icon={<SelectGlyph />}
+              icon={<CheckSquareIcon />}
               iconTone="violet"
               label={tr('Selected', 'Tanlangan', 'Vybrannye')}
               value={selectedImagePaths.length}

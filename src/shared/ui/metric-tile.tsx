@@ -1,4 +1,5 @@
-import type { LucideIcon } from 'lucide-react'
+import type { ComponentType } from 'react'
+import { IconContext } from '@phosphor-icons/react'
 import { cn } from '../lib/cn'
 import { CountUp } from './count-up'
 
@@ -7,13 +8,16 @@ type MetricTileProps = {
   /** Numbers count up; strings ("3 min 40 s", "11.5M", "—") are shown as they are. */
   value: number | string
   caption: string
-  icon: LucideIcon
+  /** A Phosphor icon (rendered duotone). */
+  icon: ComponentType<{ size?: number | string; className?: string }>
   accent: string
   format?: (value: number) => string
   /** Makes the tile a toggle button (e.g. a quick filter). */
   onClick?: () => void
   active?: boolean
 }
+
+const DUOTONE = { weight: 'duotone' as const, size: 18 }
 
 /** KPI tile used across the app (Customers, CRM, Archive, CEO dashboard): label + icon, big number, one-line caption. */
 export function MetricTile({ label, value, caption, icon: Icon, accent, format, onClick, active }: MetricTileProps) {
@@ -31,7 +35,9 @@ export function MetricTile({ label, value, caption, icon: Icon, accent, format, 
       <span className="flex items-center justify-between gap-3">
         <span className="truncate text-[12.5px] font-medium text-[var(--muted-strong)]">{label}</span>
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] transition-transform duration-300 group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: `color-mix(in srgb, ${accent} 8%, transparent)`, color: accent }}>
-          <Icon size={16} strokeWidth={2.2} />
+          <IconContext.Provider value={DUOTONE}>
+            <Icon size={18} />
+          </IconContext.Provider>
         </span>
       </span>
       <span className="mt-1 block text-[28px] leading-8 font-bold tracking-[-0.035em] text-[var(--foreground)] tabular-nums" data-ui-number="true">

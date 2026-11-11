@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { CalendarCheckIcon, HandCoinsIcon, PulseIcon, TargetIcon } from '@phosphor-icons/react'
 import { developerKpiService, type SalaryEstimate } from '../../../shared/api/services/developer-kpi.service'
 import { useSearchParams } from 'react-router-dom'
 import type { CurrentUser } from '../../../shared/api/types'
@@ -197,42 +198,6 @@ async function loadMemberDashboardData(memberUser: CeoUserRecord, year: number, 
 
   writeMemberDashboardCache(cacheKey, result)
   return result
-}
-
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="16" rx="3.5" />
-      <path d="M8 3v4M16 3v4M3 10h18" />
-    </svg>
-  )
-}
-
-function PulseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 12h4l2.5-6 4 12 2.5-6h5" />
-    </svg>
-  )
-}
-
-function TargetIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="8.5" />
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 12h.01" />
-    </svg>
-  )
-}
-
-function WalletIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 16.5z" />
-      <path d="M3 8.5V7a2 2 0 0 1 2-2h11M16.5 12.5h.01" />
-    </svg>
-  )
 }
 
 function BaseIcon() {
@@ -732,7 +697,7 @@ export function MemberDashboardPage() {
           label={lt('Expected updates (to date)')}
           value={elapsedWorkingDays}
           hint={expectedUpdatesHint}
-          icon={<CalendarIcon />}
+          icon={<CalendarCheckIcon />}
           iconTone="blue"
           footer={updatesTrend.length > 1 ? <Sparkline points={updatesTrend} /> : undefined}
           className={updatesTrend.length > 1 ? 'overflow-hidden pb-0' : undefined}
@@ -741,7 +706,7 @@ export function MemberDashboardPage() {
           label={lt('Final salary')}
           value={formatAmount(detail.report.finalSalary)}
           hint={salaryEstimateLabel}
-          icon={<WalletIcon />}
+          icon={<HandCoinsIcon />}
           iconTone="lime"
           delta={Number.isFinite(detail.report.totalBonusPercent) ? t('member.overview.delta_bonus', 'Bonus {{value}}', { value: formatPercent(detail.report.totalBonusPercent) }) : undefined}
           deltaTone={detail.report.hasPenalty ? 'danger' : 'success'}

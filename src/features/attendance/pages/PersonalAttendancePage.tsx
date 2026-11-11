@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ClockIcon } from '@phosphor-icons/react'
 import { attendanceService } from '../../../shared/api/services/attendance.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { Card } from '../../../shared/ui/card'
@@ -33,13 +34,6 @@ type NormalizedOfficeTime = {
 
 const headCellClass = 'bg-[var(--muted-surface)] px-3 py-2.5 text-left align-middle text-xs font-medium whitespace-nowrap text-[var(--muted)]'
 const bodyCellClass = 'border-b border-[var(--border-subtle)] px-3 py-3.5 align-middle'
-
-const totalHoursIcon = (
-  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v5.3l3.4 2" />
-  </svg>
-)
 
 const chevronLeftIcon = (
   <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -249,7 +243,7 @@ export function PersonalAttendancePage() {
           <StatCard
             label="Total Hours"
             value={`${data.totalWorkedHours.toFixed(1)}h`}
-            icon={totalHoursIcon}
+            icon={<ClockIcon />}
             solid
           />
         </div>

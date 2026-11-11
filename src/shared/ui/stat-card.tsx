@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
+import { IconContext } from '@phosphor-icons/react'
 import { cn } from '../lib/cn'
 import { CountUp } from './count-up'
 import { toneSurface, toneText, type Tone } from './tone'
@@ -15,7 +16,7 @@ type StatCardProps = {
   deltaTone?: 'success' | 'danger' | 'neutral'
   icon?: ReactNode
   iconTone?: Tone
-  /** Highlighted (brand-filled) card — use for the single most important KPI. */
+  /** The single most important KPI of a row — outlined in the brand colour. */
   solid?: boolean
   onOpen?: () => void
   openLabel?: string
@@ -29,14 +30,23 @@ const deltaClasses: Record<NonNullable<StatCardProps['deltaTone']>, string> = {
   neutral: 'bg-[var(--input-surface)] text-[var(--muted-strong)]',
 }
 
-function ArrowOut() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M7 17L17 7M8 7h9v9" />
-    </svg>
-  )
+const DUOTONE = { weight: 'duotone' as const, size: 18 }
+
+/** Accent of the soft circle and the caption dot, per icon tone. */
+const toneAccent: Record<Tone, string> = {
+  neutral: '#8A90A2',
+  blue: '#2B59FF',
+  success: '#17924A',
+  warning: '#E8590C',
+  danger: '#D63B3B',
+  violet: '#7C5CFC',
+  lime: '#65A30D',
 }
 
+/**
+ * KPI card — the same compact tile as the Customers page (MetricTile):
+ * label + icon on top, a big number, one caption line. Used across the app.
+ */
 export function StatCard({
   label,
   value,
@@ -51,89 +61,53 @@ export function StatCard({
   footer,
   className,
 }: StatCardProps) {
-  const hasMeta = Boolean(delta || hint)
+  const accent = toneAccent[iconTone]
+  const clickable = Boolean(onOpen)
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (!onOpen) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onOpen()
+    }
+  }
 
   return (
     <div
+      {...(clickable ? { role: 'button', tabIndex: 0, onClick: onOpen, onKeyDown, 'aria-label': openLabel ?? (typeof label === 'string' ? label : undefined) } : {})}
       className={cn(
-        'group relative flex min-h-[150px] flex-col rounded-[24px] p-[22px]',
-        solid
-          ? 'text-white shadow-[var(--elev-primary)]'
-          : 'bg-[var(--card)] text-[var(--foreground)] ring-1 ring-inset ring-[var(--border)]',
-        onOpen && 'transition-shadow hover:shadow-[var(--elev-lg)]',
+        'group relative flex flex-col overflow-hidden rounded-[14px] border bg-[var(--card)] px-4 py-3.5 text-left text-[var(--foreground)] transition-[transform,box-shadow,border-color] duration-300',
+        solid ? 'border-transparent shadow-[0_0_0_2px_var(--primary),0_12px_28px_-18px_rgba(43,89,255,0.6)]' : 'border-[var(--border)] shadow-[0_1px_2px_rgba(14,21,37,0.04)]',
+        clickable && 'cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-20px_rgba(14,21,37,0.45)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 focus-visible:outline-none',
         className,
       )}
-      style={solid ? { background: 'var(--primary-gradient)' } : undefined}
     >
-      {/* 1. What is this number? */}
-      <div className="flex items-center gap-2.5">
+      <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-[0.07] transition-transform duration-500 group-hover:scale-125" style={{ background: accent }} />
+
+      <span className="relative flex items-center justify-between gap-3">
+        <span className="min-w-0 truncate text-[12.5px] font-medium text-[var(--muted-strong)]">{label}</span>
         {icon ? (
-          <span
-            className={cn(
-              'grid h-8 w-8 shrink-0 place-items-center rounded-[10px] [&_svg]:h-[17px] [&_svg]:w-[17px]',
-              solid ? 'bg-white/18 text-white' : cn(toneSurface[iconTone], toneText[iconTone]),
-            )}
-          >
-            {icon}
+          <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-[9px] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-6deg] [&_svg]:h-[18px] [&_svg]:w-[18px]', toneSurface[iconTone], toneText[iconTone])}>
+            <IconContext.Provider value={DUOTONE}>{icon}</IconContext.Provider>
           </span>
         ) : null}
-        <span
-          className={cn(
-            'min-w-0 flex-1 truncate text-[13.5px] font-medium leading-tight',
-            solid ? 'text-white/85' : 'text-[var(--muted-strong)]',
+      </span>
+
+      <span className="relative mt-1 block truncate text-[28px] leading-8 font-bold tracking-[-0.035em] tabular-nums" data-ui-number="true">
+        {typeof value === 'number' ? <CountUp value={value} /> : value}
+      </span>
+
+      {delta || hint ? (
+        <span className="relative mt-1 flex min-w-0 items-center gap-1.5 text-[11.5px] text-[var(--muted)]">
+          {delta ? (
+            <span className={cn('inline-flex shrink-0 items-center rounded-full px-1.5 py-px text-[11px] font-semibold tabular-nums', deltaClasses[deltaTone])}>{delta}</span>
+          ) : (
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
           )}
-        >
-          {label}
+          {hint ? <span className="truncate">{hint}</span> : null}
         </span>
-        {onOpen ? (
-          <button
-            type="button"
-            onClick={onOpen}
-            aria-label={openLabel ?? (typeof label === 'string' ? label : 'Open')}
-            title={openLabel ?? (typeof label === 'string' ? label : undefined)}
-            className={cn(
-              'grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40',
-              solid
-                ? 'bg-white/15 text-white hover:bg-white/25'
-                : 'bg-[var(--input-surface)] text-[var(--muted-strong)] hover:bg-[var(--surface-inverse)] hover:text-white',
-            )}
-          >
-            <ArrowOut />
-          </button>
-        ) : null}
-      </div>
-
-      {/* 2. The number itself — biggest element on the card. */}
-      <div className="mt-auto pt-5">
-        <div
-          className="truncate text-[32px] leading-none font-bold tracking-[-0.035em] tabular-nums"
-          data-ui-number="true"
-        >
-          {typeof value === 'number' ? <CountUp value={value} /> : value}
-        </div>
-
-        {/* 3. Context: one pill + one line. */}
-        {hasMeta ? (
-          <div className="mt-3 flex min-w-0 items-center gap-2">
-            {delta ? (
-              <span
-                className={cn(
-                  'inline-flex shrink-0 items-center rounded-full px-2 py-[3px] text-[11.5px] font-semibold tabular-nums',
-                  solid ? 'bg-white/20 text-white' : deltaClasses[deltaTone],
-                )}
-              >
-                {delta}
-              </span>
-            ) : null}
-            {hint ? (
-              <span className={cn('min-w-0 truncate text-[12.5px]', solid ? 'text-white/75' : 'text-[var(--muted)]')}>
-                {hint}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-        {footer}
-      </div>
+      ) : null}
+      {footer ? <div className="relative mt-2">{footer}</div> : null}
     </div>
   )
 }

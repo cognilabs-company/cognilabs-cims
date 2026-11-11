@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { ClockCountdownIcon, HourglassMediumIcon, UserCheckIcon } from '@phosphor-icons/react'
 import type { ApiResponseError } from '../../../shared/api/types'
 import { faceIdAttendanceService, type FaceIdAttendanceStatus, type FaceIdDailyRecord } from '../../../shared/api/services/attendance.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
@@ -40,27 +41,6 @@ const sourceOptions: SelectFieldOption[] = [
 
 const headCellClass = 'bg-[var(--muted-surface)] px-3 py-2.5 text-left align-middle text-xs font-medium whitespace-nowrap text-[var(--muted)]'
 const bodyCellClass = 'border-b border-[var(--border-subtle)] px-3 py-3.5 align-middle'
-
-const presentIcon = (
-  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M8.2 12.3l2.6 2.6 5-5.5" />
-  </svg>
-)
-
-const lateIcon = (
-  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v5.3l3.4 2" />
-  </svg>
-)
-
-const incompleteIcon = (
-  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 3a9 9 0 0 1 0 18M8.4 4a9 9 0 0 0-4.1 5.1M3.1 13.1a9 9 0 0 0 3.3 6" />
-    <path d="M8.8 12h6.4" />
-  </svg>
-)
 
 const deleteWarningIcon = (
   <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -287,9 +267,9 @@ export function AttendanceManagementPage() {
       />
 
       <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="Present" value={presentCount} icon={presentIcon} iconTone="success" solid />
-        <StatCard label="Late" value={lateCount} icon={lateIcon} iconTone="warning" />
-        <StatCard label="Incomplete" value={incompleteCount} icon={incompleteIcon} iconTone="blue" />
+        <StatCard label="Present" value={presentCount} icon={<UserCheckIcon />} iconTone="success" solid />
+        <StatCard label="Late" value={lateCount} icon={<ClockCountdownIcon />} iconTone="warning" />
+        <StatCard label="Incomplete" value={incompleteCount} icon={<HourglassMediumIcon />} iconTone="blue" />
       </div>
 
       <Card>

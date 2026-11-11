@@ -13,7 +13,7 @@ import { managementService } from '../../../shared/api/services/management.servi
 import type { PermissionMap } from '../../../shared/api/types'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
-import { formatCompactNumber, formatShortDate, formatShortMonthDayTime } from '../../../shared/lib/format'
+import { formatShortDate, formatShortMonthDayTime } from '../../../shared/lib/format'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useToast } from '../../../shared/toast/useToast'
 import { Badge } from '../../../shared/ui/badge'
@@ -32,10 +32,22 @@ import { Textarea } from '../../../shared/ui/textarea'
 import { toneText, type Tone } from '../../../shared/ui/tone'
 import { PermissionEditorModal } from '../components/PermissionEditorModal'
 import { type MessageComposerValues } from '../components/MessageComposerModal'
-import { MetricCard } from '../components/MetricCard'
 import { UserFormModal, type UserFormValues } from '../components/UserFormModal'
 import { permissionCatalog } from '../lib/permissionCatalog'
 import { ShieldCheck, UsersRound } from 'lucide-react'
+import {
+  ArrowClockwiseIcon,
+  ChatCircleTextIcon,
+  MagnifyingGlassIcon,
+  PencilSimpleIcon,
+  PlusIcon,
+  TrashIcon,
+  UserCheckIcon,
+  UserMinusIcon,
+  UsersThreeIcon,
+  XIcon,
+} from '@phosphor-icons/react'
+import { MetricTile } from '../../../shared/ui/metric-tile'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { rbacService, type UserAccess } from '../../../shared/api/services/rbac.service'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -216,15 +228,6 @@ function getRoleTone(role?: string | null): RoleTone {
   }
 }
 
-function renderJobTitleTag(jobTitle: string, role?: string | null) {
-  const isCeo = normalizeUserRole(String(role ?? '')) === 'CEO'
-
-  return (
-    <Badge variant={isCeo ? 'violet' : 'success'} size="sm" className="mt-1.5">
-      {jobTitle}
-    </Badge>
-  )
-}
 
 function getUserDisplayName(user: Pick<CeoUserRecord, 'name' | 'surname'>) {
   return `${user.name} ${user.surname}`.trim()
@@ -362,6 +365,7 @@ export function CeoUsersPage() {
 
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
 
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false)
   const [permissionTargetUser, setPermissionTargetUser] = useState<CeoUserRecord | null>(null)
@@ -387,17 +391,15 @@ export function CeoUsersPage() {
 
   const filteredUsers = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase()
-
-    if (!normalizedSearch) {
-      return users
-    }
-
-    return users.filter((user) =>
-      [user.name, user.surname, user.email, user.role, user.company_code, user.job_title]
+    return users.filter((user) => {
+      if (statusFilter === 'active' && !user.is_active) return false
+      if (statusFilter === 'inactive' && user.is_active) return false
+      if (!normalizedSearch) return true
+      return [user.name, user.surname, user.email, user.role, user.company_code, user.job_title]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(normalizedSearch)),
-    )
-  }, [deferredSearch, users])
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch))
+    })
+  }, [deferredSearch, statusFilter, users])
 
   const permissionsByUserId = useMemo(() => {
     const map = new Map<number, { permissions_count: number; permissions_display: string[] }>()
@@ -956,28 +958,91 @@ export function CeoUsersPage() {
     <section className="space-y-[18px]">
       {pageTabs}
       {accessDialog}
-      <div className="grid gap-[18px] md:grid-cols-4 stagger-children">
-        <MetricCard label={lt('Users')} value={formatCompactNumber(statistics?.user_count ?? users.length)} accent="blue" sparkBars={[4,5,6,7,7,8]} />
-        <MetricCard label={tr('Active', 'Faol', 'Активные')} value={formatCompactNumber(statistics?.active_user_count ?? 0)} accent="success" sparkBars={[5,6,6,7,8,8]} />
-        <MetricCard label={tr('Inactive', 'Nofaol', 'Неактивные')} value={formatCompactNumber(statistics?.inactive_user_count ?? 0)} accent="warning" sparkBars={[3,2,3,2,2,2]} />
-        <MetricCard label={tr('Messages', 'Xabarlar', 'Сообщения')} value={formatCompactNumber(statistics?.messages_count ?? 0)} accent="violet" sparkBars={[2,3,4,3,5,4]} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricTile
+          label={tr('Users', 'Foydalanuvchilar', 'Пользователи')}
+          value={statistics?.user_count ?? users.length}
+          caption={tr('Everyone in the company', 'Kompaniyadagi barcha xodimlar', 'Все сотрудники компании')}
+          icon={UsersThreeIcon}
+          accent="#2B59FF"
+          onClick={() => setStatusFilter('all')}
+          active={statusFilter === 'all'}
+        />
+        <MetricTile
+          label={tr('Active', 'Faol', 'Активные')}
+          value={statistics?.active_user_count ?? users.filter((user) => user.is_active).length}
+          caption={tr('Can sign in', 'Tizimga kira oladi', 'Могут войти в систему')}
+          icon={UserCheckIcon}
+          accent="#17924A"
+          onClick={() => setStatusFilter((current) => (current === 'active' ? 'all' : 'active'))}
+          active={statusFilter === 'active'}
+        />
+        <MetricTile
+          label={tr('Inactive', 'Nofaol', 'Неактивные')}
+          value={statistics?.inactive_user_count ?? users.filter((user) => !user.is_active).length}
+          caption={tr('Access switched off', "Kirish o'chirilgan", 'Доступ отключён')}
+          icon={UserMinusIcon}
+          accent="#E8590C"
+          onClick={() => setStatusFilter((current) => (current === 'inactive' ? 'all' : 'inactive'))}
+          active={statusFilter === 'inactive'}
+        />
+        <MetricTile
+          label={tr('Messages', 'Xabarlar', 'Сообщения')}
+          value={statistics?.messages_count ?? 0}
+          caption={tr('Sent to the team', 'Jamoaga yuborilgan', 'Отправлено команде')}
+          icon={ChatCircleTextIcon}
+          accent="#7C5CFC"
+        />
       </div>
 
       <Card noPadding>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
-          <CardTitle>{lt('CEO users table')}</CardTitle>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Input
-              className="w-full md:w-72"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={lt('Search by email, name, or role')}
-            />
-            <Button variant="secondary" size="sm" onClick={() => void refreshAll()}>
-              {lt('Refresh')}
-            </Button>
+          <div className="flex items-center gap-2.5">
+            <CardTitle>{tr('Users', 'Foydalanuvchilar', 'Пользователи')}</CardTitle>
+            <span className="rounded-[6px] bg-[var(--blue-dim)] px-2 py-0.5 text-[12px] font-semibold text-[var(--primary)] tabular-nums">{filteredUsers.length}</span>
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+            <div role="radiogroup" aria-label={lt('Status')} className="inline-flex h-9 items-center rounded-[10px] bg-[var(--muted-surface)] p-0.5">
+              {([
+                ['all', tr('All', 'Hammasi', 'Все')],
+                ['active', tr('Active', 'Faol', 'Активные')],
+                ['inactive', tr('Inactive', 'Nofaol', 'Неактивные')],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={statusFilter === value}
+                  onClick={() => setStatusFilter(value)}
+                  className={cn(
+                    'h-8 rounded-[8px] px-3 text-[12.5px] font-semibold transition-colors',
+                    statusFilter === value ? 'bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(14,21,37,0.08)]' : 'text-[var(--muted-strong)] hover:text-[var(--foreground)]',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <label className="relative flex h-9 min-w-0 flex-1 items-center md:w-64 md:flex-none">
+              <MagnifyingGlassIcon size={16} className="pointer-events-none absolute left-3 text-[var(--muted)]" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={tr('Name, email or role', 'Ism, email yoki rol', 'Имя, email или роль')}
+                aria-label={lt('Search by email, name, or role')}
+                className="h-9 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] pr-8 pl-9 text-[13px] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+              />
+              {search ? (
+                <button type="button" onClick={() => setSearch('')} aria-label={lt('Clear')} className="absolute right-2 grid h-6 w-6 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--muted-surface)]">
+                  <XIcon size={13} />
+                </button>
+              ) : null}
+            </label>
+            <IconButton label={lt('Refresh')} size="sm" onClick={() => void refreshAll()}>
+              <ArrowClockwiseIcon size={16} />
+            </IconButton>
             {canCreateUser ? (
-              <Button size="sm" onClick={openCreateUserModal}>
+              <Button size="sm" leftIcon={<PlusIcon size={15} weight="bold" />} onClick={openCreateUserModal}>
                 {tr('Create user', 'Foydalanuvchi yaratish', 'Создать пользователя')}
               </Button>
             ) : null}
@@ -1008,7 +1073,7 @@ export function CeoUsersPage() {
                       event.stopPropagation()
                       openProfileDialog(row)
                     }}
-                    className="group/user flex w-full items-center gap-3 rounded-[14px] py-1 text-left transition-colors hover:text-[var(--blue-text)] focus-visible:outline-none"
+                    className="group/user flex w-full min-w-[220px] items-center gap-3 rounded-[14px] text-left transition-colors hover:text-[var(--blue-text)] focus-visible:outline-none"
                     aria-label={`${lt('Profile')}: ${row.name} ${row.surname}`}
                   >
                     <UserAvatar user={row} size="sm" />
@@ -1016,10 +1081,10 @@ export function CeoUsersPage() {
                       <p className="truncate text-sm font-semibold text-[var(--foreground)] transition-colors group-hover/user:text-[var(--blue-text)]">
                         {row.name} {row.surname}
                       </p>
-                      <p className="truncate text-[12.5px] text-[var(--muted)]">{row.email}</p>
-                      {row.job_title ? (
-                        renderJobTitleTag(row.job_title, row.role)
-                      ) : null}
+                      <p className="truncate text-[12.5px] text-[var(--muted)]">
+                        {row.email}
+                        {row.job_title ? <span className="text-[var(--muted-strong)]"> · {row.job_title}</span> : null}
+                      </p>
                     </div>
                   </button>
                 ),
@@ -1086,7 +1151,7 @@ export function CeoUsersPage() {
                     incomingMessagesQuery.isLoading
 
                   if (isMessageDataLoading && !sentMessagesQuery.data && !incomingMessagesQuery.data) {
-                    return <Skeleton className="h-9 w-[76px]" />
+                    return <Skeleton className="h-8 w-[70px]" />
                   }
 
                   return (
@@ -1096,20 +1161,9 @@ export function CeoUsersPage() {
                         event.stopPropagation()
                         openMessageDialog(row)
                       }}
-                      className="inline-flex h-9 items-center gap-2 rounded-[11px] bg-[var(--accent-soft)] px-3 text-left transition-colors hover:bg-[var(--blue-dim)]"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-[var(--accent-soft)] px-2.5 text-left transition-colors hover:bg-[var(--blue-dim)]"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 shrink-0 text-[var(--primary)]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
+                      <ChatCircleTextIcon size={16} weight="duotone" className="shrink-0 text-[var(--primary)]" />
                       {conversation.totalCount > 0 ? (
                         <span className="text-xs font-semibold tabular-nums text-[var(--foreground)]" data-ui-number="true">
                           {conversation.totalCount}
@@ -1132,21 +1186,25 @@ export function CeoUsersPage() {
               },
               {
                 key: 'actions',
-                header: lt('Actions'),
+                header: tr('Actions', 'Amallar', 'Действия'),
                 render: (row) => (
                   <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
-                    {canEditUser ? <IconButton label={lt('Edit')} size="sm" onClick={() => openEditUserModal(row)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </IconButton> : null}
-                    {canDeleteUser ? <IconButton label={lt('Delete')} size="sm" tone="danger" onClick={() => void handleDeleteUser(row)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </IconButton> : null}
+                    {canEditUser ? (
+                      <IconButton label={lt('Edit')} size="sm" onClick={() => openEditUserModal(row)}>
+                        <PencilSimpleIcon size={16} />
+                      </IconButton>
+                    ) : null}
+                    {canDeleteUser ? (
+                      <IconButton label={lt('Delete')} size="sm" tone="danger" onClick={() => void handleDeleteUser(row)}>
+                        <TrashIcon size={16} />
+                      </IconButton>
+                    ) : null}
                     <ActionsMenu
                       label={`${lt('Open actions for')} ${row.email}`}
                       items={[
                         { label: lt('Profile'), onSelect: () => openProfileDialog(row) },
                         { label: lt('Salary detail'), onSelect: () => openSalaryDetail(row) },
-                        { label: 'View Activity Logs', onSelect: () => navigate(`/audit/logs?actor_user_id=${row.id}`) },
+                        { label: tr('Activity log', 'Faollik jurnali', 'Журнал действий'), onSelect: () => navigate(`/audit/logs?actor_user_id=${row.id}`) },
                         ...(canEditUser ? [
                           rbacEnabled
                             ? { label: tr('Access & role', 'Kirish huquqi va rol', 'Доступ и роль'), onSelect: () => setAccessTarget(row) }

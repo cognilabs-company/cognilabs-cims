@@ -10,7 +10,3 @@ export function projectHue(name: string) {
 export function projectInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || '•'
 }
-
-export function projectGradient(hue: number) {
-  return `linear-gradient(140deg, hsl(${hue} 88% 66%) 0%, hsl(${(hue + 28) % 360} 74% 50%) 100%)`
-}

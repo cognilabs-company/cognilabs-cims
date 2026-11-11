@@ -63,6 +63,8 @@ export type RbacRole = {
   is_active: boolean
   /** System roles (CEO) can't be edited or deleted. */
   is_system: boolean
+  /** Cannot be edited or deleted (the CEO role). */
+  is_locked: boolean
   permissions: PermissionSet
   user_count: number | null
 }
@@ -203,7 +205,10 @@ export function normalizeRole(raw: unknown): RbacRole {
     display_name: asString(data.display_name ?? name),
     description: asStringOrNull(data.description),
     is_active: data.is_active !== false,
-    is_system: Boolean(data.is_system ?? data.is_protected ?? data.is_owner ?? name.toLowerCase() === 'ceo'),
+    is_system: Boolean(data.is_system ?? data.is_protected),
+    // Contract: only the CEO role cannot be edited or deleted. Other (also seeded/system) roles are
+    // editable via PATCH /rbac/roles/{id}; an explicit `is_editable/editable/can_edit: false` from the backend also locks.
+    is_locked: (data.is_editable ?? data.editable ?? data.can_edit) === false || name.toLowerCase() === 'ceo',
     permissions: normalizePermissions(data.permissions ?? data.role_permissions),
     user_count: typeof users === 'number' ? users : Array.isArray(data.users) ? data.users.length : null,
   }

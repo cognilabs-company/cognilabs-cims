@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Percent, Rocket, UserPlus, UsersRound } from 'lucide-react'
+import { PercentIcon, RocketLaunchIcon, UserPlusIcon, UsersThreeIcon } from '@phosphor-icons/react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import type { ConversionRateResponse, CustomerStatsResponse, CustomerSummary } from '../../../shared/api/types'
 import { BarChartCard, type BarDatum } from '../../../shared/ui/charts/bar-chart-card'
@@ -260,7 +260,7 @@ export function CrmDashboardOverview({
           label={t('customers.list_page.total', 'Customers')}
           value={total}
           caption={t('customers.list_page.total_hint', 'All records in the CRM')}
-          icon={UsersRound}
+          icon={UsersThreeIcon}
           accent="#2B59FF"
           onClick={() => onOpenList()}
         />
@@ -268,7 +268,7 @@ export function CrmDashboardOverview({
           label={t('customers.list_page.added_today', 'Added today')}
           value={createdToday}
           caption={t('customers.list_page.added_today_hint', 'New leads since midnight')}
-          icon={UserPlus}
+          icon={UserPlusIcon}
           accent="#17924A"
           onClick={() => onOpenList('period=today')}
         />
@@ -277,14 +277,14 @@ export function CrmDashboardOverview({
           value={conversionRate}
           format={(value) => `${value.toFixed(1)}%`}
           caption={t('customers.list_page.conversion_hint', 'Projects started: {{count}}', { count: conversionStarted })}
-          icon={Percent}
+          icon={PercentIcon}
           accent="#7C5CFC"
         />
         <MetricTile
           label={t('customers.stats.project_started', 'Project started')}
           value={projectStarted}
           caption={t('customers.stats.finished_hint', 'Finished: {{count}}', { count: finished })}
-          icon={Rocket}
+          icon={RocketLaunchIcon}
           accent="#E8590C"
           onClick={() => onFocusStatus('project_started')}
         />

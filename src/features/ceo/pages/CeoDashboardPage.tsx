@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ceoService, type CeoUserRecord, type CompanyPaymentRecord } from '../../../shared/api/services/ceo.service'
 import { projectsService, type UserOpenCardRecord } from '../../../shared/api/services/projects.service'
 import { crmService } from '../../../shared/api/services/crm.service'
-import { FileWarning, NotebookPen, PhoneCall, Percent, Timer, TriangleAlert, UserPlus, UsersRound, Wallet } from 'lucide-react'
+import { FileDashedIcon, NotePencilIcon, PercentIcon, PhoneCallIcon, TimerIcon, UserPlusIcon, UsersThreeIcon, WalletIcon, WarningIcon } from '@phosphor-icons/react'
 import type { PaymentItem } from '../../../shared/api/types'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -875,7 +875,7 @@ export function CeoDashboardPage() {
             chartsSummary ? t('ceo.kpi.yesterday', 'Yesterday: {{count}}', { count: chartsSummary.yesterday }) : null,
             chartsSummary ? t('ceo.kpi.last_30_days', '30 days: {{count}}', { count: chartsSummary.total_period_leads }) : null,
           ])}
-          icon={UserPlus}
+          icon={UserPlusIcon}
           accent="#2B59FF"
           onClick={() => navigate('/crm/customers?period=today')}
         />
@@ -886,7 +886,7 @@ export function CeoDashboardPage() {
             needToCallShare !== null ? t('ceo.kpi.of_all_leads', '{{value}}% of leads', { value: needToCallShare }) : null,
             crmStats ? t('ceo.kpi.contacted', 'Contacted: {{count}}', { count: crmStats.contacted }) : null,
           ])}
-          icon={PhoneCall}
+          icon={PhoneCallIcon}
           accent="#E8590C"
           onClick={() => navigate('/crm/customers?status=need_to_call')}
         />
@@ -899,7 +899,7 @@ export function CeoDashboardPage() {
               t('ceo.kpi.late_count', 'Late: {{count}}', { count: slaLate }),
               t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit }),
             ])}
-            icon={Timer}
+            icon={TimerIcon}
             accent="#7C5CFC"
           />
         ) : (
@@ -908,7 +908,7 @@ export function CeoDashboardPage() {
             value={chartsSummary ? Number(chartsSummary.conversion_rate_percent ?? 0) : '—'}
             format={(value) => `${value.toFixed(1)}%`}
             caption={chartsSummary ? t('ceo.kpi.projects_started', 'Projects started: {{count}}', { count: chartsSummary.project_started }) : '—'}
-            icon={Percent}
+            icon={PercentIcon}
             accent="#17924A"
           />
         )}
@@ -920,7 +920,7 @@ export function CeoDashboardPage() {
             t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount }),
             paidShare !== null ? t('ceo.kpi.paid_share', '{{value}}% paid', { value: paidShare }) : null,
           ])}
-          icon={Wallet}
+          icon={WalletIcon}
           accent="#D63B3B"
           onClick={() => document.getElementById('ceo-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
         />
@@ -982,10 +982,10 @@ export function CeoDashboardPage() {
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {([
-                { label: t('ceo.media.leads', 'Total leads'), value: slaTotal, color: '#2B59FF', icon: UsersRound, share: null },
-                { label: t('ceo.note.written', 'Note written'), value: slaNoteWritten, color: '#17924A', icon: NotebookPen, share: percentOf(slaNoteWritten, slaTotal) },
-                { label: t('ceo.note.missing', 'Note missing'), value: slaNoteMissing, color: '#E8590C', icon: FileWarning, share: percentOf(slaNoteMissing, slaTotal) },
-                { label: t('ceo.note.status_without_note', 'Status without note'), value: slaNoNote, color: '#7C5CFC', icon: TriangleAlert, share: percentOf(slaNoNote, slaTotal) },
+                { label: t('ceo.media.leads', 'Total leads'), value: slaTotal, color: '#2B59FF', icon: UsersThreeIcon, share: null },
+                { label: t('ceo.note.written', 'Note written'), value: slaNoteWritten, color: '#17924A', icon: NotePencilIcon, share: percentOf(slaNoteWritten, slaTotal) },
+                { label: t('ceo.note.missing', 'Note missing'), value: slaNoteMissing, color: '#E8590C', icon: FileDashedIcon, share: percentOf(slaNoteMissing, slaTotal) },
+                { label: t('ceo.note.status_without_note', 'Status without note'), value: slaNoNote, color: '#7C5CFC', icon: WarningIcon, share: percentOf(slaNoNote, slaTotal) },
               ]).map((item) => (
                 <MetricTile
                   key={item.label}

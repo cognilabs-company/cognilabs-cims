@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ReceiptIcon, TargetIcon, TrendDownIcon, TrendUpIcon, WalletIcon } from '@phosphor-icons/react'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { ceoService } from '../../../shared/api/services/ceo.service'
@@ -102,51 +103,6 @@ function formatCurrency(amount: number) {
 
 function formatKpi(score: number) {
   return `${score.toFixed(1)}%`
-}
-
-function IconWallet() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="6" width="18" height="12" rx="3.5" />
-      <path d="M16.5 12H18" />
-    </svg>
-  )
-}
-
-function IconTrendUp() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 16.5l5.5-5.5 3.5 3.5L20 7.5" />
-      <path d="M20 12V7.5h-4.5" />
-    </svg>
-  )
-}
-
-function IconTrendDown() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 7.5l5.5 5.5 3.5-3.5L20 16.5" />
-      <path d="M20 12v4.5h-4.5" />
-    </svg>
-  )
-}
-
-function IconTarget() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-function IconReceipt() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8z" />
-      <path d="M9.5 9h5M9.5 13h3" />
-    </svg>
-  )
 }
 
 function IconPlan() {
@@ -286,11 +242,11 @@ function SalaryEstimatesTab({
             <div className="space-y-[18px]">
               <div className="grid gap-[18px] sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                 {[
-                  { label: 'Base Salary', value: formatCurrency(estimate.salary.base_salary), icon: <IconWallet />, iconTone: 'blue' as const, solid: false },
-                  { label: 'KPI Bonus', value: formatCurrency(estimate.salary.kpi_bonus), icon: <IconTrendUp />, iconTone: 'success' as const, solid: false },
-                  { label: 'Max KPI Fund', value: formatCurrency(estimate.salary.max_kpi_fund), icon: <IconTarget />, iconTone: 'violet' as const, solid: false },
-                  { label: 'Deductions', value: `-${formatCurrency(estimate.salary.approved_deductions)}`, icon: <IconTrendDown />, iconTone: estimate.salary.approved_deductions > 0 ? ('danger' as const) : ('neutral' as const), solid: false },
-                  { label: 'Expected Salary', value: formatCurrency(estimate.salary.expected_salary), icon: <IconReceipt />, iconTone: 'blue' as const, solid: true },
+                  { label: 'Base Salary', value: formatCurrency(estimate.salary.base_salary), icon: <WalletIcon />, iconTone: 'blue' as const, solid: false },
+                  { label: 'KPI Bonus', value: formatCurrency(estimate.salary.kpi_bonus), icon: <TrendUpIcon />, iconTone: 'success' as const, solid: false },
+                  { label: 'Max KPI Fund', value: formatCurrency(estimate.salary.max_kpi_fund), icon: <TargetIcon />, iconTone: 'violet' as const, solid: false },
+                  { label: 'Deductions', value: `-${formatCurrency(estimate.salary.approved_deductions)}`, icon: <TrendDownIcon />, iconTone: estimate.salary.approved_deductions > 0 ? ('danger' as const) : ('neutral' as const), solid: false },
+                  { label: 'Expected Salary', value: formatCurrency(estimate.salary.expected_salary), icon: <ReceiptIcon />, iconTone: 'blue' as const, solid: true },
                 ].map((item) => (
                   <StatCard
                     key={item.label}
@@ -1747,13 +1703,13 @@ function DeveloperKpiOverview({
           solid
           label={isCeo ? t('developer_kpi.overview.team_kpi', 'Team KPI') : t('developer_kpi.overview.my_kpi', 'My KPI')}
           value={hasEstimates ? formatKpi(scores.final) : '—'}
-          icon={<IconTarget />}
+          icon={<TargetIcon />}
           hint={t('developer_kpi.overview.weighted_hint', 'Weighted across five KPI components')}
         />
         <StatCard
           label={t('developer_kpi.overview.expected_payroll', 'Expected payroll')}
           value={hasEstimates ? formatCurrency(payroll.expected) : '—'}
-          icon={<IconWallet />}
+          icon={<WalletIcon />}
           iconTone="blue"
           hint={t('developer_kpi.overview.base_hint', 'Base: {{amount}}', { amount: formatCurrency(payroll.base) })}
           onOpen={() => onOpenTab('salary_estimates')}
@@ -1761,7 +1717,7 @@ function DeveloperKpiOverview({
         <StatCard
           label={t('developer_kpi.overview.bonus_pool', 'KPI bonus pool')}
           value={hasEstimates ? formatCurrency(payroll.bonus) : '—'}
-          icon={<IconTrendUp />}
+          icon={<TrendUpIcon />}
           iconTone="success"
           delta={payroll.maxFund > 0 ? `${Math.round((payroll.bonus / payroll.maxFund) * 100)}%` : undefined}
           hint={t('developer_kpi.overview.max_fund_hint', 'Max fund: {{amount}}', { amount: formatCurrency(payroll.maxFund) })}
@@ -1769,7 +1725,7 @@ function DeveloperKpiOverview({
         <StatCard
           label={t('developer_kpi.overview.deductions_total', 'Deductions')}
           value={hasEstimates ? (payroll.deductions > 0 ? `-${formatCurrency(payroll.deductions)}` : formatCurrency(0)) : '—'}
-          icon={<IconTrendDown />}
+          icon={<TrendDownIcon />}
           iconTone={payroll.deductions > 0 ? 'danger' : 'neutral'}
           hint={t('developer_kpi.overview.deductions_hint', 'Approved for this period')}
           onOpen={() => onOpenTab('deductions')}

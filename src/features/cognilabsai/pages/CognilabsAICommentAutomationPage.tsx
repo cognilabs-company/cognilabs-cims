@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChatCircleTextIcon, CheckCircleIcon, InstagramLogoIcon, WarningIcon } from '@phosphor-icons/react'
 import {
   cognilabsaiService,
   type CommentAutomationMedia,
@@ -22,11 +23,8 @@ import { EmptyStateBlock, ErrorStateBlock } from '../../../shared/ui/state-block
 import { Tabs } from '../../../shared/ui/tabs'
 import { BulkSettingsDialog } from '../components/comment-automation/BulkSettingsDialog'
 import {
-  AlertIcon,
   CheckIcon,
-  CommentIcon,
   GridIcon,
-  InstagramGlyph,
   PostIcon,
   ReelsIcon,
 } from '../components/comment-automation/icons'
@@ -337,7 +335,7 @@ export function CognilabsAICommentAutomationPage() {
           label={tx('summary.total', 'Posts and reels')}
           value={items.length}
           hint={isFullyLoaded ? tx('summary.all_loaded', 'All pages loaded') : tx('summary.loading', 'Loading...')}
-          icon={<InstagramGlyph className="h-[18px] w-[18px]" />}
+          icon={<InstagramLogoIcon />}
           solid
         />
         <SummaryTile
@@ -345,20 +343,20 @@ export function CognilabsAICommentAutomationPage() {
           value={enabledCount}
           hint={tx('summary.enabled_hint', 'of {{total}}', { total: items.length })}
           accent="success"
-          icon={<CheckIcon className="h-4 w-4" />}
+          icon={<CheckCircleIcon />}
         />
         <SummaryTile
           label={tx('summary.comments', 'Comments received')}
           value={commentsCount}
           accent="blue"
-          icon={<CommentIcon className="h-[18px] w-[18px]" />}
+          icon={<ChatCircleTextIcon />}
         />
         <SummaryTile
           label={tx('summary.attention', 'Needs attention')}
           value={attentionCount}
           hint={attentionCount > 0 ? tx('summary.attention_hint', 'Check the reply history') : undefined}
           accent={attentionCount > 0 ? 'danger' : 'default'}
-          icon={<AlertIcon className="h-[18px] w-[18px]" />}
+          icon={<WarningIcon />}
         />
       </div>
 

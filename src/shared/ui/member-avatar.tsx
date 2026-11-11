@@ -71,6 +71,8 @@ export function MemberAvatar({
     <span
       title={title ?? displayName}
       aria-label={title ?? displayName}
+      // Initials are not words: "OY" must not be "translated" to "Oy" (month) by the DOM translator.
+      data-i18n-skip="true"
       className={cn(
         'inline-flex shrink-0 items-center justify-center rounded-full font-bold select-none',
         sizeClasses[size],

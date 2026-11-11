@@ -1,3 +1,4 @@
+import { InstagramLogoIcon, RobotIcon, SparkleIcon, TelegramLogoIcon } from '@phosphor-icons/react'
 import { ArrowUpRight, Bot, Copy, Instagram, Send, Sparkles } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { useToast } from '../../../shared/toast/useToast'
@@ -101,13 +102,13 @@ export function CimsTeamPage() {
           label={t('cims.metric.touchpoints', 'Team touchpoints')}
           value={teamLinks.length}
           hint={t('cims.metric.touchpoints_hint', 'Channels and bots kept in one board')}
-          icon={<Sparkles className="h-[18px] w-[18px]" />}
+          icon={<SparkleIcon />}
         />
         <StatCard
           label={t('cims.metric.telegram', 'Telegram surfaces')}
           value={telegramSurfaces.length}
           hint={t('cims.metric.telegram_hint', 'Channel and bots on Telegram')}
-          icon={<Send className="h-[18px] w-[18px]" />}
+          icon={<TelegramLogoIcon />}
           iconTone="blue"
           onOpen={telegramChannel ? () => openExternal(telegramChannel.href) : undefined}
           openLabel={t('cims.open_link')}
@@ -116,7 +117,7 @@ export function CimsTeamPage() {
           label={t('cims.metric.bots', 'Automation bots')}
           value={automationBots.length}
           hint={t('cims.metric.bots_hint', 'Recall and update workflows')}
-          icon={<Bot className="h-[18px] w-[18px]" />}
+          icon={<RobotIcon />}
           iconTone="warning"
           onOpen={primaryBot ? () => openExternal(primaryBot.href) : undefined}
           openLabel={t('cims.open_link')}
@@ -125,7 +126,7 @@ export function CimsTeamPage() {
           label={t('cims.metric.social', 'Social pages')}
           value={socialPages.length}
           hint={t('cims.metric.social_hint', 'Public brand presence')}
-          icon={<Instagram className="h-[18px] w-[18px]" />}
+          icon={<InstagramLogoIcon />}
           iconTone="violet"
         />
       </div>

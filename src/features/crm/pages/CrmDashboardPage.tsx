@@ -31,7 +31,7 @@ import { platformVisual } from '../lib/platformIcon'
 import { avatarTone, initialsFor } from '../lib/customerAvatar'
 import { MetricTile } from '../../../shared/ui/metric-tile'
 import { gridButton } from '../../../shared/ui/data-grid-styles'
-import { statusIconFor } from '../lib/statusIcon'
+import { statusIconFor, statusKpiIconFor } from '../lib/statusIcon'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
 import { useCrmScope } from '../lib/crmScope'
@@ -1451,6 +1451,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       key,
       value: option.value,
       meta: statusMetaFor(option.value),
+      icon: statusKpiIconFor(option.value),
       count,
       caption,
       active: statusFilters.length === 1 && selectedStatusFilterSet.has(key),
@@ -1525,7 +1526,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
             label={card.meta.label}
             value={card.count}
             caption={card.caption}
-            icon={card.meta.icon}
+            icon={card.icon}
             accent={card.meta.color}
             active={card.active}
             onClick={() => { setStatusFilters(card.active ? [] : [card.value]); setTablePage(1) }}

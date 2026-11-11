@@ -8,15 +8,13 @@ import { cn } from '../../../shared/lib/cn'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
-import { Input } from '../../../shared/ui/input'
 import { Skeleton } from '../../../shared/ui/skeleton'
 import { StateBlock } from '../../../shared/ui/state-block'
 import { useToast } from '../../../shared/toast/useToast'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { Avatar } from '../components/Avatar'
 import { ProjectCard, ProjectCardSkeleton } from '../components/ProjectCard'
-import { ProjectMap3D } from '../components/ProjectMap3D'
-import { Plus, UsersRound } from 'lucide-react'
+import { Plus, Search, UsersRound, X } from 'lucide-react'
 import { ProjectFormModal } from '../components/ProjectFormModal'
 import { TeamManagementModal } from '../components/TeamManagementModal'
 import { formatProjectDateTime, getPriorityConfig, isDueDateOverdue, isDueDateSoon } from '../lib/format'
@@ -334,22 +332,36 @@ export function ProjectsListPage() {
   return (
     <>
       <div className="page-enter flex flex-col gap-[18px]">
-        <ProjectMap3D
-          projects={filteredProjects}
-          loading={projectsQuery.isLoading || isSelectedMemberProjectsLoading}
-          actions={canManageProjects ? (
-            <>
-              <button type="button" onClick={() => setIsTeamsOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-[11px] bg-white/10 px-3 text-[13px] font-semibold text-white ring-1 ring-white/15 transition-colors hover:bg-white/15">
-                <UsersRound size={15} /> {lt('Teams')}
-              </button>
-              {canCreateProject ? (
-                <button type="button" onClick={() => setIsCreateOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-[11px] bg-[#b8f15a] px-3.5 text-[13px] font-semibold text-[#0e1525] shadow-[0_8px_20px_-10px_rgba(184,241,90,0.9)] transition hover:brightness-105">
-                  <Plus size={15} strokeWidth={2.4} /> {lt('New project')}
+        {/* Simple header: title + count, search, Teams, New project */}
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-[24px] leading-8 font-bold tracking-[-0.025em] text-[var(--foreground)]">{lt('Projects')}</h1>
+            <span className="rounded-[6px] bg-[var(--blue-dim)] px-2 py-0.5 text-[12px] font-semibold text-[var(--primary)] tabular-nums">{filteredProjects.length}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="relative flex h-10 w-full items-center sm:w-[280px]">
+              <Search size={16} className="pointer-events-none absolute left-3 text-[var(--muted)]" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={selectedMember ? lt('Search selected member projects...') : lt('Search projects...')}
+                aria-label={lt('Search projects...')}
+                className="h-10 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] pr-9 pl-9 text-[13.5px] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+              />
+              {search ? (
+                <button type="button" onClick={() => setSearch('')} aria-label={lt('Clear')} className="absolute right-2.5 grid h-6 w-6 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--muted-surface)]">
+                  <X size={14} />
                 </button>
               ) : null}
-            </>
-          ) : null}
-        />
+            </label>
+            {canManageProjects ? (
+              <Button variant="secondary" onClick={() => setIsTeamsOpen(true)} leftIcon={<UsersRound size={15} />}>{lt('Teams')}</Button>
+            ) : null}
+            {canManageProjects && canCreateProject ? (
+              <Button onClick={() => setIsCreateOpen(true)} leftIcon={<Plus size={15} />}>{lt('New project')}</Button>
+            ) : null}
+          </div>
+        </header>
 
         {/* People: a compact strip of chips (click to see one person's projects and tasks) */}
         {membersPanelLoading ? (
@@ -521,32 +533,6 @@ export function ProjectsListPage() {
             </div>
           </Card>
         ) : null}
-
-        <div className="flex items-center gap-3">
-          <div className="relative max-w-sm flex-1">
-            <svg
-              viewBox="0 0 16 16"
-              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <circle cx="6.5" cy="6.5" r="3.5" />
-              <path d="M9.5 9.5l3 3" strokeLinecap="round" />
-            </svg>
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={selectedMember ? lt('Search selected member projects...') : lt('Search projects...')}
-              className="bg-[var(--surface)] pl-10 hover:bg-[var(--surface)]"
-            />
-          </div>
-          {search ? (
-            <Button variant="ghost" size="sm" onClick={() => setSearch('')}>
-              {lt('Clear')}
-            </Button>
-          ) : null}
-        </div>
 
         {projectsQuery.isLoading || isSelectedMemberProjectsLoading ? (
           <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

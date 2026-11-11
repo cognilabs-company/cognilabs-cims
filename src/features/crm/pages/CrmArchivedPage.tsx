@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Archive, ArchiveRestore, ArrowLeft, CalendarPlus, Loader2, RefreshCw, Search, Trash2, X } from 'lucide-react'
+import { ArchiveIcon, CalendarPlusIcon } from '@phosphor-icons/react'
+import { Archive, ArchiveRestore, ArrowLeft, Loader2, RefreshCw, Search, Trash2, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import type { CustomerSummary } from '../../../shared/api/types'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -18,7 +19,7 @@ import { MetricTile } from '../../../shared/ui/metric-tile'
 import { avatarTone, initialsFor } from '../lib/customerAvatar'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { useCrmScope } from '../lib/crmScope'
-import { platformVisual } from '../lib/platformIcon'
+import { platformKpiIconFor, platformVisual } from '../lib/platformIcon'
 import { statusIconFor } from '../lib/statusIcon'
 
 const statusKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -330,21 +331,21 @@ export function CrmArchivedPage() {
           label={t('customers.archive.metric_total', 'In archive')}
           value={customers.length}
           caption={t('customers.archive.metric_total_caption', 'Not shown in the customers list')}
-          icon={Archive}
+          icon={ArchiveIcon}
           accent="#64748B"
         />
         <MetricTile
           label={t('customers.archive.metric_recent', 'Added in the last 30 days')}
           value={recentCount}
           caption={t('customers.archive.metric_recent_caption', 'Recent leads that ended up here')}
-          icon={CalendarPlus}
+          icon={CalendarPlusIcon}
           accent="#2B59FF"
         />
         <MetricTile
           label={topPlatform ? t('customers.archive.metric_platform', 'Top source: {{platform}}', { platform: topPlatform }) : t('customers.archive.metric_platform_none', 'Top source')}
           value={topPlatformCount}
           caption={customers.length ? t('customers.archive.metric_platform_caption', '{{percent}}% of the archive', { percent: Math.round((topPlatformCount / customers.length) * 100) }) : '—'}
-          icon={topLook?.icon ?? Archive}
+          icon={topPlatform ? platformKpiIconFor(topPlatform) : ArchiveIcon}
           accent={topLook?.color ?? '#8A90A2'}
         />
       </div>

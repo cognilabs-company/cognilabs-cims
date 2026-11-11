@@ -1,4 +1,5 @@
 import { useMemo, useState, type KeyboardEvent } from 'react'
+import { CalendarDotsIcon, ChartLineUpIcon, CheckCircleIcon, GaugeIcon } from '@phosphor-icons/react'
 import { updateTrackingService, type WorkdayOverrideRecord } from '../../../shared/api/services/updateTracking.service'
 import type { DayStatus, UpdateTrackingStats } from '../../../shared/api/types'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
@@ -1415,46 +1416,26 @@ export function UpdateTrackingPage() {
           label={tr('Monthly Completion', 'Oylik bajarilish', 'Mesyachnoe vypolnenie')}
           value={`${monthlyPct.toFixed(1)}%`}
           footer={<Progress value={monthlyPct} tone="lime" size="xs" onInverse className="mt-1" />}
-          icon={(
-            <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 10a8 8 0 1 1 16 0" />
-              <path d="M10 10V4" />
-              <path d="M10 10l4 2.5" />
-            </svg>
-          )}
+          icon={<GaugeIcon />}
         />
         <StatCard
           iconTone={weeklyPct >= 80 ? 'success' : weeklyPct >= 50 ? 'warning' : 'neutral'}
           label={tr('Weekly Completion', 'Haftalik bajarilish', 'Nedelnoye vypolnenie')}
           value={`${weeklyPct.toFixed(1)}%`}
           footer={<Progress value={weeklyPct} tone={getCompletionTone(weeklyPct)} size="xs" className="mt-1" />}
-          icon={(
-            <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="3" width="16" height="14" rx="2" />
-              <path d="M7 3v14M13 3v14M2 9h16M2 13h16" />
-            </svg>
-          )}
+          icon={<CalendarDotsIcon />}
         />
         <StatCard
           iconTone="blue"
           label={tr('Updates This Month', 'Bu oydagi update lar', 'Obnovleniya za etot mesyats')}
           value={stats?.updates_this_month ?? 0}
-          icon={(
-            <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="10" cy="10" r="8" />
-              <path d="m6.5 10 2.5 2.5 4.5-4.5" />
-            </svg>
-          )}
+          icon={<CheckCircleIcon />}
         />
         <StatCard
           iconTone="lime"
           label={tr('Updates This Week', 'Bu haftadagi update lar', 'Obnovleniya za etu nedelyu')}
           value={stats?.updates_this_week ?? 0}
-          icon={(
-            <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="2 15 7 8 11 12 15 6 18 9" />
-            </svg>
-          )}
+          icon={<ChartLineUpIcon />}
         />
       </div>
 
