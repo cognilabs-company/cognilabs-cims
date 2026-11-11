@@ -34,7 +34,7 @@ export function NodeInspector({ node, depth, branchColor, canCreateTask, onChang
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="mm-fade-up flex h-full min-h-0 flex-col">
       <p className="px-4 pt-4 text-[13.5px] font-bold text-[var(--foreground)]">{t('mindmap.inspector.title', 'Node')}</p>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pt-3 pb-4">
         <label className="block">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { CheckSquareIcon, LinkSimpleIcon, NoteIcon, PlusIcon } from '@phosphor-icons/react'
+import { CheckSquareIcon, LinkSimpleIcon, NoteIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
 import { cn } from '../../../shared/lib/cn'
 import { computeLayout, edgePath, type Layout, type NodeBox } from '../lib/layout'
 import { subtreeIds, updateNode } from '../lib/tree'
@@ -23,7 +23,11 @@ type Props = {
   activeMatchId: string | null
   spacePan: boolean
   showMinimap: boolean
-  labels: { addChild: string; collapse: string; expand: string; openLink: string; openTask: string; note: string }
+  /** Nodes playing their exit animation (removed right after). */
+  leavingIds: Set<string>
+  /** Glide the camera (button-driven moves); wheel and drag stay instant. */
+  animateView: boolean
+  labels: { addChild: string; collapse: string; expand: string; openLink: string; openTask: string; note: string; remove: string }
   onSize: (size: { w: number; h: number }) => void
   onSelect: (id: string) => void
   onStartEdit: (id: string) => void
@@ -34,6 +38,7 @@ type Props = {
   onMoveNode: (id: string, dx: number, dy: number) => void
   onReparent: (id: string, targetId: string) => void
   onOpenTask: (task: NodeTask) => void
+  onDeleteNode: (id: string) => void
 }
 
 const fontClass = (depth: number) =>
@@ -43,17 +48,17 @@ function nodeStyle(node: MindNode, box: NodeBox): CSSProperties {
   const radius = node.shape === 'pill' ? box.h / 2 : node.shape === 'rect' ? 4 : box.depth === 0 ? 16 : 11
   const base: CSSProperties = { left: box.x, top: box.y, width: box.w, height: box.h, borderRadius: radius }
   if (node.shape === 'outline') return { ...base, background: 'var(--card)', border: `2px solid ${box.color}`, color: box.depth === 0 ? box.color : 'var(--foreground)' }
-  if (box.depth === 0) return { ...base, background: box.color, border: `1px solid ${box.color}`, color: '#fff', boxShadow: `0 10px 26px -12px ${box.color}` }
+  if (box.depth === 0) return { ...base, background: box.color, border: `1px solid ${box.color}`, color: '#fff' }
   return {
     ...base,
-    background: `color-mix(in srgb, ${box.color} 14%, var(--card))`,
-    border: `1px solid color-mix(in srgb, ${box.color} 45%, transparent)`,
+    background: `color-mix(in srgb, ${box.color} 12%, var(--card))`,
+    border: `1px solid color-mix(in srgb, ${box.color} 40%, transparent)`,
     color: 'var(--foreground)',
   }
 }
 
 export function MindCanvas(props: Props) {
-  const { map, layout, view, setView, selectedId, editingId, editSelectAll, matches, activeMatchId, spacePan, showMinimap, labels } = props
+  const { map, layout, view, setView, selectedId, editingId, editSelectAll, matches, activeMatchId, spacePan, showMinimap, leavingIds, animateView, labels } = props
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -175,6 +180,8 @@ export function MindCanvas(props: Props) {
       onPointerDown={onBackgroundPointerDown}
       className={cn(
         'mm-canvas relative h-full min-h-0 w-full touch-none overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--card)] select-none',
+        !drag && 'mm-animated',
+        animateView && 'mm-bg-animate',
         spacePan || panning ? 'cursor-grabbing' : 'cursor-default',
         spacePan && !panning && 'cursor-grab',
       )}
@@ -184,10 +191,21 @@ export function MindCanvas(props: Props) {
         backgroundPosition: `${view.x}px ${view.y}px`,
       }}
     >
-      <div className="absolute top-0 left-0 origin-top-left will-change-transform" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
+      <div className={cn('absolute top-0 left-0 origin-top-left will-change-transform', animateView && 'mm-world-animate')} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
         <svg className="pointer-events-none absolute top-0 left-0 overflow-visible" width="1" height="1" aria-hidden="true">
           {edges.map((edge) => (
-            <path key={edge.id} d={edge.d} fill="none" stroke={edge.color} strokeOpacity={0.75} strokeWidth={edge.depth === 1 ? 3 : 2} strokeLinecap="round" />
+            <path
+              key={edge.id}
+              d={edge.d}
+              pathLength={1}
+              className={cn('mm-edge', leavingIds.has(edge.id) && 'mm-edge-leave')}
+              style={{ d: `path("${edge.d}")` } as CSSProperties}
+              fill="none"
+              stroke={edge.color}
+              strokeOpacity={0.7}
+              strokeWidth={edge.depth === 1 ? 3 : 2}
+              strokeLinecap="round"
+            />
           ))}
         </svg>
 
@@ -210,6 +228,7 @@ export function MindCanvas(props: Props) {
               className={cn(
                 'group/node mm-node absolute flex flex-col items-center justify-center text-center',
                 drag?.id === id ? 'cursor-grabbing opacity-90' : 'cursor-pointer',
+                leavingIds.has(id) && 'mm-node-leave',
               )}
               style={{
                 ...nodeStyle(node, box),
@@ -217,10 +236,10 @@ export function MindCanvas(props: Props) {
                 outline: isDropTarget ? '2px dashed var(--primary)' : undefined,
                 outlineOffset: 4,
                 boxShadow: [
-                  selected ? `0 0 0 2px var(--card), 0 0 0 4px ${box.depth === 0 ? 'var(--foreground)' : box.color}` : null,
+                  selected ? `0 0 0 3px var(--card), 0 0 0 5px color-mix(in srgb, ${box.color} 55%, transparent)` : null,
                   isMatch ? `0 0 0 ${id === activeMatchId ? 6 : 4}px rgba(245, 158, 11, ${id === activeMatchId ? 0.75 : 0.4})` : null,
-                  !selected && !isMatch && box.depth === 0 ? `0 10px 26px -12px ${box.color}` : null,
-                ].filter(Boolean).join(', ') || undefined,
+                  box.depth === 0 ? `0 12px 28px -14px ${box.color}` : '0 1px 2px rgba(14, 21, 37, 0.06)',
+                ].filter(Boolean).join(', '),
               }}
             >
               {editing ? (
@@ -284,6 +303,24 @@ export function MindCanvas(props: Props) {
                 </button>
               ) : null}
 
+              {/* Delete (not the central topic) */}
+              {!editing && id !== map.rootId ? (
+                <button
+                  type="button"
+                  data-canvas-ui
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() => props.onDeleteNode(id)}
+                  aria-label={labels.remove}
+                  title={`${labels.remove} (Delete)`}
+                  className={cn(
+                    'absolute -top-2.5 left-1/2 grid h-5 w-5 -translate-x-1/2 scale-75 place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted-strong)] opacity-0 shadow-[0_2px_6px_rgba(14,21,37,0.15)] transition-[opacity,transform,background-color,color] duration-200 hover:border-transparent hover:bg-[var(--danger)] hover:text-white',
+                    selected ? 'scale-100 opacity-100' : 'group-hover/node:scale-100 group-hover/node:opacity-100',
+                  )}
+                >
+                  <XIcon size={10} weight="bold" />
+                </button>
+              ) : null}
+
               {/* Add child */}
               {!editing ? (
                 <button
@@ -294,8 +331,8 @@ export function MindCanvas(props: Props) {
                   aria-label={labels.addChild}
                   title={`${labels.addChild} (Tab)`}
                   className={cn(
-                    'absolute top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full border-2 bg-[var(--card)] transition-[opacity,transform] hover:scale-110',
-                    selected ? 'opacity-100' : 'opacity-0 group-hover/node:opacity-100',
+                    'absolute top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full border-2 bg-[var(--card)] transition-[opacity,scale] duration-200 hover:scale-125',
+                    selected ? 'scale-100 opacity-100' : 'scale-50 opacity-0 group-hover/node:scale-100 group-hover/node:opacity-100',
                   )}
                   style={{ [outer]: hasChildren && id !== map.rootId ? -34 : -11, borderColor: box.depth === 0 ? box.color : box.color, color: box.color }}
                 >

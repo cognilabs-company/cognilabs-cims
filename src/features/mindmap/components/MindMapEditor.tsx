@@ -44,6 +44,7 @@ import {
   reparent,
   resetOffsets,
   setAllCollapsed,
+  subtreeIds,
   uid,
   updateNode,
 } from '../lib/tree'
@@ -106,7 +107,7 @@ function ToolButton({ icon, label, onClick, disabled, active, kbd, iconOnly, dan
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        'inline-flex h-[34px] shrink-0 items-center justify-center gap-1.5 rounded-[10px] border text-[12.5px] font-semibold whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40',
+        'mm-press inline-flex h-[34px] shrink-0 items-center justify-center gap-1.5 rounded-[10px] border text-[12.5px] font-semibold whitespace-nowrap disabled:pointer-events-none disabled:opacity-40',
         iconOnly ? 'w-[34px]' : compact ? 'w-[34px] 2xl:w-auto 2xl:px-2.5' : 'px-2.5 max-sm:w-[34px] max-sm:px-0',
         active ? 'border-[var(--primary)] bg-[var(--blue-dim)] text-[var(--primary)]' : 'border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--input-surface)]',
         danger && 'hover:border-[var(--danger-border)] hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]',
@@ -133,7 +134,8 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   const selected = map.nodes[selectedId] ? selectedId : map.rootId
   const node = map.nodes[selected]
 
-  const [editing, setEditing] = useState<{ id: string; original: string; selectAll: boolean } | null>(
+  // `fresh`: a node just created by Tab/Enter/+ — Escape removes it instead of reverting the text.
+  const [editing, setEditing] = useState<{ id: string; original: string; selectAll: boolean; fresh?: boolean } | null>(
     autoEditRoot ? { id: initial.rootId, original: initial.nodes[initial.rootId].text, selectAll: true } : null,
   )
   const editingRef = useRef(editing)
@@ -141,6 +143,10 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   const setView = useCallback((update: (view: View) => View) => setViewState(update), [])
   const sizeRef = useRef({ w: 0, h: 0 })
   const centeredRef = useRef(false)
+  // Camera glides for button-driven moves (fit, centre, zoom buttons, keeping a new node in view).
+  const [animateView, setAnimateView] = useState(false)
+  const animateTimer = useRef<number | undefined>(undefined)
+  const [leavingIds, setLeavingIds] = useState<Set<string>>(() => new Set())
   const [prefs, setPrefs] = useState(readPrefs)
   const [query, setQuery] = useState('')
   const [matchIndex, setMatchIndex] = useState(0)
@@ -161,17 +167,18 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   const onSaveRef = useRef(onSave)
   useEffect(() => { onSaveRef.current = onSave }, [onSave])
   useEffect(() => {
-    if (map === initial) return
+    // Compare with what was saved last (not with the first version): undoing back to it must be saved too.
+    if (map === savedMap) return
     pendingRef.current = map
     const timer = window.setTimeout(() => {
       pendingRef.current = null
       void onSaveRef.current(map).then(() => setSavedMap(map)).catch(() => showToast({ title: t('mindmap.save_failed', 'Could not save the mind map'), tone: 'error' }))
     }, 450)
     return () => window.clearTimeout(timer)
-  }, [initial, map, showToast, t])
+  }, [map, savedMap, showToast, t])
   // Leaving the page (or switching maps) with unsaved edits: save right away.
   useEffect(() => () => { if (pendingRef.current) void onSaveRef.current(pendingRef.current) }, [])
-  const isSaved = savedMap === map || map === initial
+  const isSaved = savedMap === map
 
   useEffect(() => {
     try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* private mode */ }
@@ -200,11 +207,19 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     }
   }, [initial])
 
+  function glide(update: View | ((current: View) => View)) {
+    window.clearTimeout(animateTimer.current)
+    setAnimateView(true)
+    setViewState(update)
+    animateTimer.current = window.setTimeout(() => setAnimateView(false), 450)
+  }
+  useEffect(() => () => window.clearTimeout(animateTimer.current), [])
+
   function centerOn(id: string, source: Layout = layout) {
     const box = source.boxes.get(id)
     if (!box) return
     const { w, h } = sizeRef.current
-    setViewState((current) => ({ ...current, x: w / 2 - (box.x + box.w / 2) * current.k, y: h / 2 - (box.y + box.h / 2) * current.k }))
+    glide((current) => ({ ...current, x: w / 2 - (box.x + box.w / 2) * current.k, y: h / 2 - (box.y + box.h / 2) * current.k }))
   }
 
   /** Pan just enough to keep a node on screen (after keyboard actions). */
@@ -213,7 +228,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     if (!box) return
     const { w, h } = sizeRef.current
     const margin = 48
-    setViewState((current) => {
+    glide((current) => {
       const left = box.x * current.k + current.x
       const top = box.y * current.k + current.y
       const right = left + box.w * current.k
@@ -232,12 +247,12 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     const { w, h } = sizeRef.current
     if (!w || !h) return
     const k = clampZoom(Math.min((w - 96) / Math.max(1, maxX - minX), (h - 96) / Math.max(1, maxY - minY), 1.25))
-    setViewState({ k, x: w / 2 - ((minX + maxX) / 2) * k, y: h / 2 - ((minY + maxY) / 2) * k })
+    glide({ k, x: w / 2 - ((minX + maxX) / 2) * k, y: h / 2 - ((minY + maxY) / 2) * k })
   }
 
   function zoomBy(factor: number) {
     const { w, h } = sizeRef.current
-    setViewState((current) => {
+    glide((current) => {
       const k = clampZoom(current.k * factor)
       const ratio = k / current.k
       return { k, x: w / 2 - (w / 2 - current.x) * ratio, y: h / 2 - (h / 2 - current.y) * ratio }
@@ -270,7 +285,8 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     editingRef.current = null
     setEditing(null)
     if (mode === 'cancel') {
-      apply((m) => updateNode(m, state.id, { text: state.original }), `text:${state.id}`)
+      if (state.fresh) removeWithAnimation(state.id)
+      else apply((m) => updateNode(m, state.id, { text: state.original }), `text:${state.id}`)
       return
     }
     if (!map.nodes[state.id]?.text.trim()) apply((m) => updateNode(m, state.id, { text: state.original.trim() || newNodeText }), `text:${state.id}`)
@@ -283,21 +299,31 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     const [next] = kind === 'child' ? addChild(map, from, newNodeText, id) : addSibling(map, from, newNodeText, id)
     commit(next)
     const nextLayout = computeLayout(next)
-    const state = { id, original: newNodeText, selectAll: true }
+    const state = { id, original: newNodeText, selectAll: true, fresh: true }
     editingRef.current = state
     setEditing(state)
     setSelectedId(id)
     ensureVisible(id, nextLayout)
   }
 
-  function deleteSelected() {
-    if (selected === map.rootId) {
+  /** Fade the node (and its subtree) out, then remove it — one undo step. */
+  function removeWithAnimation(id: string) {
+    if (id === map.rootId) {
       showToast({ title: t('mindmap.root_delete', 'The central topic cannot be deleted'), tone: 'info' })
       return
     }
-    const [next, nextSelected] = removeNode(map, selected)
-    commit(next)
+    if (!map.nodes[id] || leavingIds.has(id)) return
+    const [, nextSelected] = removeNode(map, id)
+    setLeavingIds(new Set(subtreeIds(map, id)))
     setSelectedId(nextSelected)
+    window.setTimeout(() => {
+      apply((current) => removeNode(current, id)[0])
+      setLeavingIds(new Set())
+    }, 190)
+  }
+
+  function deleteSelected() {
+    removeWithAnimation(selected)
   }
 
   function move(delta: -1 | 1) {
@@ -462,7 +488,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   )
 
   return (
-    <div ref={rootRef} className={cn('flex h-full min-h-0 flex-col gap-2.5', isFullscreen && 'bg-[var(--background)] p-4')}>
+    <div ref={rootRef} className={cn('mm-fade-up flex h-full min-h-0 flex-col gap-2.5', isFullscreen && 'bg-[var(--background)] p-4')}>
       {/* Row 1: title, saved state, history, search, zoom, view, export, panels, delete */}
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -580,7 +606,11 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
               openLink: t('mindmap.open_link', 'Open link'),
               openTask: t('mindmap.open_task', 'Open task'),
               note: t('mindmap.has_note', 'Has a note'),
+              remove: t('mindmap.remove', 'Delete'),
             }}
+            leavingIds={leavingIds}
+            animateView={animateView}
+            onDeleteNode={removeWithAnimation}
             onSize={onSize}
             onSelect={select}
             onStartEdit={(id) => startEdit(id)}
@@ -598,7 +628,10 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
               <ToolButton iconOnly flat icon={<MinusIcon size={15} />} label={t('mindmap.zoom_out', 'Zoom out')} onClick={() => zoomBy(1 / 1.2)} />
               <button
                 type="button"
-                onClick={() => setViewState((current) => ({ ...current, k: 1 }))}
+                onClick={() => {
+                  const { w, h } = sizeRef.current
+                  glide((current) => ({ k: 1, x: w / 2 - (w / 2 - current.x) / current.k, y: h / 2 - (h / 2 - current.y) / current.k }))
+                }}
                 title={t('mindmap.zoom_reset', 'Reset to 100%')}
                 className="h-[34px] min-w-[50px] rounded-[10px] text-[12.5px] font-semibold text-[var(--foreground)] tabular-nums hover:bg-[var(--input-surface)]"
               >
@@ -622,7 +655,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
         {prefs.inspector || mobileInspector ? (
           <aside
             className={cn(
-              'absolute inset-y-0 right-0 z-10 w-[252px] shrink-0 overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--card)] shadow-[0_18px_40px_-24px_rgba(14,21,37,0.5)] lg:static lg:shadow-none',
+              'mm-panel-in absolute inset-y-0 right-0 z-10 w-[252px] shrink-0 overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--card)] shadow-[0_18px_40px_-24px_rgba(14,21,37,0.5)] lg:static lg:shadow-none',
               mobileInspector ? 'block' : 'hidden',
               prefs.inspector ? 'lg:block' : 'lg:hidden',
             )}

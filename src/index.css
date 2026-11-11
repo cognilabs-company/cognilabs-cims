@@ -1074,6 +1074,46 @@ input:-webkit-autofill:focus {
   --mp-avatar: linear-gradient(150deg, #4a66d8 0%, #2a45b8 100%);
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Mind map motion: nodes pop in and glide to new places, branches
+   draw themselves, deleted nodes fade out, panels slide in.
+   Transitions are off while a node is being dragged.
+   ────────────────────────────────────────────────────────────── */
+@keyframes mm-node-in { 0% { opacity: 0; transform: scale(0.55); } 70% { opacity: 1; transform: scale(1.06); } 100% { opacity: 1; transform: none; } }
+@keyframes mm-node-out { to { opacity: 0; transform: scale(0.6); } }
+@keyframes mm-edge-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes mm-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes mm-panel-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes mm-list-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@keyframes mm-pop { 0% { opacity: 0; transform: scale(0.92); } 100% { opacity: 1; transform: none; } }
+
+.mm-node { animation: mm-node-in 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mm-canvas.mm-animated .mm-node {
+  transition: left 340ms cubic-bezier(0.16, 1, 0.3, 1), top 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    width 220ms ease, height 220ms ease, box-shadow 200ms ease, background-color 200ms ease, border-color 200ms ease, translate 200ms ease;
+}
+.mm-canvas.mm-animated .mm-node:not(.mm-node-leave):hover { translate: 0 -1px; }
+.mm-node-leave { animation: mm-node-out 200ms ease forwards; pointer-events: none; }
+
+.mm-edge { stroke-dasharray: 1; animation: mm-edge-draw 520ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mm-canvas.mm-animated .mm-edge { transition: d 340ms cubic-bezier(0.16, 1, 0.3, 1), stroke 200ms ease, opacity 200ms ease; }
+.mm-edge-leave { opacity: 0; }
+
+.mm-world-animate { transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+.mm-bg-animate { transition: background-position 420ms cubic-bezier(0.16, 1, 0.3, 1), background-size 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+.mm-fade-up { animation: mm-fade-up 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mm-panel-in { animation: mm-panel-in 340ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mm-list-in { animation: mm-list-in 360ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mm-pop { animation: mm-pop 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mm-press { transition: transform 120ms ease, background-color 150ms ease, color 150ms ease, border-color 150ms ease; }
+.mm-press:active:not(:disabled) { transform: scale(0.95); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-node, .mm-node-leave, .mm-edge, .mm-fade-up, .mm-panel-in, .mm-list-in, .mm-pop { animation: none; }
+  .mm-canvas.mm-animated .mm-node, .mm-canvas.mm-animated .mm-edge, .mm-world-animate, .mm-bg-animate { transition: none; }
+}
+
 /* Day picker popover + month slide */
 @keyframes cal-pop { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes cal-slide-left { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }

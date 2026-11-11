@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { FileArrowUpIcon, MagnifyingGlassIcon, PlusIcon, SidebarSimpleIcon, TreeStructureIcon } from '@phosphor-icons/react'
+import { FileArrowUpIcon, MagnifyingGlassIcon, PlusIcon, SidebarSimpleIcon, TrashIcon, TreeStructureIcon } from '@phosphor-icons/react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import type { MindMapSummary } from '../lib/types'
@@ -9,6 +9,7 @@ type Props = {
   activeId: string | null
   onOpen: (id: string) => void
   onCreate: () => void
+  onDelete: (id: string) => void
   onImport: (file: File) => void
   onCollapse: () => void
 }
@@ -21,7 +22,7 @@ function stamp(iso: string) {
 }
 
 /** Left panel: the user's mind maps. */
-export function MapList({ maps, activeId, onOpen, onCreate, onImport, onCollapse }: Props) {
+export function MapList({ maps, activeId, onOpen, onCreate, onDelete, onImport, onCollapse }: Props) {
   const { t } = useLocale()
   const [search, setSearch] = useState('')
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -50,9 +51,9 @@ export function MapList({ maps, activeId, onOpen, onCreate, onImport, onCollapse
         <button
           type="button"
           onClick={onCreate}
-          className="flex h-10 w-full items-center justify-center gap-1.5 rounded-[11px] bg-[var(--primary)] text-[13px] font-semibold text-white shadow-[0_8px_20px_-10px_var(--primary)] transition-[filter,transform] hover:brightness-110 active:scale-[0.98]"
+          className="group/new flex h-10 w-full items-center justify-center gap-1.5 rounded-[11px] bg-[var(--primary)] text-[13px] font-semibold text-white shadow-[0_8px_20px_-10px_var(--primary)] transition-[filter,transform] hover:brightness-110 active:scale-[0.97]"
         >
-          <PlusIcon size={15} weight="bold" />
+          <PlusIcon size={15} weight="bold" className="transition-transform duration-300 group-hover/new:rotate-90" />
           {t('mindmap.list.new', 'New mind map')}
         </button>
       </div>
@@ -65,24 +66,33 @@ export function MapList({ maps, activeId, onOpen, onCreate, onImport, onCollapse
             {needle ? t('mindmap.list.not_found', 'Nothing found') : t('mindmap.list.empty', 'No mind maps yet')}
           </p>
         ) : (
-          shown.map((item) => (
-            <button
+          shown.map((item, index) => (
+            <div
               key={item.id}
-              type="button"
-              onClick={() => onOpen(item.id)}
               className={cn(
-                'flex w-full items-start gap-2.5 rounded-[12px] border px-2.5 py-2 text-left transition-colors',
+                'mm-list-in group/item relative flex items-start gap-2.5 rounded-[12px] border px-2.5 py-2 transition-colors',
                 item.id === activeId ? 'border-[var(--primary)] bg-[var(--blue-dim)]' : 'border-transparent hover:bg-[var(--input-surface)]',
               )}
+              style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
             >
-              <TreeStructureIcon size={16} weight="duotone" className={cn('mt-0.5 shrink-0', item.id === activeId ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]')} />
-              <span className="min-w-0 flex-1">
+              <button type="button" onClick={() => onOpen(item.id)} className="absolute inset-0 rounded-[12px]" aria-label={item.title || '…'} />
+              <TreeStructureIcon size={16} weight="duotone" className={cn('pointer-events-none relative mt-0.5 shrink-0', item.id === activeId ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]')} />
+              <span className="pointer-events-none relative min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-semibold text-[var(--foreground)]" data-i18n-skip="true">{item.title || '…'}</span>
-                <span className="block text-[11.5px] text-[var(--muted)] tabular-nums">
+                <span className="block truncate text-[11.5px] whitespace-nowrap text-[var(--muted)] tabular-nums">
                   {t('mindmap.node_count', '{{count}} nodes', { count: item.nodeCount })} · {stamp(item.updatedAt)}
                 </span>
               </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => onDelete(item.id)}
+                aria-label={t('mindmap.delete', 'Delete mind map')}
+                title={t('mindmap.delete', 'Delete mind map')}
+                className="absolute top-1/2 right-1.5 grid h-7 w-7 -translate-y-1/2 scale-75 place-items-center rounded-[8px] bg-[var(--card)] text-[var(--muted)] opacity-0 shadow-[0_1px_4px_rgba(14,21,37,0.12)] transition-[opacity,transform,background-color,color] duration-200 group-hover/item:scale-100 group-hover/item:opacity-100 hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)] focus-visible:scale-100 focus-visible:opacity-100"
+              >
+                <TrashIcon size={14} />
+              </button>
+            </div>
           ))
         )}
       </div>

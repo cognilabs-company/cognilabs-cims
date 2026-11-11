@@ -4,6 +4,7 @@ import { FileArrowUpIcon, ListIcon, PlusIcon, TreeStructureIcon } from '@phospho
 import { useLocale } from '../../../app/hooks/useLocale'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { useToast } from '../../../shared/toast/useToast'
+import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { cn } from '../../../shared/lib/cn'
 import { MapList } from '../components/MapList'
 import { MindMapEditor } from '../components/MindMapEditor'
@@ -22,6 +23,7 @@ export function MindMapPage() {
   const { t } = useLocale()
   const { user, can } = useAuth()
   const { showToast } = useToast()
+  const { confirm } = useConfirm()
   const store = useMemo(() => createLocalStore(user?.id ?? 'guest'), [user?.id])
   const [searchParams, setSearchParams] = useSearchParams()
   const activeId = searchParams.get('map')
@@ -88,12 +90,25 @@ export function MindMapPage() {
     }
   }
 
+  async function confirmRemove(id: string) {
+    const title = (maps ?? []).find((item) => item.id === id)?.title ?? ''
+    const ok = await confirm({
+      title: t('mindmap.delete_title', 'Delete “{{title}}”?', { title }),
+      description: t('mindmap.delete_text', 'The mind map and all its nodes are deleted. This cannot be undone.'),
+      confirmLabel: t('common.delete', 'Delete'),
+      tone: 'danger',
+    })
+    if (ok) await remove(id)
+  }
+
   async function remove(id: string) {
     await store.remove(id)
     const rest = (maps ?? []).filter((item) => item.id !== id)
     setMaps(rest)
-    setActive(null)
-    setSearchParams(rest[0] ? { map: rest[0].id } : {}, { replace: true })
+    if (id === activeId) {
+      setActive(null)
+      setSearchParams(rest[0] ? { map: rest[0].id } : {}, { replace: true })
+    }
     showToast({ title: t('mindmap.deleted', 'Mind map deleted'), tone: 'success' })
   }
 
@@ -103,6 +118,7 @@ export function MindMapPage() {
       activeId={activeId}
       onOpen={open}
       onCreate={() => void create()}
+      onDelete={(id) => void confirmRemove(id)}
       onImport={(file) => void importFile(file)}
       onCollapse={() => { setListHidden(true); setMobileListOpen(false) }}
     />
@@ -148,7 +164,7 @@ export function MindMapPage() {
           </div>
         ) : maps !== null && (maps.length === 0 || (activeId && !active)) ? (
           <div className="grid min-h-0 flex-1 place-items-center rounded-[18px] border border-dashed border-[var(--border-hover)] bg-[var(--card)] p-6">
-            <div className="max-w-sm text-center">
+            <div className="mm-pop max-w-sm text-center">
               <span className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] bg-[var(--blue-dim)] text-[var(--primary)]">
                 <TreeStructureIcon size={28} weight="duotone" />
               </span>
