@@ -135,7 +135,7 @@ export function BoardWorkspace({
   const [searchParams, setSearchParams] = useSearchParams()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const lt = translateCurrentLiteral
 
   const canManageProjects = Boolean(user)
@@ -172,7 +172,11 @@ export function BoardWorkspace({
 
   const board = boardQuery.data
   const allUsers = canManageProjects ? usersQuery.data ?? [] : []
-  const isReadOnlyBoard = !canManageProjects || Boolean(board?.is_archived)
+  // Archived boards stay read-only; otherwise RBAC (projects.*) decides which actions show up.
+  const isBoardLocked = !canManageProjects || Boolean(board?.is_archived)
+  const canCreate = !isBoardLocked && can('projects', 'create')
+  const canEdit = !isBoardLocked && can('projects', 'edit')
+  const canDelete = !isBoardLocked && can('projects', 'delete')
   const selectedCardId = parsePositiveId(searchParams.get('card'))
 
   useEffect(() => {
@@ -209,7 +213,7 @@ export function BoardWorkspace({
   }
 
   async function handleUpdateBoard(values: { name: string; description?: string }) {
-    if (!canManageProjects || !board) {
+    if (!can('projects', 'edit') || !board) {
       return
     }
 
@@ -227,7 +231,7 @@ export function BoardWorkspace({
   }
 
   async function handleDeleteBoard() {
-    if (!canManageProjects || !board) {
+    if (!can('projects', 'delete') || !board) {
       return
     }
 
@@ -257,7 +261,7 @@ export function BoardWorkspace({
   }
 
   async function handleCreateColumn(values: { name: string; color: string }) {
-    if (!canManageProjects || !board || board.is_archived) {
+    if (!can('projects', 'create') || !board || board.is_archived) {
       return
     }
 
@@ -275,7 +279,7 @@ export function BoardWorkspace({
   }
 
   async function handleUpdateColumn(values: { name: string; color: string }) {
-    if (!canManageProjects || !editColumnState || board?.is_archived) {
+    if (!can('projects', 'edit') || !editColumnState || board?.is_archived) {
       return
     }
 
@@ -293,7 +297,7 @@ export function BoardWorkspace({
   }
 
   async function handleDeleteColumn(columnId: number) {
-    if (!canManageProjects || board?.is_archived) {
+    if (!can('projects', 'delete') || board?.is_archived) {
       return
     }
 
@@ -335,7 +339,7 @@ export function BoardWorkspace({
   }
 
   async function handleCreateCard(fd: FormData) {
-    if (!canManageProjects || !addCardState || board?.is_archived) {
+    if (!can('projects', 'create') || !addCardState || board?.is_archived) {
       return
     }
 
@@ -353,7 +357,7 @@ export function BoardWorkspace({
   }
 
   async function handleUpdateCard(fd: FormData) {
-    if (!canManageProjects || !editCardState || board?.is_archived) {
+    if (!can('projects', 'edit') || !editCardState || board?.is_archived) {
       return
     }
 
@@ -374,7 +378,7 @@ export function BoardWorkspace({
   }
 
   async function handleDeleteCard(cardId: number) {
-    if (!canManageProjects || board?.is_archived) {
+    if (!can('projects', 'delete') || board?.is_archived) {
       return
     }
 
@@ -401,7 +405,7 @@ export function BoardWorkspace({
   }
 
   async function handleMoveCard(cardId: number, columnId: number, order: number) {
-    if (!canManageProjects || board?.is_archived) {
+    if (!can('projects', 'edit') || board?.is_archived) {
       return
     }
 
@@ -416,7 +420,7 @@ export function BoardWorkspace({
   }
 
   async function handleMoveColumn(columnId: number, order: number) {
-    if (!canManageProjects || board?.is_archived) {
+    if (!can('projects', 'edit') || board?.is_archived) {
       return
     }
 
@@ -493,26 +497,32 @@ export function BoardWorkspace({
         </p>
       </div>
 
-      {!isReadOnlyBoard ? (
+      {canCreate || canEdit || canDelete ? (
         <div className="flex shrink-0 items-center gap-2.5">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsAddColumnOpen(true)}
-            leftIcon={(
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-              </svg>
-            )}
-          >
-            {lt('Add column')}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setIsEditBoardOpen(true)}>
-            {lt('Edit')}
-          </Button>
-          <Button variant="danger" size="sm" onClick={handleDeleteBoard}>
-            {lt('Delete')}
-          </Button>
+          {canCreate ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsAddColumnOpen(true)}
+              leftIcon={(
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+                </svg>
+              )}
+            >
+              {lt('Add column')}
+            </Button>
+          ) : null}
+          {canEdit ? (
+            <Button variant="ghost" size="sm" onClick={() => setIsEditBoardOpen(true)}>
+              {lt('Edit')}
+            </Button>
+          ) : null}
+          {canDelete ? (
+            <Button variant="danger" size="sm" onClick={handleDeleteBoard}>
+              {lt('Delete')}
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -525,12 +535,12 @@ export function BoardWorkspace({
         eyebrow={lt('No boards')}
         title={lt('No columns yet')}
         description={
-          isReadOnlyBoard
-            ? lt('This board has no visible columns yet.')
-            : lt('Add your first column to start organizing cards.')
+          canCreate
+            ? lt('Add your first column to start organizing cards.')
+            : lt('This board has no visible columns yet.')
         }
-        actionLabel={!isReadOnlyBoard ? lt('Add column') : undefined}
-        onAction={!isReadOnlyBoard ? () => setIsAddColumnOpen(true) : undefined}
+        actionLabel={canCreate ? lt('Add column') : undefined}
+        onAction={canCreate ? () => setIsAddColumnOpen(true) : undefined}
       />
     </div>
   ) : (
@@ -550,7 +560,9 @@ export function BoardWorkspace({
         onEditColumn={(column) => setEditColumnState({ column })}
         onDeleteColumn={handleDeleteColumn}
         onAddColumn={() => setIsAddColumnOpen(true)}
-        readOnly={isReadOnlyBoard}
+        canCreate={canCreate}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
     </div>
   )
@@ -568,7 +580,7 @@ export function BoardWorkspace({
         </div>
       )}
 
-      {!isReadOnlyBoard ? (
+      {canEdit ? (
         <>
           <BoardFormModal
             open={isEditBoardOpen}
@@ -581,15 +593,6 @@ export function BoardWorkspace({
           />
 
           <ColumnFormModal
-            open={isAddColumnOpen}
-            onClose={() => setIsAddColumnOpen(false)}
-            onSubmit={handleCreateColumn}
-            title={lt('Add column')}
-            submitLabel={lt('Add column')}
-            isSubmitting={isColumnSubmitting}
-          />
-
-          <ColumnFormModal
             open={editColumnState !== null}
             onClose={() => setEditColumnState(null)}
             onSubmit={handleUpdateColumn}
@@ -597,16 +600,6 @@ export function BoardWorkspace({
             title={lt('Edit column')}
             submitLabel={lt('Save changes')}
             isSubmitting={isColumnSubmitting}
-          />
-
-          <CardFormModal
-            open={addCardState !== null}
-            onClose={() => setAddCardState(null)}
-            onSubmit={handleCreateCard}
-            members={allUsers}
-            title={lt('Create card')}
-            submitLabel={lt('Create card')}
-            isSubmitting={isCardSubmitting}
           />
 
           <CardFormModal
@@ -622,24 +615,48 @@ export function BoardWorkspace({
         </>
       ) : null}
 
+      {canCreate ? (
+        <>
+          <ColumnFormModal
+            open={isAddColumnOpen}
+            onClose={() => setIsAddColumnOpen(false)}
+            onSubmit={handleCreateColumn}
+            title={lt('Add column')}
+            submitLabel={lt('Add column')}
+            isSubmitting={isColumnSubmitting}
+          />
+
+          <CardFormModal
+            open={addCardState !== null}
+            onClose={() => setAddCardState(null)}
+            onSubmit={handleCreateCard}
+            members={allUsers}
+            title={lt('Create card')}
+            submitLabel={lt('Create card')}
+            isSubmitting={isCardSubmitting}
+          />
+        </>
+      ) : null}
+
       <CardDetailModal
         card={detailCard}
         open={detailCard !== null}
         onClose={closeCardDetail}
         onEdit={() => {
-          if (detailCard && !isReadOnlyBoard) {
+          if (detailCard && canEdit) {
             setEditCardState({ card: detailCard })
             closeCardDetail()
           }
         }}
         onDelete={() => {
-          if (detailCard && !isReadOnlyBoard) {
+          if (detailCard && canDelete) {
             closeCardDetail()
             void handleDeleteCard(detailCard.id)
           }
         }}
         boardName={board.name}
-        canManage={!isReadOnlyBoard}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
     </>
   )

@@ -15,7 +15,6 @@ import {
 } from '../../../shared/lib/customer-display'
 import { formatNumericDate, formatNumericDateTime } from '../../../shared/lib/format'
 import { useAuth } from '../../auth/hooks/useAuth'
-import { canUseTelephony } from '../../../shared/lib/permissions'
 import { Alert } from '../../../shared/ui/alert'
 import { Badge, StatusBadge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
@@ -84,7 +83,7 @@ export function CustomerDetailContent({
   const { t } = useTranslation()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, can } = useAuth()
   const { service: crmService, kind } = useCrmScope()
   const customerName = getCustomerDisplayName(customer)
   const formattedNotes = formatCustomerNotes(customer.notes)
@@ -182,7 +181,7 @@ export function CustomerDetailContent({
 
           {!hideActions && (
             <div className="flex flex-wrap gap-2.5">
-              {canUseTelephony(currentUser) && (customer.phone_number ?? customer.phone) && (
+              {can('calls', 'create') && (customer.phone_number ?? customer.phone) && (
                 <Button variant="secondary" size="sm" asChild>
                   <Link to={`/telephony?phone=${encodeURIComponent((customer.phone_number ?? customer.phone) as string)}&crm_source=${kind === 'outbound' ? 'crm_outbound' : 'crm'}&customer_id=${customer.id}`}><Phone size={15} /><span className="ml-2">Call</span></Link>
                 </Button>
@@ -504,7 +503,10 @@ export function CustomerDetailDrawer({
   const { t } = useTranslation()
   const { locale } = useLocale()
   const { showToast } = useToast()
-  const { service: crmService, apiBasePath } = useCrmScope()
+  const { service: crmService, apiBasePath, kind: crmKind } = useCrmScope()
+  const { can } = useAuth()
+  // RBAC customers:edit — without it the card is read-only (outbound CRM keeps its own rules).
+  const mayEdit = crmKind === 'outbound' || can('customers', 'edit')
   const detailQuery = useAsyncData(
     () => crmService.detail(customerId ?? 0),
     [customerId, open],
@@ -627,10 +629,10 @@ export function CustomerDetailDrawer({
               customer={customer}
               audioSource={audioSource}
               statusChoices={statusChoices}
-              onChangeStatus={onStatusChange ? (next) => changeStatus(customer, next) : undefined}
-              onSaveRecall={(wall) => saveRecall(customer, wall)}
+              onChangeStatus={onStatusChange && mayEdit ? (next) => changeStatus(customer, next) : undefined}
+              onSaveRecall={mayEdit ? (wall) => saveRecall(customer, wall) : undefined}
               onClose={onClose}
-              onEdit={onEdit ? () => onEdit(customer) : undefined}
+              onEdit={onEdit && mayEdit ? () => onEdit(customer) : undefined}
               onSearchTelegram={onSearchTelegram && customerPhoneNumber ? () => onSearchTelegram(customerPhoneNumber, customer.id) : undefined}
               onOpenChat={onOpenChat ? () => {
                 const match = customer.chat_url?.match(/conversation_id=(\d+)/)

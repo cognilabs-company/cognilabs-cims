@@ -17,10 +17,12 @@ type TgSidebarProps = {
   search: string
   onSearchChange: (value: string) => void
   onSelect: (id: number) => void
-  onNewChat: () => void
+  /** Omit to hide the "new chat" button (no `create` permission). */
+  onNewChat?: () => void
   crmCustomerIdFor: (conv: ConversationItem) => number | null
   onOpenCrm: (customerId: number) => void
-  onDelete: (conv: ConversationItem) => void
+  /** Omit to hide "Delete chat" (no `delete` permission). */
+  onDelete?: (conv: ConversationItem) => void
   page: number
   pageCount: number
   onPageChange: (page: number) => void
@@ -127,7 +129,11 @@ export function TgSidebar({
               key={conv.id}
               type="button"
               onClick={() => onSelect(conv.id)}
-              onContextMenu={(event) => { event.preventDefault(); setMenu({ conv, x: event.clientX, y: event.clientY }) }}
+              onContextMenu={(event) => {
+                if (!onDelete && !crmCustomerIdFor(conv)) return
+                event.preventDefault()
+                setMenu({ conv, x: event.clientX, y: event.clientY })
+              }}
               className={cn('flex w-full items-center gap-3 rounded-[12px] px-2 py-[9px] text-left transition-colors', active ? 'bg-[var(--tg-active)]' : 'hover:bg-[var(--tg-hover)]')}
             >
               <TgAvatar url={conv.client_avatar_url} name={name} size={54} online={online} ring={active ? 'var(--tg-active)' : 'var(--tg-bg)'} />
@@ -163,15 +169,17 @@ export function TgSidebar({
       ) : null}
 
       {/* new chat (floating pencil, like Telegram) */}
-      <button
-        type="button"
-        onClick={onNewChat}
-        aria-label={t('aichat.new_chat', 'New Telegram chat')}
-        title={t('aichat.new_chat', 'New Telegram chat')}
-        className={cn('absolute right-4 grid h-[54px] w-[54px] place-items-center rounded-full bg-[var(--tg-primary)] text-white shadow-[0_2px_10px_rgba(0,0,0,0.2)] transition-transform hover:scale-105 active:scale-95', pageCount > 1 ? 'bottom-14' : 'bottom-4')}
-      >
-        <Pencil size={22} />
-      </button>
+      {onNewChat ? (
+        <button
+          type="button"
+          onClick={onNewChat}
+          aria-label={t('aichat.new_chat', 'New Telegram chat')}
+          title={t('aichat.new_chat', 'New Telegram chat')}
+          className={cn('absolute right-4 grid h-[54px] w-[54px] place-items-center rounded-full bg-[var(--tg-primary)] text-white shadow-[0_2px_10px_rgba(0,0,0,0.2)] transition-transform hover:scale-105 active:scale-95', pageCount > 1 ? 'bottom-14' : 'bottom-4')}
+        >
+          <Pencil size={22} />
+        </button>
+      ) : null}
 
       {menu && typeof document !== 'undefined' ? createPortal(
         <div
@@ -185,9 +193,11 @@ export function TgSidebar({
               <Contact size={18} className="text-[var(--tg-secondary)]" /> {t('aichat.open_crm', 'Open in CRM')}
             </button>
           ) : null}
-          <button type="button" role="menuitem" onClick={() => { onDelete(menu.conv); setMenu(null) }} className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2 text-left text-[14px] font-medium text-[#e53935] hover:bg-[var(--tg-hover)]">
-            <Trash2 size={18} /> {t('aichat.delete_chat', 'Delete chat')}
-          </button>
+          {onDelete ? (
+            <button type="button" role="menuitem" onClick={() => { onDelete(menu.conv); setMenu(null) }} className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2 text-left text-[14px] font-medium text-[#e53935] hover:bg-[var(--tg-hover)]">
+              <Trash2 size={18} /> {t('aichat.delete_chat', 'Delete chat')}
+            </button>
+          ) : null}
         </div>,
         document.body,
       ) : null}

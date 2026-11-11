@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { Badge } from '../../../shared/ui/badge'
-import { ActionsMenu } from '../../../shared/ui/actions-menu'
+import { ActionsMenu, type ActionsMenuItem } from '../../../shared/ui/actions-menu'
 import { Skeleton } from '../../../shared/ui/skeleton'
 import { toneByIndex, tonePill } from '../../../shared/ui/tone'
 import { cn } from '../../../shared/lib/cn'
@@ -14,11 +14,18 @@ type ProjectCardProps = {
   project: ProjectRecord
   onEdit: (project: ProjectRecord) => void
   onDelete: (project: ProjectRecord) => void
-  canManage?: boolean
+  /** RBAC projects.edit — shows "Edit project". */
+  canEdit?: boolean
+  /** RBAC projects.delete — shows "Delete project". */
+  canDelete?: boolean
 }
 
-export function ProjectCard({ project, onEdit, onDelete, canManage = true }: ProjectCardProps) {
+export function ProjectCard({ project, onEdit, onDelete, canEdit = true, canDelete = true }: ProjectCardProps) {
   const { t } = useLocale()
+  const projectActions: ActionsMenuItem[] = [
+    ...(canEdit ? [{ label: t('projects.edit_project_action', 'Edit project'), onSelect: () => onEdit(project) }] : []),
+    ...(canDelete ? [{ label: t('projects.delete_project_action', 'Delete project'), tone: 'danger' as const, onSelect: () => onDelete(project) }] : []),
+  ]
   const boardCount = project.boards_count ?? 0
   const memberCount = (project.members ?? []).length
   const isDeadlineOverdue = project.deadline ? isDueDateOverdue(project.deadline) : false
@@ -48,15 +55,12 @@ export function ProjectCard({ project, onEdit, onDelete, canManage = true }: Pro
         )}
 
         {/* Actions menu overlay */}
-        {canManage ? (
+        {projectActions.length > 0 ? (
           <div className="absolute top-3 right-3 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
             <ActionsMenu
               label={t('projects.project_actions', 'Project actions')}
               className="bg-[var(--surface)] shadow-[var(--elev-sm)]"
-              items={[
-                { label: t('projects.edit_project_action', 'Edit project'), onSelect: () => onEdit(project) },
-                { label: t('projects.delete_project_action', 'Delete project'), tone: 'danger', onSelect: () => onDelete(project) },
-              ]}
+              items={projectActions}
             />
           </div>
         ) : null}

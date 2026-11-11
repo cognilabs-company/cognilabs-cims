@@ -14,6 +14,8 @@ type CallInspectorProps = {
   /** Other loaded calls with the same number, newest first (includes `call`). */
   related: TelephonyCall[]
   canCall: boolean
+  /** RBAC calls:create — hides the call button for view-only users. */
+  showCall?: boolean
   onDial: (phone: string, lead: TelephonyLead | null) => void
   onSelectCall: (id: number) => void
   /** Mobile sheet: back to the list. */
@@ -45,7 +47,7 @@ function Fact({ label, children, danger }: { label: string; children: ReactNode;
 }
 
 /** Right pane of the Calls page: who it was, what happened, recording, notes and the history with that number. */
-export function CallInspector({ call, related, canCall, onDial, onSelectCall, onBack, onClose }: CallInspectorProps) {
+export function CallInspector({ call, related, canCall, showCall = true, onDial, onSelectCall, onBack, onClose }: CallInspectorProps) {
   const { t } = useLocale()
   const [detail, setDetail] = useState<TelephonyCallDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -144,14 +146,16 @@ export function CallInspector({ call, related, canCall, onDial, onSelectCall, on
           </div>
 
           <div className="mt-4 flex gap-2">
-            <button
-              type="button"
-              onClick={() => onDial(call.phone_number, dialLead)}
-              disabled={!canCall}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-[var(--success)] text-[14px] font-semibold text-white shadow-[0_10px_22px_-14px_rgba(23,146,74,0.9)] transition hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
-            >
-              <Phone size={16} fill="currentColor" strokeWidth={0} /> {t('telephony.call_back', 'Call')}
-            </button>
+            {showCall ? (
+              <button
+                type="button"
+                onClick={() => onDial(call.phone_number, dialLead)}
+                disabled={!canCall}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-[var(--success)] text-[14px] font-semibold text-white shadow-[0_10px_22px_-14px_rgba(23,146,74,0.9)] transition hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
+              >
+                <Phone size={16} fill="currentColor" strokeWidth={0} /> {t('telephony.call_back', 'Call')}
+              </button>
+            ) : null}
             <button type="button" onClick={() => noteRef.current?.focus()} aria-label={t('telephony.action.note', 'Note')} title={t('telephony.action.note', 'Note')} className="grid h-11 w-11 place-items-center rounded-[14px] bg-[var(--input-surface)] text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface-hover)]">
               <MessageSquarePlus size={18} />
             </button>

@@ -2,7 +2,23 @@ import { request, requestBlob } from '../http'
 import { env } from '../../config/env'
 import { getAccessToken } from '../../lib/session'
 
-export type TelephonyConfig = {
+/** How outgoing calls are placed: in the browser (WebRTC) or via the user's own mobile phone. */
+export type OutboundMode = 'webrtc' | 'mobile'
+export type ForwardingMode = 'always' | 'busy' | 'no_answer' | 'offline'
+export type ForwardingTargetType = 'extension' | 'phone'
+
+/** Mobile phone + call forwarding settings, shared by the config and every extension. */
+export type TelephonyRouting = {
+  mobile_number?: string | null
+  outbound_mode?: OutboundMode | (string & {})
+  forwarding_enabled?: boolean
+  forwarding_mode?: ForwardingMode | (string & {}) | null
+  forwarding_target_type?: ForwardingTargetType | (string & {}) | null
+  forwarding_target?: string | null
+  forwarding_timeout_seconds?: number | null
+}
+
+export type TelephonyConfig = TelephonyRouting & {
   enabled: boolean
   extension: string
   password: string
@@ -74,12 +90,26 @@ export type RecordingStorage = {
   total_talk_seconds: number
 }
 
-export type TelephonyExtension = {
+export type TelephonyExtension = TelephonyRouting & {
+  id?: number
   user_id: number
   user_name?: string | null
   extension?: string | null
   is_active?: boolean
-  [key: string]: unknown
+  created_at?: string
+  updated_at?: string
+}
+
+/** PATCH /telephony/extensions/{user_id} — only the fields sent change. */
+export type TelephonyExtensionUpdate = {
+  is_active?: boolean
+  outbound_mode?: OutboundMode
+  mobile_number?: string | null
+  forwarding_enabled?: boolean
+  forwarding_mode?: ForwardingMode | null
+  forwarding_target_type?: ForwardingTargetType | null
+  forwarding_target?: string | null
+  forwarding_timeout_seconds?: number | null
 }
 
 export const telephonyService = {
@@ -95,7 +125,9 @@ export const telephonyService = {
   status: () => request<Record<string, unknown>>({ path: '/telephony/status' }),
   extensions: () => request<TelephonyExtension[] | { items: TelephonyExtension[] }>({ path: '/telephony/extensions' }),
   createExtension: (userId: number) => request<TelephonyExtension>({ path: `/telephony/extensions/${userId}`, method: 'POST' }),
-  updateExtension: (userId: number, isActive: boolean) => request<TelephonyExtension>({ path: `/telephony/extensions/${userId}`, method: 'PATCH', body: { is_active: isActive } }),
+  updateExtension: (userId: number, payload: TelephonyExtensionUpdate) => request<TelephonyExtension>({ path: `/telephony/extensions/${userId}`, method: 'PATCH', body: payload }),
+  /** Mobile mode: the PBX rings the user's mobile first, then connects the customer (company caller ID + recording kept). */
+  dialMobile: (destination: string) => request<unknown>({ path: '/telephony/dial', method: 'POST', body: { destination } }),
   eventsUrl: () => {
     const base = env.apiBaseUrl.startsWith('http')
       ? env.apiBaseUrl.replace(/^http/, 'ws').replace(/\/$/, '')

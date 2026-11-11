@@ -56,7 +56,7 @@ export function AppHeader() {
   const navigate = useNavigate()
   const location = useLocation()
   const { locale, setLocale, t } = useLocale()
-  const { logout, user } = useAuth()
+  const { logout, user, can } = useAuth()
   const { showToast } = useToast()
   const { toggleSidebar } = useAppShell()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -64,7 +64,7 @@ export function AppHeader() {
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false,
   )
   const isOutboundCrmRoute = location.pathname === '/outbound-crm' || location.pathname.startsWith('/outbound-crm/')
-  const canUseCrm = hasPermission(user, 'crm')
+  const canUseCrm = can('crm')
   const canUseOutboundCrm = hasPermission(user, 'crm_outbound')
   const showCrmSwitch = isOutboundCrmRoute ? canUseCrm : canUseCrm && canUseOutboundCrm
 

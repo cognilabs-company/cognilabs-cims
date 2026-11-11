@@ -19,7 +19,10 @@ type CardDetailModalProps = {
   onDelete: () => void
   boardName?: string
   projectName?: string
-  canManage?: boolean
+  /** RBAC projects.edit — shows the "Edit" button. */
+  canEdit?: boolean
+  /** RBAC projects.delete — shows the "Delete" button. */
+  canDelete?: boolean
 }
 
 const priorityTones: Record<string, Tone> = {
@@ -69,7 +72,8 @@ export function CardDetailModal({
   onDelete,
   boardName,
   projectName,
-  canManage = true,
+  canEdit = true,
+  canDelete = true,
 }: CardDetailModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const lt = translateCurrentLiteral
@@ -155,14 +159,18 @@ export function CardDetailModal({
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              {canManage && (
+              {(canEdit || canDelete) && (
                 <div className="hidden items-center gap-2 sm:flex">
-                  <Button variant="secondary" size="sm" onClick={onEdit}>
-                    {lt('Edit')}
-                  </Button>
-                  <Button variant="danger" size="sm" onClick={onDelete}>
-                    {lt('Delete')}
-                  </Button>
+                  {canEdit && (
+                    <Button variant="secondary" size="sm" onClick={onEdit}>
+                      {lt('Edit')}
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="danger" size="sm" onClick={onDelete}>
+                      {lt('Delete')}
+                    </Button>
+                  )}
                 </div>
               )}
               <IconButton label={lt('Close')} size="md" onClick={onClose}>
@@ -425,10 +433,10 @@ export function CardDetailModal({
               ) : null}
 
               {/* Mobile Actions */}
-              {canManage && (
+              {(canEdit || canDelete) && (
                 <div className="flex gap-3 border-t border-[var(--border-hover)] pt-[18px] sm:hidden">
-                  <Button variant="secondary" size="md" className="flex-1" onClick={onEdit}>{lt('Edit')}</Button>
-                  <Button variant="danger" size="md" className="flex-1" onClick={onDelete}>{lt('Delete')}</Button>
+                  {canEdit && <Button variant="secondary" size="md" className="flex-1" onClick={onEdit}>{lt('Edit')}</Button>}
+                  {canDelete && <Button variant="danger" size="md" className="flex-1" onClick={onDelete}>{lt('Delete')}</Button>}
                 </div>
               )}
             </div>

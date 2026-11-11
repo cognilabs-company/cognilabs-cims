@@ -29,7 +29,12 @@ type KanbanBoardProps = {
   onEditColumn: (column: ColumnRecord) => void
   onDeleteColumn: (columnId: number) => void
   onAddColumn: () => void
-  readOnly?: boolean
+  /** RBAC projects.create — "add column" / "add task" buttons. */
+  canCreate?: boolean
+  /** RBAC projects.edit — drag & drop of cards/columns and "Edit" menu items. */
+  canEdit?: boolean
+  /** RBAC projects.delete — "Delete" menu items. */
+  canDelete?: boolean
 }
 
 type ActiveDragState =
@@ -48,7 +53,9 @@ export function KanbanBoard({
   onEditColumn,
   onDeleteColumn,
   onAddColumn,
-  readOnly = false,
+  canCreate = false,
+  canEdit = false,
+  canDelete = false,
 }: KanbanBoardProps) {
   const [localColumns, setLocalColumns] = useState<ColumnRecord[]>([])
   const [activeDrag, setActiveDrag] = useState<ActiveDragState>(null)
@@ -239,14 +246,16 @@ export function KanbanBoard({
                   onEditCard={onEditCard}
                   onDeleteCard={onDeleteCard}
                   onClickCard={onClickCard}
-                  readOnly={readOnly}
+                  canCreate={canCreate}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
                 />
               </div>
             ))}
           </SortableContext>
 
           {/* Add column ghost button */}
-          {!readOnly ? (
+          {canCreate ? (
             <button
               type="button"
               onClick={onAddColumn}
@@ -270,7 +279,6 @@ export function KanbanBoard({
               onDelete={() => {}}
               onClick={() => {}}
               isOverlay
-              readOnly
             />
           )}
           {activeDrag?.type === 'column' && (
@@ -283,7 +291,6 @@ export function KanbanBoard({
               onDeleteCard={() => {}}
               onClickCard={() => {}}
               isOverlay
-              readOnly
             />
           )}
         </DragOverlay>,

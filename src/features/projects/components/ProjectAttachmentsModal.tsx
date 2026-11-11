@@ -36,7 +36,8 @@ function buildFileUrl(urlPath: string) {
 
 type FileRowProps = {
   attachment: ProjectAttachment
-  onDelete: (id: number) => void
+  /** Omitted when the user may not delete attachments (RBAC projects.delete). */
+  onDelete?: (id: number) => void
 }
 
 function FileRow({ attachment, onDelete }: FileRowProps) {
@@ -73,18 +74,20 @@ function FileRow({ attachment, onDelete }: FileRowProps) {
             <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" />
           </svg>
         </a>
-        <IconButton
-          tone="neutral"
-          size="md"
-          label="Delete"
-          onClick={() => onDelete(attachment.id)}
-          className="bg-[var(--surface)] hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-            <polyline points="3 6 5 6 21 6" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </IconButton>
+        {onDelete ? (
+          <IconButton
+            tone="neutral"
+            size="md"
+            label="Delete"
+            onClick={() => onDelete(attachment.id)}
+            className="bg-[var(--surface)] hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+              <polyline points="3 6 5 6 21 6" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </IconButton>
+        ) : null}
       </div>
     </div>
   )
@@ -94,9 +97,13 @@ type Props = {
   open: boolean
   onClose: () => void
   projectId: number
+  /** RBAC projects.create — shows the upload area. */
+  canUpload?: boolean
+  /** RBAC projects.delete — shows the per-file delete button. */
+  canDelete?: boolean
 }
 
-export function ProjectAttachmentsModal({ open, onClose, projectId }: Props) {
+export function ProjectAttachmentsModal({ open, onClose, projectId, canUpload = true, canDelete = true }: Props) {
   const { showToast } = useToast()
   const { confirm } = useConfirm()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -184,36 +191,38 @@ export function ProjectAttachmentsModal({ open, onClose, projectId }: Props) {
         <Tabs items={tabItems} value={activeTab} onChange={setActiveTab} className="self-start" />
 
         {/* Upload area */}
-        <div className="rounded-[18px] bg-[var(--muted-surface)] p-[18px]">
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+        {canUpload ? (
+          <div className="rounded-[18px] bg-[var(--muted-surface)] p-[18px]">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+              <input
+                ref={fileInputRef}
+                type="text"
+                placeholder="Description (optional)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="h-9 min-w-0 flex-1 rounded-[11px] border border-transparent bg-[var(--surface)] px-3.5 text-sm text-[var(--foreground)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:shadow-[0_0_0_3px_rgba(43,89,255,0.12)]"
+              />
+              <Button
+                size="sm"
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0"
+              >
+                {isUploading ? 'Uploading...' : 'Upload file'}
+              </Button>
+            </div>
             <input
               ref={fileInputRef}
-              type="text"
-              placeholder="Description (optional)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="h-9 min-w-0 flex-1 rounded-[11px] border border-transparent bg-[var(--surface)] px-3.5 text-sm text-[var(--foreground)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:shadow-[0_0_0_3px_rgba(43,89,255,0.12)]"
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx"
+              className="hidden"
+              onChange={(e) => void handleUpload(e.target.files)}
             />
-            <Button
-              size="sm"
-              disabled={isUploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="shrink-0"
-            >
-              {isUploading ? 'Uploading...' : 'Upload file'}
-            </Button>
+            <p className="mt-2.5 text-[11.5px] text-[var(--muted)]">
+              Supported: jpg, png, webp, gif, pdf, doc, docx, xls, xlsx
+            </p>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx"
-            className="hidden"
-            onChange={(e) => void handleUpload(e.target.files)}
-          />
-          <p className="mt-2.5 text-[11.5px] text-[var(--muted)]">
-            Supported: jpg, png, webp, gif, pdf, doc, docx, xls, xlsx
-          </p>
-        </div>
+        ) : null}
 
         {/* File list */}
         <div className="flex flex-col gap-2.5">
@@ -233,7 +242,11 @@ export function ProjectAttachmentsModal({ open, onClose, projectId }: Props) {
             </div>
           ) : (
             tabAttachments.map((attachment: ProjectAttachment) => (
-              <FileRow key={attachment.id} attachment={attachment} onDelete={(id) => void handleDelete(id)} />
+              <FileRow
+                key={attachment.id}
+                attachment={attachment}
+                onDelete={canDelete ? (id) => void handleDelete(id) : undefined}
+              />
             ))
           )}
         </div>

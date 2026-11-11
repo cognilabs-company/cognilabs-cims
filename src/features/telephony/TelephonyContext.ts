@@ -1,5 +1,8 @@
 import { createContext, useContext } from 'react'
-import type { TelephonyCall, TelephonyConfig, TelephonyLead } from '../../shared/api/services/telephony.service'
+import type { OutboundMode, TelephonyCall, TelephonyConfig, TelephonyLead } from '../../shared/api/services/telephony.service'
+
+/** Mobile mode: the PBX is ringing the user's own phone; the customer is connected once they answer. */
+export type MobileDialState = { phone: string; startedAt: number }
 
 export type PhoneState = {
   config: TelephonyConfig | null
@@ -12,6 +15,11 @@ export type PhoneState = {
   confirmedAt: string | null
   muted: boolean
   historyVersion: number
+  /** "webrtc" — calls in the browser; "mobile" — the PBX calls the user's mobile first. */
+  outboundMode: OutboundMode
+  mobileCall: MobileDialState | null
+  /** The user may start a call right now (RBAC calls:create + a ready line, no other call). */
+  canDial: boolean
   dial: (phone: string, lead?: TelephonyLead | null) => void
   answer: () => void
   reject: () => void

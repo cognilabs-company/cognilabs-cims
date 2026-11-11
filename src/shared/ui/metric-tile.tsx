@@ -1,10 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
-import { cn } from '../../../shared/lib/cn'
-import { CountUp } from '../../../shared/ui/count-up'
+import { cn } from '../lib/cn'
+import { CountUp } from './count-up'
 
 type MetricTileProps = {
   label: string
-  value: number
+  /** Numbers count up; strings ("3 min 40 s", "11.5M", "—") are shown as they are. */
+  value: number | string
   caption: string
   icon: LucideIcon
   accent: string
@@ -14,7 +15,7 @@ type MetricTileProps = {
   active?: boolean
 }
 
-/** KPI tile used on the Customers and Archive pages: label + icon, big number, one-line caption. */
+/** KPI tile used across the app (Customers, CRM, Archive, CEO dashboard): label + icon, big number, one-line caption. */
 export function MetricTile({ label, value, caption, icon: Icon, accent, format, onClick, active }: MetricTileProps) {
   const Cell = onClick ? 'button' : 'div'
   return (
@@ -29,16 +30,16 @@ export function MetricTile({ label, value, caption, icon: Icon, accent, format, 
       <span className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-[0.07] transition-transform duration-500 group-hover:scale-125" style={{ background: accent }} />
       <span className="flex items-center justify-between gap-3">
         <span className="truncate text-[12.5px] font-medium text-[var(--muted-strong)]">{label}</span>
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] transition-transform duration-300 group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: `${accent}14`, color: accent }}>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] transition-transform duration-300 group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: `color-mix(in srgb, ${accent} 8%, transparent)`, color: accent }}>
           <Icon size={16} strokeWidth={2.2} />
         </span>
       </span>
       <span className="mt-1 block text-[28px] leading-8 font-bold tracking-[-0.035em] text-[var(--foreground)] tabular-nums" data-ui-number="true">
-        <CountUp value={value} format={format} />
+        {typeof value === 'number' ? <CountUp value={value} format={format} /> : value}
       </span>
-      <span className="mt-1 flex items-center gap-1.5 truncate text-[11.5px] text-[var(--muted)]">
+      <span className="mt-1 flex items-center gap-1.5 truncate text-[11.5px] text-[var(--muted)]" title={caption}>
         <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
-        {caption}
+        <span className="truncate">{caption}</span>
       </span>
     </Cell>
   )

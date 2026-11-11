@@ -10,6 +10,7 @@ import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import { formatShortDateTime } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
+import { useAuth } from '../../auth/hooks/useAuth'
 import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
@@ -63,6 +64,8 @@ export function CognilabsAICommentAutomationPage() {
   const tx = useCommentAutomationT()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
+  const { can } = useAuth()
+  const canEdit = can('instagram_comments', 'edit')
   const runIdRef = useRef(0)
   const gridRef = useRef<HTMLDivElement>(null)
 
@@ -469,20 +472,23 @@ export function CognilabsAICommentAutomationPage() {
                     className="min-h-9 rounded-[11px] pl-10 text-[13px]"
                   />
                 </div>
-                <Button
-                  size="sm"
-                  variant={isSelectionMode ? 'primary' : 'secondary'}
-                  className="shrink-0"
-                  onClick={handleSelectionModeToggle}
-                  disabled={items.length === 0}
-                  leftIcon={isSelectionMode ? <CheckIcon className="h-3.5 w-3.5" /> : undefined}
-                >
-                  {isSelectionMode ? tx('selection.done', 'Done') : tx('selection.mode', 'Select')}
-                </Button>
+                {/* selection only feeds the bulk actions below, which all need `edit` */}
+                {canEdit ? (
+                  <Button
+                    size="sm"
+                    variant={isSelectionMode ? 'primary' : 'secondary'}
+                    className="shrink-0"
+                    onClick={handleSelectionModeToggle}
+                    disabled={items.length === 0}
+                    leftIcon={isSelectionMode ? <CheckIcon className="h-3.5 w-3.5" /> : undefined}
+                  >
+                    {isSelectionMode ? tx('selection.done', 'Done') : tx('selection.mode', 'Select')}
+                  </Button>
+                ) : null}
               </div>
             </div>
 
-            {isSelectionMode && (
+            {isSelectionMode && canEdit && (
               <Alert
                 tone="blue"
                 className="items-center gap-2 p-3"
@@ -549,7 +555,7 @@ export function CognilabsAICommentAutomationPage() {
                     key={media.media_id}
                     media={media}
                     shape={tab === 'reel' ? 'reel' : 'portrait'}
-                    selectionMode={isSelectionMode}
+                    selectionMode={isSelectionMode && canEdit}
                     isSelected={selectedIds.has(media.media_id)}
                     onOpen={() => setViewerId(media.media_id)}
                     onToggleSelect={() => handleToggleSelected(media.media_id)}
@@ -573,7 +579,7 @@ export function CognilabsAICommentAutomationPage() {
         </Card>
       </div>
 
-      {selectedCount > 0 && (
+      {selectedCount > 0 && canEdit && (
         <div className="sticky bottom-4 z-30">
           <div className="flex flex-wrap items-center gap-2 rounded-[18px] bg-[var(--card)] px-[18px] py-3 shadow-[var(--elev-xl)]">
             <Badge variant="blue" dot>
@@ -597,7 +603,7 @@ export function CognilabsAICommentAutomationPage() {
         </div>
       )}
 
-      {isBulkDialogOpen && (
+      {isBulkDialogOpen && canEdit && (
         <BulkSettingsDialog
           count={selectedCount}
           onClose={() => setIsBulkDialogOpen(false)}
@@ -615,6 +621,7 @@ export function CognilabsAICommentAutomationPage() {
           onNext={viewerIndex >= 0 && viewerIndex < filteredItems.length - 1 ? () => showViewerAt(viewerIndex + 1) : null}
           onClose={() => setViewerId(null)}
           onSaved={handleMediaSaved}
+          canEdit={canEdit}
         />
       )}
     </section>

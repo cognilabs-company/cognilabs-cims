@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { HardDrive, RefreshCw, Search, Server, X } from 'lucide-react'
+import { HardDrive, PhoneForwarded, RefreshCw, Search, Server, Settings2, Smartphone, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { ceoService, type CeoUserRecord } from '../../../shared/api/services/ceo.service'
 import { telephonyService, type RecordingStorage, type TelephonyExtension } from '../../../shared/api/services/telephony.service'
 import { MacAvatar, ToolbarButton } from './MacPrimitives'
+import { ExtensionSettingsDialog } from './ExtensionSettingsDialog'
+import { formatPhone } from './telephonyFormat'
+import { rbacService, type UserAccess } from '../../../shared/api/services/rbac.service'
 import { SelectField } from '../../../shared/ui/select-field'
 
 type ExtensionFilter = 'all' | 'active' | 'inactive'
@@ -64,9 +67,13 @@ export function CeoTelephonyPanel() {
   const [newUserId, setNewUserId] = useState('')
   const [busyId, setBusyId] = useState<number | null>(null)
   const [version, setVersion] = useState(0)
+  const [editing, setEditing] = useState<TelephonyExtension | null>(null)
+  // RBAC: who may use the phone at all (calls:view) — used to offer people for new extensions.
+  const [accessList, setAccessList] = useState<UserAccess[] | null>(null)
 
   useEffect(() => {
     let active = true
+    void rbacService.users().then((list) => { if (active) setAccessList(list) }).catch(() => { if (active) setAccessList(null) })
     void Promise.allSettled([telephonyService.storage(), telephonyService.status(), telephonyService.extensions(), ceoService.getDashboard()])
       .then(([storageResult, statusResult, extensionsResult, usersResult]) => {
         if (!active) return
@@ -87,9 +94,12 @@ export function CeoTelephonyPanel() {
     const text = `${item.user_name ?? ''} ${item.user_id} ${item.extension ?? ''}`.toLowerCase()
     return text.includes(query.trim().toLowerCase())
   }), [extensions, filter, query])
-  const availableUsers = useMemo(() => users.filter((item) =>
-    ['seller', 'ceo'].includes(String(item.role).toLowerCase()) && !extensions.some((extension) => extension.user_id === item.id),
-  ), [users, extensions])
+  const availableUsers = useMemo(() => {
+    const callers = accessList ? new Set(accessList.filter((entry) => entry.effective_permissions.calls?.includes('view')).map((entry) => entry.user_id)) : null
+    return users.filter((item) =>
+      (callers ? callers.has(item.id) : ['seller', 'ceo'].includes(String(item.role).toLowerCase()))
+      && !extensions.some((extension) => extension.user_id === item.id))
+  }, [accessList, users, extensions])
 
   function refresh() {
     setLoading(true)
@@ -107,7 +117,7 @@ export function CeoTelephonyPanel() {
 
   async function toggleExtension(item: TelephonyExtension) {
     setBusyId(item.user_id)
-    try { await telephonyService.updateExtension(item.user_id, !item.is_active); refresh() }
+    try { await telephonyService.updateExtension(item.user_id, { is_active: !item.is_active }); refresh() }
     catch (cause) { setError(getApiErrorMessage(cause)) }
     finally { setBusyId(null) }
   }
@@ -269,13 +279,32 @@ export function CeoTelephonyPanel() {
                   <MacAvatar name={item.user_name} size={30} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13.5px] font-medium text-[var(--mp-text)]">{name}</p>
-                    <p className="text-[12px] text-[var(--mp-secondary)]">
-                      {item.is_active ? t('telephony.system.active', 'Active') : t('telephony.system.inactive', 'Inactive')}
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[var(--mp-secondary)]">
+                      <span>{item.is_active ? t('telephony.system.active', 'Active') : t('telephony.system.inactive', 'Inactive')}</span>
+                      {item.outbound_mode === 'mobile' ? (
+                        <span className="inline-flex items-center gap-1 text-[var(--success-text)]">
+                          <Smartphone size={12} />{item.mobile_number ? formatPhone(item.mobile_number) : t('telephony.mobile.label', 'Mobile phone')}
+                        </span>
+                      ) : null}
+                      {item.forwarding_enabled ? (
+                        <span className="inline-flex items-center gap-1 text-[var(--blue-text)]">
+                          <PhoneForwarded size={12} />{item.forwarding_target ? formatPhone(item.forwarding_target) : t('telephony.forwarding.title', 'Call forwarding is on')}
+                        </span>
+                      ) : null}
                     </p>
                   </div>
                   <span className="rounded-[6px] bg-[var(--mp-control)] px-2 py-0.5 font-mono text-[12.5px] tabular-nums text-[var(--mp-text)]" data-i18n-skip="true">
                     {item.extension || '—'}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(item)}
+                    aria-label={`${t('telephony.ext_settings.open', 'Line settings')} · ${name}`}
+                    title={t('telephony.ext_settings.open', 'Line settings')}
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[var(--mp-secondary)] transition-colors hover:bg-[var(--mp-control)] hover:text-[var(--mp-text)]"
+                  >
+                    <Settings2 size={15} />
+                  </button>
                   <MacSwitch
                     checked={Boolean(item.is_active)}
                     disabled={busyId === item.user_id}
@@ -293,6 +322,17 @@ export function CeoTelephonyPanel() {
           ) : null}
         </Group>
       </div>
+
+      {editing ? (
+        <ExtensionSettingsDialog
+          extension={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(next) => {
+            setExtensions((current) => current.map((item) => (item.user_id === next.user_id ? next : item)))
+            setEditing(null)
+          }}
+        />
+      ) : null}
     </section>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { createPortal } from 'react-dom'
-import { BellOff, Mic, MicOff, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing, UserRound, X } from 'lucide-react'
+import { BellOff, Mic, MicOff, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing, Smartphone, UserRound, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { leadPath } from '../../../shared/api/services/telephony.service'
@@ -30,6 +30,10 @@ type IslandView = {
   path: string | null
   confirmedAt: string | null
   muted: boolean
+  /** Mobile mode: the call runs on the user's own phone, so there are no browser controls. */
+  onPhone: boolean
+  /** Mobile mode, before the PBX reports the call: the user's phone is being rung. */
+  callingMobile: boolean
 }
 
 function RoundButton({ label, tone, onClick, disabled, pressed, halo, children }: {
@@ -75,17 +79,18 @@ function Wave() {
 
 export function ActiveCallPanel() {
   const { t } = useLocale()
-  const { call, lead, sessionStatus, sessionDirection, confirmedAt, muted, error, answer, reject, hangup, toggleMute, clearCall } = useTelephony()
+  const { call, lead, sessionStatus, sessionDirection, confirmedAt, muted, error, outboundMode, mobileCall, answer, reject, hangup, toggleMute, clearCall } = useTelephony()
   const [now, setNow] = useState(() => Date.now())
   const [silencedKey, setSilencedKey] = useState<string | null>(null)
   const [closing, setClosing] = useState<IslandView | null>(null)
   const lastViewRef = useRef<IslandView | null>(null)
 
-  const visible = Boolean(call || sessionStatus)
-  const isIncoming = call?.direction === 'incoming' || (!call && sessionDirection === 'incoming')
+  const visible = Boolean(call || sessionStatus || mobileCall)
+  const onPhone = outboundMode === 'mobile' && !sessionStatus && Boolean(call || mobileCall)
+  const isIncoming = call?.direction === 'incoming' || (!call && !mobileCall && sessionDirection === 'incoming')
   const ringing = Boolean(isIncoming && (call?.status === 'ringing' || sessionStatus === 'ringing') && !confirmedAt)
   const rawName = lead?.full_name || call?.customer_name || ''
-  const number = lead?.phone_number || call?.phone_number || ''
+  const number = lead?.phone_number || call?.phone_number || mobileCall?.phone || ''
   const viewKey = String(call?.id ?? `${sessionDirection ?? 'call'}-${number}`)
   const silenced = silencedKey === viewKey
 
@@ -103,6 +108,8 @@ export function ActiveCallPanel() {
     path: leadPath(lead?.crm_source ?? call?.crm_source ?? null, lead?.customer_id ?? call?.customer_id ?? null),
     confirmedAt,
     muted,
+    onPhone,
+    callingMobile: Boolean(mobileCall && !call),
   } : null
 
   // Ticking timer while connected
@@ -115,12 +122,12 @@ export function ActiveCallPanel() {
   // Fetch the ringtone once up front so the first ring is instant
   useEffect(() => { preloadRingtone() }, [])
 
-  // Ringtone while an incoming call rings (unless silenced)
+  // Ringtone while an incoming call rings in the browser (unless silenced; mobile-mode calls ring the phone)
   useEffect(() => {
-    if (!ringing || silenced) return
+    if (!ringing || silenced || onPhone) return
     startRingtone()
     return () => stopRingtone()
-  }, [ringing, silenced])
+  }, [onPhone, ringing, silenced])
 
   // Remember the last frame so the island can fold away after the call is gone
   useEffect(() => {
@@ -142,8 +149,8 @@ export function ActiveCallPanel() {
   const seconds = view.confirmedAt ? Math.max(0, Math.floor((now - new Date(view.confirmedAt).getTime()) / 1000)) : 0
   const hue = hueOf(view.rawName || view.number || 'call')
   const initial = initialOf(view.rawName)
-  const calling = view.live && !view.isIncoming && !view.connected
-  const ended = !view.live
+  const calling = (view.live || view.onPhone) && !view.isIncoming && !view.connected
+  const ended = !view.live && !view.onPhone
 
   const statusLine = view.connected ? (
     <span className="flex items-center gap-2 text-[#30D158]">
@@ -153,6 +160,8 @@ export function ActiveCallPanel() {
     </span>
   ) : view.ringing ? (
     <span className="flex items-center gap-1.5 text-white/70"><PhoneIncoming size={13} className="text-[#30D158]" />{t('telephony.kind.incoming', 'Incoming call')}</span>
+  ) : view.callingMobile ? (
+    <span className="flex items-center gap-1.5 text-white/70"><Smartphone size={13} className="text-[#0A84FF]" />{t('telephony.hud.calling_mobile', 'Calling your phone…')}</span>
   ) : calling ? (
     <span className="flex items-center gap-1.5 text-white/70"><PhoneOutgoing size={13} className="text-[#0A84FF]" />{t('telephony.hud.calling', 'Calling…')}</span>
   ) : (
@@ -222,11 +231,17 @@ export function ActiveCallPanel() {
               </div>
 
               <div className="flex shrink-0 items-center gap-2.5">
-                {view.ringing ? (
+                {view.ringing && !view.onPhone ? (
                   <>
                     <RoundButton label={t('telephony.hud.decline', 'Decline')} tone="red" onClick={reject} disabled={!view.live}><PhoneOff size={20} /></RoundButton>
                     <RoundButton label={t('telephony.hud.accept', 'Accept')} tone="green" onClick={answer} disabled={!view.live} halo><Phone size={20} fill="currentColor" strokeWidth={0} /></RoundButton>
                   </>
+                ) : view.onPhone ? (
+                  view.path ? (
+                    <Link to={view.path} aria-label={t('telephony.open_lead', 'Open lead')} title={t('telephony.open_lead', 'Open lead')} className="grid h-12 w-12 place-items-center rounded-full bg-white/12 text-white transition-[transform,background-color] duration-200 hover:scale-105 hover:bg-white/20 active:scale-95">
+                      <UserRound size={19} />
+                    </Link>
+                  ) : null
                 ) : view.live ? (
                   <>
                     {view.connected ? (
@@ -246,6 +261,14 @@ export function ActiveCallPanel() {
             </div>
 
             {error ? <p role="alert" className="mt-3 truncate text-[12px] text-[#FF6961]">{error}</p> : null}
+            {view.onPhone ? (
+              <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-white/55">
+                <Smartphone size={12} className="shrink-0" />
+                {view.callingMobile
+                  ? t('telephony.hud.mobile_answer', 'Answer on your phone — the customer is connected right after.')
+                  : t('telephony.hud.mobile_active', 'The call is on your phone — use it to mute or hang up.')}
+              </p>
+            ) : null}
             {ended && call ? <p className="mt-2 text-[11.5px] text-white/45">{t('telephony.hud.restored', 'Restored after a page reload — browser call controls are unavailable.')}</p> : null}
           </div>
         </div>

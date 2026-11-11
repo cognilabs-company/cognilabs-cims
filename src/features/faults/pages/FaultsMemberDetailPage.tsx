@@ -279,7 +279,7 @@ export function FaultsMemberDetailPage({
   const navigate = useNavigate()
   const params = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, can } = useAuth()
   const { showToast } = useToast()
   const [mistakeDraft, setMistakeDraft] = useState<MistakeFormState>(() => createMistakeFormState())
   const [deliveryBonusDraft, setDeliveryBonusDraft] = useState<DeliveryBonusFormState>(() => createDeliveryBonusFormState())
@@ -331,6 +331,9 @@ export function FaultsMemberDetailPage({
   const backTarget = isMemberUpdatesMode ? '/member/dashboard' : `/faults?year=${year}&month=${month}`
   const topHeaderEyebrow = isMemberUpdatesMode ? lt('My Update Detail') : lt('CEO Salary Detail')
   const showCompensationActions = !isMemberUpdatesMode
+  const canCreateCompensation = showCompensationActions && can('salary', 'create')
+  const canEditCompensation = showCompensationActions && can('salary', 'edit')
+  const canDeleteCompensation = showCompensationActions && can('salary', 'delete')
   const needsMistakeSupportData = showCompensationActions && isMistakeDialogOpen
   const needsDeliveryBonusSupportData = showCompensationActions && isDeliveryBonusDialogOpen
   const needsProjectSupportData = needsMistakeSupportData || needsDeliveryBonusSupportData
@@ -1003,22 +1006,22 @@ export function FaultsMemberDetailPage({
         description={detail.report.roleLabel ? lt(detail.report.roleLabel) : lt('Member')}
         actions={
           <>
-            {showCompensationActions ? (
+            {canCreateCompensation ? (
               <Button variant="ghost" size="sm" onClick={() => openMistakeDialog()}>
                 {tr('Add mistake', "Xato qo'shish", 'Добавить ошибку')}
               </Button>
             ) : null}
-            {showCompensationActions ? (
+            {canCreateCompensation ? (
               <Button variant="success" size="sm" onClick={() => openDeliveryBonusDialog()}>
                 {tr('Add delivery bonus', "Topshirish bonusini qo'shish", 'Добавить бонус за сдачу')}
               </Button>
             ) : null}
-            {showCompensationActions ? (
+            {canCreateCompensation ? (
               <Button variant="success" size="sm" onClick={() => { setSimpleBonusDraft({ amount: '', reason: '' }); setIsSimpleBonusDialogOpen(true) }}>
                 {tr('Add simple bonus', "Oddiy bonus qo'shish", 'Добавить простой бонус')}
               </Button>
             ) : null}
-            {showCompensationActions ? (
+            {canCreateCompensation ? (
               <Button variant="danger" size="sm" onClick={() => { setSimplePenaltyDraft({ amount: '', reason: '' }); setIsSimplePenaltyDialogOpen(true) }}>
                 {tr('Add simple penalty', "Oddiy jarima qo'shish", 'Добавить простой штраф')}
               </Button>
@@ -1525,9 +1528,9 @@ export function FaultsMemberDetailPage({
         <MistakeIncidentSection
           items={detail.mistakes}
           editable={showCompensationActions}
-          onAdd={showCompensationActions ? () => openMistakeDialog() : undefined}
-          onEdit={showCompensationActions ? (item) => openMistakeDialog(item) : undefined}
-          onDelete={showCompensationActions ? (item) => setDeleteTarget({ kind: 'mistake', record: item }) : undefined}
+          onAdd={canCreateCompensation ? () => openMistakeDialog() : undefined}
+          onEdit={canEditCompensation ? (item) => openMistakeDialog(item) : undefined}
+          onDelete={canDeleteCompensation ? (item) => setDeleteTarget({ kind: 'mistake', record: item }) : undefined}
         />
       </Card>
 
@@ -1535,9 +1538,9 @@ export function FaultsMemberDetailPage({
         <DeliveryBonusSection
           items={detail.deliveryBonuses}
           editable={showCompensationActions}
-          onAdd={showCompensationActions ? () => openDeliveryBonusDialog() : undefined}
-          onEdit={showCompensationActions ? (item) => openDeliveryBonusDialog(item) : undefined}
-          onDelete={showCompensationActions ? (item) => setDeleteTarget({ kind: 'delivery-bonus', record: item }) : undefined}
+          onAdd={canCreateCompensation ? () => openDeliveryBonusDialog() : undefined}
+          onEdit={canEditCompensation ? (item) => openDeliveryBonusDialog(item) : undefined}
+          onDelete={canDeleteCompensation ? (item) => setDeleteTarget({ kind: 'delivery-bonus', record: item }) : undefined}
         />
       </Card>
 
@@ -1546,8 +1549,8 @@ export function FaultsMemberDetailPage({
           <SimpleBonusSection
             items={simpleBonuses}
             editable
-            onAdd={() => { setSimpleBonusDraft({ amount: '', reason: '' }); setIsSimpleBonusDialogOpen(true) }}
-            onDelete={(item) => setDeleteTarget({ kind: 'simple-bonus', record: item })}
+            onAdd={canCreateCompensation ? () => { setSimpleBonusDraft({ amount: '', reason: '' }); setIsSimpleBonusDialogOpen(true) } : undefined}
+            onDelete={canDeleteCompensation ? (item) => setDeleteTarget({ kind: 'simple-bonus', record: item }) : undefined}
           />
         </Card>
       ) : null}
@@ -1557,8 +1560,8 @@ export function FaultsMemberDetailPage({
           <SimplePenaltySection
             items={simplePenalties}
             editable
-            onAdd={() => { setSimplePenaltyDraft({ amount: '', reason: '' }); setIsSimplePenaltyDialogOpen(true) }}
-            onDelete={(item) => setDeleteTarget({ kind: 'simple-penalty', record: item })}
+            onAdd={canCreateCompensation ? () => { setSimplePenaltyDraft({ amount: '', reason: '' }); setIsSimplePenaltyDialogOpen(true) } : undefined}
+            onDelete={canDeleteCompensation ? (item) => setDeleteTarget({ kind: 'simple-penalty', record: item }) : undefined}
           />
         </Card>
       ) : null}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useToast } from '../../../shared/toast/useToast'
+import { useAuth } from '../../auth/hooks/useAuth'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import { LoadingStateBlock, ErrorStateBlock } from '../../../shared/ui/state-block'
@@ -276,6 +277,8 @@ function IntegrationField({ field, value, revealed, onChange, onToggleReveal }: 
 
 export function CognilabsAIIntegrationsPage() {
   const { showToast } = useToast()
+  const { can } = useAuth()
+  const canEdit = can('ai_integrations', 'edit')
   const [form, setForm] = useState<IntegrationConfigPayload>(emptyForm)
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -425,7 +428,7 @@ export function CognilabsAIIntegrationsPage() {
         eyebrow="CognilabsAI"
         title="Integrations"
         className="shrink-0"
-        actions={
+        actions={canEdit ? (
           <Button
             onClick={() => void handleSave()}
             disabled={isSaving}
@@ -447,7 +450,7 @@ export function CognilabsAIIntegrationsPage() {
           >
             {saveSuccess ? 'Saved' : isSaving ? 'Saving...' : 'Save changes'}
           </Button>
-        }
+        ) : undefined}
       />
 
       {/* Two-column layout */}
@@ -659,9 +662,11 @@ export function CognilabsAIIntegrationsPage() {
                   : `${currentSection.fields.filter((f) => Boolean(fieldValue(form, f.key))).length} of ${currentSection.fields.length} fields configured`
                 }
               </p>
-              <Button onClick={() => void handleSave()} disabled={isSaving} size="sm">
-                {isSaving ? 'Saving...' : 'Save'}
-              </Button>
+              {canEdit ? (
+                <Button onClick={() => void handleSave()} disabled={isSaving} size="sm">
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+              ) : null}
             </div>
           </Card>
         </div>

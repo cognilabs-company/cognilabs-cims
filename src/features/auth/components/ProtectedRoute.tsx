@@ -4,7 +4,7 @@ import { translateCurrent } from '../../../shared/i18n/translations'
 import { useAuth } from '../hooks/useAuth'
 import { AppSplash } from '../../../shared/ui/loader'
 import type { NavigationAudience } from '../../../shared/config/navigation'
-import { hasAudienceAccess } from '../../../shared/lib/permissions'
+import { canOpenPath, hasAudienceAccess } from '../../../shared/lib/permissions'
 
 type ProtectedRouteProps = {
   permissionKey?: string
@@ -23,7 +23,7 @@ function LoadingState() {
 
 export function ProtectedRoute({ permissionKey, audience, children }: ProtectedRouteProps) {
   const location = useLocation()
-  const { hasPermission, isAuthenticated, status, user } = useAuth()
+  const { access, hasPermission, isAuthenticated, status, user } = useAuth()
 
   if (status === 'loading') {
     return <LoadingState />
@@ -40,6 +40,15 @@ export function ProtectedRoute({ permissionKey, audience, children }: ProtectedR
         }}
       />
     )
+  }
+
+  // Pages that belong to an RBAC module: effective_permissions[module] must include "view".
+  const rbacAnswer = canOpenPath(user, access, location.pathname)
+  if (rbacAnswer === false) {
+    return <Navigate to="/dashboard-redirect" replace />
+  }
+  if (rbacAnswer === true) {
+    return children ? <>{children}</> : <Outlet />
   }
 
   if (permissionKey && !hasPermission(permissionKey)) {

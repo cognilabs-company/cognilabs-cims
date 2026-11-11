@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../auth/hooks/useAuth'
-import { canUseTelephony } from '../../shared/lib/permissions'
 import { getApiErrorMessage } from '../../shared/lib/api-error'
-import { normalizePhone, telephonyService, type TelephonyCall, type TelephonyConfig, type TelephonyLead } from '../../shared/api/services/telephony.service'
-import { TelephonyContext } from './TelephonyContext'
+import { normalizePhone, telephonyService, type OutboundMode, type TelephonyCall, type TelephonyConfig, type TelephonyLead } from '../../shared/api/services/telephony.service'
+import { TelephonyContext, type MobileDialState } from './TelephonyContext'
 import { ActiveCallPanel } from './components/ActiveCallPanel'
 
 type SipSession = {
@@ -35,8 +34,11 @@ function statusError(cause: unknown) {
 }
 
 export function TelephonyProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
-  const allowed = canUseTelephony(user)
+  const { user, can } = useAuth()
+  // RBAC: "calls" view = the phone line and call history; create = placing calls.
+  const allowed = can('calls', 'view')
+  const canPlaceCalls = can('calls', 'create')
+  const [mobileCall, setMobileCall] = useState<MobileDialState | null>(null)
   const [config, setConfig] = useState<TelephonyConfig | null>(null)
   const [connection, setConnection] = useState('Connecting')
   const [error, setError] = useState<string | null>(null)
@@ -187,6 +189,7 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
           const next = data.call
           if (finalStatuses.has(next.status)) {
             setHistoryVersion((value) => value + 1)
+            setMobileCall(null)
             if (callRef.current?.id === next.id) {
               callRef.current = null
               setCall(null)
@@ -203,6 +206,7 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
           if (next.status === 'ringing' || next.status === 'answered') {
             callRef.current = next
             setCall(next)
+            setMobileCall(null)
             if (next.answered_at) setConfirmedAt(next.answered_at)
             if (next.customer_id && (!leadRef.current || leadRef.current.customer_id !== next.customer_id)) {
               void telephonyService.call(next.id).then((detail) => {
@@ -243,6 +247,30 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
 
   const dial = useCallback((phone: string, selectedLead?: TelephonyLead | null) => {
     const normalized = normalizePhone(phone)
+    if (!canPlaceCalls) { setError('You do not have permission to make calls.'); return }
+    if (configRef.current?.outbound_mode === 'mobile') {
+      // The PBX calls the user's mobile first, then the customer (company caller ID and recording are kept).
+      if (normalized.length < 7) { setError('Enter a full phone number.'); return }
+      if (!configRef.current.enabled || callRef.current || sessionRef.current) { setError('Phone is not ready or another call is active.'); return }
+      setLead(selectedLead ?? null)
+      setConfirmedAt(null)
+      setError(null)
+      setMobileCall({ phone: normalized, startedAt: Date.now() })
+      void telephonyService.dialMobile(normalized).then((result) => {
+        // Some backends answer with the call row right away; otherwise the events socket brings it.
+        const row = result as Partial<TelephonyCall> | null
+        if (row && typeof row.id === 'number' && typeof row.status === 'string' && !callRef.current) {
+          callRef.current = row as TelephonyCall
+          setCall(row as TelephonyCall)
+          setMobileCall(null)
+        }
+      }).catch((cause: unknown) => {
+        setMobileCall(null)
+        setLead(null)
+        setError(getApiErrorMessage(cause))
+      })
+      return
+    }
     if (normalized.length < 7 || !agentRef.current || !configRef.current?.enabled || sessionRef.current) {
       setError(normalized.length < 7 ? 'Enter a full phone number.' : 'Phone is not ready or another call is active.')
       return
@@ -259,7 +287,14 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
         pcConfig: { iceServers: configRef.current.ice_servers },
       })
     } catch (cause) { setError(statusError(cause instanceof Error ? cause.message : cause)) }
-  }, [])
+  }, [canPlaceCalls])
+
+  // A mobile dial that never produced a call event (phone not answered, PBX gave up) is forgotten after a minute.
+  useEffect(() => {
+    if (!mobileCall) return
+    const timer = window.setTimeout(() => setMobileCall((current) => (current === mobileCall ? null : current)), 60_000)
+    return () => window.clearTimeout(timer)
+  }, [mobileCall])
 
   const answer = useCallback(() => {
     const session = sessionRef.current
@@ -275,11 +310,15 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
     tracks.forEach((track) => { track.enabled = next })
     setMuted(!next)
   }, [])
-  const clearCall = useCallback(() => { if (!sessionRef.current) { setCall(null); setLead(null); setError(null) } }, [])
+  const clearCall = useCallback(() => { if (!sessionRef.current) { callRef.current = null; setCall(null); setLead(null); setError(null); setMobileCall(null) } }, [])
+  const outboundMode: OutboundMode = config?.outbound_mode === 'mobile' ? 'mobile' : 'webrtc'
+  const busy = Boolean(sessionStatus || call || mobileCall)
+  const canDial = canPlaceCalls && Boolean(config?.enabled) && !busy && (outboundMode === 'mobile' || connection === 'Ready')
   const value = useMemo(() => ({
     config, connection, error, call, lead, sessionStatus, sessionDirection, confirmedAt, muted, historyVersion,
+    outboundMode, mobileCall, canDial,
     dial, answer, reject: hangup, hangup, toggleMute, clearCall,
-  }), [config, connection, error, call, lead, sessionStatus, sessionDirection, confirmedAt, muted, historyVersion, dial, answer, hangup, toggleMute, clearCall])
+  }), [config, connection, error, call, lead, sessionStatus, sessionDirection, confirmedAt, muted, historyVersion, outboundMode, mobileCall, canDial, dial, answer, hangup, toggleMute, clearCall])
 
   return (
     <TelephonyContext.Provider value={value}>

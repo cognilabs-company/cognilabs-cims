@@ -84,6 +84,7 @@ export function MediaViewerModal({
   onNext,
   onClose,
   onSaved,
+  canEdit,
 }: {
   media: CommentAutomationMedia
   position: number | null
@@ -92,6 +93,8 @@ export function MediaViewerModal({
   onNext: (() => void) | null
   onClose: () => void
   onSaved: (media: CommentAutomationMedia) => void
+  /** `edit` permission: without it the settings are shown read-only and Save is hidden. */
+  canEdit: boolean
 }) {
   const tx = useCommentAutomationT()
   const { showToast } = useToast()
@@ -345,19 +348,19 @@ export function MediaViewerModal({
 
           <div className="min-h-0 flex-1 overflow-y-auto px-[18px] py-[18px]">
             {tab === 'settings' ? (
-              <div className="space-y-[18px]">
-                <AutomationToggle enabled={draft.automation_enabled} onChange={(value) => setDraft({ ...draft, automation_enabled: value })} />
-                <SettingsForm idPrefix={`viewer-${media.media_id}`} draft={draft} onChange={setDraft} layout="stacked" />
+              <fieldset disabled={!canEdit} className="min-w-0 space-y-[18px]">
+                <AutomationToggle enabled={draft.automation_enabled} onChange={(value) => setDraft({ ...draft, automation_enabled: value })} readOnly={!canEdit} />
+                <SettingsForm idPrefix={`viewer-${media.media_id}`} draft={draft} onChange={setDraft} layout="stacked" readOnly={!canEdit} />
                 {isDirty && validationMessage && (
                   <Alert tone="danger">{validationMessage}</Alert>
                 )}
-              </div>
+              </fieldset>
             ) : (
               <ReplyHistoryPanel mediaId={media.media_id} />
             )}
           </div>
 
-          {tab === 'settings' && (
+          {tab === 'settings' && canEdit && (
             <div className="flex items-center gap-2 border-t border-[var(--border)] px-[18px] py-3.5">
               <span className={cn('text-[12.5px] font-medium', isDirty ? 'text-[var(--warning-text)]' : 'text-[var(--caption)]')}>
                 {isDirty ? tx('media.unsaved', 'Unsaved changes') : tx('viewer.saved_state', 'All changes saved')}

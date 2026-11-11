@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
-import { ListFilter, PhoneOff, RotateCcw, Search, X } from 'lucide-react'
+import { Eye, ListFilter, PhoneOff, RotateCcw, Search, X } from 'lucide-react'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { useTelephony } from '../TelephonyContext'
@@ -78,12 +78,14 @@ function appendCalls(previous: TelephonyCall[], next: TelephonyCall[]) {
 type DayGroup = { key: string; first: string; calls: TelephonyCall[] }
 
 export function TelephonyPage() {
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const { t } = useLocale()
-  const { config, connection, error: phoneError, dial, historyVersion } = useTelephony()
+  const { config, connection, error: phoneError, dial, historyVersion, canDial, outboundMode } = useTelephony()
   const [params, setParams] = useSearchParams()
   const isCeo = user?.role === 'CEO'
-  const canCall = connection === 'Ready'
+  // RBAC calls:create shows the call buttons at all; canDial says whether the line can call right now.
+  const mayCall = can('calls', 'create')
+  const canCall = canDial
   const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, () => true)
 
   // ── keypad / lead lookup ─────────────────────────────────────
@@ -328,6 +330,8 @@ export function TelephonyPage() {
       onCall={() => dial(phone, selectedLead)}
       canCall={canCall && normalizePhone(phone).length >= 7}
       connection={connection}
+      outboundMode={outboundMode}
+      mobileNumber={config?.mobile_number}
       extension={config?.extension}
       onBack={onBack}
     />
@@ -342,6 +346,10 @@ export function TelephonyPage() {
       extension={config?.extension}
       dialerActive={dialerShown}
       onShowDialer={showDialer}
+      canDialOut={mayCall}
+      outboundMode={outboundMode}
+      mobileNumber={config?.mobile_number}
+      forwarding={config?.forwarding_enabled ? { mode: config.forwarding_mode ?? null, target: config.forwarding_target ?? null } : null}
       period={period}
       onPeriodChange={changePeriod}
       customFrom={customFrom}
@@ -442,6 +450,7 @@ export function TelephonyPage() {
                             selected={call.id === selectedCall?.id}
                             showSeller={isCeo}
                             canCall={canCall}
+                            showCall={mayCall}
                             onSelect={() => selectCall(call)}
                             onCall={() => dial(call.phone_number, leadFromCall(call))}
                           />
@@ -486,11 +495,20 @@ export function TelephonyPage() {
                 call={selectedCall}
                 related={related}
                 canCall={canCall}
+                showCall={mayCall}
                 onDial={dial}
                 onSelectCall={selectCallById}
                 onClose={() => setSelected(null)}
               />
-            ) : dialer()}
+            ) : mayCall ? dialer() : (
+              <div className="grid h-full place-items-center rounded-[22px] bg-[var(--surface)] px-8 text-center ring-1 ring-[var(--border)]">
+                <div>
+                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] bg-[var(--input-surface)] text-[var(--muted)]"><Eye size={22} /></span>
+                  <p className="mt-4 text-[15px] font-semibold text-[var(--foreground)]">{t('telephony.view_only.title', 'View only')}</p>
+                  <p className="mt-1 text-[13px] text-[var(--muted)]">{t('telephony.view_only.text', 'You can see the call history. Ask an admin for the “calls · create” permission to make calls.')}</p>
+                </div>
+              </div>
+            )}
           </aside>
         </div>
       )}
@@ -503,6 +521,7 @@ export function TelephonyPage() {
             call={selectedCall}
             related={related}
             canCall={canCall}
+            showCall={mayCall}
             onDial={dial}
             onSelectCall={selectCallById}
             onBack={() => setMobileSheet(null)}

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useToast } from '../../../shared/toast/useToast'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
+import { useAuth } from '../../auth/hooks/useAuth'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
@@ -146,8 +147,10 @@ function formatRelativeTime(isoString: string): string {
 function StoryCircleCard({ ctx, onView, onEdit, onDelete }: {
   ctx: MediaContextItem
   onView: () => void
-  onEdit: () => void
-  onDelete: () => void
+  /** Omit to hide (no `edit` permission). */
+  onEdit?: () => void
+  /** Omit to hide (no `delete` permission). */
+  onDelete?: () => void
 }) {
   const cfg = getMediaConfig(ctx.media_type)
   return (
@@ -161,25 +164,31 @@ function StoryCircleCard({ ctx, onView, onEdit, onDelete }: {
         {ctx.is_active && (
           <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--surface)] bg-[var(--success-text)]" />
         )}
-        <div className="absolute -right-1 -bottom-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
-          <IconButton
-            label="Edit"
-            size="sm"
-            onClick={onEdit}
-            className="h-6 w-6 rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
-          >
-            <EditGlyph className="h-3 w-3" />
-          </IconButton>
-          <IconButton
-            label="Delete"
-            tone="danger"
-            size="sm"
-            onClick={onDelete}
-            className="h-6 w-6 rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
-          >
-            <TrashGlyph className="h-3 w-3" />
-          </IconButton>
-        </div>
+        {onEdit || onDelete ? (
+          <div className="absolute -right-1 -bottom-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+            {onEdit ? (
+              <IconButton
+                label="Edit"
+                size="sm"
+                onClick={onEdit}
+                className="h-6 w-6 rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
+              >
+                <EditGlyph className="h-3 w-3" />
+              </IconButton>
+            ) : null}
+            {onDelete ? (
+              <IconButton
+                label="Delete"
+                tone="danger"
+                size="sm"
+                onClick={onDelete}
+                className="h-6 w-6 rounded-full bg-[var(--surface)] shadow-[var(--elev-md)]"
+              >
+                <TrashGlyph className="h-3 w-3" />
+              </IconButton>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <p className="max-w-[64px] truncate text-center text-[11.5px] font-medium text-[var(--foreground)]">{ctx.title}</p>
     </div>
@@ -189,8 +198,10 @@ function StoryCircleCard({ ctx, onView, onEdit, onDelete }: {
 function MediaCard({ ctx, onView, onEdit, onDelete }: {
   ctx: MediaContextItem
   onView: () => void
-  onEdit: () => void
-  onDelete: () => void
+  /** Omit to hide (no `edit` permission). */
+  onEdit?: () => void
+  /** Omit to hide (no `delete` permission). */
+  onDelete?: () => void
 }) {
   const cfg = getMediaConfig(ctx.media_type)
   const displayUrl = ctx.normalized_url || ctx.url
@@ -240,14 +251,20 @@ function MediaCard({ ctx, onView, onEdit, onDelete }: {
 
         <div className="mt-auto flex items-center justify-between border-t border-[var(--border-subtle)] pt-2">
           <span className="text-[11.5px] text-[var(--caption)]">{formatRelativeTime(ctx.created_at)}</span>
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <IconButton label="Edit" size="sm" onClick={onEdit}>
-              <EditGlyph className="h-3.5 w-3.5" />
-            </IconButton>
-            <IconButton label="Delete" tone="danger" size="sm" onClick={onDelete}>
-              <TrashGlyph className="h-3.5 w-3.5" />
-            </IconButton>
-          </div>
+          {onEdit || onDelete ? (
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              {onEdit ? (
+                <IconButton label="Edit" size="sm" onClick={onEdit}>
+                  <EditGlyph className="h-3.5 w-3.5" />
+                </IconButton>
+              ) : null}
+              {onDelete ? (
+                <IconButton label="Delete" tone="danger" size="sm" onClick={onDelete}>
+                  <TrashGlyph className="h-3.5 w-3.5" />
+                </IconButton>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -294,7 +311,8 @@ const FILTER_TABS: TabItem<FilterTab>[] = [
 function ViewModal({ ctx, onClose, onEdit }: {
   ctx: MediaContextItem
   onClose: () => void
-  onEdit: () => void
+  /** Omit to hide (no `edit` permission). */
+  onEdit?: () => void
 }) {
   const cfg = getMediaConfig(ctx.media_type)
   const displayUrl = ctx.normalized_url || ctx.url
@@ -307,7 +325,7 @@ function ViewModal({ ctx, onClose, onEdit }: {
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Close</Button>
-          <Button onClick={onEdit} leftIcon={<EditGlyph className="h-4 w-4" />}>Edit</Button>
+          {onEdit ? <Button onClick={onEdit} leftIcon={<EditGlyph className="h-4 w-4" />}>Edit</Button> : null}
         </>
       }
     >
@@ -497,6 +515,10 @@ function CreateEditModal({ mode, initial, onClose, onSaved }: {
 export function CognilabsAIMediaContextsPage() {
   const { showToast } = useToast()
   const { confirm } = useConfirm()
+  const { can } = useAuth()
+  const canCreate = can('media_contexts', 'create')
+  const canEdit = can('media_contexts', 'edit')
+  const canDelete = can('media_contexts', 'delete')
 
   const [contexts, setContexts] = useState<MediaContextItem[]>([])
   const [total, setTotal] = useState(0)
@@ -585,7 +607,7 @@ export function CognilabsAIMediaContextsPage() {
       <PageHeader
         title="Instagram Media Contexts"
         description="AI uchun story, post va reel kontekstlarini boshqaring"
-        actions={
+        actions={canCreate ? (
           <Button
             onClick={() => setIsCreating(true)}
             leftIcon={
@@ -596,7 +618,7 @@ export function CognilabsAIMediaContextsPage() {
           >
             Yangi Context
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 xl:grid-cols-5">
@@ -664,7 +686,7 @@ export function CognilabsAIMediaContextsPage() {
           title="Kontekst topilmadi"
           description={contexts.length === 0 ? "Birinchi media contextni qo'shing" : 'Filter shartlariga mos kontekst yo\'q'}
         >
-          {contexts.length === 0 ? (
+          {contexts.length === 0 && canCreate ? (
             <Button onClick={() => setIsCreating(true)}>
               Birinchi contextni qo'shish
             </Button>
@@ -681,8 +703,8 @@ export function CognilabsAIMediaContextsPage() {
                     <StoryCircleCard
                       ctx={ctx}
                       onView={() => setViewCtx(ctx)}
-                      onEdit={() => setEditCtx(ctx)}
-                      onDelete={() => void handleDelete(ctx)}
+                      onEdit={canEdit ? () => setEditCtx(ctx) : undefined}
+                      onDelete={canDelete ? () => void handleDelete(ctx) : undefined}
                     />
                   </div>
                 ))}
@@ -701,8 +723,8 @@ export function CognilabsAIMediaContextsPage() {
                     key={ctx.id}
                     ctx={ctx}
                     onView={() => setViewCtx(ctx)}
-                    onEdit={() => setEditCtx(ctx)}
-                    onDelete={() => void handleDelete(ctx)}
+                    onEdit={canEdit ? () => setEditCtx(ctx) : undefined}
+                    onDelete={canDelete ? () => void handleDelete(ctx) : undefined}
                   />
                 ))}
               </div>
@@ -715,7 +737,7 @@ export function CognilabsAIMediaContextsPage() {
         <ViewModal
           ctx={viewCtx}
           onClose={() => setViewCtx(null)}
-          onEdit={() => { setEditCtx(viewCtx); setViewCtx(null) }}
+          onEdit={canEdit ? () => { setEditCtx(viewCtx); setViewCtx(null) } : undefined}
         />
       )}
 

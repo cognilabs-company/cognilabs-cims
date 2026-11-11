@@ -19,6 +19,7 @@ import { Textarea } from '../../../shared/ui/textarea'
 import { useToast } from '../../../shared/toast/useToast'
 import { cn } from '../../../shared/lib/cn'
 import { MonthField } from '../../../shared/ui/month-field'
+import { useAuth } from '../../auth/hooks/useAuth'
 
 const TASHKENT_TIMEZONE = 'Asia/Tashkent'
 const PAGE_SIZE = 100
@@ -158,6 +159,10 @@ const emptyEditValues: EditValues = { status: 'incomplete', checkInAt: '', check
 
 export function AttendanceManagementPage() {
   const { showToast } = useToast()
+  const { can } = useAuth()
+  const canEditRecords = can('attendance', 'edit')
+  const canDeleteRecords = can('attendance', 'delete')
+  const hasRecordActions = canEditRecords || canDeleteRecords
   const [month, setMonth] = useState(() => getTodayInTashkent().slice(0, 7))
   const [day, setDay] = useState('')
   const [employeeId, setEmployeeId] = useState('')
@@ -231,7 +236,7 @@ export function AttendanceManagementPage() {
       note: record.note ?? '',
       deleteReason: '',
     })
-    setIsDeleteMode(false)
+    setIsDeleteMode(!canEditRecords)
   }
 
   function closeEdit() {
@@ -312,7 +317,7 @@ export function AttendanceManagementPage() {
           <div className="custom-scrollbar-visible overflow-x-auto">
             <table className="w-full min-w-[1050px] border-separate border-spacing-0 text-left">
               <thead><tr>
-                <th className={cn(headCellClass, 'rounded-l-[12px] pl-3.5')}>Employee</th><th className={headCellClass}>Date</th><th className={headCellClass}>Came</th><th className={headCellClass}>Gone</th><th className={headCellClass}>Worked time</th><th className={headCellClass}>Status</th><th className={headCellClass}>Source</th><th className={headCellClass}>Note</th><th className={cn(headCellClass, 'rounded-r-[12px] pr-3.5 text-right')}>Action</th>
+                <th className={cn(headCellClass, 'rounded-l-[12px] pl-3.5')}>Employee</th><th className={headCellClass}>Date</th><th className={headCellClass}>Came</th><th className={headCellClass}>Gone</th><th className={headCellClass}>Worked time</th><th className={headCellClass}>Status</th><th className={headCellClass}>Source</th><th className={cn(headCellClass, !hasRecordActions && 'rounded-r-[12px] pr-3.5')}>Note</th>{hasRecordActions ? <th className={cn(headCellClass, 'rounded-r-[12px] pr-3.5 text-right')}>Action</th> : null}
               </tr></thead>
               <tbody>
                 {records.map((record) => (
@@ -332,8 +337,8 @@ export function AttendanceManagementPage() {
                     <td className={cn(bodyCellClass, 'text-[13.5px] font-semibold tabular-nums text-[var(--foreground)]')}>{formatWorkedMinutes(record.worked_minutes)}</td>
                     <td className={bodyCellClass}><Badge variant={statusBadgeVariant(record.status)} dot>{record.status}</Badge></td>
                     <td className={bodyCellClass}><Badge variant={record.is_manual ? 'blue' : 'secondary'}>{record.is_manual ? 'manual' : record.source_system || 'faceid'}</Badge></td>
-                    <td className={cn(bodyCellClass, 'max-w-[230px] text-[13.5px] text-[var(--muted-strong)]')}><p className="line-clamp-2">{record.note || '-'}</p></td>
-                    <td className={cn(bodyCellClass, 'pr-3.5 text-right')}><Button variant="ghost" size="sm" onClick={() => openEdit(record)}>Edit</Button></td>
+                    <td className={cn(bodyCellClass, 'max-w-[230px] text-[13.5px] text-[var(--muted-strong)]', !hasRecordActions && 'pr-3.5')}><p className="line-clamp-2">{record.note || '-'}</p></td>
+                    {hasRecordActions ? <td className={cn(bodyCellClass, 'pr-3.5 text-right')}><Button variant="ghost" size="sm" onClick={() => openEdit(record)}>{canEditRecords ? 'Edit' : 'Delete record'}</Button></td> : null}
                   </tr>
                 ))}
               </tbody>
@@ -348,9 +353,9 @@ export function AttendanceManagementPage() {
 
       <Dialog open={editingRecord !== null} onClose={closeEdit} title={isDeleteMode ? 'Delete attendance record' : 'Edit attendance record'} description={editingRecord ? `${getEmployeeName(editingRecord)} - ${formatDate(editingRecord.attendance_date)}` : undefined} eyebrow="Attendance correction" tone={isDeleteMode ? 'danger' : 'default'} footer={<><Button variant="ghost" size="md" onClick={closeEdit} disabled={isSaving}>Cancel</Button><Button variant={isDeleteMode ? 'danger' : 'primary'} size="md" onClick={() => void saveEdit()} loading={isSaving}>{isDeleteMode ? 'Delete record' : 'Save changes'}</Button></>}>
         {isDeleteMode ? (
-          <div className="space-y-[18px]"><Alert tone="danger" icon={deleteWarningIcon}>This hides the selected daily record from attendance reports. Provide the reason for auditability.</Alert><FilterLabel label="Delete reason"><Textarea value={editValues.deleteReason} rows={3} onChange={(event) => setEditValues((current) => ({ ...current, deleteReason: event.target.value }))} placeholder="Wrong employee mapping" /></FilterLabel><Button type="button" variant="ghost" size="sm" onClick={() => setIsDeleteMode(false)}>Back to edit</Button></div>
+          <div className="space-y-[18px]"><Alert tone="danger" icon={deleteWarningIcon}>This hides the selected daily record from attendance reports. Provide the reason for auditability.</Alert><FilterLabel label="Delete reason"><Textarea value={editValues.deleteReason} rows={3} onChange={(event) => setEditValues((current) => ({ ...current, deleteReason: event.target.value }))} placeholder="Wrong employee mapping" /></FilterLabel>{canEditRecords ? <Button type="button" variant="ghost" size="sm" onClick={() => setIsDeleteMode(false)}>Back to edit</Button> : null}</div>
         ) : (
-          <div className="space-y-[18px]"><div className="grid gap-[18px] sm:grid-cols-2"><FilterLabel label="Status"><SelectField value={editValues.status} options={statusOptions.slice(1)} onValueChange={(value) => setEditValues((current) => ({ ...current, status: value as FaceIdAttendanceStatus }))} /></FilterLabel><div className="flex items-end"><Badge variant="secondary" className="mb-2.5">Asia/Tashkent (+05:00)</Badge></div><FilterLabel label="Check in"><CalendarField mode="datetime" value={editValues.checkInAt} onValueChange={(value) => setEditValues((current) => ({ ...current, checkInAt: value }))} /></FilterLabel><FilterLabel label="Check out"><CalendarField mode="datetime" value={editValues.checkOutAt} onValueChange={(value) => setEditValues((current) => ({ ...current, checkOutAt: value }))} /></FilterLabel></div><FilterLabel label="Note"><Textarea value={editValues.note} rows={4} onChange={(event) => setEditValues((current) => ({ ...current, note: event.target.value }))} placeholder="Check-out event missing" /></FilterLabel><div className="flex justify-end border-t border-[var(--border-subtle)] pt-[18px]"><Button type="button" variant="danger" size="sm" onClick={() => setIsDeleteMode(true)}>Delete record</Button></div></div>
+          <div className="space-y-[18px]"><div className="grid gap-[18px] sm:grid-cols-2"><FilterLabel label="Status"><SelectField value={editValues.status} options={statusOptions.slice(1)} onValueChange={(value) => setEditValues((current) => ({ ...current, status: value as FaceIdAttendanceStatus }))} /></FilterLabel><div className="flex items-end"><Badge variant="secondary" className="mb-2.5">Asia/Tashkent (+05:00)</Badge></div><FilterLabel label="Check in"><CalendarField mode="datetime" value={editValues.checkInAt} onValueChange={(value) => setEditValues((current) => ({ ...current, checkInAt: value }))} /></FilterLabel><FilterLabel label="Check out"><CalendarField mode="datetime" value={editValues.checkOutAt} onValueChange={(value) => setEditValues((current) => ({ ...current, checkOutAt: value }))} /></FilterLabel></div><FilterLabel label="Note"><Textarea value={editValues.note} rows={4} onChange={(event) => setEditValues((current) => ({ ...current, note: event.target.value }))} placeholder="Check-out event missing" /></FilterLabel>{canDeleteRecords ? <div className="flex justify-end border-t border-[var(--border-subtle)] pt-[18px]"><Button type="button" variant="danger" size="sm" onClick={() => setIsDeleteMode(true)}>Delete record</Button></div> : null}</div>
         )}
       </Dialog>
 
@@ -380,10 +385,10 @@ export function AttendanceManagementPage() {
             </div>
             <div className="custom-scrollbar-visible overflow-x-auto">
               <table className="w-full min-w-[650px] border-separate border-spacing-0 text-left">
-                <thead><tr><th className={cn(headCellClass, 'rounded-l-[12px] pl-3.5')}>Date</th><th className={headCellClass}>Came</th><th className={headCellClass}>Gone</th><th className={headCellClass}>Worked time</th><th className={headCellClass}>Status</th><th className={cn(headCellClass, 'rounded-r-[12px] pr-3.5 text-right')}>Action</th></tr></thead>
+                <thead><tr><th className={cn(headCellClass, 'rounded-l-[12px] pl-3.5')}>Date</th><th className={headCellClass}>Came</th><th className={headCellClass}>Gone</th><th className={headCellClass}>Worked time</th><th className={cn(headCellClass, !hasRecordActions && 'rounded-r-[12px] pr-3.5')}>Status</th>{hasRecordActions ? <th className={cn(headCellClass, 'rounded-r-[12px] pr-3.5 text-right')}>Action</th> : null}</tr></thead>
                 <tbody>
                   {employeeDetailQuery.data.items.map((record) => (
-                    <tr key={`${record.employee_id}-${record.attendance_date}`} className="transition-colors hover:bg-[var(--card-hover)]"><td className={cn(bodyCellClass, 'pl-3.5 text-[13.5px] font-medium text-[var(--foreground)]')}>{formatDate(record.attendance_date)}</td><td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>{formatTime(record.check_in_at, record.check_in_time)}</td><td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>{formatTime(record.check_out_at, record.check_out_time)}</td><td className={cn(bodyCellClass, 'text-[13.5px] font-semibold tabular-nums text-[var(--foreground)]')}>{formatWorkedMinutes(record.worked_minutes)}</td><td className={bodyCellClass}><Badge variant={statusBadgeVariant(record.status)} dot>{record.status}</Badge></td><td className={cn(bodyCellClass, 'pr-3.5 text-right')}><Button variant="ghost" size="sm" onClick={() => { setSelectedEmployeeRecord(null); openEdit(record) }}>Edit</Button></td></tr>
+                    <tr key={`${record.employee_id}-${record.attendance_date}`} className="transition-colors hover:bg-[var(--card-hover)]"><td className={cn(bodyCellClass, 'pl-3.5 text-[13.5px] font-medium text-[var(--foreground)]')}>{formatDate(record.attendance_date)}</td><td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>{formatTime(record.check_in_at, record.check_in_time)}</td><td className={cn(bodyCellClass, 'text-[13.5px] tabular-nums text-[var(--muted-strong)]')}>{formatTime(record.check_out_at, record.check_out_time)}</td><td className={cn(bodyCellClass, 'text-[13.5px] font-semibold tabular-nums text-[var(--foreground)]')}>{formatWorkedMinutes(record.worked_minutes)}</td><td className={cn(bodyCellClass, !hasRecordActions && 'pr-3.5')}><Badge variant={statusBadgeVariant(record.status)} dot>{record.status}</Badge></td>{hasRecordActions ? <td className={cn(bodyCellClass, 'pr-3.5 text-right')}><Button variant="ghost" size="sm" onClick={() => { setSelectedEmployeeRecord(null); openEdit(record) }}>{canEditRecords ? 'Edit' : 'Delete record'}</Button></td> : null}</tr>
                   ))}
                 </tbody>
               </table>

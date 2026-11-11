@@ -58,7 +58,7 @@ export function ProjectDetailPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const lt = translateCurrentLiteral
   const locale = getIntlLocale()
   const tr = (key: string, uzFallback: string, ruFallback: string) => {
@@ -81,7 +81,12 @@ export function ProjectDetailPage() {
 
   const id = Number(projectId)
   const canManageProjects = Boolean(user)
-  const canManageKpi = user?.role === 'CEO' || user?.role === 'Admin'
+  const canCreateProjects = can('projects', 'create')
+  const canEditProjects = can('projects', 'edit')
+  const canDeleteProjects = can('projects', 'delete')
+  const hasBoardActions = canEditProjects || canDeleteProjects
+  // KPI "Add" buttons below only create records (features, quality events, blocked periods).
+  const canManageKpi = (user?.role === 'CEO' || user?.role === 'Admin') && can('developer_kpi', 'create')
 
   const projectQuery = useAsyncData(
     async () => {
@@ -282,7 +287,7 @@ export function ProjectDetailPage() {
   }
 
   async function handleUpdateProject(fd: FormData, telegramGroupId?: string | null) {
-    if (!canManageProjects || !project) {
+    if (!canEditProjects || !project) {
       return
     }
 
@@ -304,7 +309,7 @@ export function ProjectDetailPage() {
   }
 
   async function handleDeleteProject() {
-    if (!canManageProjects || !project) {
+    if (!canDeleteProjects || !project) {
       return
     }
 
@@ -329,7 +334,7 @@ export function ProjectDetailPage() {
   }
 
   async function handleDeleteBoard(boardId: number, boardName: string) {
-    if (!canManageProjects) return
+    if (!canDeleteProjects) return
 
     const ok = await confirm({
       title: lt('Delete board?'),
@@ -354,7 +359,7 @@ export function ProjectDetailPage() {
   }
 
   async function handleCreateBoard(values: { name: string; description?: string }) {
-    if (!canManageProjects || !project) {
+    if (!canCreateProjects || !project) {
       return
     }
 
@@ -374,7 +379,7 @@ export function ProjectDetailPage() {
   }
 
   async function handleUpdateBoard(values: { name: string; description?: string }) {
-    if (!canManageProjects || !editingBoard) return
+    if (!canEditProjects || !editingBoard) return
 
     setIsBoardSubmitting(true)
     try {
@@ -570,7 +575,7 @@ export function ProjectDetailPage() {
                         ),
                         onSelect: () => setIsKpiOpen(true),
                       },
-                      {
+                      ...(canEditProjects ? [{
                         label: lt('Edit'),
                         icon: (
                           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -578,17 +583,17 @@ export function ProjectDetailPage() {
                           </svg>
                         ),
                         onSelect: () => setIsEditProjectOpen(true),
-                      },
-                      {
+                      }] : []),
+                      ...(canDeleteProjects ? [{
                         label: lt('Delete'),
-                        tone: 'danger',
+                        tone: 'danger' as const,
                         icon: (
                           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5.5 1C5.22386 1 5 1.22386 5 1.5C5 1.77614 5.22386 2 5.5 2H9.5C9.77614 2 10 1.77614 10 1.5C10 1.22386 9.77614 1 -9.5 1H5.5ZM3 3.5C3 3.22386 3.22386 3 3.5 3H11.5C11.7761 3 12 3.22386 12 3.5C12 3.77614 11.7761 4 11.5 4H11V12C11 12.5523 10.5523 13 10 13H5C9.44772 13 9 12.5523 9 12V4L3.5 4C3.22386 4 3 3.77614 3 3.5ZM5 4V12H10V4H5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
                           </svg>
                         ),
                         onSelect: handleDeleteProject,
-                      },
+                      }] : []),
                     ]}
                   />
                 </div>
@@ -653,21 +658,21 @@ export function ProjectDetailPage() {
                                onClick={() => selectBoard(board.id)}
                                className={cn(
                                  "h-9 whitespace-nowrap rounded-[11px] pl-3.5 text-[12.5px] transition-colors",
-                                 canManageProjects ? "pr-10" : "pr-3.5",
+                                 hasBoardActions ? "pr-10" : "pr-3.5",
                                  isSelected
                                    ? "bg-[var(--surface)] font-semibold text-[var(--foreground)] shadow-[var(--elev-seg)]"
                                    : "font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
                                )}
                                >{board.name}
                                </button>
-                               {canManageProjects && (
+                               {hasBoardActions && (
                                  <div className="absolute right-0.5">
                                     <ActionsMenu
                                       label={lt('Board actions')}
                                       className="h-8 w-8 hover:bg-[var(--border-hover)]"
                                       items={[
-                                        { label: lt('Edit'), onSelect: () => {/* Add edit handler logic */} },
-                                        { label: lt('Delete'), tone: 'danger', onSelect: () => void handleDeleteBoard(board.id, board.name) },
+                                        ...(canEditProjects ? [{ label: lt('Edit'), onSelect: () => { setEditingBoard(board); setIsEditBoardOpen(true) } }] : []),
+                                        ...(canDeleteProjects ? [{ label: lt('Delete'), tone: 'danger' as const, onSelect: () => void handleDeleteBoard(board.id, board.name) }] : []),
                                       ]}
                                     />
                                  </div>
@@ -675,7 +680,7 @@ export function ProjectDetailPage() {
                              </div>
                            )
                          })}
-                         {canManageProjects && (
+                         {canCreateProjects && (
                             <IconButton
                                label={lt('Add board')}
                                onClick={() => setIsCreateBoardOpen(true)}
@@ -725,7 +730,7 @@ export function ProjectDetailPage() {
 
                     {/* Desktop Right Actions */}
                     <div className="hidden sm:flex items-center gap-3 shrink-0">
-                       {canManageProjects && (
+                       {canCreateProjects && (
                           <Button
                              variant="secondary"
                              size="sm"
@@ -738,7 +743,7 @@ export function ProjectDetailPage() {
 
                     {/* Mobile Create Button */}
                     <div className="sm:hidden flex items-center shrink-0">
-                       {canManageProjects && (
+                       {canCreateProjects && (
                           <IconButton
                              label={tr('New list', 'Yangi list', 'Novyi spisok')}
                              onClick={() => setIsCreateBoardOpen(true)}
@@ -1282,9 +1287,11 @@ export function ProjectDetailPage() {
         open={isAttachmentsOpen}
         onClose={() => setIsAttachmentsOpen(false)}
         projectId={project.id}
+        canUpload={canCreateProjects}
+        canDelete={canDeleteProjects}
       />
 
-      {canManageProjects ? (
+      {canEditProjects ? (
         <>
           <ProjectFormModal
             open={isEditProjectOpen}
@@ -1294,15 +1301,6 @@ export function ProjectDetailPage() {
             title={lt('Edit project')}
             submitLabel={lt('Save changes')}
             isSubmitting={isProjectSubmitting}
-          />
-
-          <BoardFormModal
-            open={isCreateBoardOpen}
-            onClose={() => setIsCreateBoardOpen(false)}
-            onSubmit={handleCreateBoard}
-            title={lt('Create board')}
-            submitLabel={lt('Create')}
-            isSubmitting={isBoardSubmitting}
           />
           <BoardFormModal
             open={isEditBoardOpen}
@@ -1314,6 +1312,17 @@ export function ProjectDetailPage() {
             isSubmitting={isBoardSubmitting}
           />
         </>
+      ) : null}
+
+      {canCreateProjects ? (
+        <BoardFormModal
+          open={isCreateBoardOpen}
+          onClose={() => setIsCreateBoardOpen(false)}
+          onSubmit={handleCreateBoard}
+          title={lt('Create board')}
+          submitLabel={lt('Create')}
+          isSubmitting={isBoardSubmitting}
+        />
       ) : null}
     </>
   )

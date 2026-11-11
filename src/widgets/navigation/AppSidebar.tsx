@@ -10,7 +10,7 @@ import { env } from '../../shared/config/env'
 import { type AppLocale, localeLabels } from '../../shared/i18n/translations'
 import { useAsyncData } from '../../shared/hooks/useAsyncData'
 import { cn } from '../../shared/lib/cn'
-import { canReadManagedProjects, getAccessibleNavigation, hasPermission } from '../../shared/lib/permissions'
+import { canReadManagedProjects, getAccessibleNavigation } from '../../shared/lib/permissions'
 import { getApiErrorMessage } from '../../shared/lib/api-error'
 import { resolveMediaUrl } from '../../shared/lib/media-url'
 import { useToast } from '../../shared/toast/useToast'
@@ -72,6 +72,27 @@ const groupFallback: Record<NavGroupKey, string> = {
   main: 'Overview', sales: 'Sales', work: 'Work', team: 'Team', ai: 'Cognilabs AI', system: 'System',
 }
 
+/** Backend navigation groups ("SOTUV", "Sales"…) → our translated group labels. */
+const rbacGroupKeys: Record<string, NavGroupKey> = {
+  asosiy: 'main', main: 'main', overview: 'main', 'основное': 'main',
+  sotuv: 'sales', sales: 'sales', 'продажи': 'sales',
+  ish: 'work', work: 'work', 'работа': 'work',
+  jamoa: 'team', team: 'team', 'команда': 'team',
+  'cognilabs ai': 'ai', ai: 'ai',
+  tizim: 'system', system: 'system', 'система': 'system',
+}
+
+/** Backend icon names → our glyphs, for routes we don't know yet. */
+const rbacIconGlyphs: Record<string, GlyphName> = {
+  chart: 'crm', crm: 'crm', dashboard: 'ceo', users: 'users', user: 'users', customers: 'customers', phone: 'phone', calls: 'phone',
+  projects: 'projects', folder: 'projects', calendar: 'attendance', clock: 'attendance', wallet: 'salary', money: 'salary',
+  kpi: 'kpi', chat: 'cognilabsai-chat', kanban: 'ai-kanban', image: 'media', media: 'media', plug: 'cognilabsai-integrations',
+  instagram: 'instagram', globe: 'website', settings: 'management', api: 'management', updates: 'team-updates',
+}
+
+type SidebarItem = { to: string; label: string; icon?: string | null }
+type SidebarGroup = { key: string; label: string; items: SidebarItem[] }
+
 function navGroupOf(path: string): NavGroupKey {
   if (path === '/member/dashboard' || path === '/ceo/dashboard') return 'main'
   if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony')) return 'sales'
@@ -88,7 +109,7 @@ export function AppSidebar() {
   const { closeSidebar, isSidebarCollapsed, isSidebarOpen, toggleSidebar, toggleSidebarCollapsed } = useAppShell()
   const { locale, setLocale, t } = useLocale()
   const { showToast } = useToast()
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, access, can } = useAuth()
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false,
   )
@@ -139,8 +160,25 @@ export function AppSidebar() {
       isActive: (pathname) => pathname.startsWith('/outbound-crm/archived'),
     },
   ]
-  const visibleNavigation = getAccessibleNavigation(user, { sidebarOnly: true })
-  const sidebarNavigation = useMemo(() => visibleNavigation, [visibleNavigation])
+  // RBAC: the sidebar is exactly /rbac/me → navigation (groups and order from the backend).
+  // Without RBAC the old per-role list is used.
+  const sidebarGroups = useMemo<SidebarGroup[]>(() => {
+    if (access) {
+      return access.navigation.map((group, index) => {
+        const key = rbacGroupKeys[group.group.trim().toLowerCase()]
+        return {
+          key: `${group.group}-${index}`,
+          label: key ? t(`shell.group.${key}`, groupFallback[key]) : group.group,
+          items: group.items.map((item) => ({ to: item.route_path, label: item.display_name, icon: item.icon })),
+        }
+      })
+    }
+    const legacy = getAccessibleNavigation(user, { sidebarOnly: true })
+    return groupOrder
+      .map((group) => ({ key: group, label: t(`shell.group.${group}`, groupFallback[group]), items: legacy.filter((item) => navGroupOf(item.to) === group) }))
+      .filter((entry) => entry.items.length > 0)
+  }, [access, t, user])
+  const sidebarNavigation = useMemo(() => sidebarGroups.flatMap((group) => group.items), [sidebarGroups])
   const hasProjectsAccess = sidebarNavigation.some((item) => item.to === '/projects')
   const isProjectsRoute =
     location.pathname === '/projects' ||
@@ -318,17 +356,18 @@ export function AppSidebar() {
     return () => window.removeEventListener(OPEN_PROFILE_EVENT, handleOpen)
   }, [])
 
-  const groupedNavigation = groupOrder
-    .map((group) => ({ group, items: sidebarNavigation.filter((item) => navGroupOf(item.to) === group) }))
-    .filter((entry) => entry.items.length > 0)
+  function glyphFor(item: SidebarItem): GlyphName {
+    const byRoute = getNavigationGlyphName(item.to)
+    return byRoute === 'default' && item.icon ? rbacIconGlyphs[item.icon.toLowerCase()] ?? 'default' : byRoute
+  }
 
-  function renderNavItem(item: (typeof sidebarNavigation)[number]) {
+  function renderNavItem(item: SidebarItem) {
     const itemLabel = getNavigationLabel(item.to, item.label)
 
     if (item.to === '/projects' && rail) {
       return (
         <NavLink key={item.to} to={item.to} aria-label={itemLabel} {...tipProps(itemLabel)} className={cn(sidebarItemBase, railItem, isProjectsRoute ? sidebarItemActive : sidebarItemInactive)}>
-          <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
+          <NavGlyph name={glyphFor(item)} className={sidebarIcon} />
           <span className="nav-label">{itemLabel}</span>
         </NavLink>
       )
@@ -345,7 +384,7 @@ export function AppSidebar() {
               title={itemLabel}
               className={({ isActive }) => cn(sidebarItemBase, isActive || isProjectsRoute ? sidebarItemActive : sidebarItemInactive, 'pr-[72px]')}
             >
-              <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
+              <NavGlyph name={glyphFor(item)} className={sidebarIcon} />
               <span className="flex-1 truncate text-left">{itemLabel}</span>
               {sidebarProjects.length > 0 && (
                 <span className={cn('ml-auto rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums', isProjectsRoute ? 'bg-white/20 text-white' : 'bg-[var(--sb-hover)] text-[var(--sb-text)]')}>
@@ -422,7 +461,7 @@ export function AppSidebar() {
         {...tipProps(itemLabel)}
         className={({ isActive }) => cn(sidebarItemBase, rail && railItem, isActive ? sidebarItemActive : sidebarItemInactive)}
       >
-        <NavGlyph name={getNavigationGlyphName(item.to)} className={sidebarIcon} />
+        <NavGlyph name={glyphFor(item)} className={sidebarIcon} />
         <span className="nav-label flex-1 truncate text-left">{itemLabel}</span>
       </NavLink>
     )
@@ -492,7 +531,7 @@ export function AppSidebar() {
                   </NavLink>
                 ))}
 
-                {hasPermission(user, 'crm') ? (
+                {can('crm') ? (
                   <div className="mt-3 border-t border-[var(--sb-line)] pt-3">
                     <NavLink to="/crm" aria-label={t('outbound_crm.header.back_to_crm', 'Main CRM')} {...tipProps(t('outbound_crm.header.back_to_crm', 'Main CRM'))} className={cn(sidebarItemBase, rail && railItem, sidebarItemInactive)}>
                       <NavGlyph name="exit" className={sidebarIcon} />
@@ -503,11 +542,11 @@ export function AppSidebar() {
               </div>
             ) : (
               <div className="flex flex-col gap-2.5 [@media(max-height:900px)]:gap-1.5">
-                {groupedNavigation.map(({ group, items }, index) => (
-                  <div key={group} className="flex flex-col gap-px">
+                {sidebarGroups.map(({ key, label, items }, index) => (
+                  <div key={key} className="flex flex-col gap-px">
                     {rail
                       ? (index > 0 ? <span aria-hidden="true" className="mx-auto mb-1.5 h-px w-7 bg-[var(--sb-line)]" /> : null)
-                      : <p className={sidebarSectionLabel}>{t(`shell.group.${group}`, groupFallback[group])}</p>}
+                      : label ? <p className={sidebarSectionLabel}>{label}</p> : null}
                     {items.map(renderNavItem)}
                   </div>
                 ))}

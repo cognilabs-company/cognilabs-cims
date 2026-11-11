@@ -33,11 +33,14 @@ function parseMemberId(rawValue: string | null) {
 export function ProjectsListPage() {
   const { showToast } = useToast()
   const { confirm } = useConfirm()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const lt = translateCurrentLiteral
   const [searchParams, setSearchParams] = useSearchParams()
 
   const canManageProjects = Boolean(user)
+  const canCreateProject = can('projects', 'create')
+  const canEditProject = can('projects', 'edit')
+  const canDeleteProject = can('projects', 'delete')
   const priorityConfigMap = getPriorityConfig()
 
   const projectsQuery = useAsyncData(
@@ -219,7 +222,7 @@ export function ProjectsListPage() {
   }, [scopedProjects, search])
 
   async function handleCreate(fd: FormData) {
-    if (!canManageProjects) {
+    if (!canCreateProject) {
       return
     }
 
@@ -239,7 +242,7 @@ export function ProjectsListPage() {
   }
 
   async function handleUpdate(fd: FormData, telegramGroupId?: string | null) {
-    if (!canManageProjects || !editProject) {
+    if (!canEditProject || !editProject) {
       return
     }
 
@@ -263,7 +266,7 @@ export function ProjectsListPage() {
   }
 
   async function handleDelete(project: ProjectRecord) {
-    if (!canManageProjects) {
+    if (!canDeleteProject) {
       return
     }
 
@@ -314,7 +317,7 @@ export function ProjectsListPage() {
   }
 
   async function handleOpenEdit(project: ProjectRecord) {
-    if (!canManageProjects || !user) {
+    if (!canEditProject || !user) {
       return
     }
 
@@ -346,18 +349,20 @@ export function ProjectsListPage() {
                     <Button variant="secondary" size="md" onClick={() => setIsTeamsOpen(true)}>
                       {lt('Teams')}
                     </Button>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      onClick={() => setIsCreateOpen(true)}
-                      leftIcon={(
-                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                          <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                        </svg>
-                      )}
-                    >
-                      {lt('New project')}
-                    </Button>
+                    {canCreateProject ? (
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => setIsCreateOpen(true)}
+                        leftIcon={(
+                          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+                          </svg>
+                        )}
+                      >
+                        {lt('New project')}
+                      </Button>
+                    ) : null}
                   </>
                 ) : undefined}
               </div>
@@ -634,12 +639,12 @@ export function ProjectsListPage() {
                 ? lt('Try a different search term.')
                 : selectedMember
                   ? lt('Choose another member or clear the filter to see all projects.')
-                  : canManageProjects
+                  : canCreateProject
                     ? lt('Create your first project to get started organizing your work.')
                     : lt('No projects are visible for this account yet.')
             }
-            actionLabel={!search && !selectedMember && canManageProjects ? lt('Create project') : undefined}
-            onAction={!search && !selectedMember && canManageProjects ? () => setIsCreateOpen(true) : undefined}
+            actionLabel={!search && !selectedMember && canCreateProject ? lt('Create project') : undefined}
+            onAction={!search && !selectedMember && canCreateProject ? () => setIsCreateOpen(true) : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -649,7 +654,8 @@ export function ProjectsListPage() {
                 project={project}
                 onEdit={(nextProject) => void handleOpenEdit(nextProject)}
                 onDelete={handleDelete}
-                canManage={canManageProjects}
+                canEdit={canEditProject}
+                canDelete={canDeleteProject}
               />
             ))}
           </div>
@@ -658,24 +664,28 @@ export function ProjectsListPage() {
 
       {canManageProjects ? (
         <>
-          <ProjectFormModal
-            open={isCreateOpen}
-            onClose={() => setIsCreateOpen(false)}
-            onSubmit={handleCreate}
-            title={lt('Create project')}
-            submitLabel={lt('Create')}
-            isSubmitting={isSubmitting}
-          />
+          {canCreateProject ? (
+            <ProjectFormModal
+              open={isCreateOpen}
+              onClose={() => setIsCreateOpen(false)}
+              onSubmit={handleCreate}
+              title={lt('Create project')}
+              submitLabel={lt('Create')}
+              isSubmitting={isSubmitting}
+            />
+          ) : null}
 
-          <ProjectFormModal
-            open={editProject !== null}
-            onClose={() => setEditProject(null)}
-            onSubmit={handleUpdate}
-            initial={editProject}
-            title={lt('Edit project')}
-            submitLabel={lt('Save changes')}
-            isSubmitting={isSubmitting}
-          />
+          {canEditProject ? (
+            <ProjectFormModal
+              open={editProject !== null}
+              onClose={() => setEditProject(null)}
+              onSubmit={handleUpdate}
+              initial={editProject}
+              title={lt('Edit project')}
+              submitLabel={lt('Save changes')}
+              isSubmitting={isSubmitting}
+            />
+          ) : null}
 
           <TeamManagementModal
             open={isTeamsOpen}

@@ -35,6 +35,13 @@ import { type MessageComposerValues } from '../components/MessageComposerModal'
 import { MetricCard } from '../components/MetricCard'
 import { UserFormModal, type UserFormValues } from '../components/UserFormModal'
 import { permissionCatalog } from '../lib/permissionCatalog'
+import { ShieldCheck, UsersRound } from 'lucide-react'
+import { useAuth } from '../../auth/hooks/useAuth'
+import { rbacService, type UserAccess } from '../../../shared/api/services/rbac.service'
+import { getApiErrorMessage } from '../../../shared/lib/api-error'
+import { Tabs } from '../../../shared/ui/tabs'
+import { RolesPanel } from '../components/rbac/RolesPanel'
+import { UserAccessDialog } from '../components/rbac/UserAccessDialog'
 
 const initialUserForm: UserFormValues = {
   email: '',
@@ -318,6 +325,19 @@ export function CeoUsersPage() {
 
     return uzFallback
   }
+
+  const { access, can, refreshAccess, user: currentUser } = useAuth()
+  // RBAC: roles, catalog and every user's access (null when the backend has no RBAC yet).
+  const [pageTab, setPageTab] = useState<'users' | 'roles'>('users')
+  const [accessTarget, setAccessTarget] = useState<CeoUserRecord | null>(null)
+  const rbacCatalogQuery = useAsyncData(() => rbacService.catalog(), [])
+  const rbacRolesQuery = useAsyncData(() => rbacService.roles(), [])
+  const rbacUsersQuery = useAsyncData(() => rbacService.users(), [])
+  const rbacEnabled = Boolean(access) && !rbacUsersQuery.isError
+  const accessByUserId = useMemo(() => new Map((rbacUsersQuery.data ?? []).map((entry) => [entry.user_id, entry])), [rbacUsersQuery.data])
+  const canCreateUser = can('users', 'create')
+  const canEditUser = can('users', 'edit')
+  const canDeleteUser = can('users', 'delete')
 
   const dashboardQuery = useAsyncData(() => ceoService.getDashboard(), [])
   const permissionsOverviewQuery = useAsyncData(() => ceoService.permissionsOverview(), [])
@@ -880,8 +900,62 @@ export function CeoUsersPage() {
     )
   }
 
+  const rolesPanel = (
+    <RolesPanel
+      catalog={rbacCatalogQuery.data ?? null}
+      roles={rbacRolesQuery.data ?? []}
+      loading={rbacRolesQuery.isLoading || rbacCatalogQuery.isLoading}
+      error={rbacRolesQuery.isError ? getApiErrorMessage(rbacRolesQuery.error) : null}
+      onChanged={() => { void rbacRolesQuery.refetch(); void rbacUsersQuery.refetch(); void refreshAccess() }}
+      canCreate={canCreateUser}
+      canEdit={canEditUser}
+      canDelete={canDeleteUser}
+    />
+  )
+
+  const pageTabs = rbacEnabled ? (
+    <Tabs
+      variant="underline"
+      ariaLabel={tr('Users and roles', 'Foydalanuvchilar va rollar', 'Пользователи и роли')}
+      value={pageTab}
+      onChange={setPageTab}
+      items={[
+        { value: 'users', label: <span className="inline-flex items-center gap-1.5"><UsersRound size={15} />{tr('Users', 'Foydalanuvchilar', 'Пользователи')}</span> },
+        { value: 'roles', label: <span className="inline-flex items-center gap-1.5"><ShieldCheck size={15} />{tr('Roles & permissions', 'Rollar va ruxsatlar', 'Роли и права')}</span>, badge: rbacRolesQuery.data ? <span className="rounded-full bg-[var(--input-surface)] px-1.5 text-[11px] font-semibold text-[var(--muted-strong)]">{rbacRolesQuery.data.length}</span> : null },
+      ]}
+    />
+  ) : null
+
+  const accessDialog = accessTarget && rbacCatalogQuery.data ? (
+    <UserAccessDialog
+      userId={accessTarget.id}
+      userName={`${accessTarget.name} ${accessTarget.surname}`.trim() || accessTarget.email}
+      catalog={rbacCatalogQuery.data}
+      roles={rbacRolesQuery.data ?? []}
+      onClose={() => setAccessTarget(null)}
+      onSaved={() => {
+        showToast({ title: tr('Access saved', 'Kirish huquqi saqlandi', 'Доступ сохранён'), tone: 'success' })
+        setAccessTarget(null)
+        void rbacUsersQuery.refetch()
+        // Editing your own access changes your sidebar and buttons right away.
+        if (accessTarget.id === currentUser?.id) void refreshAccess()
+      }}
+    />
+  ) : null
+
+  if (pageTab === 'roles' && rbacEnabled) {
+    return (
+      <section className="space-y-[18px]">
+        {pageTabs}
+        {rolesPanel}
+      </section>
+    )
+  }
+
   return (
     <section className="space-y-[18px]">
+      {pageTabs}
+      {accessDialog}
       <div className="grid gap-[18px] md:grid-cols-4 stagger-children">
         <MetricCard label={lt('Users')} value={formatCompactNumber(statistics?.user_count ?? users.length)} accent="blue" sparkBars={[4,5,6,7,7,8]} />
         <MetricCard label={tr('Active', 'Faol', 'Активные')} value={formatCompactNumber(statistics?.active_user_count ?? 0)} accent="success" sparkBars={[5,6,6,7,8,8]} />
@@ -902,9 +976,11 @@ export function CeoUsersPage() {
             <Button variant="secondary" size="sm" onClick={() => void refreshAll()}>
               {lt('Refresh')}
             </Button>
-            <Button size="sm" onClick={openCreateUserModal}>
-              {tr('Create user', 'Foydalanuvchi yaratish', 'Создать пользователя')}
-            </Button>
+            {canCreateUser ? (
+              <Button size="sm" onClick={openCreateUserModal}>
+                {tr('Create user', 'Foydalanuvchi yaratish', 'Создать пользователя')}
+              </Button>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent>
@@ -959,8 +1035,25 @@ export function CeoUsersPage() {
               },
               {
                 key: 'permissions',
-                header: lt('Permissions'),
+                header: rbacEnabled ? tr('Access', 'Kirish huquqi', 'Доступ') : lt('Permissions'),
                 render: (row) => {
+                  if (rbacEnabled) {
+                    const entry: UserAccess | undefined = accessByUserId.get(row.id)
+                    if (!entry) return <span className="text-xs text-[var(--muted)]">—</span>
+                    const directCount = Object.values(entry.direct_permissions).filter((actions) => actions.length > 0).length
+                    return (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {entry.is_owner ? (
+                          <Badge variant="warning" size="sm">{tr('Owner', 'Egasi', 'Владелец')}</Badge>
+                        ) : entry.role_display_name || entry.role_name ? (
+                          <Badge variant="blue" size="sm">{entry.role_display_name || entry.role_name}</Badge>
+                        ) : (
+                          <Badge variant="ghost" size="sm">{tr('No role', 'Rolsiz', 'Без роли')}</Badge>
+                        )}
+                        {directCount > 0 ? <Badge variant="violet" size="sm">+{directCount}</Badge> : null}
+                      </div>
+                    )
+                  }
                   const perms = permissionsByUserId.get(row.id)
                   if (!perms) return <span className="text-xs text-[var(--muted)]">—</span>
                   return (
@@ -1042,20 +1135,24 @@ export function CeoUsersPage() {
                 header: lt('Actions'),
                 render: (row) => (
                   <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
-                    <IconButton label={lt('Edit')} size="sm" onClick={() => openEditUserModal(row)}>
+                    {canEditUser ? <IconButton label={lt('Edit')} size="sm" onClick={() => openEditUserModal(row)}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </IconButton>
-                    <IconButton label={lt('Delete')} size="sm" tone="danger" onClick={() => void handleDeleteUser(row)}>
+                    </IconButton> : null}
+                    {canDeleteUser ? <IconButton label={lt('Delete')} size="sm" tone="danger" onClick={() => void handleDeleteUser(row)}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </IconButton>
+                    </IconButton> : null}
                     <ActionsMenu
                       label={`${lt('Open actions for')} ${row.email}`}
                       items={[
                         { label: lt('Profile'), onSelect: () => openProfileDialog(row) },
                         { label: lt('Salary detail'), onSelect: () => openSalaryDetail(row) },
                         { label: 'View Activity Logs', onSelect: () => navigate(`/audit/logs?actor_user_id=${row.id}`) },
-                        { label: lt('Permissions'), onSelect: () => openPermissionModal(row) },
-                        { label: row.is_active ? lt('Deactivate') : lt('Activate'), onSelect: () => void handleToggleUser(row) },
+                        ...(canEditUser ? [
+                          rbacEnabled
+                            ? { label: tr('Access & role', 'Kirish huquqi va rol', 'Доступ и роль'), onSelect: () => setAccessTarget(row) }
+                            : { label: lt('Permissions'), onSelect: () => openPermissionModal(row) },
+                          { label: row.is_active ? lt('Deactivate') : lt('Activate'), onSelect: () => void handleToggleUser(row) },
+                        ] : []),
                       ]}
                     />
                   </div>

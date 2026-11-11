@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
 import { Badge } from '../../../shared/ui/badge'
-import { ActionsMenu } from '../../../shared/ui/actions-menu'
+import { ActionsMenu, type ActionsMenuItem } from '../../../shared/ui/actions-menu'
 import { tonePill, type Tone } from '../../../shared/ui/tone'
 import type { CardRecord } from '../../../shared/api/services/projects.service'
 import { Avatar, AvatarGroup } from './Avatar'
@@ -16,7 +16,10 @@ type KanbanCardProps = {
   onDelete: (cardId: number) => void
   onClick: (card: CardRecord) => void
   isOverlay?: boolean
-  readOnly?: boolean
+  /** RBAC projects.edit — drag & drop and the "Edit card" menu item. */
+  canEdit?: boolean
+  /** RBAC projects.delete — the "Delete card" menu item. */
+  canDelete?: boolean
 }
 
 type MetaChipTone = Extract<Tone, 'neutral' | 'warning' | 'danger'>
@@ -46,8 +49,12 @@ function MetaChip({
   )
 }
 
-export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnly = false }: KanbanCardProps) {
+export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, canEdit = false, canDelete = false }: KanbanCardProps) {
   const lt = translateCurrentLiteral
+  const cardActions: ActionsMenuItem[] = [
+    ...(canEdit ? [{ label: lt('Edit card'), onSelect: () => onEdit(card) }] : []),
+    ...(canDelete ? [{ label: lt('Delete card'), onSelect: () => onDelete(card.id), tone: 'danger' as const }] : []),
+  ]
   const {
     attributes,
     listeners,
@@ -58,7 +65,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
   } = useSortable({
     id: `card-${card.id}`,
     data: { type: 'card', card },
-    disabled: readOnly,
+    disabled: !canEdit,
   })
 
   const style = {
@@ -112,11 +119,11 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
       data-slot="card"
       ref={setNodeRef}
       style={style}
-      {...(!readOnly ? attributes : {})}
-      {...(!readOnly ? listeners : {})}
+      {...(canEdit ? attributes : {})}
+      {...(canEdit ? listeners : {})}
       onClick={() => onClick(card)}
       onKeyDown={handleKeyDown}
-      tabIndex={readOnly ? 0 : attributes.tabIndex}
+      tabIndex={canEdit ? attributes.tabIndex : 0}
       className={cn(
         'group relative flex cursor-pointer select-none flex-col gap-2.5 overflow-hidden rounded-[10px] border border-[var(--border)] p-3 pl-3.5',
         'bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(14,21,37,0.04)]',
@@ -140,7 +147,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
           )}
         </div>
 
-        {!readOnly ? (
+        {cardActions.length > 0 ? (
           <div
             className="relative z-20 shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
             onClick={stopCardAction}
@@ -150,10 +157,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, readOnl
             <ActionsMenu
               label={lt('Card actions')}
               className="h-8 w-8 rounded-[9px]"
-              items={[
-                { label: lt('Edit card'), onSelect: () => onEdit(card) },
-                { label: lt('Delete card'), onSelect: () => onDelete(card.id), tone: 'danger' },
-              ]}
+              items={cardActions}
             />
           </div>
         ) : null}

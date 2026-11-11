@@ -14,8 +14,9 @@ import { DataGrid, type GridColumn } from '../../../shared/ui/data-grid'
 import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { ErrorStateBlock } from '../../../shared/ui/state-block'
 import { CopyButton, StatusPill } from '../components/CustomerFilters'
-import { MetricTile } from '../components/MetricTile'
+import { MetricTile } from '../../../shared/ui/metric-tile'
 import { avatarTone, initialsFor } from '../lib/customerAvatar'
+import { useAuth } from '../../auth/hooks/useAuth'
 import { useCrmScope } from '../lib/crmScope'
 import { platformVisual } from '../lib/platformIcon'
 import { statusIconFor } from '../lib/statusIcon'
@@ -29,6 +30,11 @@ export function CrmArchivedPage() {
   const { showToast } = useToast()
   const { confirm } = useConfirm()
   const { service: crmService, routeBasePath, storageKey, kind } = useCrmScope()
+  const { can } = useAuth()
+  // RBAC customers: restore = edit, delete for good = delete, CSV = export (outbound keeps its own rules).
+  const canRestore = kind === 'outbound' || can('customers', 'edit')
+  const canHardDelete = kind === 'outbound' || can('customers', 'delete')
+  const canExport = kind === 'outbound' || can('customers', 'export')
   const navigate = useNavigate()
   const archivedQuery = useAsyncData(() => crmService.archivedCustomers(), [])
   const statusesQuery = useAsyncData(() => crmService.dynamicStatuses(), [])
@@ -244,7 +250,7 @@ export function CrmArchivedPage() {
         const busy = busyIds.has(row.id)
         return (
           <span className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
-            <button
+            {canRestore ? <button
               type="button"
               onClick={() => void restore(row)}
               disabled={busy}
@@ -252,8 +258,8 @@ export function CrmArchivedPage() {
             >
               {busy ? <Loader2 size={13} className="animate-spin" /> : <ArchiveRestore size={13} />}
               {t('customers.archive.restore', 'Restore')}
-            </button>
-            <button
+            </button> : null}
+            {canHardDelete ? <button
               type="button"
               onClick={() => void hardDelete(row)}
               disabled={busy}
@@ -262,7 +268,7 @@ export function CrmArchivedPage() {
               className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] transition-colors hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)] disabled:opacity-50"
             >
               <Trash2 size={14} />
-            </button>
+            </button> : null}
           </span>
         )
       },
@@ -355,11 +361,11 @@ export function CrmArchivedPage() {
         <DataGrid
           id={`${storageKey}-archive`}
           rowNumbers
-          selectable
-          exportName={kind === 'outbound' ? 'outbound-archive' : 'customers-archive'}
+          selectable={canRestore || canHardDelete}
+          exportName={canExport ? (kind === 'outbound' ? 'outbound-archive' : 'customers-archive') : undefined}
           selectionActions={(keys, clear) => (
             <>
-              <button
+              {canRestore ? <button
                 type="button"
                 onClick={() => void restoreMany(keys, clear)}
                 disabled={Boolean(bulkBusy)}
@@ -367,8 +373,8 @@ export function CrmArchivedPage() {
               >
                 {bulkBusy === 'restore' ? <Loader2 size={14} className="animate-spin" /> : <ArchiveRestore size={14} />}
                 {t('customers.archive.restore', 'Restore')}
-              </button>
-              <button
+              </button> : null}
+              {canHardDelete ? <button
                 type="button"
                 onClick={() => void deleteMany(keys, clear)}
                 disabled={Boolean(bulkBusy)}
@@ -376,7 +382,7 @@ export function CrmArchivedPage() {
               >
                 {bulkBusy === 'delete' ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 {t('customers.archive.delete_confirm', 'Delete for good')}
-              </button>
+              </button> : null}
             </>
           )}
           columns={columns}

@@ -367,12 +367,16 @@ function FeaturesTab({
   month,
   users,
   isCeo,
+  canCreate,
+  canEdit,
   projects,
 }: {
   year: number
   month: number
   users: Array<{ id: number; name: string; surname: string }>
   isCeo: boolean
+  canCreate: boolean
+  canEdit: boolean
   projects: Array<{ id: number; project_name: string }>
 }) {
   const { showToast } = useToast()
@@ -467,7 +471,7 @@ function FeaturesTab({
         <div className="w-48">
           <SelectField value={ownerFilter} onValueChange={setOwnerFilter} options={userOptions} className={FILTER_SELECT} />
         </div>
-        {isCeo && (
+        {isCeo && canCreate && (
           <Button size="sm" onClick={() => setShowCreate(true)}>+ New Feature</Button>
         )}
         <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
@@ -525,7 +529,7 @@ function FeaturesTab({
                 key: 'actions',
                 header: 'Actions',
                 render: (f: Feature) => (
-                  isCeo && f.status !== 'accepted' ? (
+                  isCeo && canEdit && f.status !== 'accepted' ? (
                     <Button
                       size="sm"
                       variant="secondary"
@@ -636,12 +640,14 @@ function DeductionsTab({
   month,
   users,
   isCeo,
+  canEdit,
   selfId,
 }: {
   year: number
   month: number
   users: Array<{ id: number; name: string; surname: string }>
   isCeo: boolean
+  canEdit: boolean
   selfId?: number
 }) {
   const { showToast } = useToast()
@@ -711,7 +717,7 @@ function DeductionsTab({
               { key: 'amount', header: 'Amount', render: (d: Deduction) => <span className="font-semibold tabular-nums text-[var(--danger-text)]">-{formatCurrency(d.amount)}</span> },
               { key: 'reason', header: 'Reason', render: (d: Deduction) => <span className={cn('block max-w-48 truncate', DATA_CELL)}>{d.reason ?? '—'}</span> },
               { key: 'status', header: 'Status', render: (d: Deduction) => <Badge variant={statusVariant(d.status)}>{d.status}</Badge> },
-              ...(isCeo
+              ...(isCeo && canEdit
                 ? [{
                     key: 'actions',
                     header: 'Actions',
@@ -738,11 +744,13 @@ function SnapshotsTab({
   month,
   users,
   isCeo,
+  canCreate,
 }: {
   year: number
   month: number
   users: Array<{ id: number; name: string; surname: string }>
   isCeo: boolean
+  canCreate: boolean
 }) {
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
@@ -777,12 +785,16 @@ function SnapshotsTab({
     <div className="space-y-[18px]">
       {isCeo && (
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="w-48">
-            <SelectField value={freezeUserId} onValueChange={setFreezeUserId} options={userOptions} className={FILTER_SELECT} />
-          </div>
-          <Button size="sm" onClick={() => void handleFreeze()}>
-            Freeze Snapshot
-          </Button>
+          {canCreate && (
+            <>
+              <div className="w-48">
+                <SelectField value={freezeUserId} onValueChange={setFreezeUserId} options={userOptions} className={FILTER_SELECT} />
+              </div>
+              <Button size="sm" onClick={() => void handleFreeze()}>
+                Freeze Snapshot
+              </Button>
+            </>
+          )}
           <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
           <span className="text-[12.5px] text-[var(--muted)]">Auto-freeze: last day of month at 23:55</span>
         </div>
@@ -826,12 +838,14 @@ function QualityEventsTab({
   month,
   users,
   isCeo,
+  canCreate,
   projects,
 }: {
   year: number
   month: number
   users: Array<{ id: number; name: string; surname: string }>
   isCeo: boolean
+  canCreate: boolean
   projects: Array<{ id: number; project_name: string }>
 }) {
   const { showToast } = useToast()
@@ -908,7 +922,7 @@ function QualityEventsTab({
         <div className="w-48">
           <SelectField value={employeeFilter} onValueChange={setEmployeeFilter} options={userOptions} className={FILTER_SELECT} />
         </div>
-        {isCeo && <Button size="sm" onClick={() => setShowCreate(true)}>+ New Event</Button>}
+        {isCeo && canCreate && <Button size="sm" onClick={() => setShowCreate(true)}>+ New Event</Button>}
         <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
       </div>
 
@@ -1011,10 +1025,14 @@ function QualityEventsTab({
 function BlockedPeriodsTab({
   users,
   isCeo,
+  canCreate,
+  canEdit,
   projects,
 }: {
   users: Array<{ id: number; name: string; surname: string }>
   isCeo: boolean
+  canCreate: boolean
+  canEdit: boolean
   projects: Array<{ id: number; project_name: string }>
 }) {
   const { showToast } = useToast()
@@ -1095,7 +1113,7 @@ function BlockedPeriodsTab({
         <div className="w-48">
           <SelectField value={employeeFilter} onValueChange={setEmployeeFilter} options={userOptions} className={FILTER_SELECT} />
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>+ New Period</Button>
+        {canCreate && <Button size="sm" onClick={() => setShowCreate(true)}>+ New Period</Button>}
         <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
       </div>
 
@@ -1124,7 +1142,7 @@ function BlockedPeriodsTab({
               { key: 'dependency', header: 'Dependency', render: (p: BlockedPeriod) => <span className={DATA_CELL}>{p.dependency ?? '—'}</span> },
               { key: 'is_external', header: 'External', render: (p: BlockedPeriod) => (p.is_external ? <Badge variant="blue">External</Badge> : '—') },
               { key: 'status', header: 'Status', render: (p: BlockedPeriod) => <Badge variant={statusVariant(p.approval_status)}>{p.approval_status}</Badge> },
-              ...(isCeo
+              ...(isCeo && canEdit
                 ? [{
                     key: 'actions',
                     header: 'Actions',
@@ -1207,9 +1225,11 @@ function BlockedPeriodsTab({
 function WorkSchedulesTab({
   users,
   isCeo,
+  canCreate,
 }: {
   users: Array<{ id: number; name: string; surname: string }>
   isCeo: boolean
+  canCreate: boolean
 }) {
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
@@ -1269,7 +1289,7 @@ function WorkSchedulesTab({
         <div className="w-48">
           <SelectField value={userFilter} onValueChange={setUserFilter} options={userOptions} className={FILTER_SELECT} />
         </div>
-        {isCeo && <Button size="sm" onClick={() => setShowCreate(true)}>+ New Schedule</Button>}
+        {isCeo && canCreate && <Button size="sm" onClick={() => setShowCreate(true)}>+ New Schedule</Button>}
         <Button size="sm" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)}>Refresh</Button>
       </div>
 
@@ -1378,7 +1398,7 @@ const DELIVERY_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ]
 
-function ProjectDeliveryTab({ isCeo, projects }: { isCeo: boolean; projects: Array<{ id: number; project_name: string }> }) {
+function ProjectDeliveryTab({ isCeo, canEdit, projects }: { isCeo: boolean; canEdit: boolean; projects: Array<{ id: number; project_name: string }> }) {
   const { showToast } = useToast()
   const [projectId, setProjectId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -1460,7 +1480,7 @@ function ProjectDeliveryTab({ isCeo, projects }: { isCeo: boolean; projects: Arr
             />
             <p className="text-xs text-[var(--muted)]">Approved external blocked business days removed from delay calculation.</p>
           </div>
-          {isCeo && (
+          {isCeo && canEdit && (
             <Button type="submit" disabled={saving || !projectId}>
               {saving ? 'Saving...' : 'Update Delivery'}
             </Button>
@@ -1846,8 +1866,11 @@ function DeveloperKpiOverview({
 }
 
 export function DeveloperKpiPage() {
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const isCeo = canReadManagedProjects(user)
+  // RBAC developer_kpi.* only hides actions; `isCeo` still decides the data scope (team vs. self).
+  const canCreate = can('developer_kpi', 'create')
+  const canEdit = can('developer_kpi', 'edit')
 
   const [activeTab, setActiveTab] = useState<Tab>('salary_estimates')
   const [year, setYear] = useState(DEFAULT_YEAR)
@@ -1961,25 +1984,25 @@ export function DeveloperKpiPage() {
           <SalaryEstimatesTab year={year} month={month} users={users} isCeo={isCeo} selfId={user?.id} />
         )}
         {activeTab === 'features' && (
-          <FeaturesTab year={year} month={month} users={users} isCeo={isCeo} projects={projects} />
+          <FeaturesTab year={year} month={month} users={users} isCeo={isCeo} canCreate={canCreate} canEdit={canEdit} projects={projects} />
         )}
         {activeTab === 'project_delivery' && (
-          <ProjectDeliveryTab isCeo={isCeo} projects={projects} />
+          <ProjectDeliveryTab isCeo={isCeo} canEdit={canEdit} projects={projects} />
         )}
         {activeTab === 'deductions' && (
-          <DeductionsTab year={year} month={month} users={users} isCeo={isCeo} selfId={user?.id} />
+          <DeductionsTab year={year} month={month} users={users} isCeo={isCeo} canEdit={canEdit} selfId={user?.id} />
         )}
         {activeTab === 'snapshots' && (
-          <SnapshotsTab year={year} month={month} users={users} isCeo={isCeo} />
+          <SnapshotsTab year={year} month={month} users={users} isCeo={isCeo} canCreate={canCreate} />
         )}
         {activeTab === 'quality_events' && (
-          <QualityEventsTab year={year} month={month} users={users} isCeo={isCeo} projects={projects} />
+          <QualityEventsTab year={year} month={month} users={users} isCeo={isCeo} canCreate={canCreate} projects={projects} />
         )}
         {activeTab === 'blocked_periods' && (
-          <BlockedPeriodsTab users={users} isCeo={isCeo} projects={projects} />
+          <BlockedPeriodsTab users={users} isCeo={isCeo} canCreate={canCreate} canEdit={canEdit} projects={projects} />
         )}
         {activeTab === 'work_schedules' && (
-          <WorkSchedulesTab users={users} isCeo={isCeo} />
+          <WorkSchedulesTab users={users} isCeo={isCeo} canCreate={canCreate} />
         )}
       </div>
     </section>

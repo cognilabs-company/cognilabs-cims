@@ -1,9 +1,9 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, Delete, ExternalLink, Phone, Search } from 'lucide-react'
+import { ChevronLeft, Delete, ExternalLink, Phone, Search, Smartphone } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
-import { leadPath, normalizePhone, type TelephonyLead } from '../../../shared/api/services/telephony.service'
+import { leadPath, normalizePhone, type OutboundMode, type TelephonyLead } from '../../../shared/api/services/telephony.service'
 import { MacAvatar } from './MacPrimitives'
 import { connectionLabel, formatPhone, sourceLabel } from './telephonyFormat'
 
@@ -21,19 +21,23 @@ type DialerPaneProps = {
   canCall: boolean
   connection: string
   extension?: string | null
+  /** Mobile mode: calls go out through the user's own phone. */
+  outboundMode?: OutboundMode
+  mobileNumber?: string | null
   /** Mobile sheet: shows a back button. */
   onBack?: () => void
 }
 
 /** Keypad in the right pane of the Calls page. Sizes follow the pane (container units), so it never scrolls. */
 export function DialerPane({
-  phone, onPhoneChange, leads, selectedLead, searching, leadError, onSelectLead, onCall, canCall, connection, extension, onBack,
+  phone, onPhoneChange, leads, selectedLead, searching, leadError, onSelectLead, onCall, canCall, connection, extension, outboundMode = 'webrtc', mobileNumber, onBack,
 }: DialerPaneProps) {
   const { t } = useLocale()
   const inputRef = useRef<HTMLInputElement>(null)
   const digits = normalizePhone(phone)
   const selectedPath = selectedLead ? leadPath(selectedLead.crm_source, selectedLead.customer_id) : null
-  const ready = connection === 'Ready'
+  const mobile = outboundMode === 'mobile'
+  const ready = mobile || connection === 'Ready'
 
   // Focus the number field so the physical keyboard works right away (not on touch screens).
   useEffect(() => {
@@ -55,10 +59,17 @@ export function DialerPane({
         ) : (
           <p className="px-1.5 text-[14px] font-semibold text-[var(--foreground)]">{t('telephony.dial', 'Dial a number')}</p>
         )}
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[var(--input-surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--muted-strong)]">
-          <span className={cn('h-1.5 w-1.5 rounded-full', ready ? 'bg-[var(--success)]' : /connect/i.test(connection) ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]')} />
-          {connectionLabel(connection)}{extension ? ` · ${t('telephony.ext', 'Ext {{ext}}', { ext: extension })}` : ''}
-        </span>
+        {mobile ? (
+          <span className="ml-auto inline-flex min-w-0 items-center gap-1.5 rounded-full bg-[var(--success-dim)] px-2.5 py-1 text-[12px] font-medium text-[var(--success-text)]" title={t('telephony.mobile.hint', 'Your phone rings first, then the customer is connected')}>
+            <Smartphone size={13} className="shrink-0" />
+            <span className="truncate">{mobileNumber ? formatPhone(mobileNumber) : t('telephony.mobile.label', 'Mobile phone')}</span>
+          </span>
+        ) : (
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[var(--input-surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--muted-strong)]">
+            <span className={cn('h-1.5 w-1.5 rounded-full', ready ? 'bg-[var(--success)]' : /connect/i.test(connection) ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]')} />
+            {connectionLabel(connection)}{extension ? ` · ${t('telephony.ext', 'Ext {{ext}}', { ext: extension })}` : ''}
+          </span>
+        )}
       </div>
 
       <div
@@ -167,6 +178,9 @@ export function DialerPane({
         >
           <Phone size={18} fill="currentColor" strokeWidth={0} /> {t('telephony.call', 'Call')}
         </button>
+        {mobile ? (
+          <p className="mt-2 text-center text-[11.5px] leading-snug text-[var(--muted)]">{t('telephony.mobile.hint', 'Your phone rings first, then the customer is connected')}</p>
+        ) : null}
       </div>
     </div>
   )

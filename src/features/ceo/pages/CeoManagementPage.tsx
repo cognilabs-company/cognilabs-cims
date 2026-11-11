@@ -39,6 +39,7 @@ import { Tabs } from '../../../shared/ui/tabs'
 import { Textarea } from '../../../shared/ui/textarea'
 import type { Tone } from '../../../shared/ui/tone'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
+import { useAuth } from '../../auth/hooks/useAuth'
 
 type ManagementTab = 'pages' | 'statuses' | 'roles' | 'images'
 type ImageReferenceFilter = 'all' | 'referenced' | 'unreferenced'
@@ -314,6 +315,10 @@ function getImageCategoryLabel(category?: ManagementImageCategory | null) {
 export function CeoManagementPage() {
   const { showToast } = useToast()
   const { confirm } = useConfirm()
+  const { can } = useAuth()
+  const canCreate = can('management_api', 'create')
+  const canEdit = can('management_api', 'edit')
+  const canDelete = can('management_api', 'delete')
   const lt = translateCurrentLiteral
   const locale = getIntlLocale()
   const tr = (key: string, uzFallback: string, ruFallback: string) => {
@@ -987,13 +992,13 @@ export function CeoManagementPage() {
             <Button variant="secondary" onClick={() => void refreshAll()}>
               {lt('Refresh')}
             </Button>
-            {activeTab === 'pages' ? (
+            {activeTab === 'pages' && canCreate ? (
               <Button onClick={openCreatePageDialog}>{lt('Create page')}</Button>
             ) : null}
-            {activeTab === 'statuses' ? (
+            {activeTab === 'statuses' && canCreate ? (
               <Button onClick={openCreateStatusDialog}>{lt('Create status')}</Button>
             ) : null}
-            {activeTab === 'roles' ? (
+            {activeTab === 'roles' && canCreate ? (
               <Button onClick={openCreateRoleDialog}>{lt('Create role')}</Button>
             ) : null}
           </>
@@ -1073,12 +1078,16 @@ export function CeoManagementPage() {
                   header: lt('Actions'),
                   render: (row) => (
                     <div className="flex items-center gap-1">
-                      <IconButton size="sm" label={lt('Edit')} onClick={() => openEditPageDialog(row)}>
-                        <EditGlyph />
-                      </IconButton>
-                      <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeletePage(row)}>
-                        <TrashGlyph />
-                      </IconButton>
+                      {canEdit ? (
+                        <IconButton size="sm" label={lt('Edit')} onClick={() => openEditPageDialog(row)}>
+                          <EditGlyph />
+                        </IconButton>
+                      ) : null}
+                      {canDelete ? (
+                        <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeletePage(row)}>
+                          <TrashGlyph />
+                        </IconButton>
+                      ) : null}
                     </div>
                   ),
                 },
@@ -1151,12 +1160,16 @@ export function CeoManagementPage() {
                   header: lt('Actions'),
                   render: (row) => (
                     <div className="flex items-center gap-1">
-                      <IconButton size="sm" label={lt('Edit')} onClick={() => openEditStatusDialog(row)}>
-                        <EditGlyph />
-                      </IconButton>
-                      <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeleteStatus(row)}>
-                        <TrashGlyph />
-                      </IconButton>
+                      {canEdit ? (
+                        <IconButton size="sm" label={lt('Edit')} onClick={() => openEditStatusDialog(row)}>
+                          <EditGlyph />
+                        </IconButton>
+                      ) : null}
+                      {canDelete ? (
+                        <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeleteStatus(row)}>
+                          <TrashGlyph />
+                        </IconButton>
+                      ) : null}
                     </div>
                   ),
                 },
@@ -1223,12 +1236,16 @@ export function CeoManagementPage() {
                   header: lt('Actions'),
                   render: (row) => (
                     <div className="flex items-center gap-1">
-                      <IconButton size="sm" label={lt('Edit')} onClick={() => openEditRoleDialog(row)}>
-                        <EditGlyph />
-                      </IconButton>
-                      <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeleteRole(row)}>
-                        <TrashGlyph />
-                      </IconButton>
+                      {canEdit ? (
+                        <IconButton size="sm" label={lt('Edit')} onClick={() => openEditRoleDialog(row)}>
+                          <EditGlyph />
+                        </IconButton>
+                      ) : null}
+                      {canDelete ? (
+                        <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeleteRole(row)}>
+                          <TrashGlyph />
+                        </IconButton>
+                      ) : null}
                     </div>
                   ),
                 },
@@ -1300,14 +1317,16 @@ export function CeoManagementPage() {
                 >
                   {lt('Clear selection')}
                 </Button>
-                <Button
-                  variant="danger"
-                  onClick={() => void handleDeleteSelectedImages()}
-                  disabled={selectedImagePaths.length === 0}
-                  loading={isBulkDeleteSubmitting}
-                >
-                  {lt('Delete selected')}
-                </Button>
+                {canDelete ? (
+                  <Button
+                    variant="danger"
+                    onClick={() => void handleDeleteSelectedImages()}
+                    disabled={selectedImagePaths.length === 0}
+                    loading={isBulkDeleteSubmitting}
+                  >
+                    {lt('Delete selected')}
+                  </Button>
+                ) : null}
               </div>
             </div>
 
@@ -1484,11 +1503,11 @@ export function CeoManagementPage() {
                               label: selectedImagePathSet.has(row.path) ? lt('Unselect') : lt('Select'),
                               onSelect: () => toggleImageSelection(row.path),
                             },
-                            {
+                            ...(canDelete ? [{
                               label: lt('Delete'),
                               onSelect: () => void handleDeleteImageByPath(row.path),
-                              tone: 'danger',
-                            },
+                              tone: 'danger' as const,
+                            }] : []),
                           ]}
                         />
                       ),
@@ -1518,7 +1537,7 @@ export function CeoManagementPage() {
                 {selectedImagePathSet.has(activeImageDetail.path) ? lt('Unselect') : lt('Select')}
               </Button>
             ) : null}
-            {activeImageDetail ? (
+            {activeImageDetail && canDelete ? (
               <Button
                 variant="danger"
                 onClick={() => void handleDeleteImageByPath(activeImageDetail.path)}

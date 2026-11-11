@@ -3,7 +3,7 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
-import { ActionsMenu } from '../../../shared/ui/actions-menu'
+import { ActionsMenu, type ActionsMenuItem } from '../../../shared/ui/actions-menu'
 import type { ColumnRecord, CardRecord } from '../../../shared/api/services/projects.service'
 import { KanbanCard } from './KanbanCard'
 
@@ -16,7 +16,12 @@ type KanbanColumnProps = {
   onDeleteCard: (cardId: number) => void
   onClickCard: (card: CardRecord) => void
   isOverlay?: boolean
-  readOnly?: boolean
+  /** RBAC projects.create — the "add task" buttons. */
+  canCreate?: boolean
+  /** RBAC projects.edit — column/card drag & drop and "Edit" menu items. */
+  canEdit?: boolean
+  /** RBAC projects.delete — "Delete" menu items. */
+  canDelete?: boolean
 }
 
 export function KanbanColumn({
@@ -28,7 +33,9 @@ export function KanbanColumn({
   onDeleteCard,
   onClickCard,
   isOverlay,
-  readOnly = false,
+  canCreate = false,
+  canEdit = false,
+  canDelete = false,
 }: KanbanColumnProps) {
   const lt = translateCurrentLiteral
   const locale = getIntlLocale()
@@ -39,6 +46,11 @@ export function KanbanColumn({
     if (locale.startsWith('en')) return key
     return uzFallback
   }
+
+  const columnActions: ActionsMenuItem[] = [
+    ...(canEdit ? [{ label: lt('Edit column'), onSelect: () => onEditColumn(column) }] : []),
+    ...(canDelete ? [{ label: lt('Delete column'), tone: 'danger' as const, onSelect: () => onDeleteColumn(column.id) }] : []),
+  ]
 
   const cardIds = useMemo(() => column.cards.map((c) => `card-${c.id}`), [column.cards])
 
@@ -54,7 +66,7 @@ export function KanbanColumn({
   } = useSortable({
     id: `col-${column.id}`,
     data: { type: 'column', column },
-    disabled: readOnly,
+    disabled: !canEdit,
   })
 
   const style = {
@@ -78,10 +90,10 @@ export function KanbanColumn({
       <div
         className={cn(
           'flex shrink-0 items-center justify-between gap-2 px-3.5 py-3',
-          readOnly ? 'select-none' : 'cursor-grab active:cursor-grabbing select-none',
+          canEdit ? 'cursor-grab active:cursor-grabbing select-none' : 'select-none',
         )}
-        {...(!readOnly ? attributes : {})}
-        {...(!readOnly ? listeners : {})}
+        {...(canEdit ? attributes : {})}
+        {...(canEdit ? listeners : {})}
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: column.color || 'var(--border-hover)' }} />
@@ -93,24 +105,22 @@ export function KanbanColumn({
           </span>
         </div>
 
-        {!readOnly ? (
+        {canCreate || columnActions.length > 0 ? (
           <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => onOpenAddCardModal(column.id)}
-              aria-label={tr('Task qo\'shish', 'Task qo\'shish', 'Добавить задачу')}
-              title={tr('Task qo\'shish', 'Task qo\'shish', 'Добавить задачу')}
-              className="grid h-8 w-8 place-items-center rounded-[8px] text-[var(--muted)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--primary)]"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
-            </button>
-            <ActionsMenu
-              label={lt('Column actions')}
-              items={[
-                { label: lt('Edit column'), onSelect: () => onEditColumn(column) },
-                { label: lt('Delete column'), tone: 'danger', onSelect: () => onDeleteColumn(column.id) },
-              ]}
-            />
+            {canCreate ? (
+              <button
+                type="button"
+                onClick={() => onOpenAddCardModal(column.id)}
+                aria-label={tr('Task qo\'shish', 'Task qo\'shish', 'Добавить задачу')}
+                title={tr('Task qo\'shish', 'Task qo\'shish', 'Добавить задачу')}
+                className="grid h-8 w-8 place-items-center rounded-[8px] text-[var(--muted)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--primary)]"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
+              </button>
+            ) : null}
+            {columnActions.length > 0 ? (
+              <ActionsMenu label={lt('Column actions')} items={columnActions} />
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -129,7 +139,8 @@ export function KanbanColumn({
                 onEdit={onEditCard}
                 onDelete={onDeleteCard}
                 onClick={onClickCard}
-                readOnly={readOnly}
+                canEdit={canEdit}
+                canDelete={canDelete}
               />
             ))}
           </div>
@@ -137,7 +148,7 @@ export function KanbanColumn({
       </div>
 
       {/* Add card button — below scroll area */}
-      {!readOnly ? (
+      {canCreate ? (
         <div className="shrink-0 px-2.5 pb-2.5 pt-1">
           <button
             type="button"

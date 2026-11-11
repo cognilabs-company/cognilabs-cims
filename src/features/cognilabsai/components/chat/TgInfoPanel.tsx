@@ -52,7 +52,10 @@ type TgInfoPanelProps = {
   onFollowUpSave: () => void
   crmCustomerId: number | null
   onOpenCrm: () => void
-  onDelete: () => void
+  /** `edit` permission: AI switch, retry, pause-until and follow-up settings. */
+  canEdit: boolean
+  /** Omit to hide "Delete chat" (no `delete` permission). */
+  onDelete?: () => void
   className?: string
 }
 
@@ -94,20 +97,22 @@ export function TgInfoPanel(props: TgInfoPanelProps) {
 
         {props.supportsAi ? (
           <Section title={t('aichat.ai_section', 'AI assistant')}>
-            <label className="flex cursor-pointer items-center gap-6 rounded-[12px] px-3 py-2.5 hover:bg-[var(--tg-hover)]">
+            <label className={cn('flex items-center gap-6 rounded-[12px] px-3 py-2.5 hover:bg-[var(--tg-hover)]', props.canEdit && 'cursor-pointer')}>
               <Bot size={22} className="shrink-0 text-[var(--tg-secondary)]" />
               <span className="min-w-0 flex-1">
                 <span className="block text-[15.5px] text-[var(--tg-text)]">{t('aichat.ai_replies', 'AI replies')}</span>
                 <span className="block text-[13.5px] text-[var(--tg-secondary)]">{props.aiPaused ? (conv.pause_reason || t('aichat.ai_paused', 'AI paused')) : t('aichat.ai_active', 'AI is answering')}</span>
               </span>
-              {props.aiBusy ? <Loader2 size={18} className="animate-spin text-[var(--tg-secondary)]" /> : (
+              {!props.canEdit ? null : props.aiBusy ? <Loader2 size={18} className="animate-spin text-[var(--tg-secondary)]" /> : (
                 <Switch checked={!props.aiPaused} onChange={() => props.onToggleAi()} label={t('aichat.ai_replies', 'AI replies')} />
               )}
             </label>
-            <button type="button" onClick={props.onRetryAi} disabled={props.aiBusy} className="flex w-full items-center gap-6 rounded-[12px] px-3 py-3 text-left text-[15.5px] text-[var(--tg-text)] hover:bg-[var(--tg-hover)] disabled:opacity-50">
-              <RotateCcw size={22} className="shrink-0 text-[var(--tg-secondary)]" /> {t('aichat.retry_ai', 'Retry AI reply')}
-            </button>
-            {props.pauseUntilOpen ? (
+            {props.canEdit ? (
+              <button type="button" onClick={props.onRetryAi} disabled={props.aiBusy} className="flex w-full items-center gap-6 rounded-[12px] px-3 py-3 text-left text-[15.5px] text-[var(--tg-text)] hover:bg-[var(--tg-hover)] disabled:opacity-50">
+                <RotateCcw size={22} className="shrink-0 text-[var(--tg-secondary)]" /> {t('aichat.retry_ai', 'Retry AI reply')}
+              </button>
+            ) : null}
+            {!props.canEdit ? null : props.pauseUntilOpen ? (
               <div className="space-y-2 px-3 py-2">
                 <CalendarField mode="datetime" value={props.pauseUntil} onValueChange={props.onPauseUntilChange} aria-label={t('aichat.pause_until', 'Pause AI until…')} />
                 <div className="flex justify-end gap-2">
@@ -124,15 +129,17 @@ export function TgInfoPanel(props: TgInfoPanelProps) {
         ) : null}
 
         <Section title={t('aichat.follow_up', 'Follow-up')}>
-          <label className="flex cursor-pointer items-center gap-6 rounded-[12px] px-3 py-2.5 hover:bg-[var(--tg-hover)]">
+          <label className={cn('flex items-center gap-6 rounded-[12px] px-3 py-2.5 hover:bg-[var(--tg-hover)]', props.canEdit && 'cursor-pointer')}>
             <CalendarClock size={22} className="shrink-0 text-[var(--tg-secondary)]" />
             <span className="min-w-0 flex-1">
               <span className="block text-[15.5px] text-[var(--tg-text)]">{t('aichat.follow_up_auto', 'Automatic reminder')}</span>
               <span className="block text-[13.5px] text-[var(--tg-secondary)]">{props.followUpStatus}</span>
             </span>
-            <Switch checked={followUp.enabled} onChange={(enabled) => props.onFollowUpChange({ ...followUp, enabled })} label={t('aichat.follow_up_auto', 'Automatic reminder')} />
+            {props.canEdit ? (
+              <Switch checked={followUp.enabled} onChange={(enabled) => props.onFollowUpChange({ ...followUp, enabled })} label={t('aichat.follow_up_auto', 'Automatic reminder')} />
+            ) : null}
           </label>
-          {followUp.enabled ? (
+          {props.canEdit && followUp.enabled ? (
             <div className="space-y-2.5 px-3 pt-1 pb-2">
               <SelectField
                 value={followUp.mode}
@@ -172,16 +179,20 @@ export function TgInfoPanel(props: TgInfoPanelProps) {
           ) : null}
         </Section>
 
-        <Section title={t('aichat.actions', 'Actions')}>
-          {props.crmCustomerId ? (
-            <button type="button" onClick={props.onOpenCrm} className="flex w-full items-center gap-6 rounded-[12px] px-3 py-3 text-left text-[15.5px] text-[var(--tg-text)] hover:bg-[var(--tg-hover)]">
-              <Contact size={22} className="shrink-0 text-[var(--tg-secondary)]" /> {t('aichat.open_crm', 'Open in CRM')}
-            </button>
-          ) : null}
-          <button type="button" onClick={props.onDelete} className="flex w-full items-center gap-6 rounded-[12px] px-3 py-3 text-left text-[15.5px] text-[#e53935] hover:bg-[var(--tg-hover)]">
-            <Trash2 size={22} className="shrink-0" /> {t('aichat.delete_chat', 'Delete chat')}
-          </button>
-        </Section>
+        {props.crmCustomerId || props.onDelete ? (
+          <Section title={t('aichat.actions', 'Actions')}>
+            {props.crmCustomerId ? (
+              <button type="button" onClick={props.onOpenCrm} className="flex w-full items-center gap-6 rounded-[12px] px-3 py-3 text-left text-[15.5px] text-[var(--tg-text)] hover:bg-[var(--tg-hover)]">
+                <Contact size={22} className="shrink-0 text-[var(--tg-secondary)]" /> {t('aichat.open_crm', 'Open in CRM')}
+              </button>
+            ) : null}
+            {props.onDelete ? (
+              <button type="button" onClick={props.onDelete} className="flex w-full items-center gap-6 rounded-[12px] px-3 py-3 text-left text-[15.5px] text-[#e53935] hover:bg-[var(--tg-hover)]">
+                <Trash2 size={22} className="shrink-0" /> {t('aichat.delete_chat', 'Delete chat')}
+              </button>
+            ) : null}
+          </Section>
+        ) : null}
       </div>
     </aside>
   )

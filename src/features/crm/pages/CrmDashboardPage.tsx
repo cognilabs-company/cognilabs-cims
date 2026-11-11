@@ -25,10 +25,11 @@ import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../sh
 import { crmService as baseCrmService } from '../../../shared/api/services/crm.service'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
-import { CopyButton, FilterPanel, FilterToken, FlagTag, StatusSelect } from '../components/CustomerFilters'
+import { CopyButton, FilterPanel, FilterToken, FlagTag, StatusPill, StatusSelect } from '../components/CustomerFilters'
+import { useAuth } from '../../auth/hooks/useAuth'
 import { platformVisual } from '../lib/platformIcon'
 import { avatarTone, initialsFor } from '../lib/customerAvatar'
-import { InsightCard, type InsightFact } from '../../../shared/ui/insight-card'
+import { MetricTile } from '../../../shared/ui/metric-tile'
 import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { statusIconFor } from '../lib/statusIcon'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
@@ -470,6 +471,13 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const { confirm } = useConfirm()
   const [searchParams, setSearchParams] = useSearchParams()
   const { service: crmService, apiBasePath, routeBasePath, storageKey, kind: crmKind } = useCrmScope()
+  const { can } = useAuth()
+  // RBAC "customers" actions (the outbound CRM is not an RBAC module and keeps its own rules).
+  const mayCustomers = (action: string) => crmKind === 'outbound' || can('customers', action)
+  const canCreateCustomer = mayCustomers('create')
+  const canEditCustomer = mayCustomers('edit')
+  const canDeleteCustomer = mayCustomers('delete')
+  const canExportCustomers = mayCustomers('export')
   const [initialReturnState] = useState(() => readCrmReturnState(storageKey))
 
   const [search, setSearch] = useState(() => initialReturnState?.search ?? '')
@@ -1267,6 +1275,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       exportValue: (row) => statusMetaFor(row.status).label,
       render: (row) => {
         const meta = statusMetaFor(row.status)
+        if (!canEditCustomer) return <StatusPill label={meta.label} color={meta.color} icon={meta.icon} />
         return (
           <StatusSelect
             current={row.status}
@@ -1366,12 +1375,12 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       align: 'center',
       render: (row) => (
         <span className="flex items-center justify-center gap-0.5" onClick={(event) => event.stopPropagation()}>
-          <button type="button" onClick={() => openEditModal(row)} aria-label={t('customers.actions.edit', 'Edit')} title={t('customers.actions.edit', 'Edit')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] transition-all hover:bg-[var(--blue-dim)] hover:text-[var(--primary)] active:scale-90">
+          {canEditCustomer ? <button type="button" onClick={() => openEditModal(row)} aria-label={t('customers.actions.edit', 'Edit')} title={t('customers.actions.edit', 'Edit')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] transition-all hover:bg-[var(--blue-dim)] hover:text-[var(--primary)] active:scale-90">
             <Pencil size={14} />
-          </button>
-          <button type="button" onClick={() => void handleDeleteCustomer(row)} aria-label={t('customers.actions.delete', 'Delete')} title={t('customers.actions.delete', 'Delete')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] transition-all hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)] active:scale-90">
+          </button> : null}
+          {canDeleteCustomer ? <button type="button" onClick={() => void handleDeleteCustomer(row)} aria-label={t('customers.actions.delete', 'Delete')} title={t('customers.actions.delete', 'Delete')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] transition-all hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)] active:scale-90">
             <Trash2 size={14} />
-          </button>
+          </button> : null}
         </span>
       ),
     },
@@ -1431,16 +1440,19 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     const key = normalizeStatusKey(option.value)
     const count = statusCounts.get(key) ?? 0
     const due = dueByStatus.get(key)
-    const facts: InsightFact[] = []
-    if (due?.today) facts.push({ text: t('customers.status_card.today', 'Today: {{count}}', { count: due.today }), tone: 'success' })
-    if (due?.overdue) facts.push({ text: t('customers.status_card.overdue', 'Overdue: {{count}}', { count: due.overdue }), tone: 'danger' })
+    const share = baseCustomers.length > 0 ? Math.round((count / baseCustomers.length) * 100) : 0
+    // One caption line: share of all customers, then what is due today / overdue.
+    const caption = [
+      t('customers.status_card.share', '{{value}}% of customers', { value: share }),
+      due?.today ? t('customers.status_card.today', 'Today: {{count}}', { count: due.today }) : null,
+      due?.overdue ? t('customers.status_card.overdue', 'Overdue: {{count}}', { count: due.overdue }) : null,
+    ].filter(Boolean).join(' · ')
     return {
       key,
       value: option.value,
       meta: statusMetaFor(option.value),
       count,
-      share: baseCustomers.length > 0 ? Math.round((count / baseCustomers.length) * 100) : 0,
-      facts,
+      caption,
       active: statusFilters.length === 1 && selectedStatusFilterSet.has(key),
     }
   })
@@ -1508,18 +1520,14 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       {/* Status cards — each also works as a quick filter (click again to clear) */}
       <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
         {statusCards.map((card) => (
-          <InsightCard
+          <MetricTile
             key={card.key}
             label={card.meta.label}
             value={card.count}
+            caption={card.caption}
             icon={card.meta.icon}
-            color={card.meta.color}
-            badge={`${card.share}%`}
-            progress={card.share}
-            facts={card.facts}
-            caption={t('customers.status_card.no_reminders', 'No reminders due')}
+            accent={card.meta.color}
             active={card.active}
-            actionLabel={card.active ? t('customers.status_card.clear', 'Show all statuses') : t('customers.status_card.filter', 'Show only this status')}
             onClick={() => { setStatusFilters(card.active ? [] : [card.value]); setTablePage(1) }}
           />
         ))}
@@ -1528,8 +1536,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       <DataGrid
         id={`${storageKey}-customers`}
         rowNumbers
-        favorites
-        exportName={crmKind === 'outbound' ? 'outbound-leads' : 'customers'}
+        exportName={canExportCustomers ? (crmKind === 'outbound' ? 'outbound-leads' : 'customers') : undefined}
         toolbarStart={(
           <>
             <button type="button" onClick={() => void refreshAll()} className={cn(gridButton, 'border-[var(--blue-border)] text-[var(--primary)] hover:bg-[var(--blue-dim)]')}>
@@ -1565,12 +1572,12 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
             />
           </>
         )}
-        toolbarEnd={(
+        toolbarEnd={canCreateCustomer ? (
           <button type="button" onClick={openCreateModal} className="inline-flex h-8 items-center gap-1.5 rounded-[8px] bg-[var(--primary)] px-3 text-[12.5px] font-semibold text-white shadow-[0_6px_16px_-8px_rgba(43,89,255,0.9)] transition-[background-color,transform] duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.97]">
             <Plus size={15} strokeWidth={2.4} />
             {t('customers.actions.add', 'Add customer')}
           </button>
-        )}
+        ) : null}
         belowToolbar={tokens}
         columns={gridColumns}
         rows={displayedCustomers}

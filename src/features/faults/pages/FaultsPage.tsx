@@ -297,7 +297,8 @@ function extractEmployeeApiSummary(payload: unknown): EmployeeApiSummary {
 export function FaultsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, can } = useAuth()
+  const canCreateSalary = can('salary', 'create')
   const { showToast } = useToast()
   const lt = translateCurrentLiteral
   const locale = getIntlLocale()
@@ -963,22 +964,26 @@ export function FaultsPage() {
                   <IconButton size="sm" label={lt('View details')} onClick={() => openDetailPage(row)}>
                     <EyeIcon />
                   </IconButton>
-                  <IconButton
-                    size="sm"
-                    tone="danger"
-                    label={tr('Add mistake', "Xato qo'shish", 'Добавить ошибку')}
-                    onClick={() => openMistakeDialog(row)}
-                  >
-                    <AlertIcon />
-                  </IconButton>
-                  <IconButton
-                    size="sm"
-                    label={tr('Add delivery bonus', "Topshirish bonusini qo'shish", 'Добавить бонус за сдачу')}
-                    onClick={() => openDeliveryBonusDialog(row)}
-                    className="text-[var(--success-text)] hover:bg-[var(--success-dim)] hover:text-[var(--success-text)]"
-                  >
-                    <PlusCircleIcon />
-                  </IconButton>
+                  {canCreateSalary ? (
+                    <>
+                      <IconButton
+                        size="sm"
+                        tone="danger"
+                        label={tr('Add mistake', "Xato qo'shish", 'Добавить ошибку')}
+                        onClick={() => openMistakeDialog(row)}
+                      >
+                        <AlertIcon />
+                      </IconButton>
+                      <IconButton
+                        size="sm"
+                        label={tr('Add delivery bonus', "Topshirish bonusini qo'shish", 'Добавить бонус за сдачу')}
+                        onClick={() => openDeliveryBonusDialog(row)}
+                        className="text-[var(--success-text)] hover:bg-[var(--success-dim)] hover:text-[var(--success-text)]"
+                      >
+                        <PlusCircleIcon />
+                      </IconButton>
+                    </>
+                  ) : null}
                 </div>
               ),
             },
@@ -1002,14 +1007,14 @@ export function FaultsPage() {
               setActiveReportId(null)
               openDetailPage(activeDrawerReport)
             }}
-            onAddDeliveryBonus={() => {
+            onAddDeliveryBonus={canCreateSalary ? () => {
               if (!activeDrawerReport) {
                 return
               }
 
               setActiveReportId(null)
               openDeliveryBonusDialog(activeDrawerReport)
-            }}
+            } : undefined}
           />
         </Suspense>
       ) : null}

@@ -19,12 +19,12 @@ const CimsAiWorkspace = lazy(loadCimsAiWorkspace)
 
 export function CimsAiLauncher() {
   const location = useLocation()
-  const { hasPermission, isAuthenticated } = useAuth()
+  const { can, isAuthenticated } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const cardRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
 
-  const canUseAi = isAuthenticated && hasPermission('ceo')
+  const canUseAi = isAuthenticated && can('ceo')
   // Hidden on full-screen AI pages: the CEO AI page itself and the messenger, where it would cover the send button
   const isAiPage = location.pathname === '/ceo/ai' || location.pathname.startsWith('/cognilabsai/chat')
 

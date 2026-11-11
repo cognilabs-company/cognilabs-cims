@@ -60,12 +60,14 @@ type CallRowProps = {
   selected: boolean
   showSeller: boolean
   canCall: boolean
+  /** RBAC calls:create — without it the call button is not shown at all. */
+  showCall?: boolean
   onSelect: () => void
   onCall: () => void
 }
 
 /** One call in a day card: time + day on the left, a timeline badge, who, and the outcome. */
-export function CallRow({ call, selected, showSeller, canCall, onSelect, onCall }: CallRowProps) {
+export function CallRow({ call, selected, showSeller, canCall, showCall = true, onSelect, onCall }: CallRowProps) {
   const { t } = useLocale()
   const tone = callTone(call)
   const name = call.customer_name?.trim()
@@ -113,16 +115,18 @@ export function CallRow({ call, selected, showSeller, canCall, onSelect, onCall 
             <AudioLines size={15} className="hidden text-[var(--muted)] sm:block" aria-label={t('telephony.recorded', 'recorded')} />
           ) : null}
           <CallResult call={call} className="hidden sm:inline-flex" />
-          <button
-            type="button"
-            disabled={!canCall}
-            onClick={(event) => { event.stopPropagation(); onCall() }}
-            aria-label={t('telephony.call_number', 'Call {{phone}}', { phone: call.phone_number })}
-            title={t('telephony.call', 'Call')}
-            className="grid h-9 w-9 place-items-center rounded-full bg-[var(--calls-live-dim)] text-[var(--calls-live)] transition-colors hover:bg-[var(--calls-live)] hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--calls-live)]/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[var(--calls-live-dim)] disabled:hover:text-[var(--calls-live)]"
-          >
-            <PhoneCall size={15} strokeWidth={2.2} />
-          </button>
+          {showCall ? (
+            <button
+              type="button"
+              disabled={!canCall}
+              onClick={(event) => { event.stopPropagation(); onCall() }}
+              aria-label={t('telephony.call_number', 'Call {{phone}}', { phone: call.phone_number })}
+              title={t('telephony.call', 'Call')}
+              className="grid h-9 w-9 place-items-center rounded-full bg-[var(--calls-live-dim)] text-[var(--calls-live)] transition-colors hover:bg-[var(--calls-live)] hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--calls-live)]/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[var(--calls-live-dim)] disabled:hover:text-[var(--calls-live)]"
+            >
+              <PhoneCall size={15} strokeWidth={2.2} />
+            </button>
+          ) : null}
         </div>
       </div>
     </li>

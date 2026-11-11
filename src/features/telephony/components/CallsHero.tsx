@@ -1,10 +1,21 @@
 import { useRef, useState } from 'react'
-import { CalendarDays, Grip, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOutgoing, Server, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, Grip, PhoneCall, PhoneForwarded, PhoneIncoming, PhoneMissed, PhoneOutgoing, Server, X, type LucideIcon } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { CalendarField } from '../../../shared/ui/calendar-field'
 import { useDismiss } from './useDismiss'
-import { connectionLabel, rangeLabel, todayLong, type CallPeriod } from './telephonyFormat'
+import { connectionLabel, formatPhone, rangeLabel, todayLong, type CallPeriod } from './telephonyFormat'
+import type { OutboundMode } from '../../../shared/api/services/telephony.service'
+import { translateCurrent as tr } from '../../../shared/i18n/translations'
+
+function forwardingModeLabel(mode: string | null) {
+  switch (mode) {
+    case 'busy': return tr('telephony.forwarding.busy', 'Forward when busy')
+    case 'no_answer': return tr('telephony.forwarding.no_answer', 'Forward if no answer')
+    case 'offline': return tr('telephony.forwarding.offline', 'Forward when offline')
+    default: return tr('telephony.forwarding.always', 'Always forwarded')
+  }
+}
 
 export type CallsView = 'all' | 'incoming' | 'outgoing' | 'missed'
 export type CallsCounts = Record<CallsView, number>
@@ -41,13 +52,20 @@ type CallsHeroProps = {
   counts: CallsCounts | null
   view: CallsView
   onViewChange: (view: CallsView) => void
+  /** RBAC calls:create — hides the dial button for view-only users. */
+  canDialOut?: boolean
+  outboundMode?: OutboundMode
+  mobileNumber?: string | null
+  /** Call forwarding of the user's extension, when it is on. */
+  forwarding?: { mode: string | null; target: string | null } | null
 }
 
 /** Navy header of the Calls page: line state, dial button, period presets and per-type counters. */
 export function CallsHero(props: CallsHeroProps) {
   const { t } = useLocale()
   const { connection, counts } = props
-  const ready = connection === 'Ready'
+  const mobile = props.outboundMode === 'mobile'
+  const ready = mobile || connection === 'Ready'
   const tone = ready ? 'calls-live-dot bg-[#b8f15a]' : /connect/i.test(connection) ? 'bg-[#ffb35c]' : 'bg-[#ff7a7a]'
   const [rangeOpen, setRangeOpen] = useState(false)
   const [draftFrom, setDraftFrom] = useState(props.customFrom)
@@ -80,16 +98,28 @@ export function CallsHero(props: CallsHeroProps) {
           </span>
           <div className="min-w-0">
             <p className="text-[19px] leading-6 font-bold tracking-[-0.02em]" title={t('telephony.phone_state', 'Phone: {{state}}', { state: connectionLabel(connection) })}>
-              {t('telephony.line_state', 'Line: {{state}}', { state: connectionLabel(connection) })}
+              {mobile ? t('telephony.line_mobile', 'Line: mobile phone') : t('telephony.line_state', 'Line: {{state}}', { state: connectionLabel(connection) })}
             </p>
             <p className="truncate text-[13px] text-white/60">
-              {props.extension ? t('telephony.extension_line', 'Extension {{ext}}', { ext: props.extension }) : t('telephony.no_extension', 'No extension yet')}
+              {mobile && props.mobileNumber
+                ? t('telephony.mobile.via', 'Calls go through {{phone}}', { phone: formatPhone(props.mobileNumber) })
+                : props.extension ? t('telephony.extension_line', 'Extension {{ext}}', { ext: props.extension }) : t('telephony.no_extension', 'No extension yet')}
               <span className="hidden sm:inline"> · {todayLong()}</span>
             </p>
           </div>
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {props.forwarding ? (
+            <span
+              className="inline-flex h-10 items-center gap-2 rounded-[13px] bg-white/[0.07] px-3 text-[12.5px] font-medium text-white/80 ring-1 ring-white/10"
+              title={t('telephony.forwarding.title', 'Call forwarding is on')}
+            >
+              <PhoneForwarded size={15} className="text-[#b8f15a]" />
+              {forwardingModeLabel(props.forwarding.mode)}
+              {props.forwarding.target ? <span className="text-white/50 tabular-nums">→ {formatPhone(props.forwarding.target)}</span> : null}
+            </span>
+          ) : null}
           {props.isCeo ? (
             <div role="tablist" aria-label={t('telephony.title', 'Calls')} className="inline-flex h-10 rounded-[13px] bg-white/[0.07] p-1 ring-1 ring-white/10">
               {([
@@ -183,14 +213,16 @@ export function CallsHero(props: CallsHeroProps) {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              onClick={props.onShowDialer}
-              aria-pressed={props.dialerActive}
-              className="ml-auto inline-flex h-10 items-center gap-2 rounded-[13px] bg-[#b8f15a] px-4 text-[13.5px] font-semibold text-[var(--calls-hero-ink)] shadow-[0_8px_22px_-10px_rgba(184,241,90,0.8)] transition hover:brightness-105 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
-            >
-              <Grip size={16} strokeWidth={2.4} /> {t('telephony.dial', 'Dial a number')}
-            </button>
+            {props.canDialOut !== false ? (
+              <button
+                type="button"
+                onClick={props.onShowDialer}
+                aria-pressed={props.dialerActive}
+                className="ml-auto inline-flex h-10 items-center gap-2 rounded-[13px] bg-[#b8f15a] px-4 text-[13.5px] font-semibold text-[var(--calls-hero-ink)] shadow-[0_8px_22px_-10px_rgba(184,241,90,0.8)] transition hover:brightness-105 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
+              >
+                <Grip size={16} strokeWidth={2.4} /> {t('telephony.dial', 'Dial a number')}
+              </button>
+            ) : null}
           </div>
 
           {/* Row 3 — counters, which double as the type filter */}

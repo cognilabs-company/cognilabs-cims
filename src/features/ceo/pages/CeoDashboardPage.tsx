@@ -14,7 +14,7 @@ import { Badge } from '../../../shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../shared/ui/card'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
 import { Dialog } from '../../../shared/ui/dialog'
-import { InsightCard } from '../../../shared/ui/insight-card'
+import { MetricTile } from '../../../shared/ui/metric-tile'
 import type { TabItem } from '../../../shared/ui/tabs'
 import { BarChartCard, type BarDatum } from '../../../shared/ui/charts/bar-chart-card'
 import { FunnelStages, type FunnelStage } from '../../../shared/ui/charts/funnel-stages'
@@ -27,6 +27,7 @@ import { PaymentFormModal, type PaymentFormValues } from '../components/PaymentF
 import { CompanyPaymentFormModal, type CompanyPaymentFormValues } from '../components/CompanyPaymentFormModal'
 import { WorkdayOverrideFormDialog } from '../components/WorkdayOverrideFormDialog'
 import { isDueDateOverdue } from '../../projects/lib/format'
+import { useAuth } from '../../auth/hooks/useAuth'
 
 const initialBroadcastMessage: MessageComposerValues = {
   subject: '',
@@ -68,6 +69,11 @@ function filterOpenTasks(tasks: UserOpenCardRecord[]) {
 
 function getTaskPath(task: UserOpenCardRecord) {
   return `/projects/${task.project_id}?board=${task.board_id}&card=${task.id}`
+}
+
+/** "a · b · c" from the facts that exist. */
+function joinFacts(parts: Array<string | null | undefined>) {
+  return parts.filter(Boolean).join(' · ') || '—'
 }
 
 function percentOf(part: number, total: number) {
@@ -141,6 +147,10 @@ export function CeoDashboardPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
+  const { can } = useAuth()
+  const canCreate = can('ceo', 'create')
+  const canEdit = can('ceo', 'edit')
+  const canDelete = can('ceo', 'delete')
 
   const dashboardQuery = useAsyncData(() => ceoService.getDashboard(), [])
   // Lead numbers for the KPI row and the leads chart (today/yesterday + 30-day breakdown).
@@ -813,114 +823,106 @@ export function CeoDashboardPage() {
               ),
               onSelect: () => void refreshAll(),
             },
-            {
-              label: t('ceo.dashboard.actions.send_broadcast'),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M1.20308 1.04312C1.17743 1.0114 1.14304 0.998483 1.10954 1.0003C1.07604 1.00212 1.0428 1.01861 1.02217 1.04482C1.00147 1.07112 0.993416 1.10425 0.99966 1.13524C1.0059 1.16623 1.02613 1.1942 1.05562 1.21175L13.8056 8.71175C13.8407 8.73238 13.8824 8.7332 13.918 8.71392C13.9536 8.69464 13.9774 8.65851 13.982 8.61802C13.9867 8.57753 13.9714 8.53924 13.9416 8.51478L1.20308 1.04312ZM1.00391 13.9961L1.00391 13.9961C1.00366 13.9961 1.00341 13.9961 1.00316 13.9961C0.96346 13.9959 0.925828 13.9782 0.90151 13.9482C0.877192 13.9182 0.868725 13.8791 0.878413 13.8423L2.24357 8.61833L8.00004 7.5L2.24357 6.38167L0.878413 1.15774C0.868725 1.1209 0.877192 1.08179 0.90151 1.05182C0.925828 1.02185 0.96346 1.00407 1.00316 1.00388C1.00341 1.00388 1.00366 1.00388 1.00391 1.00388C1.03664 1.00388 1.06913 1.01639 1.09241 1.03967L13.9124 13.8597C13.9405 13.8878 13.9536 13.9261 13.9479 13.9649C13.9422 14.0037 13.9184 14.0372 13.8839 14.0551C13.8493 14.0729 13.8087 14.0726 13.7744 14.0543L1.00391 13.9961Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
-              onSelect: () => setIsBroadcastOpen(true),
-            },
-            {
-              label: t('ceo.dashboard.actions.create_payment'),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
-              onSelect: openCreatePaymentModal,
-            },
-            {
-              label: t('ceo.dashboard.recurring.create'),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
-              onSelect: openCreateCompanyPaymentModal,
-            },
-            {
-              label: t('ceo.workday.dialog.create_action', { defaultValue: 'Create Override' }),
-              icon: (
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
-                  <path d="M4.5 1C4.22386 1 4 1.22386 4 1.5C4 1.77614 4.22386 2 4.5 2H7V7H2V4.5C2 4.22386 1.77614 4 1.5 4C1.22386 4 1 4.22386 1 4.5V7.5C1 7.63807 1.05268 7.76321 1.14645 7.85355C1.23679 7.94732 1.36193 8 1.5 8H7V13.5C7 13.7761 7.22386 14 7.5 14C7.77614 14 8 13.7761 8 13.5V8H13.5C13.7761 8 14 7.77614 14 7.5C14 7.22386 13.7761 7 13.5 7H8V2H10.5C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                </svg>
-              ),
-              onSelect: () => setIsOverrideOpen(true),
-            },
+            ...(canCreate ? [
+              {
+                label: t('ceo.dashboard.actions.send_broadcast'),
+                icon: (
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                    <path d="M1.20308 1.04312C1.17743 1.0114 1.14304 0.998483 1.10954 1.0003C1.07604 1.00212 1.0428 1.01861 1.02217 1.04482C1.00147 1.07112 0.993416 1.10425 0.99966 1.13524C1.0059 1.16623 1.02613 1.1942 1.05562 1.21175L13.8056 8.71175C13.8407 8.73238 13.8824 8.7332 13.918 8.71392C13.9536 8.69464 13.9774 8.65851 13.982 8.61802C13.9867 8.57753 13.9714 8.53924 13.9416 8.51478L1.20308 1.04312ZM1.00391 13.9961L1.00391 13.9961C1.00366 13.9961 1.00341 13.9961 1.00316 13.9961C0.96346 13.9959 0.925828 13.9782 0.90151 13.9482C0.877192 13.9182 0.868725 13.8791 0.878413 13.8423L2.24357 8.61833L8.00004 7.5L2.24357 6.38167L0.878413 1.15774C0.868725 1.1209 0.877192 1.08179 0.90151 1.05182C0.925828 1.02185 0.96346 1.00407 1.00316 1.00388C1.00341 1.00388 1.00366 1.00388 1.00391 1.00388C1.03664 1.00388 1.06913 1.01639 1.09241 1.03967L13.9124 13.8597C13.9405 13.8878 13.9536 13.9261 13.9479 13.9649C13.9422 14.0037 13.9184 14.0372 13.8839 14.0551C13.8493 14.0729 13.8087 14.0726 13.7744 14.0543L1.00391 13.9961Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                  </svg>
+                ),
+                onSelect: () => setIsBroadcastOpen(true),
+              },
+              {
+                label: t('ceo.dashboard.actions.create_payment'),
+                icon: (
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                    <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                  </svg>
+                ),
+                onSelect: openCreatePaymentModal,
+              },
+              {
+                label: t('ceo.dashboard.recurring.create'),
+                icon: (
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                    <path d="M7.5 0.75C3.77208 0.75 0.75 3.77208 0.75 7.5C0.75 11.2279 3.77208 14.25 7.5 14.25C11.2279 14.25 14.25 11.2279 14.25 7.5C14.25 3.77208 11.2279 0.75 7.5 0.75ZM7.5 1.75C4.32436 1.75 1.75 4.32436 1.75 7.5C1.75 10.6756 4.32436 13.25 7.5 13.25C10.6756 13.25 13.25 10.6756 13.25 7.5C13.25 4.32436 10.6756 1.75 7.5 1.75ZM7.5 4.5C7.77614 4.5 8 4.72386 8 5V7H10C10.2761 7 10.5 7.22386 10.5 7.5C10.5 7.77614 10.2761 8 10 8H8V10C8 10.2761 7.77614 10.5 7.5 10.5C7.22386 10.5 7 10.2761 7 10V8H5C4.72386 8 4.5 7.77614 4.5 7.5C4.5 7.22386 4.72386 7 5 7H7V5C7 4.72386 7.22386 4.5 7.5 4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                  </svg>
+                ),
+                onSelect: openCreateCompanyPaymentModal,
+              },
+              {
+                label: t('ceo.workday.dialog.create_action', { defaultValue: 'Create Override' }),
+                icon: (
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5">
+                    <path d="M4.5 1C4.22386 1 4 1.22386 4 1.5C4 1.77614 4.22386 2 4.5 2H7V7H2V4.5C2 4.22386 1.77614 4 1.5 4C1.22386 4 1 4.22386 1 4.5V7.5C1 7.63807 1.05268 7.76321 1.14645 7.85355C1.23679 7.94732 1.36193 8 1.5 8H7V13.5C7 13.7761 7.22386 14 7.5 14C7.77614 14 8 13.7761 8 13.5V8H13.5C13.7761 8 14 7.77614 14 7.5C14 7.22386 13.7761 7 13.5 7H8V2H10.5C10.7761 2 11 1.77614 11 1.5C11 1.22386 10.7761 1 10.5 1H4.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                  </svg>
+                ),
+                onSelect: () => setIsOverrideOpen(true),
+              },
+            ] : []),
           ]}
         />
       </div>
 
-      {/* The four numbers a CEO checks first — same card design as the Customers page */}
-      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
-        <InsightCard
+      {/* The four numbers a CEO checks first — the same tiles as the Customers page */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricTile
           label={t('ceo.kpi.today_leads', "Today's leads")}
           value={chartsSummary ? chartsSummary.today : '—'}
+          caption={joinFacts([
+            todayDelta?.short,
+            chartsSummary ? t('ceo.kpi.yesterday', 'Yesterday: {{count}}', { count: chartsSummary.yesterday }) : null,
+            chartsSummary ? t('ceo.kpi.last_30_days', '30 days: {{count}}', { count: chartsSummary.total_period_leads }) : null,
+          ])}
           icon={UserPlus}
-          color="#2B59FF"
-          badge={todayDelta?.short}
-          badgeTone={todayDelta?.tone ?? 'neutral'}
-          facts={chartsSummary ? [
-            { text: t('ceo.kpi.yesterday', 'Yesterday: {{count}}', { count: chartsSummary.yesterday }) },
-            { text: t('ceo.kpi.last_30_days', '30 days: {{count}}', { count: chartsSummary.total_period_leads }) },
-          ] : undefined}
+          accent="#2B59FF"
           onClick={() => navigate('/crm/customers?period=today')}
-          actionLabel={t('ceo.kpi.open_today', "Open today's leads")}
         />
-        <InsightCard
+        <MetricTile
           label={t('ceo.kpi.need_to_call', 'Waiting for a call')}
           value={crmStats ? crmStats.need_to_call : '—'}
+          caption={joinFacts([
+            needToCallShare !== null ? t('ceo.kpi.of_all_leads', '{{value}}% of leads', { value: needToCallShare }) : null,
+            crmStats ? t('ceo.kpi.contacted', 'Contacted: {{count}}', { count: crmStats.contacted }) : null,
+          ])}
           icon={PhoneCall}
-          color="#E8590C"
-          badge={needToCallShare !== null ? t('ceo.kpi.of_all_leads', '{{value}}% of leads', { value: needToCallShare }) : undefined}
-          progress={needToCallShare}
-          facts={crmStats ? [
-            { text: t('ceo.kpi.contacted', 'Contacted: {{count}}', { count: crmStats.contacted }), tone: 'success' },
-            { text: t('ceo.kpi.project_started', 'Projects: {{count}}', { count: crmStats.project_started }) },
-          ] : undefined}
+          accent="#E8590C"
           onClick={() => navigate('/crm/customers?status=need_to_call')}
-          actionLabel={t('ceo.kpi.open_need_to_call', 'Open leads waiting for a call')}
         />
         {hasSla ? (
-          <InsightCard
+          <MetricTile
             label={t('ceo.sla.average', 'Average response')}
             value={slaAverage}
+            caption={joinFacts([
+              t('ceo.overview.delta_on_time', '{{value}}% on time', { value: onTimeShare ?? 0 }),
+              t('ceo.kpi.late_count', 'Late: {{count}}', { count: slaLate }),
+              t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit }),
+            ])}
             icon={Timer}
-            color="#7C5CFC"
-            progress={onTimeShare}
-            facts={[
-              { text: t('ceo.overview.delta_on_time', '{{value}}% on time', { value: onTimeShare ?? 0 }), tone: (onTimeShare ?? 0) >= 80 ? 'success' : 'neutral' },
-              { text: t('ceo.kpi.late_count', 'Late: {{count}}', { count: slaLate }), tone: slaLate > 0 ? 'danger' : 'neutral' },
-              { text: t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit }) },
-            ]}
+            accent="#7C5CFC"
           />
         ) : (
-          <InsightCard
+          <MetricTile
             label={t('ceo.kpi.conversion', 'Conversion · 30 days')}
             value={chartsSummary ? Number(chartsSummary.conversion_rate_percent ?? 0) : '—'}
             format={(value) => `${value.toFixed(1)}%`}
+            caption={chartsSummary ? t('ceo.kpi.projects_started', 'Projects started: {{count}}', { count: chartsSummary.project_started }) : '—'}
             icon={Percent}
-            color="#17924A"
-            progress={chartsSummary ? Number(chartsSummary.conversion_rate_percent ?? 0) : null}
-            facts={chartsSummary ? [{ text: t('ceo.kpi.projects_started', 'Projects started: {{count}}', { count: chartsSummary.project_started }), tone: 'success' }] : undefined}
+            accent="#17924A"
           />
         )}
-        <InsightCard
+        <MetricTile
           label={t('ceo.kpi.pending_payments', 'Payments due')}
           value={formatCompactNumber(pendingPaymentsAmount)}
+          caption={joinFacts([
+            pendingPaymentsCount > 0 ? t('ceo.kpi.payments_count', '{{count}} unpaid', { count: pendingPaymentsCount }) : null,
+            t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount }),
+            paidShare !== null ? t('ceo.kpi.paid_share', '{{value}}% paid', { value: paidShare }) : null,
+          ])}
           icon={Wallet}
-          color="#D63B3B"
-          badge={pendingPaymentsCount > 0 ? t('ceo.kpi.payments_count', '{{count}} unpaid', { count: pendingPaymentsCount }) : undefined}
-          badgeTone="danger"
-          progress={paidShare}
-          facts={[
-            { text: t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount }), tone: 'success' },
-            ...(paidShare !== null ? [{ text: t('ceo.kpi.paid_share', '{{value}}% paid', { value: paidShare }) }] : []),
-          ]}
+          accent="#D63B3B"
           onClick={() => document.getElementById('ceo-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          actionLabel={t('ceo.dashboard.payments.title', 'Payments')}
         />
       </div>
 
@@ -985,16 +987,15 @@ export function CeoDashboardPage() {
                 { label: t('ceo.note.missing', 'Note missing'), value: slaNoteMissing, color: '#E8590C', icon: FileWarning, share: percentOf(slaNoteMissing, slaTotal) },
                 { label: t('ceo.note.status_without_note', 'Status without note'), value: slaNoNote, color: '#7C5CFC', icon: TriangleAlert, share: percentOf(slaNoNote, slaTotal) },
               ]).map((item) => (
-                <InsightCard
+                <MetricTile
                   key={item.label}
-                  compact
                   label={item.label}
                   value={item.value}
+                  caption={item.share === null
+                    ? t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit })
+                    : t('ceo.kpi.of_all_leads', '{{value}}% of leads', { value: item.share })}
                   icon={item.icon}
-                  color={item.color}
-                  badge={item.share !== null ? `${item.share}%` : undefined}
-                  progress={item.share}
-                  caption={item.share === null ? t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit }) : undefined}
+                  accent={item.color}
                 />
               ))}
             </div>
@@ -1040,18 +1041,18 @@ export function CeoDashboardPage() {
           title={t('ceo.dashboard.payments.title', 'Payments')}
           tasks={paymentTasks}
           deleteLabel={t('customers.actions.delete', 'Delete')}
-          onToggle={(key) => {
+          onToggle={canEdit ? (key) => {
             const match = payments.find((row) => String(row.id) === key)
             if (match) void handleTogglePayment(match)
-          }}
-          onSelect={(key) => {
+          } : undefined}
+          onSelect={canEdit ? (key) => {
             const match = payments.find((row) => String(row.id) === key)
             if (match) openEditPaymentModal(match)
-          }}
-          onDelete={(key) => {
+          } : undefined}
+          onDelete={canDelete ? (key) => {
             const match = payments.find((row) => String(row.id) === key)
             if (match) void handleDeletePayment(match)
-          }}
+          } : undefined}
           action={
             <div className="flex items-center gap-2">
               {pendingPaymentsCount > 0 ? (
@@ -1059,15 +1060,17 @@ export function CeoDashboardPage() {
                   {t('ceo.dashboard.payments.pending_count', { count: pendingPaymentsCount })}
                 </span>
               ) : null}
-              <button
-                type="button"
-                onClick={openCreatePaymentModal}
-                aria-label={t('ceo.dashboard.actions.create_payment')}
-                title={t('ceo.dashboard.actions.create_payment')}
-                className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
-              >
-                <Glyph d={glyphPaths.plus} />
-              </button>
+              {canCreate ? (
+                <button
+                  type="button"
+                  onClick={openCreatePaymentModal}
+                  aria-label={t('ceo.dashboard.actions.create_payment')}
+                  title={t('ceo.dashboard.actions.create_payment')}
+                  className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
+                >
+                  <Glyph d={glyphPaths.plus} />
+                </button>
+              ) : null}
             </div>
           }
           emptyState={
@@ -1084,28 +1087,30 @@ export function CeoDashboardPage() {
           title={t('ceo.dashboard.recurring.title')}
           tasks={recurringTasks}
           deleteLabel={t('customers.actions.delete', 'Delete')}
-          onSelect={(key) => {
+          onSelect={canEdit ? (key) => {
             const match = companyPayments.find((row) => String(row.id) === key)
             if (match) openEditCompanyPaymentModal(match)
-          }}
-          onDelete={(key) => {
+          } : undefined}
+          onDelete={canDelete ? (key) => {
             const match = companyPayments.find((row) => String(row.id) === key)
             if (match) void handleDeleteCompanyPayment(match)
-          }}
+          } : undefined}
           action={
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-[var(--blue-dim)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--blue-text)]">
                 {formatCurrency(companyPaymentsQuery.data?.totalAmount || 0)}
               </span>
-              <button
-                type="button"
-                onClick={openCreateCompanyPaymentModal}
-                aria-label={t('ceo.dashboard.recurring.create')}
-                title={t('ceo.dashboard.recurring.create')}
-                className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
-              >
-                <Glyph d={glyphPaths.plus} />
-              </button>
+              {canCreate ? (
+                <button
+                  type="button"
+                  onClick={openCreateCompanyPaymentModal}
+                  aria-label={t('ceo.dashboard.recurring.create')}
+                  title={t('ceo.dashboard.recurring.create')}
+                  className="grid h-[34px] w-[34px] place-items-center rounded-[11px] bg-[var(--surface-inverse)] text-white transition-colors hover:bg-[var(--primary)]"
+                >
+                  <Glyph d={glyphPaths.plus} />
+                </button>
+              ) : null}
             </div>
           }
           emptyState={

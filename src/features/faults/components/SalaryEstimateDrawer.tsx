@@ -31,7 +31,8 @@ export function SalaryEstimateDrawer({
   year: number
   onClose: () => void
   onOpenDetail: () => void
-  onAddDeliveryBonus: () => void
+  /** Omitted when the user may not create salary records; hides the button. */
+  onAddDeliveryBonus?: () => void
 }) {
   const lt = translateCurrentLiteral
   const locale = getIntlLocale()
@@ -139,9 +140,11 @@ export function SalaryEstimateDrawer({
                 <Button variant="secondary" size="sm" onClick={onOpenDetail}>
                   {lt('Open full detail')}
                 </Button>
-                <Button variant="success" size="sm" onClick={onAddDeliveryBonus}>
-                  {lt('Add delivery bonus')}
-                </Button>
+                {onAddDeliveryBonus ? (
+                  <Button variant="success" size="sm" onClick={onAddDeliveryBonus}>
+                    {lt('Add delivery bonus')}
+                  </Button>
+                ) : null}
               </div>
             </Card>
 

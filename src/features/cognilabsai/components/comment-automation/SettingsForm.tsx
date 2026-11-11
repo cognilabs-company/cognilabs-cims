@@ -27,10 +27,13 @@ function DirectMessageIcon() {
 export function AutomationToggle({
   enabled,
   onChange,
+  readOnly = false,
   className,
 }: {
   enabled: boolean
   onChange: (enabled: boolean) => void
+  /** Hide the switch (no `edit` permission); the status text still shows the state. */
+  readOnly?: boolean
   className?: string
 }) {
   const tx = useCommentAutomationT()
@@ -51,7 +54,7 @@ export function AutomationToggle({
             : tx('settings.automation_off', 'Off: nothing is sent')}
         </p>
       </div>
-      <Switch checked={enabled} onChange={onChange} tone="emerald" label={tx('settings.automation', 'Auto reply')} />
+      {readOnly ? null : <Switch checked={enabled} onChange={onChange} tone="emerald" label={tx('settings.automation', 'Auto reply')} />}
     </div>
   )
 }
@@ -83,6 +86,7 @@ function ChannelSettings({
   onEnabledChange,
   onModeChange,
   onTemplateChange,
+  readOnly,
 }: {
   id: string
   icon: ReactNode
@@ -95,6 +99,7 @@ function ChannelSettings({
   onEnabledChange: (enabled: boolean) => void
   onModeChange: (mode: CommentAutomationReplyMode) => void
   onTemplateChange: (template: string) => void
+  readOnly: boolean
 }) {
   const tx = useCommentAutomationT()
   const templateId = `${id}-template`
@@ -121,7 +126,7 @@ function ChannelSettings({
             <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--muted)]">{description}</p>
           </div>
         </div>
-        <Switch checked={enabled} onChange={onEnabledChange} size="sm" tone="emerald" label={title} />
+        {readOnly ? null : <Switch checked={enabled} onChange={onEnabledChange} size="sm" tone="emerald" label={title} />}
       </div>
 
       {enabled && (
@@ -137,20 +142,22 @@ function ChannelSettings({
                 placeholder={templatePlaceholder}
                 className="min-h-[76px] bg-[var(--surface)] text-[13px]"
               />
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[12.5px] text-[var(--muted)]">{tx('settings.insert', 'Insert:')}</span>
-                {TEMPLATE_PLACEHOLDERS.map((placeholder) => (
-                  <button
-                    key={placeholder}
-                    type="button"
-                    data-i18n-skip="true"
-                    onClick={() => onTemplateChange(`${template}${placeholder}`)}
-                    className="rounded-full bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] text-[var(--muted-strong)] transition-colors hover:text-[var(--foreground)]"
-                  >
-                    {placeholder}
-                  </button>
-                ))}
-              </div>
+              {readOnly ? null : (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[12.5px] text-[var(--muted)]">{tx('settings.insert', 'Insert:')}</span>
+                  {TEMPLATE_PLACEHOLDERS.map((placeholder) => (
+                    <button
+                      key={placeholder}
+                      type="button"
+                      data-i18n-skip="true"
+                      onClick={() => onTemplateChange(`${template}${placeholder}`)}
+                      className="rounded-full bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] text-[var(--muted-strong)] transition-colors hover:text-[var(--foreground)]"
+                    >
+                      {placeholder}
+                    </button>
+                  ))}
+                </div>
+              )}
               <p className="text-[12.5px] text-[var(--muted)]">{tx('settings.template_hint', 'This exact text is sent; placeholders are filled in automatically.')}</p>
             </>
           ) : (
@@ -167,11 +174,14 @@ export function SettingsForm({
   draft,
   onChange,
   layout = 'columns',
+  readOnly = false,
 }: {
   idPrefix: string
   draft: SettingsDraft
   onChange: (draft: SettingsDraft) => void
   layout?: 'columns' | 'stacked'
+  /** Hide switches and placeholder buttons (no `edit` permission). Wrap in a disabled fieldset to lock the fields. */
+  readOnly?: boolean
 }) {
   const tx = useCommentAutomationT()
   const usesAi = (draft.public_reply_enabled && draft.public_reply_mode === 'ai') || (draft.dm_enabled && draft.dm_mode === 'ai')
@@ -196,6 +206,7 @@ export function SettingsForm({
           onEnabledChange={(value) => set('public_reply_enabled', value)}
           onModeChange={(value) => set('public_reply_mode', value)}
           onTemplateChange={(value) => set('public_reply_template', value)}
+          readOnly={readOnly}
         />
         <ChannelSettings
           id={`${idPrefix}-dm`}
@@ -209,6 +220,7 @@ export function SettingsForm({
           onEnabledChange={(value) => set('dm_enabled', value)}
           onModeChange={(value) => set('dm_mode', value)}
           onTemplateChange={(value) => set('dm_template', value)}
+          readOnly={readOnly}
         />
       </div>
 

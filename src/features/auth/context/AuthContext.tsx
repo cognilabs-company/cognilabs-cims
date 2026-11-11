@@ -8,8 +8,10 @@ import {
   type PropsWithChildren,
 } from 'react'
 import { authService } from '../../../shared/api/services/auth.service'
+import { rbacService, type RbacModuleName, type UserAccess } from '../../../shared/api/services/rbac.service'
 import type { CurrentUser, TokenResponse } from '../../../shared/api/types'
 import {
+  canAccessModule,
   canAccessPath,
   getDefaultDashboardPath,
   hasPermission as canAccess,
@@ -29,6 +31,11 @@ type LogoutScope = 'current' | 'all'
 
 type AuthContextValue = {
   user: CurrentUser | null
+  /** /rbac/me — role, effective permissions and navigation; null when the backend has no RBAC. */
+  access: UserAccess | null
+  /** RBAC check: can the user do `action` (default "view") in `module`? */
+  can: (module: RbacModuleName, action?: string) => boolean
+  refreshAccess: () => Promise<UserAccess | null>
   status: AuthStatus
   isAuthenticated: boolean
   isReady: boolean
@@ -101,6 +108,7 @@ function normalizeRedirectPath(redirectUrl: string | null | undefined) {
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<CurrentUser | null>(null)
+  const [access, setAccess] = useState<UserAccess | null>(null)
   const [status, setStatus] = useState<AuthStatus>(() => {
     return getAccessToken() || getRefreshToken() ? 'loading' : 'anonymous'
   })
@@ -110,14 +118,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setIsRefreshingUser(true)
 
     try {
-      const currentUser = await authService.me()
+      // Permissions load together with the user, so guards never decide on half the data.
+      const [currentUser, currentAccess] = await Promise.all([
+        authService.me(),
+        rbacService.me().catch(() => null),
+      ])
       setUser(currentUser)
+      setAccess(currentAccess)
       setStatus('authenticated')
 
       return currentUser
     } catch {
       clearSession()
       setUser(null)
+      setAccess(null)
       setStatus('anonymous')
       return null
     } finally {
@@ -165,6 +179,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } finally {
       clearSession()
       setUser(null)
+      setAccess(null)
       startTransition(() => setStatus('anonymous'))
     }
   }, [])
@@ -173,12 +188,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return canAccess(user, permissionKey)
   }, [user])
 
+  const refreshAccess = useCallback(async () => {
+    const next = await rbacService.me().catch(() => null)
+    setAccess(next)
+    return next
+  }, [])
+
+  const can = useCallback((module: RbacModuleName, action = 'view') => canAccessModule(user, access, module, action), [access, user])
+
   const getDefaultPath = useCallback(() => {
-    return getDefaultDashboardPath(user)
-  }, [user])
+    return getDefaultDashboardPath(user, access)
+  }, [access, user])
 
   const resolveDashboardPath = useCallback(async () => {
-    const fallbackPath = getDefaultDashboardPath(user)
+    const fallbackPath = getDefaultDashboardPath(user, access)
 
     if (fallbackPath === '/updates' || fallbackPath === '/member/dashboard' || (isSellerUser(user) && fallbackPath === '/crm')) {
       return fallbackPath
@@ -192,14 +215,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return fallbackPath
       }
 
-      return canAccessPath(user, normalizedPath) ? normalizedPath : fallbackPath
+      return canAccessPath(user, normalizedPath, access) ? normalizedPath : fallbackPath
     } catch {
       return fallbackPath
     }
-  }, [user])
+  }, [access, user])
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
+    access,
+    can,
+    refreshAccess,
     status,
     isAuthenticated: status === 'authenticated',
     isReady: status !== 'loading',
@@ -211,6 +237,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getDefaultPath,
     resolveDashboardPath,
   }), [
+    access,
+    can,
+    refreshAccess,
     acceptTokens,
     getDefaultPath,
     hasPermission,

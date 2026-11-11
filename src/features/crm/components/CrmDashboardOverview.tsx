@@ -7,7 +7,7 @@ import { FunnelStages, type FunnelStage } from '../../../shared/ui/charts/funnel
 import { GaugeDonut, type GaugeSegment } from '../../../shared/ui/charts/gauge-donut'
 import { Leaderboard, type LeaderboardEntry } from '../../../shared/ui/charts/leaderboard'
 import { TaskList, type TaskRow } from '../../../shared/ui/charts/task-list'
-import { MetricTile } from './MetricTile'
+import { MetricTile } from '../../../shared/ui/metric-tile'
 import { resolveTone, toneByIndex, toneSurface, toneText } from '../../../shared/ui/tone'
 import { cn } from '../../../shared/lib/cn'
 import { getCustomerDisplayName } from '../../../shared/lib/customer-display'

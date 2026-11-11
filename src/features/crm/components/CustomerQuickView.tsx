@@ -26,7 +26,6 @@ import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { cn } from '../../../shared/lib/cn'
 import { formatUsernameHandle, getCustomerDisplayName, getCustomerDisplayPlatform } from '../../../shared/lib/customer-display'
 import { formatNumericDate, formatNumericDateTime } from '../../../shared/lib/format'
-import { canUseTelephony } from '../../../shared/lib/permissions'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useToast } from '../../../shared/toast/useToast'
 import { useAuth } from '../../auth/hooks/useAuth'
@@ -129,7 +128,8 @@ function SectionLabel({ icon: Icon, children, aside }: { icon: LucideIcon; child
 
 type NoteItem = { id: number | string; note: string; author: string; createdAt: string | null; isAi: boolean }
 
-function CustomerNotes({ customer }: { customer: CustomerSummary }) {
+/** `readOnly` (no RBAC customers:edit) hides adding, editing and deleting notes. */
+function CustomerNotes({ customer, readOnly = false }: { customer: CustomerSummary; readOnly?: boolean }) {
   const { t } = useLocale()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
@@ -194,7 +194,7 @@ function CustomerNotes({ customer }: { customer: CustomerSummary }) {
         {t('customers.detail.notes.title', 'Notes')}
       </SectionLabel>
 
-      <div className="flex items-center gap-1.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface)] py-1 pr-1 pl-3 transition-colors focus-within:border-[var(--primary)] focus-within:shadow-[0_0_0_3px_var(--blue-dim)]">
+      {readOnly ? null : <div className="flex items-center gap-1.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface)] py-1 pr-1 pl-3 transition-colors focus-within:border-[var(--primary)] focus-within:shadow-[0_0_0_3px_var(--blue-dim)]">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -213,7 +213,7 @@ function CustomerNotes({ customer }: { customer: CustomerSummary }) {
         >
           {adding ? <Loader2 size={15} className="animate-spin" /> : <SendHorizontal size={15} />}
         </button>
-      </div>
+      </div>}
 
       {notesQuery.isLoading && notes.length === 0 ? (
         <p className="mt-3 flex items-center gap-2 text-[12.5px] text-[var(--muted)]"><Loader2 size={14} className="animate-spin" />{t('common.loading', 'Loading...')}</p>
@@ -245,7 +245,7 @@ function CustomerNotes({ customer }: { customer: CustomerSummary }) {
                       {note.isAi ? <Sparkles size={11} className="shrink-0 text-[var(--violet-text)]" /> : null}
                       <span className="truncate">{note.author}{note.createdAt ? ` · ${formatNumericDateTime(note.createdAt)}` : ''}</span>
                     </p>
-                    {!note.isAi ? (
+                    {!note.isAi && !readOnly ? (
                       <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/note:opacity-100 focus-within:opacity-100">
                         <button type="button" onClick={() => { setEditingId(note.id); setEditingText(note.note) }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} className="grid h-6 w-6 place-items-center rounded-[7px] text-[var(--muted-strong)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"><Pencil size={12} /></button>
                         <button type="button" onClick={() => void remove(Number(note.id))} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} className="grid h-6 w-6 place-items-center rounded-[7px] text-[var(--muted-strong)] hover:bg-[var(--surface)] hover:text-[var(--danger-text)]"><Trash2 size={12} /></button>
@@ -269,7 +269,8 @@ type CustomerQuickViewProps = {
   audioSource: string | null
   statusChoices?: QuickStatusChoice[]
   onChangeStatus?: (next: string) => Promise<boolean>
-  onSaveRecall: (wall: WallTime | null) => Promise<boolean>
+  /** Omitted for read-only users: the recall tile only shows the time. */
+  onSaveRecall?: (wall: WallTime | null) => Promise<boolean>
   onClose: () => void
   onEdit?: () => void
   onSearchTelegram?: () => void
@@ -280,7 +281,7 @@ export function CustomerQuickView({
   customer, audioSource, statusChoices, onChangeStatus, onSaveRecall, onClose, onEdit, onSearchTelegram, onOpenChat,
 }: CustomerQuickViewProps) {
   const { t, locale } = useLocale()
-  const { user } = useAuth()
+  const { can } = useAuth()
   const { kind } = useCrmScope()
   const phone = useTelephony()
   const [panel, setPanel] = useState<'recall' | 'status' | null>(null)
@@ -311,13 +312,14 @@ export function CustomerQuickView({
   const recallColor = recallTone === 'past' ? 'var(--danger)' : recallTone === 'active' ? 'var(--warning)' : recallTone === 'future' ? 'var(--success)' : 'var(--primary)'
 
   // Telephony
-  const telephonyAllowed = canUseTelephony(user)
-  const phoneReady = phone.connection === 'Ready' && !phone.sessionStatus
+  // RBAC calls:create → dial through the CIMS line; otherwise fall back to the device's own dialer (tel:).
+  const telephonyAllowed = can('calls', 'create')
+  const phoneReady = phone.canDial
   const callHint = !phoneNumber
     ? t('customers.quick.no_phone', 'No phone number')
     : !telephonyAllowed || phoneReady
       ? formatPhone(phoneNumber)
-      : phone.sessionStatus
+      : phone.sessionStatus || phone.call || phone.mobileCall
         ? t('customers.quick.call_busy', 'Another call is active')
         : connectionLabel(phone.connection)
 
@@ -360,6 +362,7 @@ export function CustomerQuickView({
 
   async function saveRecall(wall: WallTime | null) {
     setSavingRecall(true)
+    if (!onSaveRecall) return
     const ok = await onSaveRecall(wall)
     setSavingRecall(false)
     if (ok) setPanel(null)
@@ -421,6 +424,7 @@ export function CustomerQuickView({
               ) : t('customers.quick.recall_none', 'Not scheduled')}
               tone="var(--primary)"
               active={panel === 'recall'}
+              disabled={!onSaveRecall}
               onClick={() => setPanel((open) => (open === 'recall' ? null : 'recall'))}
             />
             <QuickAction
@@ -566,7 +570,7 @@ export function CustomerQuickView({
           </section>
         ) : null}
 
-        <CustomerNotes customer={customer} />
+        <CustomerNotes customer={customer} readOnly={!onSaveRecall} />
       </div>
     </div>
   )

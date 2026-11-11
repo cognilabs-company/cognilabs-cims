@@ -949,6 +949,16 @@ input:-webkit-autofill:focus {
   .mac-pop, .mac-ring { animation: none; }
 }
 
+/* Checkbox tick (shared/ui/checkbox). --checkbox-on recolours it (e.g. locked RBAC ticks). */
+.ui-checkbox:checked {
+  border-color: transparent;
+  background-color: var(--checkbox-on, var(--lime));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230E1525' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  background-size: 72%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 /* ──────────────────────────────────────────────────────────────
    Calls page — CIMS's own look: a navy "line" header with lime
    accents, calls grouped into day cards. The --mp-* tokens are

@@ -69,7 +69,10 @@ export function CognilabsAIChatPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { confirm } = useConfirm()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
+  const canCreate = can('ai_chat', 'create')
+  const canEdit = can('ai_chat', 'edit')
+  const canDelete = can('ai_chat', 'delete')
   const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, () => false)
 
   const [activeTab, setActiveTab] = useState<ChannelTab>('all')
@@ -499,10 +502,10 @@ export function CognilabsAIChatPage() {
         search={searchQuery}
         onSearchChange={setSearchQuery}
         onSelect={handleSelectConversation}
-        onNewChat={() => { setNewTelegramInitialQuery(''); setShowNewTelegramModal(true) }}
+        onNewChat={canCreate ? () => { setNewTelegramInitialQuery(''); setShowNewTelegramModal(true) } : undefined}
         crmCustomerIdFor={resolveCrmCustomerId}
         onOpenCrm={handleOpenCrm}
-        onDelete={(conv) => void handleDeleteConversation(conv)}
+        onDelete={canDelete ? (conv) => void handleDeleteConversation(conv) : undefined}
         page={conversationsPage}
         pageCount={pageCount}
         onPageChange={setConversationsPage}
@@ -538,7 +541,7 @@ export function CognilabsAIChatPage() {
               {crmCustomerId ? (
                 <HeaderIcon label={t('aichat.open_crm', 'Open in CRM')} onClick={() => handleOpenCrm(crmCustomerId)}><Contact size={21} /></HeaderIcon>
               ) : null}
-              {supportsAi ? (
+              {supportsAi && canEdit ? (
                 <HeaderIcon label={aiPaused ? t('aichat.ai_resume', 'Turn AI on') : t('aichat.ai_pause', 'Pause AI')} onClick={() => void handleToggleAi(aiPaused ? 'resume' : 'pause')} active={!aiPaused}>
                   {isTogglingAi ? <Loader2 size={20} className="animate-spin" /> : aiPaused ? <BotOff size={21} /> : <Bot size={21} />}
                 </HeaderIcon>
@@ -574,16 +577,18 @@ export function CognilabsAIChatPage() {
                 type="button"
                 onClick={() => { const el = messagesContainerRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }) }}
                 aria-label={t('aichat.scroll_down', 'Scroll to the latest message')}
-                className="tg-send absolute right-5 bottom-[92px] z-10 grid h-[48px] w-[48px] place-items-center rounded-full text-[var(--tg-secondary)] transition-transform hover:scale-105"
+                className={cn('tg-send absolute right-5 z-10 grid h-[48px] w-[48px] place-items-center rounded-full text-[var(--tg-secondary)] transition-transform hover:scale-105', canCreate ? 'bottom-[92px]' : 'bottom-5')}
               >
                 <ArrowDown size={22} />
               </button>
             ) : null}
 
-            {/* composer */}
-            <div className="relative z-10 mx-auto w-full max-w-[760px] shrink-0 px-3 pt-1 pb-4 md:px-5">
-              <TgComposer value={messageText} onChange={setMessageText} onSend={() => void handleSend()} sending={isSending} />
-            </div>
+            {/* composer (sending a message needs `create`) */}
+            {canCreate ? (
+              <div className="relative z-10 mx-auto w-full max-w-[760px] shrink-0 px-3 pt-1 pb-4 md:px-5">
+                <TgComposer value={messageText} onChange={setMessageText} onSend={() => void handleSend()} sending={isSending} />
+              </div>
+            ) : null}
           </>
         )}
       </main>
@@ -612,11 +617,12 @@ export function CognilabsAIChatPage() {
           onFollowUpSave={() => void handleSaveFollowUp()}
           crmCustomerId={crmCustomerId}
           onOpenCrm={() => crmCustomerId && handleOpenCrm(crmCustomerId)}
-          onDelete={() => void handleDeleteConversation(selectedConversation)}
+          canEdit={canEdit}
+          onDelete={canDelete ? () => void handleDeleteConversation(selectedConversation) : undefined}
         />
       ) : null}
 
-      {showNewTelegramModal ? (
+      {showNewTelegramModal && canCreate ? (
         <TelegramSearchDialog
           initialQuery={newTelegramInitialQuery}
           presenceText={presenceText}
