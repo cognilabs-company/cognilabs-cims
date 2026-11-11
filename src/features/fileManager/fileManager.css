@@ -1,0 +1,251 @@
+/* File manager — the grid item is a 3D folder that opens on hover (ported from the lex-go portal):
+   the back cover stays, the sheets inside tilt out and the front cover swings down.
+   Every colour comes from the app tokens through --fm-c, so light / dark switch on their own. */
+
+.fm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(156px, 100%), 1fr));
+  gap: 18px 12px;
+  padding-top: 10px;
+}
+
+.fm-card {
+  --fm-c: color-mix(in oklab, var(--warning) 50%, var(--lime));
+  --fm-back: color-mix(in oklab, var(--fm-c) 80%, black);
+  --fm-front: var(--fm-c);
+  --fm-front-2: color-mix(in oklab, var(--fm-c) 74%, white);
+  --fm-s1: var(--card);
+  --fm-s2: var(--input-surface);
+  --fm-s3: var(--border);
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border-radius: 18px;
+  padding: 14px 8px 8px;
+  transition: background-color 0.15s ease;
+}
+.fm-card[data-kind='pdf'] { --fm-c: var(--danger); }
+.fm-card[data-kind='doc'] { --fm-c: var(--primary); }
+.fm-card[data-kind='sheet'] { --fm-c: var(--success); }
+.fm-card[data-kind='image'] { --fm-c: color-mix(in oklab, var(--primary) 42%, var(--success)); }
+.fm-card[data-kind='text'] { --fm-c: var(--muted-strong); }
+.fm-card[data-kind='archive'] { --fm-c: color-mix(in oklab, var(--warning) 55%, var(--muted-strong)); }
+.fm-card[data-kind='media'] { --fm-c: color-mix(in oklab, var(--danger) 55%, var(--warning)); }
+.fm-card[data-kind='file'] { --fm-c: var(--caption); }
+
+.fm-card:hover { background: var(--row-hover); }
+.fm-card[data-selected='true'] { background: var(--row-selected); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 45%, transparent); }
+
+/* The folder itself is the button, so the whole tile is one target. */
+.fm-card__hit {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  padding: 0 0 4px;
+}
+.fm-card__hit:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+.fm-fold {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  perspective: 1500px;
+  transform-style: preserve-3d;
+  transform-origin: bottom;
+}
+
+/* Back cover: the tab and its notch are the two pseudo-elements. */
+.fm-fold__back {
+  position: absolute;
+  inset: 0;
+  border-radius: 15px;
+  border-top-left-radius: 0;
+  background: var(--fm-back);
+  transform-origin: top;
+  transition: box-shadow 0.3s ease;
+}
+.fm-fold__back::after {
+  content: '';
+  position: absolute;
+  bottom: 99%;
+  left: 0;
+  width: 34%;
+  height: 12px;
+  border-radius: 12px 12px 0 0;
+  background: var(--fm-back);
+}
+.fm-fold__back::before {
+  content: '';
+  position: absolute;
+  top: -11px;
+  left: calc(34% - 4px);
+  width: 12px;
+  height: 12px;
+  background: var(--fm-back);
+  clip-path: polygon(0 35%, 0 100%, 50% 100%);
+}
+
+/* Paper inside — three sheets that fan out by increasing angles. */
+.fm-fold__sheet {
+  position: absolute;
+  inset: 4px;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(3, 16, 43, 0.06);
+  transform-origin: bottom;
+  transition: transform 0.3s ease;
+  backface-visibility: hidden;
+}
+.fm-fold__sheet--3 { background: var(--fm-s3); }
+.fm-fold__sheet--2 { background: var(--fm-s2); }
+.fm-fold__sheet--1 { background: var(--fm-s1); }
+
+/* Front cover: shorter than the box so the sheets peek out at the top. */
+.fm-fold__front {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: calc(100% - 4px);
+  align-items: flex-end;
+  justify-content: space-between;
+  border-radius: 15px;
+  border-top-right-radius: 0;
+  background: linear-gradient(to top, var(--fm-front), var(--fm-front-2));
+  transform-origin: bottom;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  backface-visibility: hidden;
+}
+.fm-fold__front::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 99%;
+  width: 62%;
+  height: 12px;
+  border-radius: 12px 12px 0 0;
+  background: var(--fm-front-2);
+}
+.fm-fold__front::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  right: calc(62% - 4px);
+  width: 11px;
+  height: 11px;
+  background: var(--fm-front-2);
+  clip-path: polygon(100% 14%, 50% 100%, 100% 100%);
+}
+
+/* The type badge rides on the front cover and tilts down with it. */
+.fm-fold__tag {
+  display: inline-flex;
+  max-width: calc(100% - 20px);
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 9px 10px;
+  border-radius: 999px;
+  /* A darker shade of the cover keeps the white label readable on light (dark-theme) covers too. */
+  background: color-mix(in srgb, var(--fm-back) 62%, transparent);
+  padding: 4px 9px;
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  backdrop-filter: blur(2px);
+}
+.fm-fold__tag svg { width: 13px; height: 13px; flex: none; }
+.fm-fold__tag span { overflow: hidden; text-overflow: ellipsis; }
+
+.fm-card:hover .fm-fold__back,
+.fm-card__hit:focus-visible .fm-fold__back { box-shadow: 0 18px 36px rgba(3, 16, 43, 0.22); }
+.fm-card:hover .fm-fold__sheet--3,
+.fm-card__hit:focus-visible .fm-fold__sheet--3 { transform: rotateX(-20deg); }
+.fm-card:hover .fm-fold__sheet--2,
+.fm-card__hit:focus-visible .fm-fold__sheet--2 { transform: rotateX(-30deg); }
+.fm-card:hover .fm-fold__sheet--1,
+.fm-card__hit:focus-visible .fm-fold__sheet--1 { transform: rotateX(-38deg); }
+.fm-card:hover .fm-fold__front,
+.fm-card__hit:focus-visible .fm-fold__front {
+  box-shadow:
+    inset 0 20px 40px color-mix(in srgb, var(--fm-front-2) 55%, transparent),
+    inset 0 -20px 40px color-mix(in srgb, var(--fm-back) 45%, transparent);
+  transform: rotateX(-46deg) translateY(1px);
+}
+
+/* Name and meta sit under the folder, centred on it. */
+.fm-card__name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fm-card__meta {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11.5px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Checkbox and menu float over the folder; shown on hover, when selected, while selecting, and always on touch. */
+.fm-card__check,
+.fm-card__more {
+  position: absolute;
+  top: 6px;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.fm-card__check { left: 6px; }
+.fm-card__more { right: 6px; }
+.fm-card:hover .fm-card__check,
+.fm-card:focus-within .fm-card__check,
+.fm-card[data-selected='true'] .fm-card__check,
+.fm-grid[data-selecting='true'] .fm-card__check,
+.fm-card:hover .fm-card__more,
+.fm-card:focus-within .fm-card__more,
+.fm-card__more[aria-expanded='true'] { opacity: 1; }
+@media (hover: none) {
+  .fm-card__check,
+  .fm-card__more { opacity: 1; }
+}
+
+.fm-drop {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  outline: 2px dashed color-mix(in srgb, var(--primary) 60%, transparent);
+  outline-offset: -8px;
+}
+
+.fm-progress-bar {
+  transition: width 0.25s ease;
+}
+
+@media (max-width: 520px) {
+  .fm-grid { grid-template-columns: repeat(auto-fill, minmax(min(132px, 100%), 1fr)); gap: 12px 8px; }
+  .fm-fold__tag { margin-left: 8px; padding: 3px 7px; font-size: 0.62rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fm-fold__back,
+  .fm-fold__sheet,
+  .fm-fold__front { transition: none; }
+  .fm-card:hover .fm-fold__sheet--3,
+  .fm-card:hover .fm-fold__sheet--2,
+  .fm-card:hover .fm-fold__sheet--1,
+  .fm-card:hover .fm-fold__front { transform: none; }
+}
