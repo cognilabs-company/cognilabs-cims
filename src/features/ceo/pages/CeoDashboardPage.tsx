@@ -801,15 +801,8 @@ export function CeoDashboardPage() {
 
   return (
     <section className="stagger-in flex flex-col gap-[18px]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="ui-page-title text-[var(--foreground)]">
-            {t('ceo.overview.title', 'CEO dashboard')}
-          </h1>
-          <p className="text-sm text-[var(--muted)]">
-            {t('ceo.overview.subtitle', 'Company metrics, lead response and team workload at a glance.')}
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
+        <h1 className="sr-only">{t('ceo.overview.title', 'CEO dashboard')}</h1>
 
         <ActionsMenu
           label={t('common.actions')}

@@ -31,37 +31,19 @@ const metaToneClassNames: Record<PageHeaderTone, string> = {
 
 export function PageHeader({
   title,
-  eyebrow,
-  description,
   meta = [],
   actions,
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn('page-enter flex flex-col gap-[18px]', className)}>
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div className="flex max-w-3xl flex-col gap-1">
-          {eyebrow ? (
-            <p className="page-header-label ui-eyebrow">
-              {translateCurrentLiteral(eyebrow)}
-            </p>
-          ) : null}
-          <h1 className="page-header-title ui-page-title">
-            {translateCurrentLiteral(title)}
-          </h1>
-          {description ? (
-            <p className="text-sm text-[var(--muted)]">
-              {translateCurrentLiteral(description)}
-            </p>
-          ) : null}
+    <div className={cn('page-enter flex flex-col gap-[18px]', !actions && meta.length === 0 && 'contents', className)}>
+      {/* Page names live in the top bar; no big title / description text on the page itself. */}
+      <h1 className="sr-only">{translateCurrentLiteral(title)}</h1>
+      {actions ? (
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
+          {actions}
         </div>
-
-        {actions ? (
-          <div className="flex flex-wrap items-center gap-2.5 xl:justify-end">
-            {actions}
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       {meta.length > 0 ? (
         <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">

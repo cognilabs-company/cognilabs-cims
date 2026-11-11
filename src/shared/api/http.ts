@@ -1,5 +1,5 @@
 import { env } from '../config/env'
-import { clearSession, getAccessToken, getRefreshToken, setSessionTokens } from '../lib/session'
+import { clearSession, getAccessToken, getRefreshToken, isMemorySession, renewMemorySession, setSessionTokens } from '../lib/session'
 import type { ApiRequestOptions, ApiResponseError, TokenResponse } from './types'
 
 const defaultHeaders: HeadersInit = {
@@ -64,6 +64,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
 let refreshPromise: Promise<string | null> | null = null
 
 async function refreshAccessToken() {
+  // Mini App: no refresh token — a new session is created from Telegram initData.
+  if (isMemorySession()) return renewMemorySession()
+
   const refreshToken = getRefreshToken()
 
   if (!refreshToken) {

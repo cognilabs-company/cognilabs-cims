@@ -136,6 +136,10 @@ const UpdateTrackingPage = lazyPage(
   () => import('../features/updateTracking/pages/UpdateTrackingPage'),
   'UpdateTrackingPage',
 )
+const MiniAppPage = lazyPage(
+  () => import('../features/miniapp/pages/MiniAppPage'),
+  'MiniAppPage',
+)
 const MindMapPage = lazyPage(
   () => import('../features/mindmap/pages/MindMapPage'),
   'MindMapPage',
@@ -182,6 +186,12 @@ const TelephonyPage = lazyPage(
 )
 
 export const router = createBrowserRouter([
+  // Telegram Mini App: its own session from Telegram initData (outside the web sign-in and layout).
+  {
+    path: '/miniapp',
+    element: withPageLoader(<MiniAppPage />, 'panel'),
+    errorElement: <RouteErrorBoundary />,
+  },
   {
     element: <RouterAuthBoundary />,
     errorElement: <RouteErrorBoundary />,

@@ -85,13 +85,8 @@ export function CimsTeamPage() {
 
   return (
     <section className="page-enter flex flex-col gap-[18px]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="ui-page-title text-[var(--foreground)]">{t('cims.page.title', 'CIMS Team')}</h1>
-          <p className="text-sm text-[var(--muted)]">
-            {t('cims.page.subtitle', 'Official channels, community lines and automation bots in one board.')}
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
+        <h1 className="sr-only">{t('cims.page.title', 'CIMS Team')}</h1>
 
         <Badge variant="blue" dot>{t('cims.overview.workspace', 'Workspace links')}</Badge>
       </div>

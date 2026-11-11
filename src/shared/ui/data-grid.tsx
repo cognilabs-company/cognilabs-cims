@@ -206,6 +206,7 @@ export function DataGrid<T>({
   const resizingRef = useRef(false)
   const scrollBoxRef = useRef<HTMLDivElement>(null)
   const headRef = useRef<HTMLTableSectionElement>(null)
+  const scrollBarRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(state)) } catch { /* private mode */ }
@@ -228,9 +229,16 @@ export function DataGrid<T>({
       frame = 0
       const top = scroller ? scroller.getBoundingClientRect().top : 0
       const rect = box.getBoundingClientRect()
-      const shift = Math.max(0, Math.min(top - rect.top, rect.height - head.offsetHeight * 2))
+      // The scrollbar sits right above the table; both stick to the top together.
+      const bar = scrollBarRef.current
+      const barHeight = bar && bar.offsetParent !== null ? bar.offsetHeight : 0
+      const shift = Math.max(0, Math.min(top - (rect.top - barHeight), rect.height - head.offsetHeight * 2))
       head.style.transform = shift > 0 ? `translateY(${shift}px)` : ''
       head.classList.toggle('grid-head-floating', shift > 0)
+      if (bar) {
+        bar.style.transform = shift > 0 ? `translateY(${shift}px)` : ''
+        bar.classList.toggle('grid-head-floating', shift > 0)
+      }
     }
     const onScroll = () => { if (!frame) frame = window.requestAnimationFrame(place) }
     target.addEventListener('scroll', onScroll, { passive: true })
@@ -559,6 +567,7 @@ export function DataGrid<T>({
       {belowToolbar}
 
       {/* ── Table ──────────────────────────────────────── */}
+      <GridScrollbar boxRef={scrollBoxRef} barRef={scrollBarRef} labels={{ left: t('grid.scroll_left', 'Scroll left'), right: t('grid.scroll_right', 'Scroll right') }} />
       <div ref={scrollBoxRef} onScroll={(event) => { const next = event.currentTarget.scrollLeft > 2; if (next !== scrolledX) setScrolledX(next) }} className="no-scrollbar relative overflow-x-auto overflow-y-hidden">
         <table ref={tableRef} className="border-separate border-spacing-0 text-left" style={{ tableLayout: 'fixed', width: tableWidth, minWidth: '100%' }}>
           <colgroup>
@@ -776,6 +785,105 @@ export function DataGrid<T>({
         ) : <span />}
       </div>
     </section>
+  )
+}
+
+/**
+ * Designed horizontal scrollbar shown on top of the table (the native one is hidden).
+ * Arrows nudge, the thumb drags, a click on the track pages. It floats with the header.
+ */
+function GridScrollbar({ boxRef, barRef, labels }: {
+  boxRef: React.RefObject<HTMLDivElement | null>
+  barRef: React.RefObject<HTMLDivElement | null>
+  labels: { left: string; right: string }
+}) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const thumbRef = useRef<HTMLDivElement>(null)
+  const [overflow, setOverflow] = useState(false)
+  const [edges, setEdges] = useState({ start: true, end: false })
+
+  useEffect(() => {
+    const box = boxRef.current
+    if (!box) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const { scrollWidth, clientWidth, scrollLeft } = box
+      const has = scrollWidth > clientWidth + 1
+      setOverflow(has)
+      setEdges((current) => {
+        const next = { start: scrollLeft <= 1, end: scrollLeft >= scrollWidth - clientWidth - 1 }
+        return current.start === next.start && current.end === next.end ? current : next
+      })
+      const track = trackRef.current
+      const thumb = thumbRef.current
+      if (!has || !track || !thumb) return
+      const trackWidth = track.clientWidth
+      const width = Math.max(48, (trackWidth * clientWidth) / scrollWidth)
+      const x = (trackWidth - width) * (scrollLeft / Math.max(1, scrollWidth - clientWidth))
+      thumb.style.width = `${width}px`
+      thumb.style.transform = `translateX(${x}px)`
+    }
+    const schedule = () => { if (!frame) frame = window.requestAnimationFrame(update) }
+    schedule()
+    box.addEventListener('scroll', schedule, { passive: true })
+    const observer = new ResizeObserver(schedule)
+    observer.observe(box)
+    if (box.firstElementChild) observer.observe(box.firstElementChild)
+    if (trackRef.current) observer.observe(trackRef.current)
+    return () => {
+      box.removeEventListener('scroll', schedule)
+      observer.disconnect()
+      window.cancelAnimationFrame(frame)
+    }
+  }, [boxRef, overflow])
+
+  function onThumbDown(event: ReactPointerEvent<HTMLDivElement>) {
+    const box = boxRef.current
+    const track = trackRef.current
+    const thumb = thumbRef.current
+    if (!box || !track || !thumb) return
+    event.preventDefault()
+    event.stopPropagation()
+    const startX = event.clientX
+    const startLeft = box.scrollLeft
+    const ratio = (box.scrollWidth - box.clientWidth) / Math.max(1, track.clientWidth - thumb.offsetWidth)
+    thumb.dataset.dragging = 'true'
+    const move = (e: PointerEvent) => { box.scrollLeft = startLeft + (e.clientX - startX) * ratio }
+    const up = () => {
+      delete thumb.dataset.dragging
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  function onTrackDown(event: ReactPointerEvent<HTMLDivElement>) {
+    const box = boxRef.current
+    const thumb = thumbRef.current
+    if (!box || !thumb) return
+    const rect = thumb.getBoundingClientRect()
+    box.scrollBy({ left: (event.clientX < rect.left ? -1 : 1) * box.clientWidth * 0.8, behavior: 'smooth' })
+  }
+
+  const nudge = (direction: -1 | 1) => boxRef.current?.scrollBy({ left: direction * 320, behavior: 'smooth' })
+  const arrow = 'grid h-6 w-6 shrink-0 place-items-center rounded-[7px] text-[var(--muted-strong)] transition-colors hover:bg-[var(--input-surface)] hover:text-[var(--foreground)] disabled:pointer-events-none disabled:opacity-30'
+
+  return (
+    <div ref={barRef} className={cn('relative z-20 border-b border-[var(--border)] bg-[var(--surface)]', !overflow && 'hidden')}>
+      <div className="flex items-center gap-1.5 px-2 py-1.5">
+        <button type="button" onClick={() => nudge(-1)} disabled={edges.start} aria-label={labels.left} className={arrow}><ChevronLeft size={14} /></button>
+        <div ref={trackRef} onPointerDown={onTrackDown} className="group/track relative h-2.5 flex-1 cursor-pointer rounded-full bg-[var(--muted-surface)]">
+          <div
+            ref={thumbRef}
+            onPointerDown={onThumbDown}
+            className="absolute inset-y-0 left-0 cursor-grab rounded-full bg-[var(--border-hover)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] transition-colors group-hover/track:bg-[var(--primary)]/60 data-[dragging=true]:cursor-grabbing data-[dragging=true]:bg-[var(--primary)]"
+          />
+        </div>
+        <button type="button" onClick={() => nudge(1)} disabled={edges.end} aria-label={labels.right} className={arrow}><ChevronRight size={14} /></button>
+      </div>
+    </div>
   )
 }
 

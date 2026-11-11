@@ -1114,6 +1114,31 @@ input:-webkit-autofill:focus {
   .mm-canvas.mm-animated .mm-node, .mm-canvas.mm-animated .mm-edge, .mm-world-animate, .mm-bg-animate { transition: none; }
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Telegram Mini App (/miniapp): soft entrances, pressable keys,
+   bottom sheet, call screen and tab indicator.
+   ────────────────────────────────────────────────────────────── */
+@keyframes mini-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes mini-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mini-sheet { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes mini-call { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes mini-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); } 100% { box-shadow: 0 0 0 22px transparent; } }
+@keyframes mini-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.mini-app { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+.mini-in { animation: mini-in 380ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mini-fade { animation: mini-fade 220ms ease backwards; }
+.mini-sheet { animation: mini-sheet 380ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mini-call { animation: mini-call 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.mini-ring { animation: mini-ring 1.4s ease-out infinite; }
+.mini-pulse { animation: mini-pulse 2s ease-in-out infinite; }
+.mini-key { transition: transform 120ms ease, background-color 150ms ease, opacity 150ms ease; touch-action: manipulation; user-select: none; }
+.mini-key:active:not(:disabled) { transform: scale(0.92); }
+.mini-tab-indicator { transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .mini-in, .mini-fade, .mini-sheet, .mini-call, .mini-ring, .mini-pulse { animation: none; }
+  .mini-tab-indicator, .mini-key { transition: none; }
+}
+
 /* Day picker popover + month slide */
 @keyframes cal-pop { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes cal-slide-left { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }

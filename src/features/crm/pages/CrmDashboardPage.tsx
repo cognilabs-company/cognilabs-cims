@@ -30,6 +30,7 @@ import { useAuth } from '../../auth/hooks/useAuth'
 import { platformVisual } from '../lib/platformIcon'
 import { avatarTone, initialsFor } from '../lib/customerAvatar'
 import { MetricTile } from '../../../shared/ui/metric-tile'
+import { AlarmIcon, UsersThreeIcon } from '@phosphor-icons/react'
 import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { statusIconFor, statusKpiIconFor } from '../lib/statusIcon'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
@@ -1181,13 +1182,8 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   if (view === 'overview') {
     return (
       <section className="stagger-in flex flex-col gap-[18px]">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="ui-page-title text-[var(--foreground)]">{listTitle}</h1>
-            <p className="text-sm text-[var(--muted)]">
-              {t('customers.page.overview_subtitle', 'Pipeline, callbacks and team results at a glance.')}
-            </p>
-          </div>
+        <div className="flex items-center justify-end">
+          <h1 className="sr-only">{listTitle}</h1>
           <Button onClick={() => navigate(`${routeBasePath}/customers`)} rightIcon={<ArrowRight size={16} />}>
             {t('customers.page.open_list', 'Customer list')}
           </Button>
@@ -1434,6 +1430,12 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     else if (recall.toDateString() === todayString) entry.today += 1
     dueByStatus.set(key, entry)
   }
+  let recallToday = 0
+  let recallOverdue = 0
+  for (const entry of dueByStatus.values()) {
+    recallToday += entry.today
+    recallOverdue += entry.overdue
+  }
   const preferredCards = statusCardKeys
     .map((key) => allChipStatuses.find((option) => normalizeStatusKey(option.value) === key))
     .filter((option): option is (typeof allChipStatuses)[number] => Boolean(option))
@@ -1538,6 +1540,27 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
             onClick={() => { setStatusFilters(card.active ? [] : [card.value]); setTablePage(1) }}
           />
         ))}
+        {/* All customers — also clears the status filter */}
+        <MetricTile
+          label={t('customers.total_card.label', 'All customers')}
+          value={baseCustomers.length}
+          caption={t('customers.total_card.caption', '{{count}} added today', { count: createdTodayCount })}
+          icon={UsersThreeIcon}
+          accent="#2B59FF"
+          onClick={() => { setStatusFilters([]); setTablePage(1) }}
+        />
+        {/* Wide screens (1920…) have room for one more: callbacks due today */}
+        <div className="hidden min-[1800px]:block [&>*]:h-full [&>*]:w-full">
+          <MetricTile
+            label={t('customers.recall_card.label', 'Callbacks today')}
+            value={recallToday}
+            caption={recallOverdue
+              ? t('customers.recall_card.overdue', 'Overdue: {{count}}', { count: recallOverdue })
+              : t('customers.recall_card.none_overdue', 'Nothing overdue')}
+            icon={AlarmIcon}
+            accent="#E8590C"
+          />
+        </div>
       </div>
 
       <DataGrid

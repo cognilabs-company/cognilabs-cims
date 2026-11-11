@@ -33,11 +33,29 @@ function statusError(cause: unknown) {
   return `Call failed: ${value}`
 }
 
+/** The web app: line + permissions from the signed-in user (RBAC calls:view / calls:create). */
 export function TelephonyProvider({ children }: { children: ReactNode }) {
   const { user, can } = useAuth()
-  // RBAC: "calls" view = the phone line and call history; create = placing calls.
-  const allowed = can('calls', 'view')
-  const canPlaceCalls = can('calls', 'create')
+  return (
+    <TelephonyEngine userId={user?.id ?? null} allowed={can('calls', 'view')} canPlaceCalls={can('calls', 'create')}>
+      {children}
+    </TelephonyEngine>
+  )
+}
+
+type TelephonyEngineProps = {
+  children: ReactNode
+  userId: number | null
+  allowed: boolean
+  canPlaceCalls: boolean
+  /** Outgoing calls always over WebRTC (the Telegram Mini App does not use the mobile callback). */
+  webrtcOnly?: boolean
+  /** Render the desktop floating call panel (the Mini App draws its own call screen). */
+  panel?: boolean
+}
+
+/** SIP line, call events and call actions — independent of how the user signed in. */
+export function TelephonyEngine({ children, userId, allowed, canPlaceCalls, webrtcOnly = false, panel = true }: TelephonyEngineProps) {
   const [mobileCall, setMobileCall] = useState<MobileDialState | null>(null)
   const [config, setConfig] = useState<TelephonyConfig | null>(null)
   const [connection, setConnection] = useState('Connecting')
@@ -111,7 +129,7 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!allowed || !user?.id) return
+    if (!allowed || !userId) return
     let active = true
     let agent: SipAgent | null = null
     void telephonyService.config().then(async (next) => {
@@ -165,7 +183,7 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
       agent?.stop()
       agentRef.current = null
     }
-  }, [allowed, user?.id, attachSession])
+  }, [allowed, userId, attachSession])
 
   useEffect(() => {
     if (!allowed || !config?.enabled) return
@@ -248,7 +266,7 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
   const dial = useCallback((phone: string, selectedLead?: TelephonyLead | null) => {
     const normalized = normalizePhone(phone)
     if (!canPlaceCalls) { setError('You do not have permission to make calls.'); return }
-    if (configRef.current?.outbound_mode === 'mobile') {
+    if (!webrtcOnly && configRef.current?.outbound_mode === 'mobile') {
       // The PBX calls the user's mobile first, then the customer (company caller ID and recording are kept).
       if (normalized.length < 7) { setError('Enter a full phone number.'); return }
       if (!configRef.current.enabled || callRef.current || sessionRef.current) { setError('Phone is not ready or another call is active.'); return }
@@ -287,7 +305,7 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
         pcConfig: { iceServers: configRef.current.ice_servers },
       })
     } catch (cause) { setError(statusError(cause instanceof Error ? cause.message : cause)) }
-  }, [canPlaceCalls])
+  }, [canPlaceCalls, webrtcOnly])
 
   // A mobile dial that never produced a call event (phone not answered, PBX gave up) is forgotten after a minute.
   useEffect(() => {
@@ -326,7 +344,7 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
     setMuted(!next)
   }, [])
   const clearCall = useCallback(() => { if (!sessionRef.current) { callRef.current = null; setCall(null); setLead(null); setError(null); setMobileCall(null) } }, [])
-  const outboundMode: OutboundMode = config?.outbound_mode === 'mobile' ? 'mobile' : 'webrtc'
+  const outboundMode: OutboundMode = !webrtcOnly && config?.outbound_mode === 'mobile' ? 'mobile' : 'webrtc'
   const busy = Boolean(sessionStatus || call || mobileCall)
   const canDial = canPlaceCalls && Boolean(config?.enabled) && !busy && (outboundMode === 'mobile' || connection === 'Ready')
   const value = useMemo(() => ({
@@ -338,7 +356,7 @@ export function TelephonyProvider({ children }: { children: ReactNode }) {
   return (
     <TelephonyContext.Provider value={value}>
       {children}
-      {allowed ? <ActiveCallPanel key={call?.id ?? sessionStatus ?? 'idle'} /> : null}
+      {allowed && panel ? <ActiveCallPanel key={call?.id ?? sessionStatus ?? 'idle'} /> : null}
       <audio ref={audioRef} autoPlay playsInline className="hidden" />
     </TelephonyContext.Provider>
   )

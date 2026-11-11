@@ -1888,11 +1888,8 @@ export function DeveloperKpiPage() {
 
   return (
     <section className="page-enter flex flex-col gap-[18px]">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="ui-page-title text-[var(--foreground)]">Developer KPI</h1>
-          <p className="text-sm text-[var(--muted)]">KPI scoring · salary estimates · quality tracking</p>
-        </div>
+      <div className="flex items-center justify-end">
+        <h1 className="sr-only">Developer KPI</h1>
         <div className="flex items-center gap-2">
           <div className="w-32">
             <SelectField value={String(month)} onValueChange={(v) => setMonth(Number(v))} options={monthOptions} className={FILTER_SELECT} />

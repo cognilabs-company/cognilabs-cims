@@ -136,15 +136,11 @@ export function AppHeader() {
         </button>
       ) : null}
 
-      {/* Greeting + where you are */}
-      <div className="flex min-w-0 flex-col">
-        <p className="hidden truncate text-[12.5px] font-medium text-[var(--muted)] sm:block">
-          {formatToday(locale)} · {routeLabel}
-        </p>
-        <p className="truncate text-[19px] leading-7 font-bold tracking-[-0.02em] text-[var(--foreground)] sm:text-[22px]">
-          {user?.name ? t('shell.greeting', 'Hi, {{name}}', { name: user.name }) : routeLabel}
-        </p>
-      </div>
+      {/* Where you are (no greeting) */}
+      <p className="min-w-0 truncate text-[14px] font-medium text-[var(--muted-strong)]">
+        <span className="hidden sm:inline">{formatToday(locale)} · </span>
+        <span className="font-semibold text-[var(--foreground)]">{routeLabel}</span>
+      </p>
 
       <div className="min-w-0 flex-1" />
 
