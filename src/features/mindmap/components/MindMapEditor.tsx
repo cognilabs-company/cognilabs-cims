@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowArcLeftIcon,
+  ArrowCounterClockwiseIcon,
   EyeIcon,
   ArrowArcRightIcon,
   ArrowDownIcon,
@@ -40,7 +41,7 @@ import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { cn } from '../../../shared/lib/cn'
 import { useToast } from '../../../shared/toast/useToast'
 import { exportJson, exportMarkdown, exportPng, exportSvg } from '../lib/export'
-import { computeLayout, isHub, type Layout } from '../lib/layout'
+import { computeLayout, dirOf, isHub, type Layout } from '../lib/layout'
 import {
   addChild,
   addSibling,
@@ -61,7 +62,6 @@ import {
   floatingIds,
   insertParent,
   moveInHub,
-  reorder,
   settleFree,
   updateNode,
 } from '../lib/tree'
@@ -370,8 +370,8 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   }
 
   /**
-   * A dragged node was released. On a node → it is connected there. In empty space a free node moves;
-   * a branch of a hub goes to the side it was dropped on; any other node snaps back into its branch, in the new order.
+   * A dragged node was released. On a node → it is connected there. In empty space it stays exactly where it
+   * was put (a connected node keeps its line; a branch of the central topic also turns to that side).
    */
   function dropNode(id: string, center: { x: number; y: number }, targetId: string | null) {
     const node = map.nodes[id]
@@ -395,30 +395,19 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
       commit(updateNode(map, id, { dx: node.dx + center.x - (box.x + box.w / 2), dy: node.dy + center.y - (box.y + box.h / 2) }))
       return
     }
+    // A connected node stays exactly where it was dropped (still connected; it moves with its parent).
     const parent = layout.boxes.get(node.parentId)
     if (!parent) return
-    if (isHub(map, node.parentId)) {
-      const dx = center.x - (parent.x + parent.w / 2)
-      const dy = center.y - (parent.y + parent.h / 2)
-      const dir: Dir = Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up')
-      const along = dir === 'right' || dir === 'left' ? center.y : center.x
-      const siblings = map.nodes[node.parentId].children.filter((child) => child !== id && layout.boxes.get(child)?.dir === dir)
-      const before = siblings.find((child) => {
-        const sibling = layout.boxes.get(child)!
-        return along < (dir === 'right' || dir === 'left' ? sibling.y + sibling.h / 2 : sibling.x + sibling.w / 2)
-      }) ?? null
-      commit(moveInHub(map, id, dir, before))
-    } else {
-      const horizontal = box.dir === 'right' || box.dir === 'left'
-      const along = horizontal ? center.y : center.x
-      const siblings = map.nodes[node.parentId].children.filter((child) => child !== id && layout.boxes.has(child))
-      const before = siblings.find((child) => {
-        const sibling = layout.boxes.get(child)!
-        return along < (horizontal ? sibling.y + sibling.h / 2 : sibling.x + sibling.w / 2)
-      }) ?? null
-      commit(reorder(map, id, before))
-    }
+    const px = Math.round(center.x - (parent.x + parent.w / 2))
+    const py = Math.round(center.y - (parent.y + parent.h / 2))
+    commit(updateNode(map, id, { px, py, dx: 0, dy: 0, ...(isHub(map, node.parentId) ? { dir: dirOf(px, py) } : {}) }))
     setSelectedId(id)
+  }
+
+  /** A hand-placed node goes back to its automatic place in the branch. */
+  function unpin(id = selected) {
+    if (!map.nodes[id]) return
+    commit(updateNode(map, id, { px: undefined, py: undefined, dx: 0, dy: 0 }))
   }
 
   /** A free node at a canvas point (double-click on empty space, or the centre of the view). */
@@ -475,8 +464,17 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
 
   function nudge(dx: number, dy: number) {
     const current = map.nodes[selected]
-    // Connected nodes stay in their branch (drag them to reorder); only free nodes and the map itself move.
-    if (current?.parentId) return
+    if (!current) return
+    if (current.parentId) {
+      // A connected node becomes hand-placed at its current spot, then moves.
+      const box = layout.boxes.get(selected)
+      const parent = layout.boxes.get(current.parentId)
+      if (!box || !parent) return
+      const px = Math.round(box.x + box.w / 2 - (parent.x + parent.w / 2) + dx)
+      const py = Math.round(box.y + box.h / 2 - (parent.y + parent.h / 2) + dy)
+      apply((m) => updateNode(m, selected, { px, py, dx: 0, dy: 0, ...(isHub(m, current.parentId!) ? { dir: dirOf(px, py) } : {}) }), `nudge:${selected}`)
+      return
+    }
     apply((m) => updateNode(m, selected, { dx: current.dx + dx, dy: current.dy + dy }), `nudge:${selected}`)
   }
 
@@ -770,6 +768,9 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
         </div>
         <ToolButton icon={<TrashIcon size={15} />} label={t('mindmap.remove', 'Delete')} onClick={deleteSelected} disabled={selected === map.rootId} danger />
         <ToolButton iconOnly icon={<ScissorsIcon size={15} />} label={t('mindmap.cut', 'Remove the line to the parent')} onClick={() => detachNode()} disabled={!node.parentId} />
+        {node.px !== undefined && node.py !== undefined ? (
+          <ToolButton compact icon={<ArrowCounterClockwiseIcon size={15} />} label={t('mindmap.unpin', 'Back to its place')} onClick={() => unpin()} />
+        ) : null}
         <ToolButton iconOnly icon={<ArrowUpIcon size={15} />} label={t('mindmap.move_up', 'Move up')} onClick={() => move(-1)} disabled={siblingIndex <= 0} />
         <ToolButton iconOnly icon={<ArrowDownIcon size={15} />} label={t('mindmap.move_down', 'Move down')} onClick={() => move(1)} disabled={siblingIndex < 0 || siblingIndex >= siblings.length - 1} />
         <span className="mx-1 h-6 w-px shrink-0 bg-[var(--border)]" />
@@ -872,7 +873,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
                 <ToolButton iconOnly flat icon={<QuestionIcon size={16} />} label={t('mindmap.help', 'How it works')} onClick={() => setHelpOpen((open) => !open)} active={helpOpen} />
                 <span className={cn('absolute bottom-[calc(100%+10px)] left-0 w-[300px] rounded-[12px] border border-[var(--border)] bg-[var(--card)] p-3 text-[12px] leading-relaxed text-[var(--muted-strong)] shadow-[var(--elev-lg)]', helpOpen ? 'block' : 'hidden group-hover/help:block')}>
                   {hint.split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
-                  {t('mindmap.hint_v2', 'Select a node — “+” on every side adds there (around the central topic: a branch that way) · click a line and press Delete or ✂ to cut it · drag a node onto another to connect, onto empty space next to its parent to change its place or side').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
+                  {t('mindmap.hint_v2', 'Select a node — “+” on every side adds there (around the central topic: a branch that way) · drag a node anywhere — it stays there and keeps its line; drop it onto another node to connect it there · click a line and press Delete or ✂ to cut it · “Back to its place” or Auto layout tidies nodes up').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
                   <span className="mt-1.5 block text-[var(--muted)]">{t('mindmap.edit_tip', 'Double-click or start typing to edit')} · Tab / Enter / Delete · Ctrl+Z</span>
                 </span>
               </span>

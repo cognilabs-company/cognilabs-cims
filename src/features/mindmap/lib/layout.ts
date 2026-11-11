@@ -13,6 +13,8 @@ export type NodeBox = {
   lines: string[]
   /** Direction from the parent to this node (the way its branch grows). */
   dir: Dir
+  /** Placed by hand (see MindNode.px). */
+  pinned?: boolean
   /** A free node (no line to a parent). */
   floating?: boolean
 }
@@ -109,6 +111,17 @@ function nodeSize(text: string, depth: number) {
 
 export const isHorizontal = (dir: Dir) => dir === 'right' || dir === 'left'
 
+/** Which way a point lies from the origin (the larger axis wins). */
+export function dirOf(x: number, y: number): Dir {
+  return Math.abs(x) >= Math.abs(y) ? (x >= 0 ? 'right' : 'left') : (y >= 0 ? 'down' : 'up')
+}
+
+/** Placed by hand (px / py relative to the parent). */
+export function isPinned(map: MindMap, id: string) {
+  const node = map.nodes[id]
+  return Boolean(node && node.parentId !== null && Number.isFinite(node.px) && Number.isFinite(node.py))
+}
+
 /** The central topic and free nodes: their children carry their own direction. */
 export function isHub(map: MindMap, id: string) {
   const node = map.nodes[id]
@@ -176,7 +189,7 @@ export function computeLayout(map: MindMap): Layout {
   /** Size of a subtree across its growth direction (heights for left/right, widths for up/down). */
   const measure = (id: string, depth: number, dir: Dir): number => {
     const size = sizeOf(id, depth)
-    const kids = visibleChildren(id)
+    const kids = visibleChildren(id).filter((child) => !isPinned(map, child))
     const gap = isHorizontal(dir) ? V_GAP : H_SIB_GAP
     const stack = kids.reduce((sum, child) => sum + measure(child, depth + 1, dir), 0) + Math.max(0, kids.length - 1) * gap
     const breadth = Math.max(isHorizontal(dir) ? size.h : size.w, stack)
@@ -190,7 +203,21 @@ export function computeLayout(map: MindMap): Layout {
   }
 
   /** Lays children out in one direction from `parent`; `colorOf` gives each child's branch colour. */
-  const placeGroup = (parent: NodeBox, kids: string[], dir: Dir, depth: number, colorOf: (child: string) => string, distance: number) => {
+  /** A hand-placed node: at its spot next to the parent; its own children grow away from the parent. */
+  const placePinned = (parent: NodeBox, child: string, depth: number, color: string) => {
+    const node = map.nodes[child]
+    const size = sizeOf(child, depth)
+    const cx = parent.x + parent.w / 2 + (node.px ?? 0)
+    const cy = parent.y + parent.h / 2 + (node.py ?? 0)
+    const dir = dirOf(node.px ?? 0, node.py ?? 0)
+    const box: NodeBox = { id: child, x: cx - size.w / 2 + node.dx, y: cy - size.h / 2 + node.dy, w: size.w, h: size.h, side: dir === 'left' ? -1 : 1, depth, color, lines: size.lines, dir, pinned: true }
+    pushBox(box)
+    placeGroup(box, visibleChildren(child), dir, depth + 1, () => node.color ?? box.color, isHorizontal(dir) ? H_GAP : V_DIST)
+  }
+
+  const placeGroup = (parent: NodeBox, all: string[], dir: Dir, depth: number, colorOf: (child: string) => string, distance: number) => {
+    for (const child of all) if (isPinned(map, child)) placePinned(parent, child, depth, colorOf(child))
+    const kids = all.filter((child) => !isPinned(map, child))
     if (!kids.length) return
     const horizontal = isHorizontal(dir)
     const gap = horizontal ? V_GAP : H_SIB_GAP
@@ -216,8 +243,9 @@ export function computeLayout(map: MindMap): Layout {
     const kids = visibleChildren(hub.id)
     const all = map.nodes[hub.id].children
     const colorOf = (child: string) => map.nodes[child].color ?? (isRoot ? BRANCH_COLORS[(map.nodes[child].branch ?? all.indexOf(child)) % BRANCH_COLORS.length] : hub.color)
+    for (const child of kids) if (isPinned(map, child)) placePinned(hub, child, hub.depth + 1, colorOf(child))
     for (const dir of ['right', 'left', 'up', 'down'] as Dir[]) {
-      const group = kids.filter((child) => hubChildDir(map, hub.id, child) === dir)
+      const group = kids.filter((child) => !isPinned(map, child) && hubChildDir(map, hub.id, child) === dir)
       placeGroup(hub, group, dir, hub.depth + 1, colorOf, isHorizontal(dir) ? (isRoot ? H_GAP * 1.25 : H_GAP) : (isRoot ? V_DIST * 1.2 : V_DIST))
     }
   }

@@ -154,7 +154,8 @@ export function insertParent(map: MindMap, id: string, text: string, newId?: str
     const list = nodes[parentId].children
     list.splice(list.indexOf(id), 1, middle.id)
     nodes[middle.id] = middle
-    nodes[id] = { ...nodes[id], parentId: middle.id, dx: 0, dy: 0 }
+    nodes[id] = { ...nodes[id], parentId: middle.id, dx: 0, dy: 0, px: undefined, py: undefined }
+    if (node.px !== undefined && node.py !== undefined) nodes[middle.id] = { ...nodes[middle.id], px: node.px, py: node.py }
   })
   return [next, middle.id]
 }
@@ -173,7 +174,7 @@ export function detach(map: MindMap, id: string, center: { x: number; y: number 
   const parentId = node.parentId
   return edit(map, [parentId, id, ...node.children], (nodes) => {
     nodes[parentId].children = nodes[parentId].children.filter((child) => child !== id)
-    nodes[id] = { ...nodes[id], parentId: null, x: Math.round(center.x), y: Math.round(center.y), dx: 0, dy: 0, dir: undefined }
+    nodes[id] = { ...nodes[id], parentId: null, x: Math.round(center.x), y: Math.round(center.y), dx: 0, dy: 0, px: undefined, py: undefined, dir: undefined }
     // It is a hub now: its branches keep growing the way they did.
     for (const child of node.children) if (nodes[child]) nodes[child] = { ...nodes[child], dir }
   })
@@ -198,21 +199,7 @@ export function moveInHub(map: MindMap, id: string, dir: Dir, beforeId: string |
     const at = beforeId ? list.indexOf(beforeId) : -1
     list.splice(at === -1 ? list.length : at, 0, id)
     nodes[parentId].children = list
-    nodes[id] = { ...nodes[id], dir, dx: 0, dy: 0 }
-  })
-}
-
-/** Reorder among siblings (dropping a node back into its branch): before `beforeId`, or last. */
-export function reorder(map: MindMap, id: string, beforeId: string | null): MindMap {
-  const node = map.nodes[id]
-  if (!node?.parentId) return map
-  const parentId = node.parentId
-  return edit(map, [parentId, id], (nodes) => {
-    const list = nodes[parentId].children.filter((child) => child !== id)
-    const at = beforeId ? list.indexOf(beforeId) : -1
-    list.splice(at === -1 ? list.length : at, 0, id)
-    nodes[parentId].children = list
-    nodes[id] = { ...nodes[id], dx: 0, dy: 0 }
+    nodes[id] = { ...nodes[id], dir, dx: 0, dy: 0, px: undefined, py: undefined }
   })
 }
 
@@ -277,6 +264,8 @@ export function reparent(map: MindMap, id: string, newParentId: string, dir?: Di
       dy: 0,
       x: undefined,
       y: undefined,
+      px: undefined,
+      py: undefined,
       dir: isHub(map, newParentId) ? dir ?? pickDir(map, newParentId) : undefined,
       branch: newParentId === map.rootId ? (keepBranch ? node.branch : nextBranch(map, id)) : node.branch,
     }
@@ -290,9 +279,10 @@ export function setAllCollapsed(map: MindMap, collapsed: boolean): MindMap {
 }
 
 /** Forget manual offsets — back to the automatic layout. */
+/** Auto layout: every node back to its automatic place (hand-placed spots and offsets are dropped). */
 export function resetOffsets(map: MindMap): MindMap {
-  const ids = Object.values(map.nodes).filter((node) => node.dx !== 0 || node.dy !== 0).map((node) => node.id)
-  return edit(map, ids, (nodes) => { for (const key of ids) nodes[key] = { ...nodes[key], dx: 0, dy: 0 } })
+  const ids = Object.values(map.nodes).filter((node) => node.dx !== 0 || node.dy !== 0 || node.px !== undefined || node.py !== undefined).map((node) => node.id)
+  return edit(map, ids, (nodes) => { for (const key of ids) nodes[key] = { ...nodes[key], dx: 0, dy: 0, px: undefined, py: undefined } })
 }
 
 export function expandPath(map: MindMap, id: string): MindMap {
@@ -331,6 +321,7 @@ export function importMap(raw: unknown): MindMap | null {
       dy: Number(node.dy) || 0,
       ...(node.x != null && node.y != null && Number.isFinite(Number(node.x)) && Number.isFinite(Number(node.y)) ? { x: Number(node.x), y: Number(node.y) } : {}),
       ...(node.dir === 'right' || node.dir === 'left' || node.dir === 'up' || node.dir === 'down' ? { dir: node.dir } : {}),
+      ...(node.px != null && node.py != null && Number.isFinite(Number(node.px)) && Number.isFinite(Number(node.py)) ? { px: Number(node.px), py: Number(node.py) } : {}),
       ...(Number.isInteger(node.branch) && Number(node.branch) >= 0 && Number(node.branch) <= 7 ? { branch: Number(node.branch) } : {}),
       task: node.task && typeof node.task === 'object' ? node.task : null,
     }

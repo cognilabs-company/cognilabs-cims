@@ -31,6 +31,12 @@ export type MindNode = {
    * children of the central topic / free nodes; deeper nodes follow their branch.
    */
   dir?: Dir
+  /**
+   * Placed by hand (dragged anywhere): the node's centre relative to its parent's centre. It stays
+   * there, still connected, and moves with its parent; siblings are laid out without it.
+   */
+  px?: number
+  py?: number
   /** Palette slot of a central-topic branch, so its colour never changes when other branches move. */
   branch?: number
   task: NodeTask | null

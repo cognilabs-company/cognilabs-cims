@@ -2184,7 +2184,7 @@
   "mindmap.dir.left": "left",
   "mindmap.dir.up": "up",
   "mindmap.dir.down": "down",
-  "mindmap.hint_v2": "Select a node — “+” on every side adds there (around the central topic: a branch that way) · click a line and press Delete or ✂ to cut it · drag a node onto another to connect, onto empty space next to its parent to change its place or side",
+  "mindmap.hint_v2": "Select a node — “+” on every side adds there (around the central topic: a branch that way) · drag a node anywhere — it stays there and keeps its line; drop it onto another node to connect it there · click a line and press Delete or ✂ to cut it · “Back to its place” or Auto layout tidies nodes up",
   "rbac.module.mind_map": "Mind map",
   "mindmap.read_only": "View only",
   "mindmap.not_saved": "Not saved",
@@ -2205,5 +2205,6 @@
   "mindmap.conflict.server": "Load the saved version",
   "mindmap.conflict.server_hint": "Changes made here that were not saved are dropped.",
   "mindmap.conflict.mine": "Keep my version",
-  "mindmap.conflict.mine_hint": "The saved version is replaced with what you see here."
+  "mindmap.conflict.mine_hint": "The saved version is replaced with what you see here.",
+  "mindmap.unpin": "Back to its place"
 }

@@ -2184,7 +2184,7 @@
   "mindmap.dir.left": "chapga",
   "mindmap.dir.up": "tepaga",
   "mindmap.dir.down": "pastga",
-  "mindmap.hint_v2": "Tugunni tanlang — har tomondagi «+» o'sha tomonga qo'shadi (markaziy mavzu atrofida — o'sha tomonga yangi tarmoq) · chiziqni bosing va Delete yoki ✂ bilan uzing · tugunni boshqa tugunga tashlasangiz ulanadi, bo'sh joyga tashlasangiz o'rni yoki tomoni o'zgaradi",
+  "mindmap.hint_v2": "Tugunni tanlang — har tomondagi «+» o'sha tomonga qo'shadi (markaziy mavzu atrofida — o'sha tomonga yangi tarmoq) · tugunni xohlagan joyga suring — u o'sha yerda qoladi va chizig'i uzilmaydi; boshqa tugun ustiga tashlasangiz, unga ulanadi · chiziqni bosib, Delete yoki ✂ bilan uzing · «Joyiga qaytarish» yoki «Avto joylash» tartibga soladi",
   "rbac.module.mind_map": "Mind map",
   "mindmap.read_only": "Faqat ko'rish",
   "mindmap.not_saved": "Saqlanmadi",
@@ -2205,5 +2205,6 @@
   "mindmap.conflict.server": "Saqlangan nusxani yuklash",
   "mindmap.conflict.server_hint": "Bu yerdagi saqlanmagan o'zgarishlar o'chadi.",
   "mindmap.conflict.mine": "Menikini qoldirish",
-  "mindmap.conflict.mine_hint": "Saqlangan nusxa shu yerdagisi bilan almashtiriladi."
+  "mindmap.conflict.mine_hint": "Saqlangan nusxa shu yerdagisi bilan almashtiriladi.",
+  "mindmap.unpin": "Joyiga qaytarish"
 }
