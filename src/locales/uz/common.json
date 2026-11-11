@@ -2117,5 +2117,21 @@
   "attendance.loc.toast_deleted": "Lokatsiya o'chirildi",
   "attendance.loc.toast_save_failed": "Lokatsiyani saqlab bo'lmadi",
   "attendance.loc.toast_updated": "Lokatsiya yangilandi",
-  "attendance.loc.use_my_location": "Mening joylashuvim"
+  "attendance.loc.use_my_location": "Mening joylashuvim",
+  "miniapp.phone.no_call_right": "Qo'ng'iroqlarga javob berish va tarixni ko'rish mumkin, lekin rolingizda qo'ng'iroq qilish yo'q.",
+  "miniapp.language": "Til",
+  "mindmap.add": "Qo'shish",
+  "mindmap.add_child": "Bola (yon tomonga)",
+  "mindmap.add_below": "Pastiga (qo'shni)",
+  "mindmap.add_above": "Tepasiga (qo'shni)",
+  "mindmap.add_parent": "Ota (o'rtaga)",
+  "mindmap.add_free": "Erkin tugun (istalgan joyga)",
+  "mindmap.double_click": "Ikki marta bosish",
+  "mindmap.cut": "Ota bilan bog'lovchi chiziqni olib tashlash",
+  "mindmap.cut_done": "Chiziq olib tashlandi — qayta ulash uchun tugunni boshqa tugun ustiga sudrang",
+  "mindmap.edge_style": "Chiziq turi",
+  "mindmap.edge_curved": "Egri chiziqlar",
+  "mindmap.edge_straight": "To'g'ri chiziqlar",
+  "mindmap.edge_elbow": "Burchakli chiziqlar",
+  "mindmap.hint_more": "Bo'sh joyni ikki marta bosing — erkin tugun · chiziq ustiga boring va ✂ bilan uzing · erkin tugunni boshqa tugun ustiga tashlab ulang · Shift+Enter — tepaga, Shift+Tab — ota"
 }

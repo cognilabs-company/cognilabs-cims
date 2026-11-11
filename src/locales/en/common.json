@@ -2117,5 +2117,21 @@
   "attendance.loc.toast_deleted": "Location deleted",
   "attendance.loc.toast_save_failed": "Could not save the location",
   "attendance.loc.toast_updated": "Location updated",
-  "attendance.loc.use_my_location": "Use my location"
+  "attendance.loc.use_my_location": "Use my location",
+  "miniapp.phone.no_call_right": "You can answer calls and see the history, but placing calls is not allowed for your role.",
+  "miniapp.language": "Language",
+  "mindmap.add": "Add",
+  "mindmap.add_child": "Child (to the side)",
+  "mindmap.add_below": "Below (sibling)",
+  "mindmap.add_above": "Above (sibling)",
+  "mindmap.add_parent": "Parent (in between)",
+  "mindmap.add_free": "Free node (anywhere)",
+  "mindmap.double_click": "Double-click",
+  "mindmap.cut": "Remove the line to the parent",
+  "mindmap.cut_done": "Line removed — drag the node onto another one to connect it again",
+  "mindmap.edge_style": "Line style",
+  "mindmap.edge_curved": "Curved lines",
+  "mindmap.edge_straight": "Straight lines",
+  "mindmap.edge_elbow": "Elbow lines",
+  "mindmap.hint_more": "Double-click empty space — a free node · hover a line and press ✂ to cut it · drop a free node onto another node to connect it · Shift+Enter — above, Shift+Tab — parent"
 }

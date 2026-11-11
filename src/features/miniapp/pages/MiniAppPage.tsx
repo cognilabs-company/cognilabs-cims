@@ -11,6 +11,7 @@ import { AttendanceTab } from '../components/AttendanceTab'
 import { CallScreen } from '../components/CallScreen'
 import { PhoneTab } from '../components/PhoneTab'
 import { miniApi, type MiniUser } from '../lib/api'
+import { telephonyService } from '../../../shared/api/services/telephony.service'
 import { haptic, loadTelegramSdk, type TgWebApp } from '../lib/telegram'
 
 type Boot =
@@ -22,7 +23,7 @@ type Boot =
 type Tab = 'phone' | 'attendance'
 
 const TAB_KEY = 'cims.miniapp.tab'
-const LANG_FLAG = 'cims.miniapp.lang-applied'
+const LANG_FLAG = 'cims.miniapp.lang-v2'
 
 /* Visible = the page is shown and Telegram has not put the Mini App in the background. */
 let telegramActive = true
@@ -55,15 +56,12 @@ export function MiniAppPage() {
   const { t, locale, setLocale } = useLocale()
   const [boot, setBoot] = useState<Boot>({ phase: 'loading' })
   const [attempt, setAttempt] = useState(0)
-  // Set as soon as the SDK is there (the language applies to error screens too).
-  const [sdk, setSdk] = useState<TgWebApp | null>(null)
 
   useEffect(() => {
     let alive = true
     void (async () => {
       const webApp = await loadTelegramSdk()
       if (!alive) return
-      if (webApp) setSdk(webApp)
       if (!webApp?.initData) { setBoot({ phase: 'outside' }); return }
       try { webApp.ready(); webApp.expand(); webApp.disableVerticalSwipes?.() } catch { /* old clients */ }
       applyTelegramTheme(webApp)
@@ -83,14 +81,12 @@ export function MiniAppPage() {
     return () => { alive = false }
   }, [attempt])
 
-  // First open: the interface follows the Telegram language (uz / ru / en) once.
+  // The Mini App opens in Uzbek (a language switch is in the header); applied once per device.
   useEffect(() => {
-    if (!sdk) return
     let applied = true
     try { applied = localStorage.getItem(LANG_FLAG) === '1'; localStorage.setItem(LANG_FLAG, '1') } catch { /* ignore */ }
-    const code = sdk.initDataUnsafe?.user?.language_code?.slice(0, 2)
-    if (!applied && (code === 'uz' || code === 'ru' || code === 'en') && code !== locale) setLocale(code)
-  }, [sdk, locale, setLocale])
+    if (!applied && locale !== 'uz') setLocale('uz')
+  }, [locale, setLocale])
 
   // Theme follows Telegram; the Mini App going to the background stops location updates.
   useEffect(() => {
@@ -153,15 +149,46 @@ export function MiniAppPage() {
     )
   }
 
+  return <ReadyApp user={boot.user} initData={boot.initData} webApp={boot.webApp} />
+}
+
+type PhoneAccess = { state: 'checking' } | { state: 'denied' } | { state: 'allowed'; canCall: boolean }
+
+/**
+ * Telephony is only for roles that have it (sellers, CEO — RBAC "calls"). Everyone else gets Attendance only,
+ * and the SIP line is not even started.
+ */
+function ReadyApp({ user, initData, webApp }: { user: MiniUser; initData: string; webApp: TgWebApp }) {
+  const [access, setAccess] = useState<PhoneAccess>({ state: 'checking' })
+
+  useEffect(() => {
+    let alive = true
+    void Promise.allSettled([telephonyService.config(), miniApi.callsAccess()]).then(([config, rbac]) => {
+      if (!alive) return
+      const rights = rbac.status === 'fulfilled' ? rbac.value : null
+      if (config.status === 'rejected') {
+        const code = getApiErrorStatus(config.reason)
+        // 401 / 403 / 404: this employee has no phone line.
+        if (code === 401 || code === 403 || code === 404 || rights?.view === false) { setAccess({ state: 'denied' }); return }
+        setAccess({ state: 'allowed', canCall: rights?.create ?? true })
+        return
+      }
+      if (rights && !rights.view) { setAccess({ state: 'denied' }); return }
+      setAccess({ state: 'allowed', canCall: rights?.create ?? true })
+    })
+    return () => { alive = false }
+  }, [])
+
+  const phoneAllowed = access.state === 'allowed'
   return (
-    <TelephonyEngine userId={boot.user.id} allowed canPlaceCalls webrtcOnly panel={false}>
-      <MiniShell user={boot.user} initData={boot.initData} webApp={boot.webApp} />
+    <TelephonyEngine userId={user.id} allowed={phoneAllowed} canPlaceCalls={phoneAllowed && access.canCall} webrtcOnly panel={false}>
+      <MiniShell user={user} initData={initData} webApp={webApp} access={access} />
     </TelephonyEngine>
   )
 }
 
-function MiniShell({ user, initData, webApp }: { user: MiniUser; initData: string; webApp: TgWebApp }) {
-  const { t } = useLocale()
+function MiniShell({ user, initData, webApp, access }: { user: MiniUser; initData: string; webApp: TgWebApp; access: PhoneAccess }) {
+  const { t, locale, setLocale } = useLocale()
   const phone = useTelephony()
   const [tab, setTab] = useState<Tab>(readTab)
   const [opened, setOpened] = useState<Record<Tab, boolean>>(() => ({ phone: readTab() === 'phone', attendance: readTab() === 'attendance' }))
@@ -183,6 +210,10 @@ function MiniShell({ user, initData, webApp }: { user: MiniUser; initData: strin
   const fullName = [user.name, user.surname].filter(Boolean).join(' ') || t('miniapp.employee', 'Employee')
   const initials = ((user.name?.[0] ?? '') + (user.surname?.[0] ?? '')).toUpperCase() || 'C'
   const ready = phone.connection === 'Ready'
+  const phoneAllowed = access.state === 'allowed'
+  // Without telephony the app is Attendance only (no tab bar).
+  const current: Tab = phoneAllowed ? tab : 'attendance'
+  const nextLocale = locale === 'uz' ? 'ru' : locale === 'ru' ? 'en' : 'uz'
 
   return (
     <div className="mini-app min-h-[100dvh] bg-[var(--app-canvas)] text-[var(--foreground)]">
@@ -190,28 +221,38 @@ function MiniShell({ user, initData, webApp }: { user: MiniUser; initData: strin
       <header className="sticky top-0 z-20 flex items-center gap-3 bg-[var(--app-canvas)]/90 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-3 backdrop-blur">
         <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--blue-dim)] text-[15px] font-bold text-[var(--primary)]" data-i18n-skip="true">
           {initials}
-          <span className={cn('absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-[3px] border-[var(--app-canvas)]', ready ? 'bg-[var(--success)]' : 'bg-[var(--warning)]')} title={phone.connection} />
+          {phoneAllowed ? <span className={cn('absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-[3px] border-[var(--app-canvas)]', ready ? 'bg-[var(--success)]' : 'bg-[var(--warning)]')} title={phone.connection} /> : null}
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[16px] font-bold" data-i18n-skip="true">{fullName}</p>
           <p className="truncate text-[12.5px] text-[var(--muted)]">{user.role_name || 'CIMS'}</p>
         </div>
+        <button
+          type="button"
+          onClick={() => { haptic('select'); setLocale(nextLocale) }}
+          aria-label={t('miniapp.language', 'Language')}
+          className="mini-key h-9 shrink-0 rounded-full bg-[var(--muted-surface)] px-3 text-[12.5px] font-bold tracking-wide text-[var(--muted-strong)] uppercase"
+        >
+          {locale}
+        </button>
       </header>
 
       {/* Both sections stay mounted (the line keeps ringing, location keeps updating while open). */}
-      <main className="pb-[calc(76px+env(safe-area-inset-bottom))]">
-        <div className={tab === 'phone' ? 'block' : 'hidden'}>
-          {opened.phone ? <PhoneTab active={tab === 'phone'} onDial={dial} /> : null}
-        </div>
-        <div className={tab === 'attendance' ? 'block' : 'hidden'}>
-          {opened.attendance ? <AttendanceTab active={tab === 'attendance'} appVisible={appVisible} initData={initData} webApp={webApp} /> : null}
+      <main className={phoneAllowed ? 'pb-[calc(76px+env(safe-area-inset-bottom))]' : 'pb-[env(safe-area-inset-bottom)]'}>
+        {phoneAllowed ? (
+          <div className={current === 'phone' ? 'block' : 'hidden'}>
+            {opened.phone ? <PhoneTab active={current === 'phone'} onDial={dial} canCall={access.canCall} /> : null}
+          </div>
+        ) : null}
+        <div className={current === 'attendance' ? 'block' : 'hidden'}>
+          {opened.attendance || current === 'attendance' ? <AttendanceTab active={current === 'attendance'} appVisible={appVisible} initData={initData} webApp={webApp} withTabBar={phoneAllowed} /> : null}
         </div>
       </main>
 
-      {/* Two big tabs at the bottom — reachable with one thumb */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--surface)]/95 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur">
+      {/* Two big tabs at the bottom — reachable with one thumb (only when the phone is available) */}
+      {phoneAllowed ? <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--surface)]/95 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur">
         <div className="relative mx-auto grid max-w-md grid-cols-2 gap-2">
-          <span aria-hidden="true" className="mini-tab-indicator absolute inset-y-0 w-[calc(50%-4px)] rounded-[16px] bg-[var(--blue-dim)]" style={{ transform: tab === 'phone' ? 'translateX(0)' : 'translateX(calc(100% + 8px))' }} />
+          <span aria-hidden="true" className="mini-tab-indicator absolute inset-y-0 w-[calc(50%-4px)] rounded-[16px] bg-[var(--blue-dim)]" style={{ transform: current === 'phone' ? 'translateX(0)' : 'translateX(calc(100% + 8px))' }} />
           {([
             ['phone', PhoneIcon, t('miniapp.tab.phone', 'Phone')],
             ['attendance', MapPinIcon, t('miniapp.tab.attendance', 'Attendance')],
@@ -220,17 +261,17 @@ function MiniShell({ user, initData, webApp }: { user: MiniUser; initData: strin
               key={value}
               type="button"
               onClick={() => switchTab(value)}
-              aria-current={tab === value ? 'page' : undefined}
-              className={cn('relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[16px] text-[12.5px] font-semibold transition-colors', tab === value ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]')}
+              aria-current={current === value ? 'page' : undefined}
+              className={cn('relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[16px] text-[12.5px] font-semibold transition-colors', current === value ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]')}
             >
-              <Icon size={24} weight={tab === value ? 'duotone' : 'regular'} />
+              <Icon size={24} weight={current === value ? 'duotone' : 'regular'} />
               {label}
             </button>
           ))}
         </div>
-      </nav>
+      </nav> : null}
 
-      <CallScreen dialed={dialed} />
+      {phoneAllowed ? <CallScreen dialed={dialed} /> : null}
     </div>
   )
 }

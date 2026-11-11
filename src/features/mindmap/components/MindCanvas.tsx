@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { CheckSquareIcon, LinkSimpleIcon, NoteIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
+import { CheckSquareIcon, LinkSimpleIcon, NoteIcon, PlusIcon, ScissorsIcon, XIcon } from '@phosphor-icons/react'
 import { cn } from '../../../shared/lib/cn'
-import { computeLayout, edgePath, type Layout, type NodeBox } from '../lib/layout'
+import { computeLayout, edgeMidpoint, edgePath, type Layout, type NodeBox } from '../lib/layout'
 import { subtreeIds, updateNode } from '../lib/tree'
 import type { MindMap, MindNode, NodeTask } from '../lib/types'
 import { clampZoom, type View } from '../lib/view'
@@ -27,7 +27,7 @@ type Props = {
   leavingIds: Set<string>
   /** Glide the camera (button-driven moves); wheel and drag stay instant. */
   animateView: boolean
-  labels: { addChild: string; collapse: string; expand: string; openLink: string; openTask: string; note: string; remove: string }
+  labels: { addChild: string; addAbove: string; addBelow: string; collapse: string; expand: string; openLink: string; openTask: string; note: string; remove: string; cut: string }
   onSize: (size: { w: number; h: number }) => void
   onSelect: (id: string) => void
   onStartEdit: (id: string) => void
@@ -39,6 +39,11 @@ type Props = {
   onReparent: (id: string, targetId: string) => void
   onOpenTask: (task: NodeTask) => void
   onDeleteNode: (id: string) => void
+  onAddSibling: (id: string, where: 'above' | 'below') => void
+  /** Cut the line between this node and its parent. */
+  onDetach: (id: string) => void
+  /** Double-click on empty canvas: a free node at that point (world coordinates). */
+  onCreateFree: (x: number, y: number) => void
 }
 
 const fontClass = (depth: number) =>
@@ -49,6 +54,7 @@ function nodeStyle(node: MindNode, box: NodeBox): CSSProperties {
   const base: CSSProperties = { left: box.x, top: box.y, width: box.w, height: box.h, borderRadius: radius }
   if (node.shape === 'outline') return { ...base, background: 'var(--card)', border: `2px solid ${box.color}`, color: box.depth === 0 ? box.color : 'var(--foreground)' }
   if (box.depth === 0) return { ...base, background: box.color, border: `1px solid ${box.color}`, color: '#fff' }
+  if (box.floating) return { ...base, background: 'var(--card)', border: `1.5px dashed color-mix(in srgb, ${box.color} 70%, transparent)`, color: 'var(--foreground)' }
   return {
     ...base,
     background: `color-mix(in srgb, ${box.color} 12%, var(--card))`,
@@ -63,6 +69,7 @@ export function MindCanvas(props: Props) {
   const [size, setSize] = useState({ w: 0, h: 0 })
   const [drag, setDrag] = useState<DragState | null>(null)
   const [panning, setPanning] = useState(false)
+  const [hoverEdge, setHoverEdge] = useState<string | null>(null)
   const { onSize } = props
 
   // Container size (fit / centre / minimap need it).
@@ -120,6 +127,13 @@ export function MindCanvas(props: Props) {
     window.addEventListener('pointercancel', up)
   }
 
+  function onBackgroundDoubleClick(event: React.MouseEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest('[data-node-id],[data-canvas-ui]')) return
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    props.onCreateFree((event.clientX - rect.left - view.x) / view.k, (event.clientY - rect.top - view.y) / view.k)
+  }
+
   function onBackgroundPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0 && event.button !== 1) return
     const target = event.target as HTMLElement
@@ -171,13 +185,16 @@ export function MindCanvas(props: Props) {
     const node = map.nodes[id]
     const parent = node?.parentId ? shown.boxes.get(node.parentId) : undefined
     const child = shown.boxes.get(id)
-    return parent && child ? [{ id, d: edgePath(parent, child), color: child.color, depth: child.depth }] : []
+    return parent && child ? [{ id, d: edgePath(parent, child, map.edgeStyle), color: child.color, depth: child.depth, mid: edgeMidpoint(parent, child) }] : []
   })
+  // The cut button: on the hovered line, or on the line of the selected node.
+  const cutEdge = edges.find((edge) => edge.id === hoverEdge) ?? (drag ? undefined : edges.find((edge) => edge.id === selectedId))
 
   return (
     <div
       ref={containerRef}
       onPointerDown={onBackgroundPointerDown}
+      onDoubleClick={onBackgroundDoubleClick}
       className={cn(
         'mm-canvas relative h-full min-h-0 w-full touch-none overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--card)] select-none',
         !drag && 'mm-animated',
@@ -202,12 +219,41 @@ export function MindCanvas(props: Props) {
               style={{ d: `path("${edge.d}")` } as CSSProperties}
               fill="none"
               stroke={edge.color}
-              strokeOpacity={0.7}
-              strokeWidth={edge.depth === 1 ? 3 : 2}
+              strokeOpacity={hoverEdge === edge.id ? 1 : 0.7}
+              strokeWidth={(edge.depth === 1 ? 3 : 2) + (hoverEdge === edge.id ? 1.5 : 0)}
               strokeLinecap="round"
             />
           ))}
+          {/* Wide invisible lines for hovering (cut button) */}
+          {edges.map((edge) => (
+            <path
+              key={`hit-${edge.id}`}
+              d={edge.d}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={16}
+              className="pointer-events-[stroke] cursor-pointer"
+              onPointerEnter={() => setHoverEdge(edge.id)}
+              onPointerLeave={() => setHoverEdge((current) => (current === edge.id ? null : current))}
+            />
+          ))}
         </svg>
+
+        {cutEdge && !leavingIds.has(cutEdge.id) ? (
+          <button
+            type="button"
+            data-canvas-ui
+            onPointerEnter={() => setHoverEdge(cutEdge.id)}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => { setHoverEdge(null); props.onDetach(cutEdge.id) }}
+            title={labels.cut}
+            aria-label={labels.cut}
+            className="mm-pop absolute z-10 grid h-6 w-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted-strong)] shadow-[0_2px_8px_rgba(14,21,37,0.18)] transition-colors hover:border-transparent hover:bg-[var(--danger)] hover:text-white"
+            style={{ left: cutEdge.mid.x, top: cutEdge.mid.y }}
+          >
+            <ScissorsIcon size={13} weight="bold" />
+          </button>
+        ) : null}
 
         {shown.order.map((id) => {
           const box = shown.boxes.get(id)!
@@ -270,7 +316,7 @@ export function MindCanvas(props: Props) {
 
               {/* Small markers: note, link, task */}
               {node.note || node.link || node.task ? (
-                <span data-canvas-ui className="absolute -top-2.5 -right-2 flex items-center gap-0.5">
+                <span data-canvas-ui className={cn('absolute -bottom-2.5 flex items-center gap-0.5', box.side === 1 ? '-left-2' : '-right-2')}>
                   {node.note ? (
                     <span title={labels.note} className="grid h-5 w-5 place-items-center rounded-full bg-[var(--card)] text-[var(--muted-strong)] shadow-[0_1px_3px_rgba(14,21,37,0.2)]"><NoteIcon size={11} weight="bold" /></span>
                   ) : null}
@@ -313,12 +359,38 @@ export function MindCanvas(props: Props) {
                   aria-label={labels.remove}
                   title={`${labels.remove} (Delete)`}
                   className={cn(
-                    'absolute -top-2.5 left-1/2 grid h-5 w-5 -translate-x-1/2 scale-75 place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted-strong)] opacity-0 shadow-[0_2px_6px_rgba(14,21,37,0.15)] transition-[opacity,transform,background-color,color] duration-200 hover:border-transparent hover:bg-[var(--danger)] hover:text-white',
+                    'absolute -top-2.5 grid h-5 w-5 scale-75 place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted-strong)] opacity-0 shadow-[0_2px_6px_rgba(14,21,37,0.15)] transition-[opacity,transform,background-color,color] duration-200 hover:border-transparent hover:bg-[var(--danger)] hover:text-white',
                     selected ? 'scale-100 opacity-100' : 'group-hover/node:scale-100 group-hover/node:opacity-100',
+                    box.side === 1 ? '-left-2.5' : '-right-2.5',
                   )}
                 >
                   <XIcon size={10} weight="bold" />
                 </button>
+              ) : null}
+
+              {/* Sibling above / below (not for the central topic or free nodes) */}
+              {!editing && node.parentId ? (
+                <>
+                  {(['above', 'below'] as const).map((where) => (
+                    <button
+                      key={where}
+                      type="button"
+                      data-canvas-ui
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={() => props.onAddSibling(id, where)}
+                      aria-label={where === 'above' ? labels.addAbove : labels.addBelow}
+                      title={where === 'above' ? `${labels.addAbove} (Shift+Enter)` : `${labels.addBelow} (Enter)`}
+                      className={cn(
+                        'absolute left-1/2 grid h-[18px] w-[18px] -translate-x-1/2 place-items-center rounded-full border-[1.5px] bg-[var(--card)] transition-[opacity,scale] duration-200 hover:scale-125',
+                        where === 'above' ? '-top-[11px]' : '-bottom-[11px]',
+                        selected ? 'scale-100 opacity-100' : 'scale-50 opacity-0 group-hover/node:scale-100 group-hover/node:opacity-100',
+                      )}
+                      style={{ borderColor: box.color, color: box.color }}
+                    >
+                      <PlusIcon size={10} weight="bold" />
+                    </button>
+                  ))}
+                </>
               ) : null}
 
               {/* Add child */}

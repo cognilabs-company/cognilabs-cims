@@ -1,4 +1,4 @@
-import { BRANCH_COLORS, type MindMap } from './types'
+import { BRANCH_COLORS, type EdgeStyle, type MindMap } from './types'
 
 export type NodeBox = {
   id: string
@@ -11,6 +11,8 @@ export type NodeBox = {
   depth: number
   color: string
   lines: string[]
+  /** A free node (no line to a parent). */
+  floating?: boolean
 }
 
 export type Layout = {
@@ -23,6 +25,7 @@ export type Layout = {
 export const H_GAP = 64
 export const V_GAP = 14
 const ROOT_COLOR = '#2B59FF'
+const FREE_COLOR = '#64748B'
 
 let measureCtx: CanvasRenderingContext2D | null = null
 let fontFamily = 'Onest, system-ui, sans-serif'
@@ -186,6 +189,28 @@ export function computeLayout(map: MindMap): Layout {
   placeSide(right, 1)
   placeSide(left, -1)
 
+  // Free nodes: where the user put them; their children grow to the right.
+  for (const node of Object.values(map.nodes)) {
+    if (node.parentId !== null || node.id === map.rootId) continue
+    measure(node.id, 1)
+    const size = sizes.get(node.id)!
+    const box: NodeBox = {
+      id: node.id,
+      x: (node.x ?? 0) - size.w / 2 + node.dx,
+      y: (node.y ?? 0) - size.h / 2 + node.dy,
+      w: size.w,
+      h: size.h,
+      side: 1,
+      depth: 1,
+      color: node.color ?? FREE_COLOR,
+      lines: size.lines,
+      floating: true,
+    }
+    boxes.set(node.id, box)
+    order.push(node.id)
+    stackChildren(node.id, visibleChildren(node.id), 1, box)
+  }
+
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
@@ -199,13 +224,35 @@ export function computeLayout(map: MindMap): Layout {
   return { boxes, order, bounds: { minX, minY, maxX, maxY } }
 }
 
-/** Curved connector from a parent to a child (world coordinates). */
-export function edgePath(parent: NodeBox, child: NodeBox) {
+function edgeEnds(parent: NodeBox, child: NodeBox) {
   const side = child.side
-  const x1 = side === 1 ? parent.x + parent.w : parent.x
-  const y1 = parent.y + parent.h / 2
-  const x2 = side === 1 ? child.x : child.x + child.w
-  const y2 = child.y + child.h / 2
+  return {
+    x1: side === 1 ? parent.x + parent.w : parent.x,
+    y1: parent.y + parent.h / 2,
+    x2: side === 1 ? child.x : child.x + child.w,
+    y2: child.y + child.h / 2,
+  }
+}
+
+/** Connector from a parent to a child (world coordinates): curved, straight or elbow (rounded corners). */
+export function edgePath(parent: NodeBox, child: NodeBox, style: EdgeStyle = 'curved') {
+  const { x1, y1, x2, y2 } = edgeEnds(parent, child)
+  if (style === 'straight') return `M ${x1} ${y1} L ${x2} ${y2}`
+  if (style === 'elbow') {
+    const xm = x1 + (x2 - x1) / 2
+    const dy = y2 - y1
+    if (Math.abs(dy) < 1) return `M ${x1} ${y1} L ${x2} ${y2}`
+    const sx = Math.sign(x2 - x1) || 1
+    const sy = Math.sign(dy)
+    const r = Math.min(10, Math.abs(dy) / 2, Math.abs(xm - x1))
+    return `M ${x1} ${y1} L ${xm - sx * r} ${y1} Q ${xm} ${y1} ${xm} ${y1 + sy * r} L ${xm} ${y2 - sy * r} Q ${xm} ${y2} ${xm + sx * r} ${y2} L ${x2} ${y2}`
+  }
   const mid = (x2 - x1) * 0.5
   return `M ${x1} ${y1} C ${x1 + mid} ${y1}, ${x2 - mid} ${y2}, ${x2} ${y2}`
+}
+
+/** The middle of a connector (all three styles pass through it) — where the "cut" button sits. */
+export function edgeMidpoint(parent: NodeBox, child: NodeBox) {
+  const { x1, y1, x2, y2 } = edgeEnds(parent, child)
+  return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }
 }

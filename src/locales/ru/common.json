@@ -2117,5 +2117,21 @@
   "attendance.loc.toast_deleted": "Локация удалена",
   "attendance.loc.toast_save_failed": "Не удалось сохранить локацию",
   "attendance.loc.toast_updated": "Локация обновлена",
-  "attendance.loc.use_my_location": "Моё местоположение"
+  "attendance.loc.use_my_location": "Моё местоположение",
+  "miniapp.phone.no_call_right": "Можно отвечать на звонки и смотреть историю, но звонить вашей роли нельзя.",
+  "miniapp.language": "Язык",
+  "mindmap.add": "Добавить",
+  "mindmap.add_child": "Дочерний (в сторону)",
+  "mindmap.add_below": "Ниже (соседний)",
+  "mindmap.add_above": "Выше (соседний)",
+  "mindmap.add_parent": "Родитель (между)",
+  "mindmap.add_free": "Свободный узел (куда угодно)",
+  "mindmap.double_click": "Двойной клик",
+  "mindmap.cut": "Убрать линию к родителю",
+  "mindmap.cut_done": "Линия убрана — перетащите узел на другой, чтобы снова соединить",
+  "mindmap.edge_style": "Тип линий",
+  "mindmap.edge_curved": "Изогнутые линии",
+  "mindmap.edge_straight": "Прямые линии",
+  "mindmap.edge_elbow": "Угловые линии",
+  "mindmap.hint_more": "Двойной клик по пустому месту — свободный узел · наведите на линию и нажмите ✂, чтобы убрать её · бросьте свободный узел на другой, чтобы соединить · Shift+Enter — выше, Shift+Tab — родитель"
 }

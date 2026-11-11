@@ -23,6 +23,8 @@ type Props = {
   /** The tab is on screen (the microphone is asked for the first time it opens). */
   active: boolean
   onDial: (phone: string, lead?: TelephonyLead | null) => void
+  /** RBAC calls:create — without it the keypad is shown but calling is off. */
+  canCall: boolean
 }
 
 const keys: Array<[string, string]> = [
@@ -55,7 +57,7 @@ function clock(seconds: number) {
 const missedStatuses = new Set(['missed', 'no_answer', 'rejected', 'busy', 'failed'])
 
 /** Phone section of the Mini App: keypad with lead search, recent calls, call notes. */
-export function PhoneTab({ active, onDial }: Props) {
+export function PhoneTab({ active, onDial, canCall: allowedToCall }: Props) {
   const { t } = useLocale()
   const phone = useTelephony()
   const [view, setView] = useState<'keypad' | 'recent'>('keypad')
@@ -159,7 +161,7 @@ export function PhoneTab({ active, onDial }: Props) {
       : /fail|unavailable/i.test(phone.connection)
         ? t('miniapp.phone.unavailable', 'Phone service is unavailable')
         : t('miniapp.phone.connecting', 'Connecting…')
-  const canCall = phone.canDial && normalizePhone(digits).length >= 7
+  const canCall = allowedToCall && phone.canDial && normalizePhone(digits).length >= 7
 
   const grouped = useMemo(() => {
     const out: Array<{ label: string; items: TelephonyCall[] }> = []
@@ -209,12 +211,15 @@ export function PhoneTab({ active, onDial }: Props) {
           </span>
         </button>
       ) : null}
+      {!allowedToCall ? (
+        <p className="mini-in mx-4 mt-3 rounded-[14px] bg-[var(--muted-surface)] px-3.5 py-2.5 text-[13px] text-[var(--muted-strong)]">{t('miniapp.phone.no_call_right', 'You can answer calls and see the history, but placing calls is not allowed for your role.')}</p>
+      ) : null}
       {phone.error ? <p className="mini-in mx-4 mt-3 rounded-[14px] bg-[var(--danger-dim)] px-3.5 py-2.5 text-[13px] text-[var(--danger-text)]">{phone.error}</p> : null}
 
       {view === 'keypad' ? (
         <div key="keypad" className="mini-in flex flex-1 flex-col px-5 pt-4">
           {/* Number */}
-          <div className="flex min-h-[86px] flex-col items-center justify-end">
+          <div className="flex min-h-[56px] flex-col items-center justify-end">
             {picked ? <p className="mini-in mb-1 max-w-full truncate text-[14px] font-semibold text-[var(--primary)]">{picked.full_name}</p> : null}
             <p className={cn('max-w-full truncate font-semibold tracking-[0.02em] text-[var(--foreground)] tabular-nums transition-[font-size] duration-200', digits.length > 13 ? 'text-[26px]' : 'text-[34px]')} data-i18n-skip="true">
               {digits ? formatPhone(digits) : <span className="text-[var(--caption)]">{t('miniapp.phone.enter', 'Enter a number')}</span>}
@@ -222,7 +227,7 @@ export function PhoneTab({ active, onDial }: Props) {
           </div>
 
           {/* Matches for the last digits */}
-          <div className="mt-2 min-h-[44px]">
+          <div className="mt-1 min-h-[40px]">
             {shownSuggestions.length ? (
               <div className="no-scrollbar flex gap-2 overflow-x-auto">
                 {shownSuggestions.map((lead) => (
@@ -241,17 +246,17 @@ export function PhoneTab({ active, onDial }: Props) {
           </div>
 
           {/* Keys */}
-          <div className="mx-auto mt-1 grid w-full max-w-[320px] grid-cols-3 gap-x-5 gap-y-3">
+          <div className="mini-keypad mx-auto mt-1 grid w-full max-w-[320px] grid-cols-3 gap-x-5">
             {keys.map(([key, letters]) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => press(key)}
                 onContextMenu={(event) => { if (key === '0') { event.preventDefault(); press('+') } }}
-                className="mini-key mx-auto grid h-[68px] w-[68px] place-items-center rounded-full bg-[var(--muted-surface)] text-[var(--foreground)]"
+                className="mini-key mx-auto grid h-[var(--key)] w-[var(--key)] place-items-center rounded-full bg-[var(--muted-surface)] text-[var(--foreground)]"
               >
                 <span className="flex flex-col items-center leading-none">
-                  <span className="text-[28px] font-medium">{key}</span>
+                  <span className="text-[calc(var(--key)*0.4)] font-medium">{key}</span>
                   {letters ? <span className="mt-0.5 text-[9.5px] font-semibold tracking-[0.12em] text-[var(--muted)]">{letters}</span> : null}
                 </span>
               </button>
@@ -259,14 +264,14 @@ export function PhoneTab({ active, onDial }: Props) {
           </div>
 
           {/* Call + backspace */}
-          <div className="mx-auto mt-4 mb-4 grid w-full max-w-[320px] grid-cols-3 items-center gap-x-5">
+          <div className="mini-keypad mx-auto mt-3 mb-3 grid w-full max-w-[320px] grid-cols-3 items-center gap-x-5">
             <span />
             <button
               type="button"
               onClick={() => call()}
               disabled={!canCall}
               aria-label={t('miniapp.phone.call', 'Call')}
-              className="mini-key mx-auto grid h-[72px] w-[72px] place-items-center rounded-full bg-[var(--success)] text-white shadow-[0_12px_26px_-12px_var(--success)] disabled:opacity-40 disabled:shadow-none"
+              className="mini-key mx-auto grid h-[calc(var(--key)+4px)] w-[calc(var(--key)+4px)] place-items-center rounded-full bg-[var(--success)] text-white shadow-[0_12px_26px_-12px_var(--success)] disabled:opacity-40 disabled:shadow-none"
             >
               <PhoneIcon size={30} weight="fill" />
             </button>
@@ -315,7 +320,7 @@ export function PhoneTab({ active, onDial }: Props) {
                           <button
                             type="button"
                             onClick={() => call(item.phone_number, null)}
-                            disabled={!phone.canDial}
+                            disabled={!phone.canDial || !allowedToCall}
                             aria-label={t('miniapp.phone.call_back', 'Call back')}
                             className="mini-key grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--success-dim)] text-[var(--success-text)] disabled:opacity-40"
                           >
@@ -344,7 +349,7 @@ export function PhoneTab({ active, onDial }: Props) {
                 <p className="truncate text-[17px] font-bold text-[var(--foreground)]">{detail?.lead?.full_name || detailCall.customer_name || formatPhone(detailCall.phone_number)}</p>
                 <p className="truncate text-[12.5px] text-[var(--muted)] tabular-nums">{formatPhone(detailCall.phone_number)} · {timeOf(detailCall.started_at)}{detailCall.talk_seconds ? ` · ${clock(detailCall.talk_seconds)}` : ''}</p>
               </div>
-              <button type="button" onClick={() => { setDetailCall(null); call(detailCall.phone_number, detail?.lead ?? null) }} disabled={!phone.canDial} className="mini-key grid h-11 w-11 place-items-center rounded-full bg-[var(--success)] text-white disabled:opacity-40" aria-label={t('miniapp.phone.call_back', 'Call back')}>
+              <button type="button" onClick={() => { setDetailCall(null); call(detailCall.phone_number, detail?.lead ?? null) }} disabled={!phone.canDial || !allowedToCall} className="mini-key grid h-11 w-11 place-items-center rounded-full bg-[var(--success)] text-white disabled:opacity-40" aria-label={t('miniapp.phone.call_back', 'Call back')}>
                 <PhoneIcon size={20} weight="fill" />
               </button>
             </div>

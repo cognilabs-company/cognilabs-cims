@@ -1,4 +1,4 @@
-import type { MindMap, MindNode } from './types'
+import type { EdgeStyle, MindMap, MindNode } from './types'
 
 export function uid() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -23,6 +23,16 @@ function edit(map: MindMap, ids: string[], fn: (nodes: Record<string, MindNode>)
   fn(nodes)
   const root = nodes[map.rootId]
   return { ...map, nodes, title: root?.text ?? map.title }
+}
+
+/** Free nodes: no parent and not the central topic. */
+export function isFloating(map: MindMap, id: string) {
+  const node = map.nodes[id]
+  return Boolean(node && node.parentId === null && id !== map.rootId)
+}
+
+export function floatingIds(map: MindMap) {
+  return Object.values(map.nodes).filter((node) => node.parentId === null && node.id !== map.rootId).map((node) => node.id)
 }
 
 export function depthOf(map: MindMap, id: string) {
@@ -88,10 +98,65 @@ export function addSibling(map: MindMap, id: string, text: string, newId?: strin
   return [next, sibling.id]
 }
 
+/** New sibling right above `id` (for the central topic or a free node: a child). */
+export function addSiblingAbove(map: MindMap, id: string, text: string, newId?: string): [MindMap, string] {
+  const node = map.nodes[id]
+  if (!node?.parentId) return addChild(map, id, text, newId)
+  const parentId = node.parentId
+  const sibling = makeNode(parentId, text, newId)
+  const next = edit(map, [parentId], (nodes) => {
+    const list = nodes[parentId].children
+    list.splice(list.indexOf(id), 0, sibling.id)
+    nodes[sibling.id] = sibling
+  })
+  return [next, sibling.id]
+}
+
+/** New node between `id` and its parent (the node becomes its child). */
+export function insertParent(map: MindMap, id: string, text: string, newId?: string): [MindMap, string] {
+  const node = map.nodes[id]
+  if (!node?.parentId) return [map, id]
+  const parentId = node.parentId
+  const middle = { ...makeNode(parentId, text, newId), children: [id] }
+  const next = edit(map, [parentId, id], (nodes) => {
+    const list = nodes[parentId].children
+    list.splice(list.indexOf(id), 1, middle.id)
+    nodes[middle.id] = middle
+    nodes[id] = { ...nodes[id], parentId: middle.id, dx: 0, dy: 0 }
+  })
+  return [next, middle.id]
+}
+
+/** A free node at a canvas point (not connected to anything yet). */
+export function addFloating(map: MindMap, x: number, y: number, text: string, newId?: string): [MindMap, string] {
+  const node = { ...makeNode(null, text, newId), x: Math.round(x), y: Math.round(y) }
+  const next = edit(map, [], (nodes) => { nodes[node.id] = node })
+  return [next, node.id]
+}
+
+/** Cut the line to the parent: the node (with its subtree) stays where it is as a free node. */
+export function detach(map: MindMap, id: string, center: { x: number; y: number }): MindMap {
+  const node = map.nodes[id]
+  if (!node?.parentId) return map
+  const parentId = node.parentId
+  return edit(map, [parentId, id], (nodes) => {
+    nodes[parentId].children = nodes[parentId].children.filter((child) => child !== id)
+    nodes[id] = { ...nodes[id], parentId: null, x: Math.round(center.x), y: Math.round(center.y), dx: 0, dy: 0 }
+  })
+}
+
+export function setEdgeStyle(map: MindMap, edgeStyle: EdgeStyle): MindMap {
+  return map.edgeStyle === edgeStyle ? map : { ...map, edgeStyle }
+}
+
 /** Removes the node and its subtree; returns the node to select next. */
 export function removeNode(map: MindMap, id: string): [MindMap, string] {
   const node = map.nodes[id]
-  if (!node?.parentId) return [map, id]
+  if (!node || id === map.rootId) return [map, id]
+  if (!node.parentId) {
+    const doomedFree = new Set(subtreeIds(map, id))
+    return [edit(map, [], (nodes) => { for (const key of doomedFree) delete nodes[key] }), map.rootId]
+  }
   const parentId = node.parentId
   const siblings = map.nodes[parentId].children
   const index = siblings.indexOf(id)
@@ -127,13 +192,13 @@ export function moveAmongSiblings(map: MindMap, id: string, delta: -1 | 1): Mind
 /** Drop `id` onto `newParentId` (not onto itself or its own subtree). */
 export function reparent(map: MindMap, id: string, newParentId: string): MindMap {
   const node = map.nodes[id]
-  if (!node?.parentId || id === newParentId || isDescendant(map, newParentId, id) || node.parentId === newParentId) return map
+  if (!node || id === map.rootId || id === newParentId || !map.nodes[newParentId] || isDescendant(map, newParentId, id) || node.parentId === newParentId) return map
   const oldParentId = node.parentId
-  return edit(map, [id, oldParentId, newParentId], (nodes) => {
-    nodes[oldParentId].children = nodes[oldParentId].children.filter((child) => child !== id)
+  return edit(map, oldParentId ? [id, oldParentId, newParentId] : [id, newParentId], (nodes) => {
+    if (oldParentId) nodes[oldParentId].children = nodes[oldParentId].children.filter((child) => child !== id)
     nodes[newParentId].children.push(id)
     nodes[newParentId].collapsed = false
-    nodes[id] = { ...nodes[id], parentId: newParentId, dx: 0, dy: 0 }
+    nodes[id] = { ...nodes[id], parentId: newParentId, dx: 0, dy: 0, x: undefined, y: undefined }
   })
 }
 
@@ -183,11 +248,13 @@ export function importMap(raw: unknown): MindMap | null {
       collapsed: Boolean(node.collapsed),
       dx: Number(node.dx) || 0,
       dy: Number(node.dy) || 0,
+      ...(Number.isFinite(Number(node.x)) && Number.isFinite(Number(node.y)) && node.x !== undefined ? { x: Number(node.x), y: Number(node.y) } : {}),
       task: node.task && typeof node.task === 'object' ? node.task : null,
     }
   }
   // Drop dangling child references.
   for (const node of Object.values(nodes)) node.children = node.children.filter((child) => nodes[child])
   const now = new Date().toISOString()
-  return { id: uid(), title: nodes[data.rootId].text, rootId: data.rootId, nodes, createdAt: now, updatedAt: now }
+  const edgeStyle = data.edgeStyle === 'straight' || data.edgeStyle === 'elbow' ? data.edgeStyle : 'curved'
+  return { id: uid(), title: nodes[data.rootId].text, rootId: data.rootId, nodes, edgeStyle, createdAt: now, updatedAt: now }
 }

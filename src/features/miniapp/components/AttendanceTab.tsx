@@ -23,6 +23,8 @@ type Props = {
   appVisible: boolean
   initData: string
   webApp: TgWebApp
+  /** The bottom tab bar is shown (the action button sits above it). */
+  withTabBar?: boolean
 }
 
 const POSITION_EVERY_MS = 25_000
@@ -48,7 +50,7 @@ function clockOf(value: string | null) {
 }
 
 /** Attendance section: state, GPS, assigned locations with distance, Keldim / Ketdim. */
-export function AttendanceTab({ active, appVisible, initData, webApp }: Props) {
+export function AttendanceTab({ active, appVisible, initData, webApp, withTabBar = true }: Props) {
   const { t } = useLocale()
   const [data, setData] = useState<LocationsPayload | null>(null)
   const [presence, setPresence] = useState<Presence | null>(null)
@@ -175,7 +177,7 @@ export function AttendanceTab({ active, appVisible, initData, webApp }: Props) {
   const fixAge = fix ? Math.max(0, Math.round((now - fix.at) / 1000)) : null
 
   return (
-    <div className="flex min-h-full flex-col px-4 pt-1 pb-28">
+    <div className={cn('flex min-h-full flex-col px-4 pt-1', withTabBar ? 'pb-28' : 'pb-24')}>
       {/* State */}
       <section className={cn('mini-in rounded-[22px] p-4 ring-1', checkedIn ? 'bg-[var(--success-dim)] ring-[var(--success-border)]' : 'bg-[var(--surface)] ring-[var(--border)]')}>
         <div className="flex items-center gap-3">
@@ -290,7 +292,7 @@ export function AttendanceTab({ active, appVisible, initData, webApp }: Props) {
       ) : null}
 
       {/* Main action — above the tab bar, reachable with the thumb */}
-      <div className="fixed inset-x-0 bottom-[calc(74px+max(8px,env(safe-area-inset-bottom)))] z-30 mx-auto max-w-md px-4">
+      <div className={cn('fixed inset-x-0 z-30 mx-auto max-w-md px-4', withTabBar ? 'bottom-[calc(74px+max(8px,env(safe-area-inset-bottom)))]' : 'bottom-[max(14px,env(safe-area-inset-bottom))]')}>
         {!canAct && reason ? <p className="mini-in mb-2 rounded-[12px] bg-[var(--surface)]/95 px-3 py-2 text-center text-[12.5px] leading-snug text-[var(--muted-strong)] shadow-[0_6px_18px_-12px_rgba(14,21,37,0.4)] backdrop-blur">{reason}</p> : null}
         <button
           type="button"

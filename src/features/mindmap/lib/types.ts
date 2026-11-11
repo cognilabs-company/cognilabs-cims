@@ -23,8 +23,15 @@ export type MindNode = {
   /** Manual offset from the auto-layout position (drag / Alt+arrows). Children move with their parent. */
   dx: number
   dy: number
+  /** Free (unconnected) node: its centre on the canvas. Unused for connected nodes. */
+  x?: number
+  y?: number
   task: NodeTask | null
 }
+
+/** How branches are drawn. */
+export type EdgeStyle = 'curved' | 'straight' | 'elbow'
+export const EDGE_STYLES: EdgeStyle[] = ['curved', 'straight', 'elbow']
 
 export type MindMap = {
   id: string
@@ -32,6 +39,7 @@ export type MindMap = {
   title: string
   rootId: string
   nodes: Record<string, MindNode>
+  edgeStyle?: EdgeStyle
   createdAt: string
   updatedAt: string
 }

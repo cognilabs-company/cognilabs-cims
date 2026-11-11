@@ -10,6 +10,12 @@ import {
   ArrowsInLineVerticalIcon,
   ArrowsOutLineVerticalIcon,
   BezierCurveIcon,
+  CircleDashedIcon,
+  FlowArrowIcon,
+  LineSegmentIcon,
+  ScissorsIcon,
+  TreeStructureIcon,
+  WaveSineIcon,
   CaretDownIcon,
   CornersOutIcon,
   FileCodeIcon,
@@ -44,8 +50,14 @@ import {
   reparent,
   resetOffsets,
   setAllCollapsed,
+  setEdgeStyle,
   subtreeIds,
   uid,
+  addFloating,
+  addSiblingAbove,
+  detach,
+  floatingIds,
+  insertParent,
   updateNode,
 } from '../lib/tree'
 import type { MindMap, MindNode, NodeTask } from '../lib/types'
@@ -154,6 +166,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   const [spacePan, setSpacePan] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   // Phones: the node panel is an overlay opened on demand; desktop remembers its own preference.
   const [mobileInspector, setMobileInspector] = useState(false)
@@ -294,9 +307,16 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     else ensureVisible(state.id, layout)
   }
 
-  function addNode(kind: 'child' | 'sibling', from = selected) {
+  function addNode(kind: 'child' | 'sibling' | 'above' | 'parent', from = selected) {
     const id = uid()
-    const [next] = kind === 'child' ? addChild(map, from, newNodeText, id) : addSibling(map, from, newNodeText, id)
+    if (kind === 'parent' && !map.nodes[from]?.parentId) { addNode('child', from); return }
+    const [next] = kind === 'child'
+      ? addChild(map, from, newNodeText, id)
+      : kind === 'above'
+        ? addSiblingAbove(map, from, newNodeText, id)
+        : kind === 'parent'
+          ? insertParent(map, from, newNodeText, id)
+          : addSibling(map, from, newNodeText, id)
     commit(next)
     const nextLayout = computeLayout(next)
     const state = { id, original: newNodeText, selectAll: true, fresh: true }
@@ -304,6 +324,30 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     setEditing(state)
     setSelectedId(id)
     ensureVisible(id, nextLayout)
+  }
+
+  /** A free node at a canvas point (double-click on empty space, or the centre of the view). */
+  function addFree(x?: number, y?: number) {
+    const { w, h } = sizeRef.current
+    const px = x ?? (w / 2 - view.x) / view.k
+    const py = y ?? (h / 2 - view.y) / view.k
+    const id = uid()
+    const [next] = addFloating(map, px, py, newNodeText, id)
+    commit(next)
+    const state = { id, original: newNodeText, selectAll: true, fresh: true }
+    editingRef.current = state
+    setEditing(state)
+    setSelectedId(id)
+  }
+
+  /** Cut the line to the parent; the node keeps its place as a free node. */
+  function detachNode(id = selected) {
+    const box = layout.boxes.get(id)
+    if (!box || !map.nodes[id]?.parentId) return
+    // Step it a little outward, so it does not sit on the sibling that moves into its place.
+    commit(detach(map, id, { x: box.x + box.w / 2 + box.side * (box.w / 2 + 70), y: box.y + box.h / 2 - 28 }))
+    setSelectedId(id)
+    showToast({ title: t('mindmap.cut_done', 'Line removed — drag the node onto another one to connect it again'), tone: 'info' })
   }
 
   /** Fade the node (and its subtree) out, then remove it — one undo step. */
@@ -384,6 +428,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
       item.children.forEach(walk)
     }
     walk(map.rootId)
+    floatingIds(map).forEach(walk)
     return out
   }, [map, query])
   const matches = useMemo(() => new Set(matchList), [matchList])
@@ -428,8 +473,8 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
       if (mod && event.key.toLowerCase() === 'y') { event.preventDefault(); redo(); return }
       if (mod || event.key === 'Meta' || event.key === 'Control') return
       if (event.key === ' ') { event.preventDefault(); setSpacePan(true); return }
-      if (event.key === 'Tab') { event.preventDefault(); addNode('child'); return }
-      if (event.key === 'Enter') { event.preventDefault(); addNode('sibling'); return }
+      if (event.key === 'Tab') { event.preventDefault(); addNode(event.shiftKey ? 'parent' : 'child'); return }
+      if (event.key === 'Enter') { event.preventDefault(); addNode(event.shiftKey ? 'above' : 'sibling'); return }
       if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); deleteSelected(); return }
       if (event.key === 'F2') { event.preventDefault(); startEdit(selected); return }
       if (event.key.startsWith('Arrow')) {
@@ -570,8 +615,38 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
       {/* Row 2: node actions */}
       <div className="flex flex-wrap items-center gap-1.5">
         <ToolButton icon={<ArrowElbowDownRightIcon size={15} />} label={t('mindmap.child', 'Child')} kbd="Tab" onClick={() => addNode('child')} />
-        <ToolButton icon={<PlusIcon size={15} />} label={t('mindmap.sibling', 'Sibling')} kbd="Enter" onClick={() => addNode('sibling')} />
+        <div className="relative">
+          <ToolButton icon={<PlusIcon size={15} />} label={t('mindmap.add', 'Add')} onClick={() => setAddOpen((open) => !open)} active={addOpen} trailing={<CaretDownIcon size={12} />} />
+          {addOpen ? (
+            <>
+              <button type="button" aria-hidden="true" tabIndex={-1} className="fixed inset-0 z-30 cursor-default" onClick={() => setAddOpen(false)} />
+              <div role="menu" className="mm-pop absolute top-[calc(100%+6px)] left-0 z-40 min-w-[250px] rounded-[12px] border border-[var(--border)] bg-[var(--card)] p-1 shadow-[var(--elev-lg)]">
+                {([
+                  ['child', ArrowElbowDownRightIcon, t('mindmap.add_child', 'Child (to the side)'), 'Tab', false],
+                  ['sibling', ArrowDownIcon, t('mindmap.add_below', 'Below (sibling)'), 'Enter', !node.parentId],
+                  ['above', ArrowUpIcon, t('mindmap.add_above', 'Above (sibling)'), 'Shift+Enter', !node.parentId],
+                  ['parent', TreeStructureIcon, t('mindmap.add_parent', 'Parent (in between)'), 'Shift+Tab', !node.parentId],
+                  ['free', CircleDashedIcon, t('mindmap.add_free', 'Free node (anywhere)'), t('mindmap.double_click', 'Double-click'), false],
+                ] as const).map(([kind, Icon, label, kbd, disabled]) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    role="menuitem"
+                    disabled={disabled}
+                    onClick={() => { setAddOpen(false); if (kind === 'free') addFree(); else addNode(kind) }}
+                    className="flex w-full items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--input-surface)] disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <Icon size={16} weight="duotone" className="text-[var(--muted-strong)]" />
+                    <span className="flex-1">{label}</span>
+                    <Kbd>{kbd}</Kbd>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
         <ToolButton icon={<TrashIcon size={15} />} label={t('mindmap.remove', 'Delete')} onClick={deleteSelected} disabled={selected === map.rootId} danger />
+        <ToolButton iconOnly icon={<ScissorsIcon size={15} />} label={t('mindmap.cut', 'Remove the line to the parent')} onClick={() => detachNode()} disabled={!node.parentId} />
         <ToolButton iconOnly icon={<ArrowUpIcon size={15} />} label={t('mindmap.move_up', 'Move up')} onClick={() => move(-1)} disabled={siblingIndex <= 0} />
         <ToolButton iconOnly icon={<ArrowDownIcon size={15} />} label={t('mindmap.move_down', 'Move down')} onClick={() => move(1)} disabled={siblingIndex < 0 || siblingIndex >= siblings.length - 1} />
         <span className="mx-1 h-6 w-px shrink-0 bg-[var(--border)]" />
@@ -579,6 +654,29 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
           <ToolButton icon={<ListChecksIcon size={15} />} label={t('mindmap.to_task', 'Turn into a task')} onClick={() => setTaskNode(selected)} disabled={Boolean(node.task)} />
         ) : null}
         <span className="mx-1 h-6 w-px shrink-0 bg-[var(--border)]" />
+        <div role="radiogroup" aria-label={t('mindmap.edge_style', 'Line style')} className="inline-flex h-[34px] shrink-0 items-center gap-0.5 rounded-[10px] border border-[var(--border)] bg-[var(--card)] p-0.5">
+          {([
+            ['curved', WaveSineIcon, t('mindmap.edge_curved', 'Curved lines')],
+            ['straight', LineSegmentIcon, t('mindmap.edge_straight', 'Straight lines')],
+            ['elbow', FlowArrowIcon, t('mindmap.edge_elbow', 'Elbow lines')],
+          ] as const).map(([value, Icon, label]) => {
+            const active = (map.edgeStyle ?? 'curved') === value
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                title={label}
+                aria-label={label}
+                onClick={() => commit(setEdgeStyle(map, value))}
+                className={cn('mm-press grid h-[28px] w-[30px] place-items-center rounded-[8px]', active ? 'bg-[var(--blue-dim)] text-[var(--primary)]' : 'text-[var(--muted-strong)] hover:bg-[var(--input-surface)]')}
+              >
+                <Icon size={15} weight={active ? 'bold' : 'regular'} />
+              </button>
+            )
+          })}
+        </div>
         <ToolButton compact icon={<MagicWandIcon size={15} />} label={t('mindmap.auto_layout', 'Auto layout')} onClick={() => { commit(resetOffsets(map)); window.setTimeout(fit, 0) }} />
         <ToolButton compact icon={<ArrowsInLineVerticalIcon size={15} />} label={t('mindmap.collapse_all', 'Collapse all')} onClick={() => { const next = commit(setAllCollapsed(map, true)); if (!next.nodes[selected] || depthOf(next, selected) > 1) setSelectedId(next.rootId) }} />
         <ToolButton compact icon={<ArrowsOutLineVerticalIcon size={15} />} label={t('mindmap.expand_all', 'Expand all')} onClick={() => commit(setAllCollapsed(map, false))} />
@@ -607,7 +705,13 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
               openTask: t('mindmap.open_task', 'Open task'),
               note: t('mindmap.has_note', 'Has a note'),
               remove: t('mindmap.remove', 'Delete'),
+              addAbove: t('mindmap.add_above', 'Above (sibling)'),
+              addBelow: t('mindmap.add_below', 'Below (sibling)'),
+              cut: t('mindmap.cut', 'Remove the line to the parent'),
             }}
+            onAddSibling={(id, where) => addNode(where === 'above' ? 'above' : 'sibling', id)}
+            onDetach={detachNode}
+            onCreateFree={(x, y) => addFree(x, y)}
             leavingIds={leavingIds}
             animateView={animateView}
             onDeleteNode={removeWithAnimation}
@@ -646,6 +750,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
                 <ToolButton iconOnly flat icon={<QuestionIcon size={16} />} label={t('mindmap.help', 'How it works')} onClick={() => setHelpOpen((open) => !open)} active={helpOpen} />
                 <span className={cn('absolute bottom-[calc(100%+10px)] left-0 w-[300px] rounded-[12px] border border-[var(--border)] bg-[var(--card)] p-3 text-[12px] leading-relaxed text-[var(--muted-strong)] shadow-[var(--elev-lg)]', helpOpen ? 'block' : 'hidden group-hover/help:block')}>
                   {hint.split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
+                  {t('mindmap.hint_more', 'Double-click empty space — a free node · hover a line and press ✂ to cut it · drop a free node onto another node to connect it · Shift+Enter — above, Shift+Tab — parent').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
                   <span className="mt-1.5 block text-[var(--muted)]">{t('mindmap.edit_tip', 'Double-click or start typing to edit')} · Tab / Enter / Delete · Ctrl+Z</span>
                 </span>
               </span>
@@ -663,7 +768,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
             <NodeInspector
               key={selected}
               node={node as MindNode}
-              depth={depthOf(map, selected)}
+              depth={layout.boxes.get(selected)?.depth ?? depthOf(map, selected)}
               branchColor={layout.boxes.get(selected)?.color ?? '#2B59FF'}
               canCreateTask={canCreateTask}
               onChange={(patch, field) => apply((m) => updateNode(m, selected, patch), `${field}:${selected}`)}

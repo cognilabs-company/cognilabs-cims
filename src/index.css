@@ -1134,6 +1134,8 @@ input:-webkit-autofill:focus {
 .mini-key { transition: transform 120ms ease, background-color 150ms ease, opacity 150ms ease; touch-action: manipulation; user-select: none; }
 .mini-key:active:not(:disabled) { transform: scale(0.92); }
 .mini-tab-indicator { transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1); }
+/* Keypad keys shrink on short screens so the call button never hides under the tab bar. */
+.mini-keypad { --key: clamp(42px, calc((100dvh - 470px) / 5.2), 70px); row-gap: clamp(6px, 1.4dvh, 14px); }
 @media (prefers-reduced-motion: reduce) {
   .mini-in, .mini-fade, .mini-sheet, .mini-call, .mini-ring, .mini-pulse { animation: none; }
   .mini-tab-indicator, .mini-key { transition: none; }

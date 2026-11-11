@@ -82,7 +82,24 @@ export function normalizePresence(raw: unknown): Presence | null {
   }
 }
 
+/** What the signed-in employee may do with calls (RBAC module "calls"); null = unknown (no RBAC answer). */
+export type CallsAccess = { view: boolean; create: boolean } | null
+
+function callsAccessFrom(raw: unknown): CallsAccess {
+  if (!isObject(raw)) return null
+  if (raw.is_owner === true) return { view: true, create: true }
+  const effective = isObject(raw.effective_permissions) ? raw.effective_permissions : null
+  if (!effective) return null
+  const actionsOf = (key: string) => (Array.isArray(effective[key]) ? (effective[key] as unknown[]).map(String) : [])
+  const actions = [...actionsOf('calls'), ...actionsOf('telephony')]
+  return { view: actions.includes('view'), create: actions.includes('create') }
+}
+
 export const miniApi = {
+  /** GET /rbac/me → calls permissions (null when RBAC is not available). */
+  async callsAccess(): Promise<CallsAccess> {
+    try { return callsAccessFrom(await request<unknown>({ path: '/rbac/me' })) } catch { return null }
+  },
   async session(initData: string): Promise<MiniSession> {
     const data = await request<Raw>({ path: '/miniapp/session', method: 'POST', headers: initHeaders(initData), auth: false })
     return { access_token: String(data.access_token ?? ''), expires_in: num(data.expires_in, 7200), user: normalizeUser(data.user) }

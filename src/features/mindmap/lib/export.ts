@@ -1,5 +1,5 @@
 import { computeLayout, edgePath, nodeFont, type Layout, type NodeBox } from './layout'
-import { outline } from './tree'
+import { floatingIds, outline } from './tree'
 import type { MindMap, MindNode } from './types'
 
 const PAD = 48
@@ -21,6 +21,7 @@ export function nodeRadius(node: MindNode, box: NodeBox) {
 /** Colours of a node in a light export (the app itself uses CSS colour-mix for both themes). */
 function exportStyle(node: MindNode, box: NodeBox) {
   if (node.shape === 'outline') return { fill: '#FFFFFF', stroke: box.color, text: box.depth === 0 ? box.color : '#0E1525', strokeWidth: 2 }
+  if (box.floating) return { fill: '#FFFFFF', stroke: tint(box.color, 0.7), text: '#0E1525', strokeWidth: 1.5 }
   if (box.depth === 0) return { fill: box.color, stroke: box.color, text: '#FFFFFF', strokeWidth: 1 }
   return { fill: tint(box.color, 0.13), stroke: tint(box.color, 0.45), text: '#0E1525', strokeWidth: 1 }
 }
@@ -70,7 +71,7 @@ export function exportSvg(map: MindMap) {
     `<g transform="translate(${PAD - minX} ${PAD - minY})">`,
   ]
   for (const { parent, child } of edges(map, layout)) {
-    parts.push(`<path d="${edgePath(parent, child)}" fill="none" stroke="${child.color}" stroke-opacity="0.75" stroke-width="${child.depth === 1 ? 3 : 2}" stroke-linecap="round"/>`)
+    parts.push(`<path d="${edgePath(parent, child, map.edgeStyle)}" fill="none" stroke="${child.color}" stroke-opacity="0.75" stroke-width="${child.depth === 1 ? 3 : 2}" stroke-linecap="round"/>`)
   }
   for (const id of layout.order) {
     const box = layout.boxes.get(id)!
@@ -121,7 +122,7 @@ export async function exportPng(map: MindMap) {
     ctx.globalAlpha = 0.75
     ctx.lineWidth = child.depth === 1 ? 3 : 2
     ctx.lineCap = 'round'
-    ctx.stroke(new Path2D(edgePath(parent, child)))
+    ctx.stroke(new Path2D(edgePath(parent, child, map.edgeStyle)))
   }
   ctx.globalAlpha = 1
   for (const id of layout.order) {
@@ -148,6 +149,8 @@ export async function exportPng(map: MindMap) {
 export function exportMarkdown(map: MindMap) {
   const root = map.nodes[map.rootId]
   const body = root.children.flatMap((child) => outline(map, child))
+  const free = floatingIds(map).flatMap((id) => outline(map, id))
+  if (free.length) body.push('', '## —', '', ...free)
   const text = [`# ${root.text}`, '', ...(root.note ? [root.note, ''] : []), ...body, ''].join('\n')
   download(new Blob([text], { type: 'text/markdown' }), `${fileBase(map)}.md`)
 }
