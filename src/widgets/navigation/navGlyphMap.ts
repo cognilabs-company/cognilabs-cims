@@ -19,6 +19,7 @@ export type GlyphName =
   | 'integrations'
   | 'projects'
   | 'mindmap'
+  | 'calendar'
   | 'management'
   | 'team'
   | 'cognilabsai-chat'
@@ -38,6 +39,7 @@ export type GlyphName =
 export function getNavigationGlyphName(pathname: string): GlyphName {
   if (pathname.startsWith('/telephony')) return 'phone'
   if (pathname.startsWith('/mindmap')) return 'mindmap'
+  if (pathname.startsWith('/calendar')) return 'calendar'
   if (pathname.startsWith('/settings')) return 'management'
   if (pathname.startsWith('/salary')) return 'salary'
   if (pathname.startsWith('/member/attendance') || pathname.startsWith('/ceo/attendance')) return 'attendance'

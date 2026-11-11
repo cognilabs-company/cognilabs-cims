@@ -125,29 +125,28 @@ function consolidate(groups: SidebarGroup[], t: (key: string, fallback: string) 
 }
 
 /**
- * Mind map is a frontend-only page (not in the backend navigation): show it right after Projects,
- * or at the end of the menu when Projects is not there.
+ * Mind map and Calendar are frontend-only pages (not in the backend navigation): show them right
+ * after Projects, or at the end of the menu when Projects is not there.
  */
-function withMindMap(groups: SidebarGroup[], label: string): SidebarGroup[] {
-  if (groups.some((group) => group.items.some((item) => item.to === '/mindmap'))) return groups
-  const entry: SidebarItem = { to: '/mindmap', label, icon: 'mindmap' }
+function withFrontendPages(groups: SidebarGroup[], entries: SidebarItem[]): SidebarGroup[] {
+  const missing = entries.filter((entry) => !groups.some((group) => group.items.some((item) => item.to === entry.to)))
+  if (!missing.length || !groups.length) return groups
   const index = groups.findIndex((group) => group.items.some((item) => item.to.startsWith('/projects')))
   if (index === -1) {
-    if (!groups.length) return groups
     const last = groups[groups.length - 1]
-    return [...groups.slice(0, -1), { ...last, items: [...last.items, entry] }]
+    return [...groups.slice(0, -1), { ...last, items: [...last.items, ...missing] }]
   }
   return groups.map((group, position) => {
     if (position !== index) return group
     const at = group.items.findIndex((item) => item.to.startsWith('/projects'))
-    return { ...group, items: [...group.items.slice(0, at + 1), entry, ...group.items.slice(at + 1)] }
+    return { ...group, items: [...group.items.slice(0, at + 1), ...missing, ...group.items.slice(at + 1)] }
   })
 }
 
 function navGroupOf(path: string): NavGroupKey {
   if (path === '/member/dashboard' || path === '/ceo/dashboard') return 'main'
   if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony')) return 'sales'
-  if (path.startsWith('/projects') || path.startsWith('/mindmap')) return 'work'
+  if (path.startsWith('/projects') || path.startsWith('/mindmap') || path.startsWith('/calendar')) return 'work'
   if (path.startsWith('/cognilabsai') || path.startsWith('/ceo/ai')) return 'ai'
   if (['/ceo/website-stats', '/ceo/management', '/audit', '/ceo/workday-overrides'].some((prefix) => path.startsWith(prefix))) return 'system'
   return 'team'
@@ -223,7 +222,10 @@ export function AppSidebar() {
           items: group.items.map((item) => ({ to: resolveNavRoute(item), label: item.display_name, icon: item.icon })),
         }
       }), t)
-      return withMindMap(groups, t('nav./mindmap.label', 'Mind map'))
+      return withFrontendPages(groups, [
+        { to: '/mindmap', label: t('nav./mindmap.label', 'Mind map'), icon: 'mindmap' },
+        { to: '/calendar', label: t('nav./calendar.label', 'Calendar'), icon: 'calendar' },
+      ])
     }
     const legacy = getAccessibleNavigation(user, { sidebarOnly: true })
     return consolidate(groupOrder

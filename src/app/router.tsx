@@ -140,6 +140,10 @@ const MiniAppPage = lazyPage(
   () => import('../features/miniapp/pages/MiniAppPage'),
   'MiniAppPage',
 )
+const CalendarPage = lazyPage(
+  () => import('../features/calendar/pages/CalendarPage'),
+  'CalendarPage',
+)
 const MindMapPage = lazyPage(
   () => import('../features/mindmap/pages/MindMapPage'),
   'MindMapPage',
@@ -435,6 +439,14 @@ export const router = createBrowserRouter([
                 element: (
                   <ProtectedRoute>
                     {withPageLoader(<ProjectsListPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'calendar',
+                element: (
+                  <ProtectedRoute>
+                    {withPageLoader(<CalendarPage />)}
                   </ProtectedRoute>
                 ),
               },
