@@ -102,19 +102,27 @@ const mergedRoutes: Array<{ to: string; from: string[]; label: [string, string] 
 ]
 
 function consolidate(groups: SidebarGroup[], t: (key: string, fallback: string) => string): SidebarGroup[] {
+  // The merged page's own route counts too (the backend may already send /salary or /settings).
+  const mergeOf = (to: string) => mergedRoutes.find((entry) => entry.to === to || entry.from.includes(to))
   const lastIndex = new Map<string, string>()
   groups.forEach((group, groupIndex) => group.items.forEach((item, itemIndex) => {
-    const merged = mergedRoutes.find((entry) => entry.from.includes(item.to))
+    const merged = mergeOf(item.to)
     if (merged) lastIndex.set(merged.to, `${groupIndex}:${itemIndex}`)
   }))
+  const seen = new Set<string>()
   return groups
     .map((group, groupIndex) => ({
       ...group,
       items: group.items.flatMap((item, itemIndex) => {
         if (hiddenRoutes.has(item.to)) return []
-        const merged = mergedRoutes.find((entry) => entry.from.includes(item.to))
-        if (!merged) return [item]
-        return lastIndex.get(merged.to) === `${groupIndex}:${itemIndex}` ? [{ to: merged.to, label: t(merged.label[0], merged.label[1]) }] : []
+        const merged = mergeOf(item.to)
+        const next = merged
+          ? (lastIndex.get(merged.to) === `${groupIndex}:${itemIndex}` ? { to: merged.to, label: t(merged.label[0], merged.label[1]) } : null)
+          : item
+        // Never the same page twice in the menu.
+        if (!next || seen.has(next.to)) return []
+        seen.add(next.to)
+        return [next]
       }),
     }))
     .filter((group) => group.items.length > 0)

@@ -5,7 +5,7 @@ import { cn } from '../../../shared/lib/cn'
 import { CalendarField } from '../../../shared/ui/calendar-field'
 import { useDismiss } from './useDismiss'
 import { connectionLabel, formatPhone, rangeLabel, todayLong, type CallPeriod } from './telephonyFormat'
-import type { OutboundMode } from '../../../shared/api/services/telephony.service'
+import { normalizePhone, type OutboundMode } from '../../../shared/api/services/telephony.service'
 import { translateCurrent as tr } from '../../../shared/i18n/translations'
 
 function forwardingModeLabel(mode: string | null) {
@@ -89,61 +89,63 @@ export function CallsHero(props: CallsHeroProps) {
 
   return (
     <section className="calls-hero @container relative z-20 rounded-[26px] px-5 py-5 sm:px-6">
-      {/* Row 1 — title, line state, actions */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        <div className="flex min-w-0 items-center gap-3.5">
+      {/* Row 1 — line state on the left (with forwarding under it), view switch on the right; one line from sm up */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 @min-[660px]:flex-nowrap">
+        <div className="flex min-w-0 flex-1 items-center gap-3.5">
           <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-[16px] bg-white/[0.08] text-[#b8f15a] ring-1 ring-white/10">
             <PhoneCall size={22} strokeWidth={2.2} />
-            <span className={cn('absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full border-[3px] border-[var(--calls-hero-bg)]', tone)} />
+            <span className={cn('absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-[3px] border-[var(--calls-hero-bg)]', tone)} />
           </span>
           <div className="min-w-0">
-            <p className="text-[19px] leading-6 font-bold tracking-[-0.02em]" title={t('telephony.phone_state', 'Phone: {{state}}', { state: connectionLabel(connection) })}>
+            <p className="truncate text-[19px] leading-6 font-bold tracking-[-0.02em]" title={t('telephony.phone_state', 'Phone: {{state}}', { state: connectionLabel(connection) })}>
               {mobile ? t('telephony.line_mobile', 'Line: mobile phone') : t('telephony.line_state', 'Line: {{state}}', { state: connectionLabel(connection) })}
             </p>
-            <p className="truncate text-[13px] text-white/60">
-              {mobile && props.mobileNumber
-                ? t('telephony.mobile.via', 'Calls go through {{phone}}', { phone: formatPhone(props.mobileNumber) })
-                : props.extension ? t('telephony.extension_line', 'Extension {{ext}}', { ext: props.extension }) : t('telephony.no_extension', 'No extension yet')}
-              <span className="hidden sm:inline"> · {todayLong()}</span>
-            </p>
+            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/60">
+              <span className="truncate">
+                {mobile && props.mobileNumber
+                  ? t('telephony.mobile.via', 'Calls go through {{phone}}', { phone: formatPhone(props.mobileNumber) })
+                  : props.extension ? t('telephony.extension_line', 'Extension {{ext}}', { ext: props.extension }) : t('telephony.no_extension', 'No extension yet')}
+                <span className="hidden @min-[780px]:inline"> · {todayLong()}</span>
+              </span>
+              {props.forwarding ? (
+                <span
+                  className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-white/[0.08] px-2.5 text-[12px] font-medium text-white/80 ring-1 ring-white/10"
+                  title={t('telephony.forwarding.title', 'Call forwarding is on')}
+                >
+                  <PhoneForwarded size={12} className="text-[#b8f15a]" />
+                  {forwardingModeLabel(props.forwarding.mode)}
+                  {/* the number only when it differs from the line's own mobile */}
+                  {props.forwarding.target && normalizePhone(props.forwarding.target) !== normalizePhone(props.mobileNumber) ? (
+                    <span className="text-white/55 tabular-nums">→ {formatPhone(props.forwarding.target)}</span>
+                  ) : null}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {props.forwarding ? (
-            <span
-              className="inline-flex h-10 items-center gap-2 rounded-[13px] bg-white/[0.07] px-3 text-[12.5px] font-medium text-white/80 ring-1 ring-white/10"
-              title={t('telephony.forwarding.title', 'Call forwarding is on')}
-            >
-              <PhoneForwarded size={15} className="text-[#b8f15a]" />
-              {forwardingModeLabel(props.forwarding.mode)}
-              {props.forwarding.target ? <span className="text-white/50 tabular-nums">→ {formatPhone(props.forwarding.target)}</span> : null}
-            </span>
-          ) : null}
-          {props.isCeo ? (
-            <div role="tablist" aria-label={t('telephony.title', 'Calls')} className="inline-flex h-10 rounded-[13px] bg-white/[0.07] p-1 ring-1 ring-white/10">
-              {([
-                ['calls', t('telephony.tab.calls', 'Calls'), PhoneCall],
-                ['system', t('telephony.tab.system', 'Phone system'), Server],
-              ] as Array<[CallsTab, string, LucideIcon]>).map(([value, label, Icon]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={props.tab === value}
-                  onClick={() => props.onTabChange(value)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-semibold transition-colors',
-                    props.tab === value ? 'bg-white text-[var(--calls-hero-ink)]' : 'text-white/70 hover:text-white',
-                  )}
-                >
-                  <Icon size={14} /> {label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-        </div>
+        {props.isCeo ? (
+          <div role="tablist" aria-label={t('telephony.title', 'Calls')} className="inline-flex h-10 shrink-0 rounded-[13px] @max-[659px]:w-full @max-[659px]:[&>button]:flex-1 @max-[659px]:[&>button]:justify-center bg-white/[0.07] p-1 ring-1 ring-white/10">
+            {([
+              ['calls', t('telephony.tab.calls', 'Calls'), PhoneCall],
+              ['system', t('telephony.tab.system', 'Phone system'), Server],
+            ] as Array<[CallsTab, string, LucideIcon]>).map(([value, label, Icon]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={props.tab === value}
+                onClick={() => props.onTabChange(value)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-semibold whitespace-nowrap transition-colors',
+                  props.tab === value ? 'bg-white text-[var(--calls-hero-ink)]' : 'text-white/70 hover:text-white',
+                )}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {props.tab === 'calls' ? (
