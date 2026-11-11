@@ -10,7 +10,7 @@ import { useTelephony } from '../../telephony/TelephonyContext'
 import { AttendanceTab } from '../components/AttendanceTab'
 import { CallScreen } from '../components/CallScreen'
 import { PhoneTab } from '../components/PhoneTab'
-import { miniApi, type MiniUser } from '../lib/api'
+import { miniApi, type CallsCapability, type MiniUser } from '../lib/api'
 import { telephonyService } from '../../../shared/api/services/telephony.service'
 import { haptic, loadTelegramSdk, type TgWebApp } from '../lib/telegram'
 
@@ -18,7 +18,7 @@ type Boot =
   | { phase: 'loading' }
   | { phase: 'outside' }
   | { phase: 'error'; message: string; code: number | null }
-  | { phase: 'ready'; user: MiniUser; initData: string; webApp: TgWebApp; expiresIn: number }
+  | { phase: 'ready'; user: MiniUser; initData: string; webApp: TgWebApp; expiresIn: number; calls: CallsCapability }
 
 type Tab = 'phone' | 'attendance'
 
@@ -73,7 +73,7 @@ export function MiniAppPage() {
       try {
         const session = await miniApi.session(initData)
         setMemoryAccessToken(session.access_token)
-        if (alive) setBoot({ phase: 'ready', user: session.user, initData, webApp, expiresIn: session.expires_in })
+        if (alive) setBoot({ phase: 'ready', user: session.user, initData, webApp, expiresIn: session.expires_in, calls: session.calls })
       } catch (cause) {
         if (alive) setBoot({ phase: 'error', message: getApiErrorMessage(cause), code: getApiErrorStatus(cause) })
       }
@@ -149,35 +149,50 @@ export function MiniAppPage() {
     )
   }
 
-  return <ReadyApp user={boot.user} initData={boot.initData} webApp={boot.webApp} />
+  return <ReadyApp user={boot.user} initData={boot.initData} webApp={boot.webApp} sessionCalls={boot.calls} />
 }
 
-type PhoneAccess = { state: 'checking' } | { state: 'denied' } | { state: 'allowed'; canCall: boolean }
+type PhoneAccess = { state: 'checking' } | { state: 'denied' } | { state: 'allowed'; canCall: boolean; canEdit: boolean }
 
 /**
- * Telephony is only for roles that have it (sellers, CEO — RBAC "calls"). Everyone else gets Attendance only,
- * and the SIP line is not even started.
+ * Calls follow capabilities.calls from /miniapp/session and /miniapp/me: no `view` → the whole calls section
+ * is hidden and the SIP line is not even started; `create` is needed to dial, `edit` for call settings.
+ * Older backends without capabilities fall back to the RBAC "calls" module.
  */
-function ReadyApp({ user, initData, webApp }: { user: MiniUser; initData: string; webApp: TgWebApp }) {
+function ReadyApp({ user, initData, webApp, sessionCalls }: { user: MiniUser; initData: string; webApp: TgWebApp; sessionCalls: CallsCapability }) {
   const [access, setAccess] = useState<PhoneAccess>({ state: 'checking' })
 
   useEffect(() => {
     let alive = true
-    void Promise.allSettled([telephonyService.config(), miniApi.callsAccess()]).then(([config, rbac]) => {
+    void (async () => {
+      const calls = (await miniApi.callsCapability(initData)) ?? sessionCalls
+      if (!alive) return
+      if (calls) {
+        if (!calls.view) { setAccess({ state: 'denied' }); return }
+        // The phone line itself (SIP account) still has to exist.
+        try {
+          await telephonyService.config()
+          if (alive) setAccess({ state: 'allowed', canCall: calls.create, canEdit: calls.edit })
+        } catch {
+          if (alive) setAccess({ state: 'denied' })
+        }
+        return
+      }
+      const [config, rbac] = await Promise.allSettled([telephonyService.config(), miniApi.callsAccess()])
       if (!alive) return
       const rights = rbac.status === 'fulfilled' ? rbac.value : null
       if (config.status === 'rejected') {
         const code = getApiErrorStatus(config.reason)
         // 401 / 403 / 404: this employee has no phone line.
         if (code === 401 || code === 403 || code === 404 || rights?.view === false) { setAccess({ state: 'denied' }); return }
-        setAccess({ state: 'allowed', canCall: rights?.create ?? true })
+        setAccess({ state: 'allowed', canCall: rights?.create ?? true, canEdit: rights?.edit ?? false })
         return
       }
       if (rights && !rights.view) { setAccess({ state: 'denied' }); return }
-      setAccess({ state: 'allowed', canCall: rights?.create ?? true })
-    })
+      setAccess({ state: 'allowed', canCall: rights?.create ?? true, canEdit: rights?.edit ?? false })
+    })()
     return () => { alive = false }
-  }, [])
+  }, [initData, sessionCalls])
 
   const phoneAllowed = access.state === 'allowed'
   return (

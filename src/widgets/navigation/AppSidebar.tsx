@@ -146,7 +146,7 @@ function withFrontendPages(groups: SidebarGroup[], entries: SidebarItem[]): Side
 function navGroupOf(path: string): NavGroupKey {
   if (path === '/member/dashboard' || path === '/ceo/dashboard') return 'main'
   if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony')) return 'sales'
-  if (path.startsWith('/projects') || path.startsWith('/mindmap') || path.startsWith('/calendar')) return 'work'
+  if (path.startsWith('/projects') || path.startsWith('/mindmap') || path.startsWith('/calendar') || path.startsWith('/files')) return 'work'
   if (path.startsWith('/cognilabsai') || path.startsWith('/ceo/ai')) return 'ai'
   if (['/ceo/website-stats', '/ceo/management', '/audit', '/ceo/workday-overrides'].some((prefix) => path.startsWith(prefix))) return 'system'
   return 'team'
@@ -224,7 +224,9 @@ export function AppSidebar() {
       }), t)
       return withFrontendPages(groups, [
         ...(can('mind_map', 'view') ? [{ to: '/mindmap', label: t('nav./mindmap.label', 'Mind map'), icon: 'mindmap' }] : []),
-        { to: '/calendar', label: t('nav./calendar.label', 'Calendar'), icon: 'calendar' },
+        ...(can('calendar', 'view') ? [{ to: '/calendar', label: t('nav./calendar.label', 'Calendar'), icon: 'calendar' }] : []),
+        ...(can('file_manager', 'view') ? [{ to: '/files', label: t('nav./files.label', 'Files'), icon: 'files' }] : []),
+        ...(can('registrations', 'view') ? [{ to: '/registrations', label: t('nav./registrations.label', 'Registrations'), icon: 'registrations' }] : []),
       ])
     }
     const legacy = getAccessibleNavigation(user, { sidebarOnly: true })

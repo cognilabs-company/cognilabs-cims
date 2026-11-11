@@ -144,6 +144,18 @@ const CalendarPage = lazyPage(
   () => import('../features/calendar/pages/CalendarPage'),
   'CalendarPage',
 )
+const FileManagerPage = lazyPage(
+  () => import('../features/fileManager/pages/FileManagerPage'),
+  'FileManagerPage',
+)
+const RegistrationsPage = lazyPage(
+  () => import('../features/registrations/pages/RegistrationsPage'),
+  'RegistrationsPage',
+)
+const PublicRegistrationPage = lazyPage(
+  () => import('../features/registrations/pages/PublicRegistrationPage'),
+  'PublicRegistrationPage',
+)
 const MindMapPage = lazyPage(
   () => import('../features/mindmap/pages/MindMapPage'),
   'MindMapPage',
@@ -194,6 +206,12 @@ export const router = createBrowserRouter([
   {
     path: '/miniapp',
     element: withPageLoader(<MiniAppPage />, 'panel'),
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    // Public registration form (link from the CEO) — no sign-in, no app shell.
+    path: '/register/:slug',
+    element: withPageLoader(<PublicRegistrationPage />, 'panel'),
     errorElement: <RouteErrorBoundary />,
   },
   {
@@ -447,6 +465,22 @@ export const router = createBrowserRouter([
                 element: (
                   <ProtectedRoute>
                     {withPageLoader(<CalendarPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'files',
+                element: (
+                  <ProtectedRoute>
+                    {withPageLoader(<FileManagerPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'registrations',
+                element: (
+                  <ProtectedRoute>
+                    {withPageLoader(<RegistrationsPage />)}
                   </ProtectedRoute>
                 ),
               },

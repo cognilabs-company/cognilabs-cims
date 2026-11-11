@@ -3,7 +3,9 @@ import { request } from '../../../shared/api/http'
 /* /miniapp/* endpoints. All of them need the raw Telegram initData in X-Telegram-Init-Data. */
 
 export type MiniUser = { id: number; name: string; surname: string; email: string; role_name: string }
-export type MiniSession = { access_token: string; expires_in: number; user: MiniUser }
+/** capabilities.calls from /miniapp/session and /miniapp/me; null when the backend does not send it. */
+export type CallsCapability = { view: boolean; create: boolean; edit: boolean } | null
+export type MiniSession = { access_token: string; expires_in: number; user: MiniUser; calls: CallsCapability }
 
 export type MiniLocation = {
   id: number
@@ -82,27 +84,39 @@ export function normalizePresence(raw: unknown): Presence | null {
   }
 }
 
+/** capabilities.calls of a session / me response. */
+function callsCapabilityFrom(raw: unknown): CallsCapability {
+  const capabilities = isObject(raw) && isObject(raw.capabilities) ? raw.capabilities : null
+  const calls = capabilities && isObject(capabilities.calls) ? capabilities.calls : null
+  if (!calls) return null
+  return { view: calls.view === true, create: calls.create === true, edit: calls.edit === true }
+}
+
 /** What the signed-in employee may do with calls (RBAC module "calls"); null = unknown (no RBAC answer). */
-export type CallsAccess = { view: boolean; create: boolean } | null
+export type CallsAccess = { view: boolean; create: boolean; edit: boolean } | null
 
 function callsAccessFrom(raw: unknown): CallsAccess {
   if (!isObject(raw)) return null
-  if (raw.is_owner === true) return { view: true, create: true }
+  if (raw.is_owner === true) return { view: true, create: true, edit: true }
   const effective = isObject(raw.effective_permissions) ? raw.effective_permissions : null
   if (!effective) return null
   const actionsOf = (key: string) => (Array.isArray(effective[key]) ? (effective[key] as unknown[]).map(String) : [])
   const actions = [...actionsOf('calls'), ...actionsOf('telephony')]
-  return { view: actions.includes('view'), create: actions.includes('create') }
+  return { view: actions.includes('view'), create: actions.includes('create'), edit: actions.includes('edit') }
 }
 
 export const miniApi = {
-  /** GET /rbac/me → calls permissions (null when RBAC is not available). */
+  /** Older backends: GET /rbac/me → calls permissions (null when RBAC is not available). */
   async callsAccess(): Promise<CallsAccess> {
     try { return callsAccessFrom(await request<unknown>({ path: '/rbac/me' })) } catch { return null }
   },
   async session(initData: string): Promise<MiniSession> {
     const data = await request<Raw>({ path: '/miniapp/session', method: 'POST', headers: initHeaders(initData), auth: false })
-    return { access_token: String(data.access_token ?? ''), expires_in: num(data.expires_in, 7200), user: normalizeUser(data.user) }
+    return { access_token: String(data.access_token ?? ''), expires_in: num(data.expires_in, 7200), user: normalizeUser(data.user), calls: callsCapabilityFrom(data) }
+  },
+  /** GET /miniapp/me → fresh capabilities (null when the backend does not send them). */
+  async callsCapability(initData: string): Promise<CallsCapability> {
+    try { return callsCapabilityFrom(await request<unknown>({ path: '/miniapp/me', headers: initHeaders(initData) })) } catch { return null }
   },
   async locations(initData: string): Promise<LocationsPayload> {
     const data = await request<unknown>({ path: '/miniapp/attendance/locations', headers: initHeaders(initData) })

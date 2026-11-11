@@ -1,6 +1,6 @@
 import type { LucideIcon, LucideProps } from 'lucide-react'
 import {
-  Archive, Blocks, CalendarDays, ChartPie, CalendarClock, CalendarCog, CalendarRange, Circle, CircleUserRound, Contact, CreditCard, FolderKanban,
+  Archive, Blocks, CalendarDays, ClipboardSignature, FolderOpen, ChartPie, CalendarClock, CalendarCog, CalendarRange, Circle, CircleUserRound, Contact, CreditCard, FolderKanban,
   Globe, Images, LayoutDashboard, ListChecks, ListTodo, LockKeyhole, LogOut, MessageCircleReply, MessagesSquare, Network, Newspaper,
   Phone, Plug, ScrollText, ServerCog, Sparkles, SquareKanban, TrendingUp, TriangleAlert, UserCheck, UserCog, Users, Wallet,
 } from 'lucide-react'
@@ -29,6 +29,8 @@ const glyphs: Record<GlyphName, LucideIcon> = {
   projects: FolderKanban,
   mindmap: Network,
   calendar: CalendarDays,
+  files: FolderOpen,
+  registrations: ClipboardSignature,
   management: ServerCog,
   team: Users,
   'cognilabsai-chat': MessagesSquare,
