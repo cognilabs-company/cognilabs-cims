@@ -1908,5 +1908,10 @@
   "status_delete.moving": "Перенос в «{{target}}»: {{done}} / {{total}}",
   "status_delete.deactivate": "Сделать неактивным",
   "status_delete.deactivated": "Статус стал неактивным",
-  "status_delete.system_first": "Клиентов с этим статусом: {{count}}. Сначала пробуем удалить статус как есть; если бэкенд откажет, клиентов можно перенести или сделать статус неактивным."
+  "status_delete.system_first": "Клиентов с этим статусом: {{count}}. Сначала пробуем удалить статус как есть; если бэкенд откажет, клиентов можно перенести или сделать статус неактивным.",
+  "telephony.filter.by_day": "По дню",
+  "telephony.filter.clear_day": "Все дни",
+  "telephony.filter.pick_day": "Выберите день",
+  "telephony.filter.prev_month": "Предыдущий месяц",
+  "telephony.filter.next_month": "Следующий месяц"
 }

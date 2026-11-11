@@ -223,3 +223,37 @@ export function formatPhone(value: string | null | undefined) {
   }
   return raw || '-'
 }
+
+const uzMonthsTitle = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr']
+const uzWeekdaysShort = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']
+
+/** "Noyabr 2026" — calendar header. */
+export function monthTitle(year: number, month: number) {
+  if (getStoredLocale() === 'uz') return `${uzMonthsTitle[month]} ${year}`
+  return capitalize(new Date(year, month, 1).toLocaleDateString(getIntlLocale(), { month: 'long', year: 'numeric' }))
+}
+
+/** Monday-first short weekday names for a calendar grid. */
+export function weekdaysShort() {
+  if (getStoredLocale() === 'uz') return uzWeekdaysShort
+  // 2024-01-01 was a Monday.
+  return Array.from({ length: 7 }, (_, index) => capitalize(new Date(2024, 0, 1 + index).toLocaleDateString(getIntlLocale(), { weekday: 'short' })))
+}
+
+/** "YYYY-MM-DD" of a local date. */
+export function toDayString(date: Date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+}
+
+/** "Chorshanba, 11-noyabr" for a "YYYY-MM-DD" day ('' when empty). */
+export function dayLabelLong(day: string) {
+  const date = parseDay(day)
+  if (!date) return ''
+  return `${capitalize(weekdayName(date))}, ${dayMonthLong(date, date.getFullYear() !== new Date().getFullYear())}`
+}
+
+/** Split "YYYY-MM-DD" into a weekday line and a date line (calendar header). */
+export function dayParts(day: string) {
+  const date = parseDay(day) ?? new Date()
+  return { weekday: capitalize(weekdayName(date)), date: dayMonthLong(date, date.getFullYear() !== new Date().getFullYear()) }
+}

@@ -1,5 +1,17 @@
 import { useRef, useState } from 'react'
-import { CalendarDays, Grip, PhoneCall, PhoneForwarded, PhoneIncoming, PhoneMissed, PhoneOutgoing, Server, X, type LucideIcon } from 'lucide-react'
+import {
+  CalendarDotsIcon,
+  DotsNineIcon,
+  HardDrivesIcon,
+  PhoneCallIcon,
+  PhoneIncomingIcon,
+  PhoneOutgoingIcon,
+  PhoneTransferIcon,
+  PhoneXIcon,
+  XIcon,
+  type Icon as PhosphorIcon,
+} from '@phosphor-icons/react'
+import { CountUp } from '../../../shared/ui/count-up'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { CalendarField } from '../../../shared/ui/calendar-field'
@@ -29,11 +41,12 @@ const presets: Array<[Exclude<CallPeriod, 'custom'>, string, string]> = [
   ['all', 'telephony.period.all', 'All time'],
 ]
 
-const tiles: Array<{ view: CallsView; icon: LucideIcon; label: [string, string]; accent: string; soft: string }> = [
-  { view: 'all', icon: PhoneCall, label: ['telephony.kpi.all', 'All calls'], accent: '#b8f15a', soft: 'rgba(184, 241, 90, 0.16)' },
-  { view: 'incoming', icon: PhoneIncoming, label: ['telephony.kpi.incoming', 'Incoming'], accent: '#86a2ff', soft: 'rgba(134, 162, 255, 0.18)' },
-  { view: 'outgoing', icon: PhoneOutgoing, label: ['telephony.kpi.outgoing', 'Outgoing'], accent: '#bba3ff', soft: 'rgba(187, 163, 255, 0.18)' },
-  { view: 'missed', icon: PhoneMissed, label: ['telephony.kpi.missed', 'Missed'], accent: '#ff8a8a', soft: 'rgba(255, 138, 138, 0.18)' },
+/** One shape for every counter, one gradient per call type (same lightness, so they read as a set). */
+const tiles: Array<{ view: CallsView; icon: PhosphorIcon; label: [string, string]; gradient: string; glow: string }> = [
+  { view: 'all', icon: PhoneCallIcon, label: ['telephony.kpi.all', 'All calls'], gradient: 'linear-gradient(135deg, #5b84ff 0%, #2b59ff 100%)', glow: 'rgba(43, 89, 255, 0.65)' },
+  { view: 'incoming', icon: PhoneIncomingIcon, label: ['telephony.kpi.incoming', 'Incoming'], gradient: 'linear-gradient(135deg, #34d399 0%, #059669 100%)', glow: 'rgba(5, 150, 105, 0.6)' },
+  { view: 'outgoing', icon: PhoneOutgoingIcon, label: ['telephony.kpi.outgoing', 'Outgoing'], gradient: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', glow: 'rgba(124, 58, 237, 0.6)' },
+  { view: 'missed', icon: PhoneXIcon, label: ['telephony.kpi.missed', 'Missed'], gradient: 'linear-gradient(135deg, #fb7185 0%, #e11d48 100%)', glow: 'rgba(225, 29, 72, 0.6)' },
 ]
 
 type CallsHeroProps = {
@@ -66,7 +79,7 @@ export function CallsHero(props: CallsHeroProps) {
   const { connection, counts } = props
   const mobile = props.outboundMode === 'mobile'
   const ready = mobile || connection === 'Ready'
-  const tone = ready ? 'calls-live-dot bg-[#b8f15a]' : /connect/i.test(connection) ? 'bg-[#ffb35c]' : 'bg-[#ff7a7a]'
+  const tone = ready ? 'calls-live-dot bg-[#34d399]' : /connect/i.test(connection) ? 'bg-[#fbbf24]' : 'bg-[#fb7185]'
   const [rangeOpen, setRangeOpen] = useState(false)
   const [draftFrom, setDraftFrom] = useState(props.customFrom)
   const [draftTo, setDraftTo] = useState(props.customTo)
@@ -89,11 +102,12 @@ export function CallsHero(props: CallsHeroProps) {
 
   return (
     <section className="calls-hero @container relative z-20 rounded-[26px] px-5 py-5 sm:px-6">
+      <span aria-hidden="true" className="calls-hero-glow" />
       {/* Row 1 — line state on the left (with forwarding under it), view switch on the right; one line from sm up */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 @min-[660px]:flex-nowrap">
         <div className="flex min-w-0 flex-1 items-center gap-3.5">
-          <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-[16px] bg-white/[0.08] text-[#b8f15a] ring-1 ring-white/10">
-            <PhoneCall size={22} strokeWidth={2.2} />
+          <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-[16px] text-white shadow-[0_10px_24px_-10px_rgba(91,132,255,0.9)] ring-1 ring-white/20" style={{ background: 'linear-gradient(135deg, #5b84ff 0%, #7c3aed 100%)' }}>
+            <PhoneCallIcon size={23} weight="duotone" />
             <span className={cn('absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-[3px] border-[var(--calls-hero-bg)]', tone)} />
           </span>
           <div className="min-w-0">
@@ -112,7 +126,7 @@ export function CallsHero(props: CallsHeroProps) {
                   className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-white/[0.08] px-2.5 text-[12px] font-medium text-white/80 ring-1 ring-white/10"
                   title={t('telephony.forwarding.title', 'Call forwarding is on')}
                 >
-                  <PhoneForwarded size={12} className="text-[#b8f15a]" />
+                  <PhoneTransferIcon size={13} weight="duotone" className="text-[#34d399]" />
                   {props.forwarding.count > 1 ? (
                     t('telephony.targets.count', 'Forwarded to {{count}} numbers', { count: props.forwarding.count })
                   ) : (
@@ -133,9 +147,9 @@ export function CallsHero(props: CallsHeroProps) {
         {props.isCeo ? (
           <div role="tablist" aria-label={t('telephony.title', 'Calls')} className="inline-flex h-10 shrink-0 rounded-[13px] @max-[659px]:w-full @max-[659px]:[&>button]:flex-1 @max-[659px]:[&>button]:justify-center bg-white/[0.07] p-1 ring-1 ring-white/10">
             {([
-              ['calls', t('telephony.tab.calls', 'Calls'), PhoneCall],
-              ['system', t('telephony.tab.system', 'Phone system'), Server],
-            ] as Array<[CallsTab, string, LucideIcon]>).map(([value, label, Icon]) => (
+              ['calls', t('telephony.tab.calls', 'Calls'), PhoneCallIcon],
+              ['system', t('telephony.tab.system', 'Phone system'), HardDrivesIcon],
+            ] as Array<[CallsTab, string, PhosphorIcon]>).map(([value, label, Icon]) => (
               <button
                 key={value}
                 type="button"
@@ -147,7 +161,7 @@ export function CallsHero(props: CallsHeroProps) {
                   props.tab === value ? 'bg-white text-[var(--calls-hero-ink)]' : 'text-white/70 hover:text-white',
                 )}
               >
-                <Icon size={14} /> {label}
+                <Icon size={15} weight={props.tab === value ? 'duotone' : 'regular'} /> {label}
               </button>
             ))}
           </div>
@@ -169,8 +183,8 @@ export function CallsHero(props: CallsHeroProps) {
                     aria-checked={active}
                     onClick={() => props.onPeriodChange(value)}
                     className={cn(
-                      'h-8 shrink-0 rounded-[10px] px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors',
-                      active ? 'bg-[#b8f15a] text-[var(--calls-hero-ink)] shadow-[0_4px_14px_-6px_rgba(184,241,90,0.9)]' : 'text-white/70 hover:bg-white/[0.08] hover:text-white',
+                      'h-8 shrink-0 rounded-[10px] px-3.5 text-[13px] font-semibold whitespace-nowrap transition-[background-color,color,box-shadow] duration-200',
+                      active ? 'bg-white text-[#162a6e] shadow-[0_6px_16px_-8px_rgba(255,255,255,0.9)]' : 'text-white/70 hover:bg-white/[0.1] hover:text-white',
                     )}
                   >
                     {t(key, fallback)}
@@ -187,10 +201,10 @@ export function CallsHero(props: CallsHeroProps) {
                 aria-haspopup="dialog"
                 className={cn(
                   'inline-flex h-10 items-center gap-2 rounded-[13px] px-3.5 text-[13px] font-semibold ring-1 transition-colors',
-                  props.period === 'custom' ? 'bg-[#b8f15a] text-[var(--calls-hero-ink)] ring-[#b8f15a]' : 'bg-white/[0.07] text-white/80 ring-white/10 hover:text-white',
+                  props.period === 'custom' ? 'bg-white text-[#162a6e] ring-white' : 'bg-white/[0.07] text-white/80 ring-white/10 hover:bg-white/[0.12] hover:text-white',
                 )}
               >
-                <CalendarDays size={15} />
+                <CalendarDotsIcon size={16} weight="duotone" />
                 {customText || t('telephony.period.custom', 'Pick dates')}
               </button>
               {props.period === 'custom' ? (
@@ -200,7 +214,7 @@ export function CallsHero(props: CallsHeroProps) {
                   aria-label={t('telephony.period.clear', 'Clear dates')}
                   className="absolute -top-1.5 -right-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-[var(--calls-hero-ink)] shadow"
                 >
-                  <X size={12} strokeWidth={3} />
+                  <XIcon size={11} weight="bold" />
                 </button>
               ) : null}
 
@@ -226,16 +240,16 @@ export function CallsHero(props: CallsHeroProps) {
                 type="button"
                 onClick={props.onShowDialer}
                 aria-pressed={props.dialerActive}
-                className="ml-auto inline-flex h-10 items-center gap-2 rounded-[13px] bg-[#b8f15a] px-4 text-[13.5px] font-semibold text-[var(--calls-hero-ink)] shadow-[0_8px_22px_-10px_rgba(184,241,90,0.8)] transition hover:brightness-105 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
+                className="ml-auto inline-flex h-10 items-center gap-2 rounded-[13px] bg-white px-4 text-[13.5px] font-semibold text-[#2b59ff] shadow-[0_10px_24px_-12px_rgba(255,255,255,0.9)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-12px_rgba(255,255,255,0.95)] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
-                <Grip size={16} strokeWidth={2.4} /> {t('telephony.dial', 'Dial a number')}
+                <DotsNineIcon size={17} weight="bold" /> {t('telephony.dial', 'Dial a number')}
               </button>
             ) : null}
           </div>
 
           {/* Row 3 — counters, which double as the type filter */}
           <div className="mt-3 grid grid-cols-2 gap-2.5 @min-[560px]:grid-cols-4">
-            {tiles.map(({ view, icon: Icon, label, accent, soft }) => {
+            {tiles.map(({ view, icon: Icon, label, gradient, glow }, index) => {
               const active = props.view === view
               const value = counts?.[view]
               const share = counts && view !== 'all' && counts.all > 0 ? Math.round(((counts[view] ?? 0) / counts.all) * 100) : null
@@ -246,20 +260,21 @@ export function CallsHero(props: CallsHeroProps) {
                   aria-pressed={active}
                   onClick={() => props.onViewChange(view)}
                   className={cn(
-                    'flex min-w-0 items-center gap-2.5 rounded-[18px] p-3 text-left ring-1 transition-[background-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none',
-                    active ? 'bg-white text-[var(--calls-hero-ink)] ring-white' : 'bg-white/[0.06] text-white ring-white/10 hover:bg-white/[0.1]',
+                    'calls-tile flex min-w-0 items-center gap-3 rounded-[18px] p-3 text-left text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none',
+                    active ? 'ring-2 ring-white' : 'opacity-[0.88] ring-1 ring-white/15 hover:opacity-100',
                   )}
+                  style={{ background: gradient, boxShadow: active ? `0 16px 30px -14px ${glow}` : `0 10px 22px -16px ${glow}`, animation: `rise-in 620ms cubic-bezier(0.16, 1, 0.3, 1) ${80 + index * 70}ms backwards` }}
                 >
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px]" style={active ? { background: view === 'all' ? '#0e1525' : accent, color: view === 'all' ? '#b8f15a' : '#0e1525' } : { background: soft, color: accent }}>
-                    <Icon size={18} strokeWidth={2.2} />
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px] bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                    <Icon size={21} weight="duotone" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className={cn('block truncate text-[12.5px] font-medium', active ? 'text-[#4a5165]' : 'text-white/65')}>{t(label[0], label[1])}</span>
+                    <span className="block truncate text-[12.5px] font-medium text-white/85">{t(label[0], label[1])}</span>
                     <span className="flex items-baseline gap-1.5">
-                      <span className="text-[21px] leading-7 font-bold tracking-[-0.02em] tabular-nums" data-i18n-skip="true">
-                        {value === undefined ? '—' : value.toLocaleString('ru-RU')}
+                      <span className="text-[22px] leading-7 font-bold tracking-[-0.02em] tabular-nums" data-i18n-skip="true">
+                        {value === undefined ? '—' : <CountUp value={value} format={(number) => Math.round(number).toLocaleString('ru-RU')} />}
                       </span>
-                      {share !== null ? <span className={cn('text-[12px] font-semibold tabular-nums', active ? 'text-[#8a90a2]' : 'text-white/45')} data-i18n-skip="true">{share}%</span> : null}
+                      {share !== null ? <span className="rounded-full bg-white/20 px-1.5 text-[11.5px] font-semibold tabular-nums" data-i18n-skip="true">{share}%</span> : null}
                     </span>
                   </span>
                 </button>

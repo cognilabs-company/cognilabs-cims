@@ -14,6 +14,7 @@ import { Button } from '../../../shared/ui/button'
 import { CallInspector } from '../components/CallInspector'
 import { CallRow, CallRowSkeleton } from '../components/CallParts'
 import { CallsHero, type CallsCounts, type CallsTab, type CallsView } from '../components/CallsHero'
+import { CallDayPicker } from '../components/CallDayPicker'
 import { DialerPane } from '../components/DialerPane'
 import { CeoTelephonyPanel } from '../components/CeoTelephonyPanel'
 import { dayHeading, dayKeyOf, formatTalkTime, periodRange, statusLabel, type CallPeriod } from '../components/telephonyFormat'
@@ -414,6 +415,11 @@ export function TelephonyPage() {
                   leadingIcon={<ListFilter size={15} />}
                   aria-label={t('telephony.filter.status', 'Status')}
                   className="w-[200px]"
+                />
+                <CallDayPicker
+                  value={period === 'custom' && customFrom && customFrom === customTo ? customFrom : ''}
+                  onChange={(day) => { setCustomFrom(day); setCustomTo(day); setPeriod('custom') }}
+                  onClear={() => changePeriod('all')}
                 />
                 {filtered ? (
                   <button type="button" onClick={clearFilters} className="inline-flex h-10 items-center gap-1.5 rounded-[13px] px-3 text-[13px] font-medium text-[var(--muted-strong)] hover:bg-[var(--surface)]">

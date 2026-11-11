@@ -1908,5 +1908,10 @@
   "status_delete.moving": "“{{target}}” ga ko'chirilmoqda: {{done}} / {{total}}",
   "status_delete.deactivate": "Nofaol qilish",
   "status_delete.deactivated": "Status nofaol qilindi",
-  "status_delete.system_first": "Bu statusda {{count}} ta mijoz bor. Avval statusni o'zini o'chirib ko'ramiz; backend rad etsa, mijozlarni ko'chirish yoki statusni nofaol qilish mumkin."
+  "status_delete.system_first": "Bu statusda {{count}} ta mijoz bor. Avval statusni o'zini o'chirib ko'ramiz; backend rad etsa, mijozlarni ko'chirish yoki statusni nofaol qilish mumkin.",
+  "telephony.filter.by_day": "Kun bo'yicha",
+  "telephony.filter.clear_day": "Barcha kunlar",
+  "telephony.filter.pick_day": "Kunni tanlang",
+  "telephony.filter.prev_month": "Oldingi oy",
+  "telephony.filter.next_month": "Keyingi oy"
 }

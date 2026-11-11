@@ -1908,5 +1908,10 @@
   "status_delete.moving": "Moving to “{{target}}”: {{done}} / {{total}}",
   "status_delete.deactivate": "Make inactive",
   "status_delete.deactivated": "Status made inactive",
-  "status_delete.system_first": "{{count}} customer(s) have this status. First we try to delete it as is; if the backend refuses, you can move them or make the status inactive."
+  "status_delete.system_first": "{{count}} customer(s) have this status. First we try to delete it as is; if the backend refuses, you can move them or make the status inactive.",
+  "telephony.filter.by_day": "By day",
+  "telephony.filter.clear_day": "Show all days",
+  "telephony.filter.pick_day": "Pick a day",
+  "telephony.filter.prev_month": "Previous month",
+  "telephony.filter.next_month": "Next month"
 }

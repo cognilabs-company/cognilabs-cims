@@ -453,6 +453,13 @@ function TableAudioControl({
 type CrmPageView = 'overview' | 'customers'
 /** Customers page cards: need to call → meeting → KP/TZ → payment (normalised status keys). */
 const statusCardKeys = ['needtocall', 'meetingscheduled', 'creatingkptz', 'paymentpending']
+/** Final / passive stages are not shown as status cards (by system name or by the visible label). */
+const hiddenStatusCardKeys = new Set(['rejected', 'contacted', 'projectstarted', 'projectfinished'])
+const hiddenStatusCardLabels = new Set(['rad etildi', "bog'lanildi", 'loyiha boshlandi', 'loyiha yakunlandi'])
+function isHiddenStatusCard(value: string, label: string) {
+  const plainLabel = label.trim().toLowerCase().replace(/[‘’`ʻʼ]/g, "'")
+  return hiddenStatusCardKeys.has(normalizeStatusKey(value)) || hiddenStatusCardLabels.has(plainLabel)
+}
 const periodKeys = ['today', '3d', '7d', '30d', '90d'] as const
 
 /** /crm — the CRM dashboard (overview only). */
@@ -1430,13 +1437,12 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const preferredCards = statusCardKeys
     .map((key) => allChipStatuses.find((option) => normalizeStatusKey(option.value) === key))
     .filter((option): option is (typeof allChipStatuses)[number] => Boolean(option))
+  // Every status is a card (the four main ones first, then the rest in pipeline order),
+  // except the final / passive ones: rejected, contacted, project started, project finished.
   const statusCards = [
     ...preferredCards,
-    // CRMs with their own statuses (outbound) fill the free slots with their busiest ones.
-    ...allChipStatuses
-      .filter((option) => !preferredCards.includes(option))
-      .sort((left, right) => (statusCounts.get(normalizeStatusKey(right.value)) ?? 0) - (statusCounts.get(normalizeStatusKey(left.value)) ?? 0)),
-  ].slice(0, 4).map((option) => {
+    ...allChipStatuses.filter((option) => !preferredCards.includes(option)),
+  ].filter((option) => !isHiddenStatusCard(option.value, statusMetaFor(option.value).label || option.label)).map((option) => {
     const key = normalizeStatusKey(option.value)
     const count = statusCounts.get(key) ?? 0
     const due = dueByStatus.get(key)
@@ -1519,7 +1525,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       </header>
 
       {/* Status cards — each also works as a quick filter (click again to clear) */}
-      <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]">
         {statusCards.map((card) => (
           <MetricTile
             key={card.key}
