@@ -17,7 +17,7 @@ import { Badge } from '../../shared/ui/badge'
 import { Button } from '../../shared/ui/button'
 import { Dialog } from '../../shared/ui/dialog'
 import { Input } from '../../shared/ui/input'
-import { BrandMark, BrandWordmark } from '../../shared/ui/brand-logo'
+import { BrandMark } from '../../shared/ui/brand-logo'
 import { NavGlyph } from './NavGlyph'
 import { getNavigationGlyphName, type GlyphName } from './navGlyphMap'
 import { OPEN_PROFILE_EVENT } from './profileEvents'
@@ -414,10 +414,10 @@ export function AppSidebar() {
         <div className={cn('flex h-full flex-col overflow-hidden rounded-[22px] border border-[var(--sb-line)] bg-[var(--sb-bg)] pt-4 pb-3 shadow-[var(--sb-shadow)] transition-[padding] duration-200', rail ? 'px-2.5' : 'px-3')}>
           {/* Brand */}
           <div className={cn('flex items-center gap-2.5 pb-3', rail ? 'flex-col px-0' : 'px-1.5')}>
-            <BrandMark size={38} />
+            <BrandMark size={34} />
             <div className={cn('min-w-0 flex-1', rail && 'hidden')}>
-              <BrandWordmark height={23} className="text-[var(--sb-strong)]" />
-              <p className="mt-0.5 truncate text-[11.5px] leading-4 text-[var(--sb-label)]">CIMS · {subtitle}</p>
+              <p className="truncate text-[15px] leading-5 font-semibold tracking-[-0.01em] text-[var(--sb-strong)]">Cognilabs</p>
+              <p className="truncate text-[11.5px] leading-4 font-medium text-[var(--sb-label)]">CIMS · {subtitle}</p>
             </div>
             <button
               type="button"
