@@ -1,4 +1,3 @@
-import { toDayString } from '../../telephony/components/telephonyFormat'
 
 export { dayLabelLong, dayParts, monthTitle, toDayString, weekdaysShort } from '../../telephony/components/telephonyFormat'
 
@@ -28,29 +27,47 @@ export function weekDays(date: Date) {
   return Array.from({ length: 7 }, (_, index) => addDays(start, index))
 }
 
-/** Local day key of an event start (ISO date-time or plain day). */
+/* Calendar times are shown in Asia/Tashkent (UTC+5 all year — no daylight saving). */
+const TASHKENT_OFFSET_MIN = 5 * 60
+export const TASHKENT_OFFSET = '+05:00'
+
+/** Wall-clock parts in Tashkent of an ISO date-time. */
+function tashkent(value: string) {
+  const ms = new Date(value).getTime()
+  if (Number.isNaN(ms)) return null
+  const shifted = new Date(ms + TASHKENT_OFFSET_MIN * 60_000)
+  return { y: shifted.getUTCFullYear(), m: shifted.getUTCMonth() + 1, d: shifted.getUTCDate(), h: shifted.getUTCHours(), min: shifted.getUTCMinutes() }
+}
+
+const pad = (value: number) => String(value).padStart(2, '0')
+
+/** Tashkent day key (YYYY-MM-DD) of an event start (ISO date-time or plain day). */
 export function dayOf(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '' : toDayString(date)
+  const parts = tashkent(value)
+  return parts ? `${parts.y}-${pad(parts.m)}-${pad(parts.d)}` : ''
 }
 
+/** Tashkent HH:MM of an ISO date-time ("" for a plain day). */
 export function timeOf(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return ''
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '' : `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  const parts = tashkent(value)
+  return parts ? `${pad(parts.h)}:${pad(parts.min)}` : ''
 }
 
-/** Minutes from midnight (local) of an ISO date-time. */
+/** Minutes from midnight (Tashkent) of an ISO date-time. */
 export function minutesOf(value: string) {
-  const date = new Date(value)
-  return date.getHours() * 60 + date.getMinutes()
+  const parts = tashkent(value)
+  return parts ? parts.h * 60 + parts.min : 0
 }
 
-/** "YYYY-MM-DD" + "HH:MM" → local ISO string. */
+/** "YYYY-MM-DD" + "HH:MM" (Tashkent) → ISO date-time with the +05:00 offset. */
 export function joinDayTime(day: string, time: string) {
   const [h, m] = (time || '00:00').split(':').map(Number)
-  const date = parseDay(day)
-  date.setHours(h || 0, m || 0, 0, 0)
-  return date.toISOString()
+  return `${day}T${pad(h || 0)}:${pad(m || 0)}:00${TASHKENT_OFFSET}`
+}
+
+/** Today in Tashkent (YYYY-MM-DD). */
+export function tashkentToday() {
+  return dayOf(new Date().toISOString())
 }

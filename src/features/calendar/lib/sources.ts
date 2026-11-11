@@ -1,32 +1,39 @@
-import { crmService } from '../../../shared/api/services/crm.service'
+import { calendarService, type CalendarApiEvent } from '../../../shared/api/services/calendar.service'
 import { projectsService } from '../../../shared/api/services/projects.service'
 import { updateTrackingService } from '../../../shared/api/services/updateTracking.service'
-import { getCustomerDisplayName } from '../../../shared/lib/customer-display'
-import { joinDayTime } from './dates'
-import { KIND_COLORS, type CalEvent, type PersonalEvent } from './types'
+import { dayOf } from './dates'
+import { KIND_COLORS, type CalEvent } from './types'
 
-/** CRM customers with a callback time ("Qayta aloqa vaqti"). */
-export async function loadCallbacks(): Promise<CalEvent[]> {
-  const [dashboard, statuses] = await Promise.all([
-    crmService.dashboardWithAllCustomers(),
-    crmService.dynamicStatuses().catch(() => []),
-  ])
-  const labelOf = new Map(statuses.map((status) => [status.value, status.label]))
-  return (dashboard.customers ?? [])
-    .filter((customer) => customer.recall_time && !Number.isNaN(new Date(customer.recall_time).getTime()))
-    .map((customer) => ({
-      id: `callback:${customer.id}`,
-      kind: 'callback' as const,
-      title: getCustomerDisplayName(customer),
-      start: customer.recall_time!,
-      end: new Date(new Date(customer.recall_time!).getTime() + 30 * 60_000).toISOString(),
-      allDay: false,
-      color: KIND_COLORS.callback,
-      customerId: customer.id,
-      status: customer.status ? labelOf.get(customer.status) ?? customer.status : null,
-      phone: customer.phone_number ?? null,
-      note: (customer as { note?: string | null }).note ?? null,
-    }))
+/** Manual events and CRM recalls / meetings from the backend calendar, in a day range. */
+export async function loadCalendarEvents(params: { dateFrom: string; dateTo: string; userId: number | null; search: string }): Promise<CalEvent[]> {
+  const items = await calendarService.events({ dateFrom: params.dateFrom, dateTo: params.dateTo, userId: params.userId, search: params.search })
+  return items.map(apiToEvent)
+}
+
+export function apiToEvent(item: CalendarApiEvent): CalEvent {
+  const kind = item.source === 'crm' ? (item.eventType === 'meeting' ? 'meeting' : 'recall') : 'manual'
+  return {
+    id: `${kind}:${item.occurrenceId ?? `${item.id}:${item.startAt}`}`,
+    kind,
+    title: item.title,
+    start: item.allDay ? dayOf(item.startAt) : item.startAt,
+    end: item.allDay ? null : item.endAt,
+    allDay: item.allDay,
+    color: KIND_COLORS[kind],
+    note: item.description,
+    customerId: item.customerId ?? undefined,
+    status: item.status,
+    phone: item.phone,
+    assignedName: item.assignedName,
+    baseId: item.id,
+    recurrence: item.recurrence,
+    recurrenceUntil: item.recurrenceUntil,
+    reminder: item.reminderEnabled,
+    participantIds: item.participantIds,
+    participantNames: item.participantNames,
+    createdById: item.createdById,
+    createdByName: item.createdByName,
+  }
 }
 
 /** The user's open project cards that have a deadline. */
@@ -71,18 +78,4 @@ export async function loadDayTypes(startDate: string, endDate: string, userId: n
         member: item.member_name ?? null,
       }
     })
-}
-
-export function personalToEvent(item: PersonalEvent): CalEvent {
-  return {
-    id: `personal:${item.id}`,
-    kind: 'personal',
-    title: item.title,
-    start: item.allDay ? item.date : joinDayTime(item.date, item.startTime),
-    end: item.allDay ? null : joinDayTime(item.date, item.endTime || item.startTime),
-    allDay: item.allDay,
-    color: item.color || KIND_COLORS.personal,
-    note: item.note || null,
-    personalId: item.id,
-  }
 }

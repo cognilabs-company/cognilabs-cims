@@ -1,35 +1,39 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowClockwiseIcon, CaretLeftIcon, CaretRightIcon, PlusIcon } from '@phosphor-icons/react'
+import { ArrowClockwiseIcon, CaretLeftIcon, CaretRightIcon, GearSixIcon, MagnifyingGlassIcon, PlusIcon, UserIcon, XIcon } from '@phosphor-icons/react'
 import { useLocale } from '../../../app/hooks/useLocale'
+import { calendarService, type CalendarUser } from '../../../shared/api/services/calendar.service'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { cn } from '../../../shared/lib/cn'
 import { useToast } from '../../../shared/toast/useToast'
+import { SelectField } from '../../../shared/ui/select-field'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { AgendaView } from '../components/AgendaView'
 import { EventDialog } from '../components/EventDialog'
 import { MonthView } from '../components/MonthView'
+import { SettingsDialog } from '../components/SettingsDialog'
 import { SidePanel } from '../components/SidePanel'
 import { WeekView } from '../components/WeekView'
-import { addDays, dayOf, dayParts, monthGrid, monthTitle, parseDay, toDayString, weekDays } from '../lib/dates'
+import { addDays, dayOf, dayParts, joinDayTime, monthGrid, monthTitle, parseDay, tashkentToday, timeOf, toDayString, weekDays } from '../lib/dates'
 import { kindLabel } from '../lib/kindLabel'
-import { loadCallbacks, loadDayTypes, loadTasks, personalToEvent } from '../lib/sources'
-import { createLocalEventStore } from '../lib/store'
-import { KIND_COLORS, KINDS, PERSONAL_COLORS, type CalEvent, type CalendarView, type EventKind, type PersonalEvent } from '../lib/types'
+import { apiToEvent, loadCalendarEvents, loadDayTypes, loadTasks } from '../lib/sources'
+import { hasLocalEvents, migrateLocalEvents } from '../lib/store'
+import { KIND_COLORS, SOURCE_KINDS, type CalEvent, type CalendarView, type EventDraft, type EventKind } from '../lib/types'
 
 const PREFS_KEY = 'cims.calendar.prefs'
+type SourceFilter = 'all' | 'manual' | 'crm'
 
-function readPrefs(): { view: CalendarView; hidden: EventKind[] } {
+function readPrefs(): { view: CalendarView; hidden: EventKind[]; source: SourceFilter } {
   try {
-    const data = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as { view?: CalendarView; hidden?: EventKind[] }
-    return { view: data.view === 'week' || data.view === 'list' ? data.view : 'month', hidden: Array.isArray(data.hidden) ? data.hidden : [] }
+    const data = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as { view?: CalendarView; hidden?: EventKind[]; source?: SourceFilter }
+    return {
+      view: data.view === 'week' || data.view === 'list' ? data.view : 'month',
+      hidden: Array.isArray(data.hidden) ? data.hidden : [],
+      source: data.source === 'manual' || data.source === 'crm' ? data.source : 'all',
+    }
   } catch {
-    return { view: 'month', hidden: [] }
+    return { view: 'month', hidden: [], source: 'all' }
   }
-}
-
-function newId() {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)
 }
 
 function plusHour(time: string) {
@@ -41,34 +45,60 @@ function isTyping(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]'))
 }
 
-/** /calendar — callbacks, task deadlines, holidays / short days and the user's own events in one calendar. */
+/** 422 → { field: message } from FastAPI's `detail: [{ loc, msg }]`. */
+function fieldErrors(error: unknown): Record<string, string> {
+  const detail = ((error as { details?: { detail?: unknown } } | null)?.details?.detail)
+  if (!Array.isArray(detail)) return {}
+  const out: Record<string, string> = {}
+  for (const item of detail as Array<{ loc?: unknown[]; msg?: string }>) {
+    const field = Array.isArray(item.loc) ? String(item.loc[item.loc.length - 1]) : ''
+    if (field && item.msg && !out[field]) out[field] = item.msg
+  }
+  return out
+}
+
+/** /calendar — events, CRM callbacks and meetings (from the calendar API), task deadlines and holidays in one calendar. */
 export function CalendarPage() {
   const { t } = useLocale()
   const { user, can } = useAuth()
   const navigate = useNavigate()
   const { confirm } = useConfirm()
   const { showToast } = useToast()
-  const store = useMemo(() => createLocalEventStore(user?.id ?? 'guest'), [user?.id])
-  const canCrm = can('customers') || can('crm')
+  const canCreate = can('calendar', 'create')
+  const canEdit = can('calendar', 'edit')
+  const canDelete = can('calendar', 'delete')
+  const userId = user?.id ?? null
 
-  const today = toDayString(new Date())
+  const today = tashkentToday()
   const [prefs, setPrefs] = useState(readPrefs)
-  const [cursor, setCursor] = useState(() => new Date())
+  const [cursor, setCursor] = useState(() => parseDay(tashkentToday()))
   const [selectedDay, setSelectedDay] = useState(today)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [slide, setSlide] = useState<'left' | 'right' | null>(null)
-  const [callbacks, setCallbacks] = useState<CalEvent[] | null>(null)
+  const [events, setEvents] = useState<CalEvent[] | null>(null)
+  const [eventsFailed, setEventsFailed] = useState(false)
   const [tasks, setTasks] = useState<CalEvent[] | null>(null)
   const [dayTypes, setDayTypes] = useState<CalEvent[]>([])
-  const [personal, setPersonal] = useState<PersonalEvent[]>([])
-  const [dialog, setDialog] = useState<{ event: PersonalEvent; isNew: boolean } | null>(null)
+  const [users, setUsers] = useState<CalendarUser[]>([])
+  const [personId, setPersonId] = useState<number | null>(null)
+  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  const [dialog, setDialog] = useState<{ draft: EventDraft; saving: boolean; errors: Record<string, string> } | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const view = prefs.view
+  const source = prefs.source
   const hidden = useMemo(() => new Set(prefs.hidden), [prefs.hidden])
 
   useEffect(() => {
     try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* private mode */ }
   }, [prefs])
+
+  // Search goes to the server a moment after typing stops.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 350)
+    return () => window.clearTimeout(timer)
+  }, [search])
 
   // Visible days and the date range to load.
   const days = useMemo(() => (view === 'week' ? weekDays(cursor) : monthGrid(cursor)), [cursor, view])
@@ -77,41 +107,60 @@ export function CalendarPage() {
 
   // ── Sources ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!canCrm) return
     let alive = true
-    loadCallbacks().then((items) => { if (alive) setCallbacks(items) }).catch(() => { if (alive) setCallbacks([]) })
+    calendarService.users().then((list) => { if (alive) setUsers(list) }).catch(() => undefined)
     return () => { alive = false }
-  }, [canCrm, refreshKey])
+  }, [])
+
+  // Old browser-only events move to the server once.
+  useEffect(() => {
+    if (userId === null || !canCreate || !hasLocalEvents(userId)) return
+    let alive = true
+    void migrateLocalEvents(userId).then(({ moved, failed }) => {
+      if (!alive) return
+      if (moved) {
+        showToast({ title: t('calendar.migrated', '{{count}} of your events moved to the server', { count: moved }), tone: 'success' })
+        setRefreshKey((value) => value + 1)
+      }
+      if (failed) showToast({ title: t('calendar.migrate_failed', '{{count}} events could not be moved — they stay in this browser', { count: failed }), tone: 'error' })
+    })
+    return () => { alive = false }
+  }, [canCreate, showToast, t, userId])
 
   useEffect(() => {
-    if (!user?.id) return
     let alive = true
-    loadTasks(user.id).then((items) => { if (alive) setTasks(items) }).catch(() => { if (alive) setTasks([]) })
+    loadCalendarEvents({ dateFrom: rangeStart, dateTo: rangeEnd, userId: personId, search: query })
+      .then((items) => { if (alive) { setEvents(items); setEventsFailed(false) } })
+      .catch(() => { if (alive) { setEvents([]); setEventsFailed(true) } })
     return () => { alive = false }
-  }, [user?.id, refreshKey])
+  }, [personId, query, rangeEnd, rangeStart, refreshKey])
+
+  // Task deadlines: of the person being looked at (or mine).
+  const taskOwner = personId ?? userId
+  useEffect(() => {
+    if (taskOwner === null) return
+    let alive = true
+    loadTasks(taskOwner).then((items) => { if (alive) setTasks(items) }).catch(() => { if (alive) setTasks([]) })
+    return () => { alive = false }
+  }, [taskOwner, refreshKey])
 
   useEffect(() => {
     let alive = true
-    loadDayTypes(rangeStart, rangeEnd, user?.id ?? null).then((items) => { if (alive) setDayTypes(items) }).catch(() => { if (alive) setDayTypes([]) })
+    loadDayTypes(rangeStart, rangeEnd, personId ?? userId).then((items) => { if (alive) setDayTypes(items) }).catch(() => { if (alive) setDayTypes([]) })
     return () => { alive = false }
-  }, [rangeStart, rangeEnd, user?.id, refreshKey])
+  }, [rangeStart, rangeEnd, personId, userId, refreshKey])
 
-  useEffect(() => {
-    let alive = true
-    void store.list().then((items) => { if (alive) setPersonal(items) })
-    return () => { alive = false }
-  }, [store])
+  const loading = events === null || tasks === null
 
-  const loading = (canCrm && callbacks === null) || tasks === null
+  const allEvents = useMemo(() => {
+    const needle = query.toLowerCase()
+    // Tasks and holidays are filtered here; the server already searched its own items.
+    const local = [...(tasks ?? []), ...dayTypes].filter((event) => !needle || event.title.toLowerCase().includes(needle))
+    return [...(events ?? []), ...local]
+  }, [dayTypes, events, query, tasks])
 
-  const allEvents = useMemo(() => [
-    ...(canCrm ? callbacks ?? [] : []),
-    ...(tasks ?? []),
-    ...dayTypes,
-    ...personal.map(personalToEvent),
-  ], [callbacks, canCrm, dayTypes, personal, tasks])
-
-  const visibleEvents = useMemo(() => allEvents.filter((event) => !hidden.has(event.kind)), [allEvents, hidden])
+  const sourceKinds = useMemo(() => new Set(SOURCE_KINDS[source]), [source])
+  const visibleEvents = useMemo(() => allEvents.filter((event) => sourceKinds.has(event.kind) && !hidden.has(event.kind)), [allEvents, hidden, sourceKinds])
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
@@ -123,13 +172,13 @@ export function CalendarPage() {
       map.set(key, list)
     }
     for (const list of map.values()) {
-      list.sort((a, b) => Number(b.allDay) - Number(a.allDay) || (a.allDay ? 0 : new Date(a.start).getTime() - new Date(b.start).getTime()))
+      list.sort((a, b) => Number(b.allDay) - Number(a.allDay) || (a.allDay ? 0 : timeOf(a.start).localeCompare(timeOf(b.start))))
     }
     return map
   }, [visibleEvents])
 
   const counts = useMemo(() => {
-    const out = Object.fromEntries(KINDS.map((kind) => [kind, 0])) as Record<EventKind, number>
+    const out = Object.fromEntries(SOURCE_KINDS.all.map((kind) => [kind, 0])) as Record<EventKind, number>
     for (const event of allEvents) {
       const key = dayOf(event.start)
       if (key >= rangeStart && key <= rangeEnd) out[event.kind] += 1
@@ -146,10 +195,10 @@ export function CalendarPage() {
   }, [view])
 
   const goToday = useCallback(() => {
-    const now = new Date()
+    const now = tashkentToday()
     setSlide(null)
-    setCursor(now)
-    setSelectedDay(toDayString(now))
+    setCursor(parseDay(now))
+    setSelectedDay(now)
     setSelectedEventId(null)
   }, [])
 
@@ -180,49 +229,109 @@ export function CalendarPage() {
   }
 
   function go(event: CalEvent) {
-    if (event.kind === 'callback' && event.customerId) navigate(`/crm/customers?customer_id=${event.customerId}`)
+    if ((event.kind === 'recall' || event.kind === 'meeting') && event.customerId) navigate(`/crm/customers?customer_id=${event.customerId}`)
     if (event.kind === 'task' && event.boardId) navigate(`/boards/${event.boardId}`)
   }
 
-  // ── Own events ───────────────────────────────────────────────────────────
+  // ── Events (server) ──────────────────────────────────────────────────────
   function create(day: string, time?: string) {
+    if (!canCreate) return
     const start = time ?? '10:00'
     setDialog({
-      isNew: true,
-      event: { id: newId(), title: '', date: day, allDay: false, startTime: start, endTime: plusHour(start), color: PERSONAL_COLORS[0], note: '', createdAt: new Date().toISOString() },
+      saving: false,
+      errors: {},
+      draft: { baseId: null, title: '', description: '', date: day, allDay: false, startTime: start, endTime: plusHour(start), reminder: true, recurrence: 'none', until: '', participantIds: [] },
     })
   }
 
-  function edit(event: CalEvent) {
-    const item = personal.find((entry) => entry.id === event.personalId)
-    if (item) setDialog({ event: item, isNew: false })
+  async function edit(event: CalEvent) {
+    if (!event.baseId) return
+    // A repeat shows its own date; the form edits the whole series from its first date.
+    const base = await calendarService.event(event.baseId).catch(() => null)
+    const item = base ? apiToEvent(base) : event
+    const day = dayOf(item.start)
+    setDialog({
+      saving: false,
+      errors: {},
+      draft: {
+        baseId: event.baseId,
+        title: item.title,
+        description: item.note ?? '',
+        date: day,
+        allDay: item.allDay,
+        startTime: item.allDay ? '10:00' : timeOf(item.start) || '10:00',
+        endTime: item.allDay ? '11:00' : (item.end ? timeOf(item.end) : '') || plusHour(timeOf(item.start) || '10:00'),
+        reminder: Boolean(item.reminder),
+        recurrence: item.recurrence ?? 'none',
+        until: item.recurrenceUntil ? item.recurrenceUntil.slice(0, 10) : '',
+        participantIds: item.participantIds ?? [],
+      },
+    })
   }
 
-  async function save(item: PersonalEvent) {
-    await store.save(item)
-    setPersonal(await store.list())
-    setDialog(null)
-    setSelectedDay(item.date)
-    setSelectedEventId(`personal:${item.id}`)
-    showToast({ title: t('calendar.saved', 'Event saved'), description: item.title, tone: 'success' })
+  async function save(draft: EventDraft) {
+    const payload = {
+      title: draft.title,
+      description: draft.description || null,
+      start_at: joinDayTime(draft.date, draft.allDay ? '00:00' : draft.startTime),
+      end_at: draft.allDay ? null : joinDayTime(draft.date, draft.endTime || draft.startTime),
+      all_day: draft.allDay,
+      reminder_enabled: draft.reminder,
+      recurrence: draft.recurrence,
+      recurrence_until: draft.recurrence === 'none' ? null : draft.until || null,
+      participant_ids: draft.participantIds,
+    }
+    setDialog((current) => (current ? { ...current, saving: true, errors: {} } : current))
+    try {
+      if (draft.baseId) await calendarService.update(draft.baseId, payload)
+      else await calendarService.create(payload)
+      setDialog(null)
+      setSelectedDay(draft.date)
+      setSelectedEventId(null)
+      setRefreshKey((value) => value + 1)
+      showToast({ title: t('calendar.saved', 'Event saved'), description: draft.title, tone: 'success' })
+    } catch (error) {
+      const status = (error as { status?: number } | null)?.status
+      const errors = status === 422 ? fieldErrors(error) : {}
+      setDialog((current) => (current ? { ...current, saving: false, errors } : current))
+      showToast({
+        title: status === 403 ? t('calendar.forbidden', 'You do not have permission for this') : status === 422 ? t('calendar.invalid', 'Check the highlighted fields') : t('calendar.save_failed', 'Could not save the event'),
+        tone: 'error',
+      })
+    }
   }
 
   async function remove(event: CalEvent) {
-    if (!event.personalId) return
+    if (!event.baseId) return
     const ok = await confirm({
       title: t('calendar.delete_title', 'Delete “{{title}}”?', { title: event.title }),
-      description: t('calendar.delete_text', 'The event is removed from your calendar.'),
+      description: event.recurrence && event.recurrence !== 'none'
+        ? t('calendar.delete_series_text', 'It is a repeating event — every repeat is deleted.')
+        : t('calendar.delete_text', 'The event is removed from the calendar.'),
       confirmLabel: t('common.delete', 'Delete'),
       tone: 'danger',
     })
     if (!ok) return
-    await store.remove(event.personalId)
-    setPersonal(await store.list())
-    setSelectedEventId(null)
+    try {
+      await calendarService.remove(event.baseId)
+      setSelectedEventId(null)
+      setRefreshKey((value) => value + 1)
+    } catch (error) {
+      const status = (error as { status?: number } | null)?.status
+      showToast({ title: status === 403 ? t('calendar.forbidden', 'You do not have permission for this') : t('calendar.delete_failed', 'Could not delete the event'), tone: 'error' })
+    }
   }
 
   function toggleKind(kind: EventKind) {
     setPrefs((current) => ({ ...current, hidden: current.hidden.includes(kind) ? current.hidden.filter((item) => item !== kind) : [...current.hidden, kind] }))
+  }
+
+  const filtersActive = source !== 'all' || personId !== null || search.trim() !== '' || prefs.hidden.length > 0
+  function clearFilters() {
+    setSearch('')
+    setQuery('')
+    setPersonId(null)
+    setPrefs((current) => ({ ...current, source: 'all', hidden: [] }))
   }
 
   const title = view === 'week'
@@ -236,7 +345,12 @@ export function CalendarPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([day, events]) => ({ day, events }))
   }, [byDay, rangeEnd, rangeStart, view])
-  const kinds = KINDS.filter((kind) => kind !== 'callback' || canCrm)
+  const kinds = SOURCE_KINDS[source]
+  const sources: Array<[SourceFilter, string]> = [
+    ['all', t('calendar.source.all', 'All')],
+    ['manual', t('calendar.source.manual', 'Events')],
+    ['crm', t('calendar.source.crm', 'CRM')],
+  ]
 
   return (
     <section className="flex h-[calc(100dvh-var(--header-h)-44px)] min-h-[620px] flex-col gap-3">
@@ -278,13 +392,75 @@ export function CalendarPage() {
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} aria-label={t('calendar.refresh', 'Refresh')} className="mm-press grid h-9 w-9 place-items-center rounded-[10px] border border-[var(--border)] bg-[var(--card)] text-[var(--muted-strong)] hover:bg-[var(--input-surface)]">
             <ArrowClockwiseIcon size={16} className={cn(loading && 'animate-spin')} />
           </button>
-          <button type="button" onClick={() => create(selectedDay)} className="mm-press inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-[var(--primary)] px-3.5 text-[13px] font-semibold text-white hover:bg-[var(--primary-hover)]">
-            <PlusIcon size={15} weight="bold" /> {t('calendar.add_event', 'Add event')}
-          </button>
+          {canEdit ? (
+            <button type="button" onClick={() => setSettingsOpen(true)} aria-label={t('calendar.settings.title', 'CRM reminders')} title={t('calendar.settings.title', 'CRM reminders')} className="mm-press grid h-9 w-9 place-items-center rounded-[10px] border border-[var(--border)] bg-[var(--card)] text-[var(--muted-strong)] hover:bg-[var(--input-surface)]">
+              <GearSixIcon size={16} />
+            </button>
+          ) : null}
+          {canCreate ? (
+            <button type="button" onClick={() => create(selectedDay)} className="mm-press inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-[var(--primary)] px-3.5 text-[13px] font-semibold text-white hover:bg-[var(--primary-hover)]">
+              <PlusIcon size={15} weight="bold" /> {t('calendar.add_event', 'Add event')}
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters — each one on its own: search, source, person, kinds */}
+      <div className="flex flex-wrap items-center gap-2 rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-2">
+        <label className="relative flex h-9 min-w-[200px] flex-1 items-center sm:max-w-[260px]">
+          <MagnifyingGlassIcon size={15} className="pointer-events-none absolute left-2.5 text-[var(--muted)]" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t('calendar.filter.search', 'Search events, customers…')}
+            aria-label={t('calendar.filter.search', 'Search events, customers…')}
+            className="h-9 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] pr-8 pl-8 text-[13px] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+          />
+          {search ? (
+            <button type="button" onClick={() => setSearch('')} aria-label={t('common.clear', 'Clear')} className="absolute right-1.5 grid h-6 w-6 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--input-surface)]">
+              <XIcon size={12} />
+            </button>
+          ) : null}
+        </label>
+
+        <div role="radiogroup" aria-label={t('calendar.filter.source', 'Source')} className="inline-flex h-9 items-center rounded-[11px] bg-[var(--muted-surface)] p-0.5">
+          {sources.map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={source === value}
+              onClick={() => setPrefs((current) => ({ ...current, source: value }))}
+              className={cn('h-8 rounded-[9px] px-3 text-[12.5px] font-semibold transition-colors', source === value ? 'bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_3px_rgba(14,21,37,0.12)]' : 'text-[var(--muted-strong)] hover:text-[var(--foreground)]')}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {users.length > 1 ? (
+          <div className="w-[220px]">
+            <SelectField
+              searchable
+              size="sm"
+              value={personId === null ? '' : String(personId)}
+              onValueChange={(value) => setPersonId(value ? Number(value) : null)}
+              options={[{ value: '', label: t('calendar.filter.user_any', 'Everyone I can see') }, ...users.map((person) => ({ value: String(person.id), label: person.name, hint: person.detail ?? undefined }))]}
+              leadingIcon={<UserIcon size={15} />}
+              searchPlaceholder={t('common.search', 'Search')}
+              emptyMessage={t('calendar.no_users', 'No users')}
+            />
+          </div>
+        ) : null}
+
+        {filtersActive ? (
+          <button type="button" onClick={clearFilters} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] font-semibold text-[var(--muted-strong)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]">
+            <XIcon size={13} /> {t('calendar.filter.clear', 'Clear filters')}
+          </button>
+        ) : null}
+        <span className="ml-auto hidden text-[11.5px] text-[var(--muted)] 2xl:inline">{t('calendar.tip', 'Double-click a day or an hour to add an event · ← → to move · T — today')}</span>
+      </div>
+
       <div className="flex flex-wrap items-center gap-1.5">
         {kinds.map((kind) => {
           const off = hidden.has(kind)
@@ -302,7 +478,7 @@ export function CalendarPage() {
             </button>
           )
         })}
-        <span className="ml-auto hidden text-[11.5px] text-[var(--muted)] xl:inline">{t('calendar.tip', 'Double-click a day or an hour to add an event · ← → to move · T — today')}</span>
+        {eventsFailed ? <span className="text-[12px] font-medium text-[var(--danger-text)]">{t('calendar.load_failed', 'Calendar events could not be loaded')}</span> : null}
       </div>
 
       {/* Calendar + day / event panel */}
@@ -347,14 +523,27 @@ export function CalendarPage() {
             onOpenEvent={openEvent}
             onCloseEvent={() => setSelectedEventId(null)}
             onCreate={(day) => create(day)}
-            onEdit={edit}
+            onEdit={(event) => void edit(event)}
             onDelete={(event) => void remove(event)}
             onGo={go}
+            canCreate={canCreate}
+            canEdit={canEdit}
+            canDelete={canDelete}
           />
         </aside>
       </div>
 
-      {dialog ? <EventDialog initial={dialog.event} isNew={dialog.isNew} onClose={() => setDialog(null)} onSave={(item) => void save(item)} /> : null}
+      {dialog ? (
+        <EventDialog
+          initial={dialog.draft}
+          users={users}
+          saving={dialog.saving}
+          errors={dialog.errors}
+          onClose={() => setDialog(null)}
+          onSave={(draft) => void save(draft)}
+        />
+      ) : null}
+      {settingsOpen ? <SettingsDialog onClose={() => setSettingsOpen(false)} /> : null}
     </section>
   )
 }

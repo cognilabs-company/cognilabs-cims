@@ -3,7 +3,7 @@ import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { formatPhone } from '../../telephony/components/telephonyFormat'
 import { dayParts, timeOf } from '../lib/dates'
-import { kindLabel } from '../lib/kindLabel'
+import { kindLabel, recurrenceLabel } from '../lib/kindLabel'
 import type { CalEvent } from '../lib/types'
 import { KindIcon } from './kinds'
 
@@ -17,18 +17,29 @@ type Props = {
   onEdit: (event: CalEvent) => void
   onDelete: (event: CalEvent) => void
   onGo: (event: CalEvent) => void
+  /** Manual events: may the user change / delete them (calendar:edit / calendar:delete). */
+  canEdit: boolean
+  canDelete: boolean
+  canCreate: boolean
 }
 
 /** Right panel: the selected event, or the selected day's agenda. */
-export function SidePanel({ day, events, selected, onOpenEvent, onCloseEvent, onCreate, onEdit, onDelete, onGo }: Props) {
+export function SidePanel({ day, events, selected, onOpenEvent, onCloseEvent, onCreate, onEdit, onDelete, onGo, canEdit, canDelete, canCreate }: Props) {
   const { t } = useLocale()
   const parts = dayParts(day)
 
   if (selected) {
     const rows: Array<[string, string | null | undefined]> = [
-      [t('calendar.field.when', 'When'), selected.allDay ? t('calendar.all_day', 'All day') : `${timeOf(selected.start)}${selected.end && selected.kind === 'personal' ? ` – ${timeOf(selected.end)}` : ''}`],
+      [t('calendar.field.when', 'When'), selected.allDay ? t('calendar.all_day', 'All day') : `${timeOf(selected.start)}${selected.end && timeOf(selected.end) !== timeOf(selected.start) ? ` – ${timeOf(selected.end)}` : ''}`],
+      [t('calendar.field.repeat', 'Repeats'), selected.recurrence && selected.recurrence !== 'none'
+        ? `${recurrenceLabel(selected.recurrence, t)}${selected.recurrenceUntil ? ` · ${t('calendar.field.until', 'until {{date}}', { date: dayParts(selected.recurrenceUntil.slice(0, 10)).date })}` : ''}`
+        : null],
+      [t('calendar.field.reminder', 'Reminder'), selected.kind === 'manual' ? (selected.reminder ? t('calendar.field.reminder_on', 'Telegram, before it starts') : t('calendar.field.reminder_off', 'Off')) : null],
       [t('calendar.field.status', 'Status'), selected.status],
       [t('calendar.field.phone', 'Phone'), selected.phone ? formatPhone(selected.phone) : null],
+      [t('calendar.field.assigned', 'Responsible'), selected.assignedName],
+      [t('calendar.field.participants', 'Participants'), selected.participantNames?.length ? selected.participantNames.join(', ') : null],
+      [t('calendar.field.created_by', 'Created by'), selected.createdByName],
       [t('calendar.field.project', 'Project'), [selected.projectName, selected.boardName].filter(Boolean).join(' · ') || null],
       [t('calendar.field.column', 'Column'), selected.columnName],
       [t('calendar.field.hours', 'Working hours'), selected.hours],
@@ -59,7 +70,7 @@ export function SidePanel({ day, events, selected, onOpenEvent, onCloseEvent, on
           {selected.note ? <p className="rounded-[12px] bg-[var(--muted-surface)] px-3 py-2.5 text-[13px] whitespace-pre-wrap text-[var(--foreground)]">{selected.note}</p> : null}
         </dl>
         <div className="mt-auto flex flex-wrap gap-2 border-t border-[var(--border-subtle)] p-4">
-          {selected.kind === 'callback' ? (
+          {(selected.kind === 'recall' || selected.kind === 'meeting') && selected.customerId ? (
             <button type="button" onClick={() => onGo(selected)} className="inline-flex h-10 items-center gap-2 rounded-[11px] bg-[var(--primary)] px-4 text-[13px] font-semibold text-white hover:bg-[var(--primary-hover)]">
               <ArrowSquareOutIcon size={16} /> {t('calendar.open_customer', 'Open customer')}
             </button>
@@ -69,14 +80,14 @@ export function SidePanel({ day, events, selected, onOpenEvent, onCloseEvent, on
               <ArrowSquareOutIcon size={16} /> {t('calendar.open_board', 'Open board')}
             </button>
           ) : null}
-          {selected.kind === 'personal' ? (
+          {selected.kind === 'manual' ? (
             <>
-              <button type="button" onClick={() => onEdit(selected)} className="inline-flex h-10 items-center gap-2 rounded-[11px] border border-[var(--border)] px-4 text-[13px] font-semibold text-[var(--foreground)] hover:bg-[var(--input-surface)]">
+              {canEdit ? <button type="button" onClick={() => onEdit(selected)} className="inline-flex h-10 items-center gap-2 rounded-[11px] border border-[var(--border)] px-4 text-[13px] font-semibold text-[var(--foreground)] hover:bg-[var(--input-surface)]">
                 <PencilSimpleIcon size={16} /> {t('common.edit', 'Edit')}
-              </button>
-              <button type="button" onClick={() => onDelete(selected)} className="inline-flex h-10 items-center gap-2 rounded-[11px] px-3 text-[13px] font-semibold text-[var(--danger-text)] hover:bg-[var(--danger-dim)]">
+              </button> : null}
+              {canDelete ? <button type="button" onClick={() => onDelete(selected)} className="inline-flex h-10 items-center gap-2 rounded-[11px] px-3 text-[13px] font-semibold text-[var(--danger-text)] hover:bg-[var(--danger-dim)]">
                 <TrashIcon size={16} /> {t('common.delete', 'Delete')}
-              </button>
+              </button> : null}
             </>
           ) : null}
         </div>
@@ -117,11 +128,11 @@ export function SidePanel({ day, events, selected, onOpenEvent, onCloseEvent, on
           </ul>
         )}
       </div>
-      <div className="border-t border-[var(--border-subtle)] p-3">
+      {canCreate ? <div className="border-t border-[var(--border-subtle)] p-3">
         <button type="button" onClick={() => onCreate(day)} className="flex h-10 w-full items-center justify-center gap-2 rounded-[11px] border border-dashed border-[var(--border-hover)] text-[13px] font-semibold text-[var(--muted-strong)] transition-colors hover:border-[var(--primary)] hover:text-[var(--primary)]">
           <PlusIcon size={15} weight="bold" /> {t('calendar.add_event', 'Add event')}
         </button>
-      </div>
+      </div> : null}
     </div>
   )
 }

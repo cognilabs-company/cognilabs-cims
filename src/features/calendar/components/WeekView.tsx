@@ -146,7 +146,7 @@ export function WeekView({ days, byDay, today, selectedDay, selectedEventId, gri
                     title={`${timeOf(event.start)} · ${event.title}`}
                   >
                     <span className="block truncate font-semibold text-[var(--foreground)]" data-i18n-skip="true">{event.title}</span>
-                    {height > 34 ? <span className="block truncate text-[var(--muted)] tabular-nums">{timeOf(event.start)}{event.end && event.kind === 'personal' ? `–${timeOf(event.end)}` : ''}</span> : null}
+                    {height > 34 ? <span className="block truncate text-[var(--muted)] tabular-nums">{timeOf(event.start)}{event.end && event.kind === 'manual' ? `–${timeOf(event.end)}` : ''}</span> : null}
                   </button>
                 ))}
                 {day === today && nowTop >= 0 && nowTop <= hours.length * HOUR ? (
