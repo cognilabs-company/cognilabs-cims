@@ -20,6 +20,7 @@ const moduleRoutes: Array<[prefix: string, module: RbacModuleName]> = [
   ['/crm', 'crm'],
   ['/telephony', 'calls'],
   ['/projects', 'projects'],
+  ['/mindmap', 'mind_map'],
   ['/boards', 'projects'],
   ['/faults', 'salary'],
   ['/developer-kpi', 'developer_kpi'],
@@ -81,6 +82,7 @@ function legacyModuleAccess(user: CurrentUser | null, module: RbacModuleName) {
       return canUseTelephony(user)
     case 'projects':
     case 'developer_kpi':
+    case 'mind_map':
       return Boolean(user)
     case 'ai_chat':
     case 'ai_kanban':

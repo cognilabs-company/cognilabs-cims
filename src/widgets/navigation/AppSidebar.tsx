@@ -223,7 +223,7 @@ export function AppSidebar() {
         }
       }), t)
       return withFrontendPages(groups, [
-        { to: '/mindmap', label: t('nav./mindmap.label', 'Mind map'), icon: 'mindmap' },
+        ...(can('mind_map', 'view') ? [{ to: '/mindmap', label: t('nav./mindmap.label', 'Mind map'), icon: 'mindmap' }] : []),
         { to: '/calendar', label: t('nav./calendar.label', 'Calendar'), icon: 'calendar' },
       ])
     }
@@ -231,7 +231,7 @@ export function AppSidebar() {
     return consolidate(groupOrder
       .map((group) => ({ key: group, label: t(`shell.group.${group}`, groupFallback[group]), items: legacy.filter((item) => navGroupOf(item.to) === group) }))
       .filter((entry) => entry.items.length > 0), t)
-  }, [access, t, user])
+  }, [access, can, t, user])
   const sidebarNavigation = useMemo(() => sidebarGroups.flatMap((group) => group.items), [sidebarGroups])
   const isProjectsRoute =
     location.pathname === '/projects' ||

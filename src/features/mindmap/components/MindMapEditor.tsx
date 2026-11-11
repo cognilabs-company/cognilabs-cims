@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowArcLeftIcon,
+  EyeIcon,
   ArrowArcRightIcon,
   ArrowDownIcon,
   ArrowElbowDownRightIcon,
@@ -78,6 +79,10 @@ type Props = {
   canCreateTask: boolean
   onSave: (map: MindMap) => Promise<unknown>
   onDelete: () => void
+  /** No `mind_map:edit`: the map can be looked at (and collapsed locally), never changed or saved. */
+  readOnly?: boolean
+  canExport?: boolean
+  canDelete?: boolean
 }
 
 const PREFS_KEY = 'cims.mindmap.prefs'
@@ -138,7 +143,7 @@ function ToolButton({ icon, label, onClick, disabled, active, kbd, iconOnly, dan
   )
 }
 
-export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, onDelete }: Props) {
+export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, onDelete, readOnly = false, canExport = true, canDelete = true }: Props) {
   const { t } = useLocale()
   const navigate = useNavigate()
   const { confirm } = useConfirm()
@@ -182,19 +187,26 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
 
   // ── Saving ────────────────────────────────────────────────────────────────
   const [savedMap, setSavedMap] = useState(initial)
+  const [saveError, setSaveError] = useState(false)
   const pendingRef = useRef<MindMap | null>(null)
   const onSaveRef = useRef(onSave)
   useEffect(() => { onSaveRef.current = onSave }, [onSave])
   useEffect(() => {
     // Compare with what was saved last (not with the first version): undoing back to it must be saved too.
-    if (map === savedMap) return
+    if (readOnly || map === savedMap) return
     pendingRef.current = map
     const timer = window.setTimeout(() => {
       pendingRef.current = null
-      void onSaveRef.current(map).then(() => setSavedMap(map)).catch(() => showToast({ title: t('mindmap.save_failed', 'Could not save the mind map'), tone: 'error' }))
+      void onSaveRef.current(map)
+        .then(() => { setSavedMap(map); setSaveError(false) })
+        .catch((error: unknown) => {
+          setSaveError(true)
+          // The page already explained it (conflict dialog / error toast).
+          if (!(error as { handled?: boolean } | null)?.handled) showToast({ title: t('mindmap.save_failed', 'Could not save the mind map'), tone: 'error' })
+        })
     }, 450)
     return () => window.clearTimeout(timer)
-  }, [map, savedMap, showToast, t])
+  }, [map, readOnly, savedMap, showToast, t])
   // Leaving the page (or switching maps) with unsaved edits: save right away.
   useEffect(() => () => { if (pendingRef.current) void onSaveRef.current(pendingRef.current) }, [])
   const isSaved = savedMap === map
@@ -555,6 +567,12 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
         return
       }
       if (isTypingTarget(event.target) || editingRef.current) return
+      if (readOnly) {
+        if (event.key === ' ' && !mod) { event.preventDefault(); setSpacePan(true) }
+        else if (event.key.startsWith('Arrow') && !event.altKey && !mod) { event.preventDefault(); navigateSelection(event.key as 'ArrowLeft') }
+        else if (event.key === 'Escape') setQuery('')
+        return
+      }
       if (mod && event.key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo(); return }
       if (mod && event.key.toLowerCase() === 'y') { event.preventDefault(); redo(); return }
       if (mod || event.key === 'Meta' || event.key === 'Control') return
@@ -632,17 +650,31 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
           onChange={(event) => apply((m) => updateNode(m, m.rootId, { text: event.target.value }), `text:${map.rootId}`)}
           onBlur={(event) => { if (!event.target.value.trim()) apply((m) => updateNode(m, m.rootId, { text: t('mindmap.untitled', 'New mind map') }), `text:${map.rootId}`) }}
           aria-label={t('mindmap.title_label', 'Mind map name')}
+          readOnly={readOnly}
           className="h-[34px] w-full min-w-0 rounded-[10px] border border-[var(--border)] bg-[var(--card)] px-3 text-[13.5px] font-semibold text-[var(--foreground)] focus:border-[var(--primary)] focus:outline-none sm:w-[210px]"
         />
         <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--muted)]" aria-live="polite">
-          <span className={cn('h-1.5 w-1.5 rounded-full', isSaved ? 'bg-[var(--success-text)]' : 'animate-pulse bg-[var(--warning-text)]')} />
-          {isSaved ? t('mindmap.saved', 'Saved') : t('mindmap.saving', 'Saving…')}
+          {readOnly ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--muted-surface)] px-2 py-0.5 font-semibold text-[var(--muted-strong)]">
+              <EyeIcon size={13} weight="bold" />
+              {t('mindmap.read_only', 'View only')}
+            </span>
+          ) : (
+            <>
+              <span className={cn('h-1.5 w-1.5 rounded-full', saveError && !isSaved ? 'bg-[var(--danger)]' : isSaved ? 'bg-[var(--success-text)]' : 'animate-pulse bg-[var(--warning-text)]')} />
+              <span className={cn(saveError && !isSaved && 'font-semibold text-[var(--danger-text)]')}>
+                {saveError && !isSaved ? t('mindmap.not_saved', 'Not saved') : isSaved ? t('mindmap.saved', 'Saved') : t('mindmap.saving', 'Saving…')}
+              </span>
+            </>
+          )}
           <span className="tabular-nums">· {t('mindmap.node_count', '{{count}} nodes', { count: nodeCount })}</span>
         </span>
-        <div className="flex items-center gap-1">
-          <ToolButton iconOnly icon={<ArrowArcLeftIcon size={16} />} label={t('mindmap.undo', 'Undo')} kbd="Ctrl+Z" onClick={undo} disabled={!canUndo} />
-          <ToolButton iconOnly icon={<ArrowArcRightIcon size={16} />} label={t('mindmap.redo', 'Redo')} kbd="Ctrl+Shift+Z" onClick={redo} disabled={!canRedo} />
-        </div>
+        {!readOnly ? (
+          <div className="flex items-center gap-1">
+            <ToolButton iconOnly icon={<ArrowArcLeftIcon size={16} />} label={t('mindmap.undo', 'Undo')} kbd="Ctrl+Z" onClick={undo} disabled={!canUndo} />
+            <ToolButton iconOnly icon={<ArrowArcRightIcon size={16} />} label={t('mindmap.redo', 'Redo')} kbd="Ctrl+Shift+Z" onClick={redo} disabled={!canRedo} />
+          </div>
+        ) : null}
 
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
           <label className="relative flex h-[34px] items-center">
@@ -668,7 +700,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
             ) : null}
           </label>
           <ToolButton iconOnly icon={isFullscreen ? <ArrowsInIcon size={16} /> : <CornersOutIcon size={16} />} label={isFullscreen ? t('mindmap.exit_fullscreen', 'Exit full screen') : t('mindmap.fullscreen', 'Full screen')} onClick={toggleFullscreen} active={isFullscreen} />
-          <div className="relative">
+          {canExport ? <div className="relative">
             <ToolButton icon={<DownloadSimpleIcon size={15} />} label={t('mindmap.export', 'Export')} onClick={() => setExportOpen((open) => !open)} active={exportOpen} trailing={<CaretDownIcon size={12} />} />
             {exportOpen ? (
               <>
@@ -694,17 +726,17 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
                 </div>
               </>
             ) : null}
-          </div>
+          </div> : null}
           <ToolButton iconOnly icon={<SidebarSimpleIcon size={16} className="-scale-x-100" />} label={t('mindmap.inspector_toggle', 'Node panel')} onClick={() => {
             if (window.matchMedia('(min-width: 1024px)').matches) setPrefs((current) => ({ ...current, inspector: !current.inspector }))
             else setMobileInspector((open) => !open)
           }} active={prefs.inspector} />
-          <ToolButton iconOnly danger icon={<TrashIcon size={16} />} label={t('mindmap.delete', 'Delete mind map')} onClick={() => void removeMap()} />
+          {canDelete ? <ToolButton iconOnly danger icon={<TrashIcon size={16} />} label={t('mindmap.delete', 'Delete mind map')} onClick={() => void removeMap()} /> : null}
         </div>
       </div>
 
       {/* Row 2: node actions */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      {!readOnly ? <div className="flex flex-wrap items-center gap-1.5">
         <ToolButton icon={<ArrowElbowDownRightIcon size={15} />} label={t('mindmap.child', 'Child')} kbd="Tab" onClick={() => addNode('child')} />
         <div className="relative">
           <ToolButton icon={<PlusIcon size={15} />} label={t('mindmap.add', 'Add')} onClick={() => setAddOpen((open) => !open)} active={addOpen} trailing={<CaretDownIcon size={12} />} />
@@ -771,7 +803,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
         <ToolButton compact icon={<MagicWandIcon size={15} />} label={t('mindmap.auto_layout', 'Auto layout')} onClick={() => { commit(resetOffsets(map)); window.setTimeout(fit, 0) }} />
         <ToolButton compact icon={<ArrowsInLineVerticalIcon size={15} />} label={t('mindmap.collapse_all', 'Collapse all')} onClick={() => { const next = commit(setAllCollapsed(map, true)); if (!next.nodes[selected] || depthOf(next, selected) > 1) setSelectedId(next.rootId) }} />
         <ToolButton compact icon={<ArrowsOutLineVerticalIcon size={15} />} label={t('mindmap.expand_all', 'Expand all')} onClick={() => commit(setAllCollapsed(map, false))} />
-      </div>
+      </div> : null}
 
       {/* Canvas + inspector */}
       <div className="relative flex min-h-0 flex-1 gap-2.5">
@@ -788,6 +820,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
             activeMatchId={activeMatchId}
             spacePan={spacePan}
             showMinimap={prefs.minimap}
+            readOnly={readOnly}
             labels={{
               collapse: t('mindmap.collapse', 'Collapse'),
               expand: t('mindmap.expand', 'Expand'),
@@ -854,6 +887,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
               prefs.inspector ? 'lg:block' : 'lg:hidden',
             )}
           >
+            <fieldset disabled={readOnly} className="m-0 h-full min-w-0 border-0 p-0">
             <NodeInspector
               key={selected}
               node={node as MindNode}
@@ -864,6 +898,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
               onCreateTask={() => setTaskNode(selected)}
               onOpenTask={openTask}
             />
+            </fieldset>
           </aside>
         ) : null}
       </div>

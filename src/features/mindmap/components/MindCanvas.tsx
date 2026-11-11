@@ -23,6 +23,8 @@ type Props = {
   activeMatchId: string | null
   spacePan: boolean
   showMinimap: boolean
+  /** View only: no adding, editing, dragging or cutting. */
+  readOnly?: boolean
   /** Nodes playing their exit animation (removed right after). */
   leavingIds: Set<string>
   /** Glide the camera (button-driven moves); wheel and drag stay instant. */
@@ -140,7 +142,7 @@ export function MindCanvas(props: Props) {
   }
 
   function onBackgroundDoubleClick(event: React.MouseEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest('[data-node-id],[data-canvas-ui]')) return
+    if (props.readOnly || (event.target as HTMLElement).closest('[data-node-id],[data-canvas-ui]')) return
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect) return
     props.onCreateFree((event.clientX - rect.left - view.x) / view.k, (event.clientY - rect.top - view.y) / view.k)
@@ -161,6 +163,7 @@ export function MindCanvas(props: Props) {
     if ((event.target as HTMLElement).closest('button,a,textarea')) return
     event.stopPropagation()
     props.onSelect(id)
+    if (props.readOnly) return
     const k = view.k
     const start = { cx: event.clientX, cy: event.clientY }
     const dragged = new Set(subtreeIds(map, id))
@@ -203,7 +206,7 @@ export function MindCanvas(props: Props) {
     return parent && child ? [{ id, d: edgePath(parent, child, map.edgeStyle), color: child.color, depth: child.depth, mid: edgeMidpoint(parent, child) }] : []
   })
   // The cut button: on the selected line, or the one under the pointer.
-  const cutEdge = drag ? undefined : edges.find((edge) => edge.id === props.selectedEdge) ?? edges.find((edge) => edge.id === hoverEdge)
+  const cutEdge = drag || props.readOnly ? undefined : edges.find((edge) => edge.id === props.selectedEdge) ?? edges.find((edge) => edge.id === hoverEdge)
 
   return (
     <div
@@ -249,7 +252,7 @@ export function MindCanvas(props: Props) {
               stroke="transparent"
               strokeWidth={16}
               data-edge-id={edge.id}
-              className="pointer-events-[stroke] cursor-pointer"
+              className={props.readOnly ? 'pointer-events-none' : 'pointer-events-[stroke] cursor-pointer'}
               onPointerDown={(event) => { event.stopPropagation(); props.onSelectEdge(edge.id) }}
               onPointerEnter={() => setHoverEdge(edge.id)}
               onPointerLeave={() => setHoverEdge((current) => (current === edge.id ? null : current))}
@@ -288,7 +291,7 @@ export function MindCanvas(props: Props) {
               key={id}
               data-node-id={id}
               onPointerDown={(event) => onNodePointerDown(event, id)}
-              onDoubleClick={(event) => { event.stopPropagation(); props.onStartEdit(id) }}
+              onDoubleClick={(event) => { event.stopPropagation(); if (!props.readOnly) props.onStartEdit(id) }}
               className={cn(
                 'group/node mm-node absolute flex flex-col items-center justify-center text-center',
                 drag?.id === id ? 'cursor-grabbing opacity-90' : 'cursor-pointer',
@@ -368,7 +371,7 @@ export function MindCanvas(props: Props) {
               ) : null}
 
               {/* Delete (not the central topic) — top-right corner */}
-              {!editing && id !== map.rootId ? (
+              {!editing && !props.readOnly && id !== map.rootId ? (
                 <button
                   type="button"
                   data-canvas-ui
@@ -386,7 +389,7 @@ export function MindCanvas(props: Props) {
               ) : null}
 
               {/* "+" on every side: outer = child, sides = sibling before / after, inner = parent; around a hub every side adds a branch that way */}
-              {!editing && !drag ? (['up', 'right', 'down', 'left'] as Dir[]).map((side) => {
+              {!editing && !drag && !props.readOnly ? (['up', 'right', 'down', 'left'] as Dir[]).map((side) => {
                 const outer = hub || side === box.dir
                 const offset = !hub && side === box.dir && hasChildren ? 34 : 12
                 return (

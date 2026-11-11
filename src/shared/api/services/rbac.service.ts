@@ -12,7 +12,7 @@ export type RbacAction = (typeof RBAC_ACTIONS)[number]
 
 export const RBAC_MODULES = [
   'ceo', 'crm', 'customers', 'calls', 'projects', 'attendance', 'users', 'monthly_updates', 'salary', 'developer_kpi',
-  'ai_chat', 'ai_kanban', 'media_contexts', 'ai_integrations', 'instagram_comments', 'site_statistics', 'management_api',
+  'ai_chat', 'ai_kanban', 'media_contexts', 'ai_integrations', 'instagram_comments', 'site_statistics', 'management_api', 'mind_map',
 ] as const
 export type RbacModuleName = (typeof RBAC_MODULES)[number] | (string & {})
 

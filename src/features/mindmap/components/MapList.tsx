@@ -8,6 +8,8 @@ type Props = {
   maps: MindMapSummary[] | null
   activeId: string | null
   onOpen: (id: string) => void
+  canCreate: boolean
+  canDelete: boolean
   onCreate: () => void
   onDelete: (id: string) => void
   onImport: (file: File) => void
@@ -22,7 +24,7 @@ function stamp(iso: string) {
 }
 
 /** Left panel: the user's mind maps. */
-export function MapList({ maps, activeId, onOpen, onCreate, onDelete, onImport, onCollapse }: Props) {
+export function MapList({ maps, activeId, canCreate, canDelete, onOpen, onCreate, onDelete, onImport, onCollapse }: Props) {
   const { t } = useLocale()
   const [search, setSearch] = useState('')
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -48,14 +50,14 @@ export function MapList({ maps, activeId, onOpen, onCreate, onDelete, onImport, 
             className="h-9 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] pr-3 pl-8 text-[12.5px] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
           />
         </label>
-        <button
+        {canCreate ? <button
           type="button"
           onClick={onCreate}
           className="group/new flex h-10 w-full items-center justify-center gap-1.5 rounded-[11px] bg-[var(--primary)] text-[13px] font-semibold text-white shadow-[0_8px_20px_-10px_var(--primary)] transition-[filter,transform] hover:brightness-110 active:scale-[0.97]"
         >
           <PlusIcon size={15} weight="bold" className="transition-transform duration-300 group-hover/new:rotate-90" />
           {t('mindmap.list.new', 'New mind map')}
-        </button>
+        </button> : null}
       </div>
 
       <div className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto px-2.5 pb-2">
@@ -83,7 +85,7 @@ export function MapList({ maps, activeId, onOpen, onCreate, onDelete, onImport, 
                   {t('mindmap.node_count', '{{count}} nodes', { count: item.nodeCount })} · {stamp(item.updatedAt)}
                 </span>
               </span>
-              <button
+              {canDelete ? <button
                 type="button"
                 onClick={() => onDelete(item.id)}
                 aria-label={t('mindmap.delete', 'Delete mind map')}
@@ -91,13 +93,13 @@ export function MapList({ maps, activeId, onOpen, onCreate, onDelete, onImport, 
                 className="absolute top-1/2 right-1.5 grid h-7 w-7 -translate-y-1/2 scale-75 place-items-center rounded-[8px] bg-[var(--card)] text-[var(--muted)] opacity-0 shadow-[0_1px_4px_rgba(14,21,37,0.12)] transition-[opacity,transform,background-color,color] duration-200 group-hover/item:scale-100 group-hover/item:opacity-100 hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)] focus-visible:scale-100 focus-visible:opacity-100"
               >
                 <TrashIcon size={14} />
-              </button>
+              </button> : null}
             </div>
           ))
         )}
       </div>
 
-      <div className="border-t border-[var(--border-subtle)] px-2.5 py-2">
+      {canCreate ? <div className="border-t border-[var(--border-subtle)] px-2.5 py-2">
         <input
           ref={fileRef}
           type="file"
@@ -113,7 +115,7 @@ export function MapList({ maps, activeId, onOpen, onCreate, onDelete, onImport, 
           <FileArrowUpIcon size={15} />
           {t('mindmap.list.import', 'Import from JSON')}
         </button>
-      </div>
+      </div> : null}
     </div>
   )
 }

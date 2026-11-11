@@ -329,9 +329,9 @@ export function importMap(raw: unknown): MindMap | null {
       collapsed: Boolean(node.collapsed),
       dx: Number(node.dx) || 0,
       dy: Number(node.dy) || 0,
-      ...(Number.isFinite(Number(node.x)) && Number.isFinite(Number(node.y)) && node.x !== undefined ? { x: Number(node.x), y: Number(node.y) } : {}),
+      ...(node.x != null && node.y != null && Number.isFinite(Number(node.x)) && Number.isFinite(Number(node.y)) ? { x: Number(node.x), y: Number(node.y) } : {}),
       ...(node.dir === 'right' || node.dir === 'left' || node.dir === 'up' || node.dir === 'down' ? { dir: node.dir } : {}),
-      ...(Number.isInteger(node.branch) && Number(node.branch) >= 0 ? { branch: Number(node.branch) } : {}),
+      ...(Number.isInteger(node.branch) && Number(node.branch) >= 0 && Number(node.branch) <= 7 ? { branch: Number(node.branch) } : {}),
       task: node.task && typeof node.task === 'object' ? node.task : null,
     }
   }
