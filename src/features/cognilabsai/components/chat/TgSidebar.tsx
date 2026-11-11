@@ -194,7 +194,7 @@ export function TgSidebar({
             </button>
           ) : null}
           {onDelete ? (
-            <button type="button" role="menuitem" onClick={() => { onDelete(menu.conv); setMenu(null) }} className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2 text-left text-[14px] font-medium text-[#e53935] hover:bg-[var(--tg-hover)]">
+            <button type="button" role="menuitem" onClick={() => { onDelete(menu.conv); setMenu(null) }} className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2 text-left text-[14px] font-medium text-[var(--danger)] hover:bg-[var(--tg-hover)]">
               <Trash2 size={18} /> {t('aichat.delete_chat', 'Delete chat')}
             </button>
           ) : null}

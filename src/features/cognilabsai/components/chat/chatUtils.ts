@@ -157,10 +157,10 @@ export function isPendingMessage(msg: MessageItem) {
   return msg.id > 1_000_000_000_000
 }
 
-/** Telegram-like avatar colours (top → bottom gradient), picked from the name. */
+/** Avatar colours (top → bottom gradient) from the site palette, picked from the name. */
 const AVATAR_GRADIENTS = [
-  ['#FF885E', '#FF516A'], ['#FFCD6A', '#FFA85C'], ['#82B1FF', '#665FFF'], ['#A0DE7E', '#54CB68'],
-  ['#53EDD6', '#28C9B7'], ['#72D5FD', '#2A9EF1'], ['#E0A2F3', '#D669ED'],
+  ['#6A8BFF', '#2B59FF'], ['#45C983', '#17924A'], ['#FFC15A', '#EA8A1A'], ['#FF8A80', '#E5484D'],
+  ['#5CCFF2', '#0EA5E9'], ['#45D2BE', '#14A394'], ['#F58BC1', '#E0458F'], ['#A3ACBE', '#64748B'],
 ]
 export function avatarGradient(seed: string) {
   let hash = 0

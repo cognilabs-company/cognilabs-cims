@@ -24,7 +24,7 @@ export function TgAvatar({ url, name, size = 54, online = false, ring = 'var(--t
       )}
       {online ? (
         <span
-          className="absolute right-[1px] bottom-[1px] rounded-full bg-[#0ac630]"
+          className="absolute right-[1px] bottom-[1px] rounded-full bg-[var(--success)]"
           style={{ width: Math.max(10, size * 0.26), height: Math.max(10, size * 0.26), boxShadow: `0 0 0 2px ${ring}` }}
         />
       ) : null}

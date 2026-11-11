@@ -187,7 +187,7 @@ export function TgInfoPanel(props: TgInfoPanelProps) {
               </button>
             ) : null}
             {props.onDelete ? (
-              <button type="button" onClick={props.onDelete} className="flex w-full items-center gap-6 rounded-[12px] px-3 py-3 text-left text-[15.5px] text-[#e53935] hover:bg-[var(--tg-hover)]">
+              <button type="button" onClick={props.onDelete} className="flex w-full items-center gap-6 rounded-[12px] px-3 py-3 text-left text-[15.5px] text-[var(--danger)] hover:bg-[var(--tg-hover)]">
                 <Trash2 size={22} className="shrink-0" /> {t('aichat.delete_chat', 'Delete chat')}
               </button>
             ) : null}
