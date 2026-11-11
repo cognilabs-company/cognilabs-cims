@@ -136,6 +136,10 @@ const UpdateTrackingPage = lazyPage(
   () => import('../features/updateTracking/pages/UpdateTrackingPage'),
   'UpdateTrackingPage',
 )
+const MindMapPage = lazyPage(
+  () => import('../features/mindmap/pages/MindMapPage'),
+  'MindMapPage',
+)
 const ProjectsListPage = lazyPage(
   () => import('../features/projects/pages/ProjectsListPage'),
   'ProjectsListPage',
@@ -421,6 +425,14 @@ export const router = createBrowserRouter([
                 element: (
                   <ProtectedRoute>
                     {withPageLoader(<ProjectsListPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'mindmap',
+                element: (
+                  <ProtectedRoute>
+                    {withPageLoader(<MindMapPage />)}
                   </ProtectedRoute>
                 ),
               },

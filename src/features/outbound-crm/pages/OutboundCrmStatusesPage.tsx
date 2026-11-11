@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { outboundCrmService } from '../../../shared/api/services/crm.service'
 import type { ManagementStatusRecord } from '../../../shared/api/types'
-import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
@@ -20,6 +19,15 @@ import { Label } from '../../../shared/ui/label'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../shared/ui/state-block'
 import { Textarea } from '../../../shared/ui/textarea'
+import { StatusDeleteDialog, type StatusDeleteApi } from '../../crm/components/StatusDeleteDialog'
+
+const outboundStatusApi: StatusDeleteApi = {
+  filterByStatus: (status) => outboundCrmService.filterByStatus(status),
+  archivedCustomers: () => outboundCrmService.archivedCustomers(),
+  patchCustomer: (id, formData) => outboundCrmService.patchCustomer(id, formData),
+  deleteStatus: (id) => outboundCrmService.deleteStatus(id),
+  deactivateStatus: (id) => outboundCrmService.updateStatus(id, { is_active: false }),
+}
 
 type StatusFormState = {
   name: string
@@ -116,7 +124,6 @@ export function OutboundCrmStatusesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { confirm } = useConfirm()
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [form, setForm] = useState<StatusFormState>(initialStatusForm)
@@ -124,6 +131,7 @@ export function OutboundCrmStatusesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const statusesQuery = useAsyncData(() => outboundCrmService.listStatuses(), [])
+  const [deletingStatus, setDeletingStatus] = useState<ManagementStatusRecord | null>(null)
   const statuses = useMemo(
     () => [...(statusesQuery.data ?? [])].sort((left, right) => left.order - right.order || left.display_name.localeCompare(right.display_name)),
     [statusesQuery.data],
@@ -204,32 +212,8 @@ export function OutboundCrmStatusesPage() {
     }
   }
 
-  async function handleDelete(item: ManagementStatusRecord) {
-    const approved = await confirm({
-      title: t('outbound_crm.statuses.confirm.delete_title', 'Delete {{name}}?', { name: item.display_name }),
-      description: item.is_system
-        ? t('outbound_crm.statuses.confirm.delete_system', 'System statuses may be protected by the backend.')
-        : t('outbound_crm.statuses.confirm.delete_description', 'The status will be removed from Outbound CRM.'),
-      confirmLabel: t('outbound_crm.statuses.actions.delete', 'Delete status'),
-      cancelLabel: t('common.cancel', 'Cancel'),
-      tone: 'danger',
-    })
-
-    if (!approved) {
-      return
-    }
-
-    try {
-      await outboundCrmService.deleteStatus(item.id)
-      await statusesQuery.refetch()
-      showToast({ title: t('outbound_crm.statuses.toast.deleted', 'Status deleted'), tone: 'success' })
-    } catch (error) {
-      showToast({
-        title: t('outbound_crm.statuses.errors.delete_failed', 'Delete failed'),
-        description: getApiErrorMessage(error),
-        tone: 'error',
-      })
-    }
+  function handleDelete(item: ManagementStatusRecord) {
+    setDeletingStatus(item)
   }
 
   if (statusesQuery.isLoading && !statusesQuery.data) {
@@ -350,7 +334,7 @@ export function OutboundCrmStatusesPage() {
                       <IconButton size="sm" label={t('common.edit', 'Edit')} onClick={() => openEditDialog(row)}>
                         <EditGlyph />
                       </IconButton>
-                      <IconButton size="sm" tone="danger" label={t('outbound_crm.statuses.actions.delete', 'Delete status')} onClick={() => void handleDelete(row)}>
+                      <IconButton size="sm" tone="danger" label={t('outbound_crm.statuses.actions.delete', 'Delete status')} onClick={() => handleDelete(row)}>
                         <TrashGlyph />
                       </IconButton>
                     </div>
@@ -479,6 +463,26 @@ export function OutboundCrmStatusesPage() {
           </div>
         </div>
       </Dialog>
+      {deletingStatus ? (
+        <StatusDeleteDialog
+          status={deletingStatus}
+          statuses={statuses}
+          api={outboundStatusApi}
+          onClose={() => setDeletingStatus(null)}
+          onDeactivated={() => {
+            const name = deletingStatus.display_name
+            setDeletingStatus(null)
+            void statusesQuery.refetch()
+            showToast({ title: t('status_delete.deactivated', 'Status made inactive'), description: name, tone: 'success' })
+          }}
+          onDeleted={(moved) => {
+            const name = deletingStatus.display_name
+            setDeletingStatus(null)
+            void statusesQuery.refetch()
+            showToast({ title: t('outbound_crm.statuses.toast.deleted', 'Status deleted'), description: moved ? `${name} · ${moved} → ✓` : name, tone: 'success' })
+          }}
+        />
+      ) : null}
     </section>
   )
 }

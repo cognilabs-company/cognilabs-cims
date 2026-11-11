@@ -1,7 +1,7 @@
 import type { LucideIcon, LucideProps } from 'lucide-react'
 import {
   Archive, Blocks, ChartPie, CalendarClock, CalendarCog, CalendarRange, Circle, CircleUserRound, Contact, CreditCard, FolderKanban,
-  Globe, Images, LayoutDashboard, ListChecks, ListTodo, LockKeyhole, LogOut, MessageCircleReply, MessagesSquare, Newspaper,
+  Globe, Images, LayoutDashboard, ListChecks, ListTodo, LockKeyhole, LogOut, MessageCircleReply, MessagesSquare, Network, Newspaper,
   Phone, Plug, ScrollText, ServerCog, Sparkles, SquareKanban, TrendingUp, TriangleAlert, UserCheck, UserCog, Users, Wallet,
 } from 'lucide-react'
 import { cn } from '../../shared/lib/cn'
@@ -27,6 +27,7 @@ const glyphs: Record<GlyphName, LucideIcon> = {
   auth: LockKeyhole,
   integrations: Blocks,
   projects: FolderKanban,
+  mindmap: Network,
   management: ServerCog,
   team: Users,
   'cognilabsai-chat': MessagesSquare,

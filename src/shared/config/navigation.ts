@@ -206,6 +206,15 @@ export const navigationItems: readonly NavigationItem[] = [
     defaultRedirect: false,
   },
   {
+    to: '/mindmap',
+    label: 'Mind map',
+    description: 'Mind maps: ideas, plans and branches; any node can become a project task.',
+    group: 'Work',
+    permissionKey: undefined,
+    sidebar: true,
+    defaultRedirect: false,
+  },
+  {
     to: '/ceo/ai',
     label: 'CIMS AI',
     description: 'CEO assistant chat with backend metadata and prompt shortcuts.',

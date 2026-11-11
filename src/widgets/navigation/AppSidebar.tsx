@@ -124,10 +124,30 @@ function consolidate(groups: SidebarGroup[], t: (key: string, fallback: string) 
     .filter((group) => group.items.length > 0)
 }
 
+/**
+ * Mind map is a frontend-only page (not in the backend navigation): show it right after Projects,
+ * or at the end of the menu when Projects is not there.
+ */
+function withMindMap(groups: SidebarGroup[], label: string): SidebarGroup[] {
+  if (groups.some((group) => group.items.some((item) => item.to === '/mindmap'))) return groups
+  const entry: SidebarItem = { to: '/mindmap', label, icon: 'mindmap' }
+  const index = groups.findIndex((group) => group.items.some((item) => item.to.startsWith('/projects')))
+  if (index === -1) {
+    if (!groups.length) return groups
+    const last = groups[groups.length - 1]
+    return [...groups.slice(0, -1), { ...last, items: [...last.items, entry] }]
+  }
+  return groups.map((group, position) => {
+    if (position !== index) return group
+    const at = group.items.findIndex((item) => item.to.startsWith('/projects'))
+    return { ...group, items: [...group.items.slice(0, at + 1), entry, ...group.items.slice(at + 1)] }
+  })
+}
+
 function navGroupOf(path: string): NavGroupKey {
   if (path === '/member/dashboard' || path === '/ceo/dashboard') return 'main'
   if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony')) return 'sales'
-  if (path.startsWith('/projects')) return 'work'
+  if (path.startsWith('/projects') || path.startsWith('/mindmap')) return 'work'
   if (path.startsWith('/cognilabsai') || path.startsWith('/ceo/ai')) return 'ai'
   if (['/ceo/website-stats', '/ceo/management', '/audit', '/ceo/workday-overrides'].some((prefix) => path.startsWith(prefix))) return 'system'
   return 'team'
@@ -195,7 +215,7 @@ export function AppSidebar() {
   // Without RBAC the old per-role list is used.
   const sidebarGroups = useMemo<SidebarGroup[]>(() => {
     if (access) {
-      return consolidate(access.navigation.map((group, index) => {
+      const groups = consolidate(access.navigation.map((group, index) => {
         const key = rbacGroupKeys[group.group.trim().toLowerCase()]
         return {
           key: `${group.group}-${index}`,
@@ -203,6 +223,7 @@ export function AppSidebar() {
           items: group.items.map((item) => ({ to: resolveNavRoute(item), label: item.display_name, icon: item.icon })),
         }
       }), t)
+      return withMindMap(groups, t('nav./mindmap.label', 'Mind map'))
     }
     const legacy = getAccessibleNavigation(user, { sidebarOnly: true })
     return consolidate(groupOrder

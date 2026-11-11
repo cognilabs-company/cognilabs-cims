@@ -18,6 +18,7 @@ export type GlyphName =
   | 'auth'
   | 'integrations'
   | 'projects'
+  | 'mindmap'
   | 'management'
   | 'team'
   | 'cognilabsai-chat'
@@ -36,6 +37,7 @@ export type GlyphName =
 /** One distinct icon per page, so no two sidebar items look the same. */
 export function getNavigationGlyphName(pathname: string): GlyphName {
   if (pathname.startsWith('/telephony')) return 'phone'
+  if (pathname.startsWith('/mindmap')) return 'mindmap'
   if (pathname.startsWith('/settings')) return 'management'
   if (pathname.startsWith('/salary')) return 'salary'
   if (pathname.startsWith('/member/attendance') || pathname.startsWith('/ceo/attendance')) return 'attendance'

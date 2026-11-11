@@ -17,7 +17,7 @@ import type {
 } from '../../../shared/api/types'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
-import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
+import { getIntlLocale, translateCurrent, translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import { formatShortDate } from '../../../shared/lib/format'
@@ -41,6 +41,18 @@ import { Textarea } from '../../../shared/ui/textarea'
 import type { Tone } from '../../../shared/ui/tone'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { StatusDeleteDialog, type StatusDeleteApi } from '../../crm/components/StatusDeleteDialog'
+import { crmService } from '../../../shared/api/services/crm.service'
+
+/** Main CRM customers + /management/statuses delete. */
+const crmStatusApi: StatusDeleteApi = {
+  filterByStatus: (status) => crmService.filterByStatus(status),
+  archivedCustomers: () => crmService.archivedCustomers(),
+  patchCustomer: (id, formData) => crmService.patchCustomer(id, formData),
+  deleteStatus: (id) => managementService.deleteStatus(id),
+  // PATCH is partial on the backend (CustomerStatusUpdate: every field optional).
+  deactivateStatus: (id) => managementService.updateStatus(id, { is_active: false } as ManagementStatusUpdatePayload),
+}
 
 type ManagementTab = 'pages' | 'statuses' | 'roles' | 'images'
 type ImageReferenceFilter = 'all' | 'referenced' | 'unreferenced'
@@ -345,6 +357,7 @@ export function CeoManagementPage() {
 
   const pagesQuery = useAsyncData(() => managementService.listPages(), [])
   const statusesQuery = useAsyncData(() => managementService.listStatuses(), [])
+  const [deletingStatus, setDeletingStatus] = useState<ManagementStatusRecord | null>(null)
   const rolesQuery = useAsyncData(() => managementService.listRoles(), [])
   const imagesQuery = useAsyncData(
     () => managementService.listImages({
@@ -771,35 +784,8 @@ export function CeoManagementPage() {
     }
   }
 
-  async function handleDeleteStatus(item: ManagementStatusRecord) {
-    const approved = await confirm({
-      title: `${lt('Delete status')} ${item.display_name}?`,
-      description: item.is_system
-        ? 'Backend system statusni o‘chirishga ruxsat bermasligi mumkin.'
-        : 'Status butunlay o‘chiriladi.',
-      confirmLabel: lt('Delete status'),
-      tone: 'danger',
-    })
-
-    if (!approved) {
-      return
-    }
-
-    try {
-      await managementService.deleteStatus(item.id)
-      await statusesQuery.refetch()
-      showToast({
-        title: lt('Status deleted'),
-        description: `${item.display_name} ${lt('removed.')}`,
-        tone: 'success',
-      })
-    } catch (error) {
-      showToast({
-        title: lt('Delete failed'),
-        description: getApiErrorMessage(error),
-        tone: 'error',
-      })
-    }
+  function handleDeleteStatus(item: ManagementStatusRecord) {
+    setDeletingStatus(item)
   }
 
   async function handleSubmitRole() {
@@ -1143,7 +1129,7 @@ export function CeoManagementPage() {
                         </IconButton>
                       ) : null}
                       {canDelete ? (
-                        <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => void handleDeleteStatus(row)}>
+                        <IconButton size="sm" tone="danger" label={lt('Delete')} onClick={() => handleDeleteStatus(row)}>
                           <TrashGlyph />
                         </IconButton>
                       ) : null}
@@ -1852,6 +1838,26 @@ export function CeoManagementPage() {
           ) : null}
         </div>
       </Dialog>
+      {deletingStatus ? (
+        <StatusDeleteDialog
+          status={deletingStatus}
+          statuses={statuses}
+          api={crmStatusApi}
+          onClose={() => setDeletingStatus(null)}
+          onDeactivated={() => {
+            const name = deletingStatus.display_name
+            setDeletingStatus(null)
+            void statusesQuery.refetch()
+            showToast({ title: translateCurrent('status_delete.deactivated', 'Status made inactive'), description: name, tone: 'success' })
+          }}
+          onDeleted={(moved) => {
+            const name = deletingStatus.display_name
+            setDeletingStatus(null)
+            void statusesQuery.refetch()
+            showToast({ title: lt('Status deleted'), description: moved ? `${name} · ${moved} → ✓` : name, tone: 'success' })
+          }}
+        />
+      ) : null}
     </section>
   )
 }

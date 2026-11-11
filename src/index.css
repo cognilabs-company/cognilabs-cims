@@ -73,6 +73,7 @@
 
   /* Border scale */
   --border:            #ECEEF3;
+  --mm-dot:            rgba(14, 21, 37, 0.16);
   --border-hover:      #E3E5EC;
   --border-focus:      #2B59FF;
   --border-subtle:     #F0F1F5;
@@ -224,6 +225,7 @@
   --on-inverse-muted:  #9AA1B5;
 
   --border:            #222A38;
+  --mm-dot:            rgba(255, 255, 255, 0.11);
   --border-hover:      #2D3647;
   --border-focus:      #5B7FFF;
   --border-subtle:     #1A2130;
