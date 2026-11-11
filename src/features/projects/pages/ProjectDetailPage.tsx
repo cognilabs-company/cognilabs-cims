@@ -24,6 +24,7 @@ import {
 } from '../../../shared/api/services/projects.service'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { projectGradient, projectHue, projectInitial } from '../lib/projectLook'
 import { Avatar } from '../components/Avatar'
 import { BoardFormModal } from '../components/BoardFormModal'
 import { BoardWorkspace } from '../components/BoardWorkspace'
@@ -505,8 +506,10 @@ export function ProjectDetailPage() {
   return (
     <>
       <div className="relative flex flex-col gap-[18px] page-enter h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] overflow-hidden">
-        {/* Background Project Header (Jira Style) - More compact on mobile */}
-        <div className="relative shrink-0 overflow-hidden rounded-[24px] bg-[var(--card)] p-[18px] sm:p-[22px]">
+        {/* Project banner in the project's own colour (same as its 3D block, card and sidebar tile) */}
+        <div className="kb-in relative isolate shrink-0 overflow-hidden rounded-[24px] p-[18px] text-white sm:p-[22px]" style={{ background: projectGradient(projectHue(project.project_name)) }}>
+          <span aria-hidden="true" className="absolute inset-0 -z-10 opacity-25" style={{ background: 'repeating-linear-gradient(60deg, rgba(255,255,255,0.2) 0 1px, transparent 1px 26px), repeating-linear-gradient(-60deg, rgba(255,255,255,0.2) 0 1px, transparent 1px 26px)' }} />
+          <span aria-hidden="true" className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgba(14,21,37,0.55)_0%,rgba(14,21,37,0.15)_70%)]" />
           <div className="flex flex-col gap-[18px]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 items-start gap-3 sm:gap-4">
@@ -514,29 +517,23 @@ export function ProjectDetailPage() {
                   <img
                     src={projectImage}
                     alt={project.project_name}
-                    className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-[14px] object-cover"
+                    className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-2 ring-white/40 sm:h-14 sm:w-14"
                   />
                 ) : (
-                  <div
-                    className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-[14px] text-lg sm:text-xl font-bold"
-                    style={{
-                      background: `hsl(${project.project_name.charCodeAt(0) * 7 % 360}, 78%, 94%)`,
-                      color: `hsl(${project.project_name.charCodeAt(0) * 7 % 360}, 58%, 30%)`,
-                    }}
-                  >
-                    {project.project_name.charAt(0).toUpperCase()}
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] bg-white/20 text-lg font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ring-1 ring-white/30 backdrop-blur-md sm:h-14 sm:w-14 sm:text-2xl">
+                    {projectInitial(project.project_name)}
                   </div>
                 )}
 
                 <div className="min-w-0">
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.03em] text-[var(--foreground)] truncate">
+                  <h1 className="truncate text-2xl font-bold tracking-[-0.03em] text-white drop-shadow-sm sm:text-3xl">
                     {project.project_name}
                   </h1>
                   {project.team || project.deadline || project.telegram_group_id ? (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {project.team ? <Badge variant="blue">{project.team.name}</Badge> : null}
-                      {project.deadline ? <Badge variant="outline">Deadline: {formatProjectDateTime(project.deadline)}</Badge> : null}
-                      {project.telegram_group_id ? <Badge variant="outline">Telegram connected</Badge> : null}
+                      {project.team ? <span className="rounded-full bg-white/18 px-2.5 py-1 text-[12px] font-semibold ring-1 ring-white/25 backdrop-blur-sm">{project.team.name}</span> : null}
+                      {project.deadline ? <span className="rounded-full bg-white/18 px-2.5 py-1 text-[12px] font-semibold ring-1 ring-white/25 backdrop-blur-sm">Deadline: {formatProjectDateTime(project.deadline)}</span> : null}
+                      {project.telegram_group_id ? <span className="rounded-full bg-white/18 px-2.5 py-1 text-[12px] font-semibold ring-1 ring-white/25 backdrop-blur-sm">Telegram connected</span> : null}
                     </div>
                   ) : null}
                 </div>
@@ -601,7 +598,7 @@ export function ProjectDetailPage() {
             </div>
 
             {/* Stats row - Hidden/compact on mobile */}
-            <div className="flex flex-wrap items-center gap-3 rounded-[18px] bg-[var(--muted-surface)] px-4 py-3 sm:gap-4">
+            <div className="flex flex-wrap items-center gap-3 rounded-[18px] bg-white/12 px-4 py-3 ring-1 ring-white/20 backdrop-blur-md sm:gap-4">
               <div className="flex items-center gap-2 sm:gap-3">
                 <Avatar
                   name={project.created_by.name}
@@ -610,29 +607,29 @@ export function ProjectDetailPage() {
                   size="sm"
                 />
                 <div className="hidden sm:block">
-                  <p className="text-[12.5px] font-semibold text-[var(--foreground)]">
+                  <p className="text-[12.5px] font-semibold text-white">
                     {project.created_by.name} {project.created_by.surname}
                   </p>
                 </div>
                 <div className="sm:hidden">
-                  <span className="block max-w-[100px] truncate text-xs font-semibold text-[var(--foreground)]">
+                  <span className="block max-w-[100px] truncate text-xs font-semibold text-white">
                     {project.created_by.name}
                   </span>
                 </div>
               </div>
 
-              <div className="h-4 w-px bg-[var(--border-hover)]" />
+              <div className="h-4 w-px bg-white/30" />
 
               <div>
-                <p className="text-xs font-medium text-[var(--muted-strong)] sm:text-[12.5px]">
+                <p className="text-xs font-medium text-white/80 sm:text-[12.5px]">
                   {formatProjectDate(project.created_at)}
                 </p>
               </div>
 
-              <div className="h-4 w-px bg-[var(--border-hover)]" />
+              <div className="h-4 w-px bg-white/30" />
 
               <div>
-                <p className="text-xs font-medium text-[var(--muted-strong)] sm:text-[12.5px]">
+                <p className="text-xs font-medium text-white/80 sm:text-[12.5px]">
                   {project.boards_count} <span className="hidden sm:inline">{lt('boards')}</span>
                 </p>
               </div>

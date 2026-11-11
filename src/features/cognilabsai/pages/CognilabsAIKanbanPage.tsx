@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { BellRing, Bot, CheckCheck, ChevronsLeftRight, Clock3, MessagesSquare, PauseCircle, Phone, RefreshCw, Search, Sparkles, UserCheck, X } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
-import { Badge } from '../../../shared/ui/badge'
-import { IconButton } from '../../../shared/ui/icon-button'
-import { Skeleton } from '../../../shared/ui/skeleton'
-import { Tabs, type TabItem } from '../../../shared/ui/tabs'
-import { toneDot, toneSurface, toneText, type Tone } from '../../../shared/ui/tone'
 import {
   cognilabsaiService,
   type ConversationItem,
@@ -16,24 +12,12 @@ import {
 
 type ChannelTab = 'all' | 'instagram' | 'telegram'
 
-type StageConfig = { key: string; label: string; tone: Tone }
+type StageConfig = { key: string; label: string; tone: string }
 
-const STAGE_PALETTE: Tone[] = [
-  'neutral',
-  'blue',
-  'blue',
-  'violet',
-  'violet',
-  'violet',
-  'warning',
-  'lime',
-  'success',
-  'warning',
-  'danger',
-  'success',
-  'blue',
-  'danger',
-  'lime',
+/** One colour per funnel step: cool → warm → green (won) → red (lost). */
+const STAGE_PALETTE: string[] = [
+  '#94a3b8', '#60a5fa', '#3b82f6', '#818cf8', '#a78bfa', '#c084fc',
+  '#f59e0b', '#a3e635', '#22c55e', '#fb923c', '#ef4444', '#2dd4bf', '#38bdf8', '#f43f5e', '#84cc16',
 ]
 
 const FALLBACK_STAGES: StageConfig[] = [
@@ -60,53 +44,47 @@ function buildStageConfigs(apiStages: Array<{ value: string; label: string; orde
 }
 
 
-function getChannelBadgeStyle(channel: string) {
-  if (channel === 'instagram') return { bg: 'bg-[var(--violet-text)]', label: 'IG' }
-  if (channel === 'telegram') return { bg: 'bg-[var(--primary)]', label: 'TG' }
-  return { bg: 'bg-[var(--success-text)]', label: 'WS' }
+const CHANNEL_DOT: Record<string, { color: string; label: string }> = {
+  instagram: { color: '#d946ef', label: 'Instagram' },
+  telegram: { color: '#2b9cf2', label: 'Telegram' },
 }
 
-function AvatarInitials({ name, url, size = 'sm' }: { name: string; url?: string | null; size?: 'sm' | 'xs' }) {
+function channelLook(channel: string) {
+  return CHANNEL_DOT[channel] ?? { color: '#22c55e', label: 'Website' }
+}
+
+function AvatarInitials({ name, url, size = 32 }: { name: string; url?: string | null; size?: number }) {
   const [failed, setFailed] = useState(false)
   const resolved = url ? cognilabsaiService.buildAvatarUrl(url) ?? resolveMediaUrl(url) : null
-  const sizeClass = size === 'xs' ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-[12px]'
-
   if (resolved && !failed) {
-    return (
-      <img
-        src={resolved}
-        alt={name}
-        onError={() => setFailed(true)}
-        className={cn(sizeClass, 'rounded-full object-cover shrink-0')}
-      />
-    )
+    return <img src={resolved} alt="" onError={() => setFailed(true)} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />
   }
-
   const initials = name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?'
-
+  let hash = 0
+  for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  const hue = 200 + (hash % 120)
   return (
-    <div className={cn(
-      sizeClass,
-      'rounded-full bg-[var(--blue-dim)] text-[var(--blue-text)] font-semibold flex items-center justify-center select-none shrink-0',
-    )}>
+    <span
+      className="grid shrink-0 place-items-center rounded-full text-[11px] font-bold text-white select-none"
+      style={{ width: size, height: size, background: `linear-gradient(150deg, hsl(${hue} 80% 62%), hsl(${hue + 24} 70% 48%))` }}
+    >
       {initials}
-    </div>
+    </span>
   )
 }
 
 function formatTime(iso: string | null): string {
   if (!iso) return ''
   const date = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
+  const diffMs = Date.now() - date.getTime()
   const diffH = Math.floor(diffMs / 3600000)
   if (diffH < 1) {
     const diffM = Math.floor(diffMs / 60000)
-    return diffM < 1 ? 'hozir' : `${diffM}d`
+    return diffM < 1 ? 'hozir' : `${diffM} daq`
   }
-  if (diffH < 24) return `${diffH}s`
+  if (diffH < 24) return `${diffH} soat`
   const diffD = Math.floor(diffH / 24)
-  if (diffD < 7) return `${diffD}k`
+  if (diffD < 7) return `${diffD} kun`
   return date.toLocaleDateString([], { day: '2-digit', month: '2-digit' })
 }
 
@@ -114,159 +92,131 @@ function getClientName(conv: ConversationItem): string {
   return conv.client_display_name || conv.client_full_name || conv.client_username || `#${conv.id}`
 }
 
-function KanbanCard({ conv, onClick, highlighted }: { conv: ConversationItem; onClick: () => void; highlighted?: boolean }) {
+/** Compact card: who, from where, how fresh, and the few facts that matter (phone, CRM, unread, follow-up). */
+function KanbanCard({ conv, onClick, highlighted, index }: { conv: ConversationItem; onClick: () => void; highlighted?: boolean; index: number }) {
   const name = getClientName(conv)
-  const ch = getChannelBadgeStyle(conv.channel)
-  const hasFollowUpScheduled = !conv.crm_customer_id && !conv.lead_phone_number && conv.ai_follow_up_due_at
-  const hasFollowUpSent = !conv.crm_customer_id && !conv.lead_phone_number && conv.ai_follow_up_sent_at
+  const channel = channelLook(conv.channel)
+  const followUpSent = !conv.crm_customer_id && !conv.lead_phone_number && conv.ai_follow_up_sent_at
+  const followUpDue = !conv.crm_customer_id && !conv.lead_phone_number && conv.ai_follow_up_due_at && !followUpSent
+  const subtitle = conv.ai_interest || conv.last_message_preview
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        'group w-full text-left rounded-[10px] border p-3.5 transition-[background-color,border-color,box-shadow] duration-200 active:scale-[0.99]',
-        highlighted
-          ? 'border-[var(--primary)] bg-[var(--blue-dim)] ring-2 ring-[var(--primary)]/30'
-          : 'border-[var(--border)] bg-[var(--surface)] shadow-[0_1px_2px_rgba(14,21,37,0.04)] hover:border-[var(--border-hover)] hover:shadow-[0_12px_26px_-18px_rgba(14,21,37,0.5)]',
-      )}
+      className={cn('kb-card kb-in group w-full rounded-[14px] p-2.5 text-left', highlighted && 'ring-2 ring-[#b8f15a]')}
+      style={{ animationDelay: `${Math.min(index * 35, 420)}ms` }}
     >
-      <div className="flex items-start gap-2.5 mb-2">
-        <div className="relative shrink-0 mt-0.5">
-          <AvatarInitials name={name} url={conv.client_avatar_url} size="sm" />
-          <div className={cn(
-            'absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full ring-2 ring-[var(--accent-soft)] text-[8px] font-bold text-white flex items-center justify-center',
-            ch.bg,
-          )}>
-            {ch.label[0]}
-          </div>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="text-[13.5px] font-semibold text-[var(--foreground)] truncate leading-snug tracking-[-0.01em]">{name}</p>
-          {conv.ai_interest && (
-            <p className="text-[11.5px] text-[var(--muted)] mt-0.5 truncate">{conv.ai_interest}</p>
-          )}
-        </div>
-
-        <span className="shrink-0 text-[11px] font-medium text-[var(--caption)]">{formatTime(conv.last_message_at)}</span>
-      </div>
-
-      {conv.last_message_preview && (
-        <p className="text-[12px] text-[var(--muted)] leading-relaxed line-clamp-2 mb-2.5">
-          {conv.last_message_preview}
-        </p>
-      )}
-
-      <div className="flex flex-wrap gap-1.5">
-        {conv.lead_phone_number && (
-          <Badge variant="success" size="sm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-            {conv.lead_phone_number}
-          </Badge>
-        )}
-        {conv.crm_customer_id && (
-          <Badge variant="blue" size="sm">
-            CRM
-          </Badge>
-        )}
-        {conv.unread_count > 0 && (
-          <span
-            data-ui-number="true"
-            className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-1.5 h-5 min-w-5 text-[10.5px] font-bold text-white"
-          >
-            {conv.unread_count > 99 ? '99+' : conv.unread_count}
+      <div className="flex items-center gap-2.5">
+        <span className="relative shrink-0">
+          <AvatarInitials name={name} url={conv.client_avatar_url} />
+          <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full ring-2 ring-[var(--kb-card)]" style={{ background: channel.color }} title={channel.label} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline gap-2">
+            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{name}</span>
+            <span className="shrink-0 text-[10.5px] font-medium text-[var(--caption)] tabular-nums">{formatTime(conv.last_message_at)}</span>
           </span>
-        )}
-        {hasFollowUpSent && (
-          <Badge variant="blue" size="sm">
-            AI Follow-up ✓
-          </Badge>
-        )}
-        {hasFollowUpScheduled && !hasFollowUpSent && (
-          <Badge variant="violet" size="sm">
-            ⏱ AI Follow-up
-          </Badge>
-        )}
-        {conv.pause_reason && (
-          <Badge variant="warning" size="sm">
-            {conv.pause_reason}
-          </Badge>
-        )}
+          {subtitle ? <span className="mt-0.5 block truncate text-[11.5px] text-[var(--muted)]">{subtitle}</span> : null}
+        </span>
       </div>
+
+      {conv.lead_phone_number || conv.crm_customer_id || conv.unread_count > 0 || followUpSent || followUpDue || conv.pause_reason ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          {conv.unread_count > 0 ? (
+            <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[var(--primary)] px-1.5 text-[10.5px] font-bold text-white tabular-nums">
+              <MessagesSquare size={10} />{conv.unread_count > 99 ? '99+' : conv.unread_count}
+            </span>
+          ) : null}
+          {conv.lead_phone_number ? (
+            <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[var(--success-dim)] px-1.5 text-[10.5px] font-semibold text-[var(--success-text)] tabular-nums">
+              <Phone size={10} />{conv.lead_phone_number}
+            </span>
+          ) : null}
+          {conv.crm_customer_id ? (
+            <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[var(--blue-dim)] px-1.5 text-[10.5px] font-semibold text-[var(--blue-text)]"><UserCheck size={10} />CRM</span>
+          ) : null}
+          {followUpSent ? (
+            <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[var(--violet-dim)] px-1.5 text-[10.5px] font-semibold text-[var(--violet-text)]"><CheckCheck size={10} />Follow-up</span>
+          ) : null}
+          {followUpDue ? (
+            <span className="inline-flex h-5 items-center gap-1 rounded-full bg-[var(--violet-dim)] px-1.5 text-[10.5px] font-semibold text-[var(--violet-text)]"><Clock3 size={10} />Follow-up</span>
+          ) : null}
+          {conv.pause_reason ? (
+            <span className="inline-flex h-5 max-w-full items-center gap-1 truncate rounded-full bg-[var(--warning-dim)] px-1.5 text-[10.5px] font-semibold text-[var(--warning-text)]"><PauseCircle size={10} />{conv.pause_reason}</span>
+          ) : null}
+        </div>
+      ) : null}
     </button>
   )
 }
 
 function KanbanColumn({
-  stage,
-  cards,
-  onCardClick,
-  highlightedConvId,
+  stage, cards, total, onCardClick, highlightedConvId, collapsed, onToggle,
 }: {
   stage: StageConfig
   cards: ConversationItem[]
+  total: number
   onCardClick: (id: number) => void
   highlightedConvId?: number | null
+  collapsed: boolean
+  onToggle: () => void
 }) {
-  return (
-    <div className="flex flex-col w-[296px] shrink-0 rounded-[14px] border border-[var(--border)] bg-[var(--muted-surface)] p-2.5 overflow-hidden h-full">
-      <div className={cn('flex shrink-0 items-center justify-between gap-2 h-10 rounded-[8px] px-3', toneSurface[stage.tone])}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={cn('h-2 w-2 rounded-full shrink-0', toneDot[stage.tone])} />
-          <h3 className={cn('text-[12.5px] font-semibold tracking-[-0.01em] truncate', toneText[stage.tone])}>
-            {stage.label}
-          </h3>
-        </div>
-        <span
-          data-ui-number="true"
-          className={cn(
-            'shrink-0 inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[6px] bg-[var(--surface)] px-1.5 font-mono text-[11px] font-bold',
-            toneText[stage.tone],
-          )}
-        >
-          {cards.length}
-        </span>
-      </div>
+  const share = total > 0 ? Math.round((cards.length / total) * 100) : 0
 
-      <div className="flex-1 overflow-y-auto overscroll-contain mt-2.5 space-y-2 custom-scrollbar-visible min-h-0">
+  if (collapsed) {
+    // Empty / folded stage: a slim strip so the board stays compact.
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        title={stage.label}
+        className="kb-col group flex h-full w-[46px] shrink-0 flex-col items-center gap-3 rounded-[16px] py-3 transition-[width] duration-300"
+      >
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: stage.tone, boxShadow: `0 0 12px ${stage.tone}` }} />
+        <span className="rounded-full bg-white/10 px-1.5 text-[11px] font-bold text-[var(--kb-muted)] tabular-nums">{cards.length}</span>
+        <span className="truncate text-[12px] font-semibold text-[var(--kb-muted)] group-hover:text-white" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>{stage.label}</span>
+      </button>
+    )
+  }
+
+  return (
+    <section className="kb-col flex h-full w-[276px] shrink-0 flex-col overflow-hidden rounded-[18px]">
+      <span className="h-[3px] w-full shrink-0" style={{ background: `linear-gradient(90deg, ${stage.tone}, transparent)` }} />
+      <header className="flex shrink-0 items-center gap-2 px-3 pt-2.5 pb-2">
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: stage.tone, boxShadow: `0 0 10px ${stage.tone}` }} />
+        <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-white">{stage.label}</h3>
+        <span className="text-[11px] font-semibold text-[var(--kb-faint)] tabular-nums">{share}%</span>
+        <span className="grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-[11.5px] font-bold text-[#0d1426] tabular-nums" style={{ background: stage.tone }}>{cards.length}</span>
+        <button type="button" onClick={onToggle} title="Yig'ish" aria-label="Yig'ish" className="grid h-6 w-6 place-items-center rounded-full text-[var(--kb-faint)] transition-colors hover:bg-white/10 hover:text-white">
+          <ChevronsLeftRight size={13} />
+        </button>
+      </header>
+      <div className="kb-scroll min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 pb-2">
         {cards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[var(--border-hover)] py-10 text-center">
-            <span className="text-2xl text-[var(--border-hover)]">—</span>
-            <p className="text-[11.5px] text-[var(--caption)] mt-1">Bo'sh</p>
-          </div>
-        ) : (
-          cards.map((conv) => (
-            <KanbanCard key={conv.id} conv={conv} onClick={() => onCardClick(conv.id)} highlighted={highlightedConvId === conv.id} />
-          ))
-        )}
+          <p className="kb-ghost rounded-[14px] py-8 text-center text-[12px]">Bo'sh</p>
+        ) : cards.map((conv, index) => (
+          <KanbanCard key={conv.id} conv={conv} index={index} onClick={() => onCardClick(conv.id)} highlighted={highlightedConvId === conv.id} />
+        ))}
       </div>
-    </div>
+    </section>
   )
 }
 
 function KanbanBoardSkeleton() {
   return (
-    <div className="flex-1 overflow-hidden pb-[18px]">
-      <div className="flex gap-[18px] px-7 h-full">
-        {[0, 1, 2, 3, 4].map((column) => (
-          <div key={column} className="flex flex-col w-[296px] shrink-0 rounded-[14px] border border-[var(--border)] bg-[var(--muted-surface)] p-2.5">
-            <Skeleton rounded="lg" className="h-10 w-full" />
-            <div className="mt-3 space-y-2.5">
-              {[0, 1, 2].map((row) => (
-                <Skeleton key={row} rounded="xl" className="h-[112px] w-full" />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="flex h-full gap-3 p-4">
+      {[0, 1, 2, 3, 4].map((column) => (
+        <div key={column} className="kb-col flex w-[276px] shrink-0 flex-col gap-2 rounded-[18px] p-2.5">
+          <span className="block h-6 w-2/3 rounded-full bg-white/10" />
+          {[0, 1, 2].map((row) => <span key={row} className="block h-[68px] rounded-[14px] bg-white/[0.07]" />)}
+        </div>
+      ))}
     </div>
   )
 }
 
-const CHANNEL_TABS: TabItem<ChannelTab>[] = [
+const CHANNEL_TABS: Array<{ value: ChannelTab; label: string }> = [
   { value: 'all', label: 'Barchasi' },
   { value: 'instagram', label: 'Instagram' },
   { value: 'telegram', label: 'Telegram' },
@@ -281,6 +231,9 @@ export function CognilabsAIKanbanPage() {
   const [wsKey, setWsKey] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [stages, setStages] = useState<StageConfig[]>(FALLBACK_STAGES)
+  const [query, setQuery] = useState('')
+  // Columns the user folded / unfolded by hand (empty ones start folded).
+  const [folded, setFolded] = useState<Record<string, boolean>>({})
 
   const highlightedConvId = useMemo(() => {
     const raw = searchParams.get('highlight')
@@ -295,6 +248,8 @@ export function CognilabsAIKanbanPage() {
 
   const boardRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef({ isDown: false, startX: 0, scrollLeft: 0, didDrag: false })
+  // The board element only exists once the first load is done — attach drag-to-scroll then.
+  const boardReady = !(isLoading && conversations.length === 0)
 
   useEffect(() => {
     const el = boardRef.current
@@ -343,7 +298,7 @@ export function CognilabsAIKanbanPage() {
       el.removeEventListener('mouseleave', onMouseLeave)
       el.removeEventListener('mousemove', onMouseMove)
     }
-  }, [])
+  }, [boardReady])
 
   const fetchAll = useCallback(async () => {
     setIsLoading(true)
@@ -453,9 +408,12 @@ export function CognilabsAIKanbanPage() {
   }, [wsKey])
 
   const filtered = useMemo(() => {
-    if (channelTab === 'all') return conversations
-    return conversations.filter((c) => c.channel === channelTab)
-  }, [conversations, channelTab])
+    const byChannel = channelTab === 'all' ? conversations : conversations.filter((c) => c.channel === channelTab)
+    const needle = query.trim().toLowerCase()
+    if (!needle) return byChannel
+    return byChannel.filter((c) => [getClientName(c), c.client_username, c.lead_phone_number, c.ai_interest, c.last_message_preview]
+      .some((value) => value?.toLowerCase().includes(needle)))
+  }, [conversations, channelTab, query])
 
   const byStage = useMemo(() => {
     const map = new Map<string, ConversationItem[]>()
@@ -511,87 +469,117 @@ export function CognilabsAIKanbanPage() {
 
   const totalActive = filtered.filter((c) => c.ai_enabled).length
   const totalLeads = filtered.filter((c) => c.ai_stage === 'lead_created').length
+  const totalUnread = filtered.reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0)
+  const conversion = filtered.length > 0 ? Math.round((totalLeads / filtered.length) * 100) : 0
 
   function handleCardClick(conversationId: number) {
     navigate(`/cognilabsai/chat?conversation_id=${conversationId}&return_to=kanban`)
   }
 
-  return (
-    <div className="flex flex-col h-full -mx-7 -mt-[26px] -mb-10" style={{ height: 'var(--page-h-bleed)' }}>
-      {/* Top bar */}
-      <div className="shrink-0 flex items-center justify-between gap-4 px-7 pt-[26px] pb-[18px] flex-wrap">
-        <div className="flex items-center gap-5 flex-wrap">
-          <div>
-            <h2 className="text-[22px] font-bold text-[var(--foreground)] tracking-[-0.03em]">AI Kanban</h2>
-            {lastRefresh && (
-              <p className="text-[11.5px] text-[var(--caption)]">
-                Yangilandi: {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            )}
-          </div>
+  const isFolded = (stage: StageConfig) => folded[stage.key] ?? (byStage.get(stage.key)?.length ?? 0) === 0
+  const kpis = [
+    { key: 'all', label: 'Suhbatlar', value: filtered.length, icon: MessagesSquare, color: '#60a5fa' },
+    { key: 'ai', label: 'AI javob bermoqda', value: totalActive, icon: Bot, color: '#a78bfa' },
+    { key: 'lead', label: 'Lead yaratildi', value: totalLeads, hint: `${conversion}%`, icon: Sparkles, color: '#22c55e' },
+    { key: 'unread', label: "O'qilmagan", value: totalUnread, icon: BellRing, color: '#f59e0b' },
+  ]
 
-          {/* Stats */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex items-center gap-2 h-9 rounded-full bg-[var(--card)] px-3.5">
-              <span className="h-2 w-2 rounded-full bg-[var(--success-text)]" />
-              <span className="text-[12.5px] text-[var(--muted)]">AI faol: <strong className="text-[var(--foreground)]">{totalActive}</strong></span>
-            </div>
-            <div className="inline-flex items-center gap-2 h-9 rounded-full bg-[var(--card)] px-3.5">
-              <span className="h-2 w-2 rounded-full bg-[var(--success-text)]" />
-              <span className="text-[12.5px] text-[var(--muted)]">Leadlar: <strong className="text-[var(--success-text)]">{totalLeads}</strong></span>
-            </div>
-            <div className="inline-flex items-center gap-2 h-9 rounded-full bg-[var(--card)] px-3.5">
-              <span className="h-2 w-2 rounded-full bg-[var(--primary)]" />
-              <span className="text-[12.5px] text-[var(--muted)]">Jami: <strong className="text-[var(--foreground)]">{filtered.length}</strong></span>
-            </div>
-          </div>
+  return (
+    <div className="-mx-7 -mt-[26px] -mb-10 flex flex-col" style={{ height: 'var(--page-h-bleed)' }}>
+      {/* Header */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-3 px-7 pt-[22px] pb-3">
+        <div className="min-w-0">
+          <h2 className="text-[22px] font-bold tracking-[-0.03em] text-[var(--foreground)]">AI Kanban</h2>
+          <p className="flex items-center gap-1.5 text-[12px] text-[var(--muted)]">
+            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--success)] opacity-60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--success)]" /></span>
+            Jonli{lastRefresh ? ` · yangilandi ${lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {/* Channel filter */}
-          <Tabs items={CHANNEL_TABS} value={channelTab} onChange={setChannelTab} className="bg-[var(--card)]" />
-
-          <IconButton
-            label="Yangilash"
-            onClick={() => void fetchAll()}
-            disabled={isLoading}
-            className="bg-[var(--card)] hover:bg-[var(--input-surface-hover)]"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn('h-4 w-4', isLoading && 'animate-spin')}>
-              <path d="M1 4v6h6M23 20v-6h-6"/>
-              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-            </svg>
-          </IconButton>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <label className="relative flex h-10 w-[240px] items-center">
+            <Search size={15} className="pointer-events-none absolute left-3 text-[var(--muted)]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Ism, telefon yoki xabar"
+              aria-label="Qidirish"
+              className="h-10 w-full rounded-[12px] bg-[var(--surface)] pr-8 pl-9 text-[13px] text-[var(--foreground)] ring-1 ring-[var(--border)] placeholder:text-[var(--caption)] focus:ring-2 focus:ring-[var(--primary)] focus:outline-none"
+            />
+            {query ? <button type="button" onClick={() => setQuery('')} aria-label="Tozalash" className="absolute right-2 grid h-6 w-6 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--input-surface)]"><X size={13} /></button> : null}
+          </label>
+          <div role="radiogroup" aria-label="Kanal" className="inline-flex h-10 rounded-[12px] bg-[var(--surface)] p-1 ring-1 ring-[var(--border)]">
+            {CHANNEL_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                role="radio"
+                aria-checked={channelTab === tab.value}
+                onClick={() => setChannelTab(tab.value)}
+                className={cn('rounded-[9px] px-3 text-[12.5px] font-semibold transition-colors', channelTab === tab.value ? 'bg-[#0d1426] text-white dark:bg-white dark:text-[#0d1426]' : 'text-[var(--muted-strong)] hover:text-[var(--foreground)]')}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => void fetchAll()} disabled={isLoading} aria-label="Yangilash" title="Yangilash" className="grid h-10 w-10 place-items-center rounded-[12px] bg-[var(--surface)] text-[var(--muted-strong)] ring-1 ring-[var(--border)] transition-colors hover:text-[var(--primary)] disabled:opacity-50">
+            <RefreshCw size={16} className={cn(isLoading && 'animate-spin')} />
+          </button>
         </div>
       </div>
 
-      {/* Kanban board */}
-      {isLoading && conversations.length === 0 ? (
-        <KanbanBoardSkeleton />
-      ) : (
-        <div
-          ref={boardRef}
-          className="flex-1 overflow-x-auto overflow-y-hidden pb-[18px]"
-          onClickCapture={(e) => {
-            if (dragRef.current.didDrag) {
-              e.stopPropagation()
-              dragRef.current.didDrag = false
-            }
-          }}
-        >
-          <div className="stagger-in flex gap-4 px-7 h-full" style={{ width: 'max-content' }}>
-            {orderedStages.map((stage) => (
-              <KanbanColumn
-                key={stage.key}
-                stage={stage}
-                cards={byStage.get(stage.key) ?? []}
-                onCardClick={handleCardClick}
-                highlightedConvId={highlightedConvId}
-              />
-            ))}
+      {/* Key numbers + funnel at a glance */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-7 pb-3">
+        {kpis.map(({ key, label, value, hint, icon: Icon, color }) => (
+          <span key={key} className="inline-flex h-9 items-center gap-2 rounded-full bg-[var(--surface)] pr-3.5 pl-1.5 ring-1 ring-[var(--border)]">
+            <span className="grid h-6 w-6 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}><Icon size={13} /></span>
+            <span className="text-[12.5px] text-[var(--muted)]">{label}</span>
+            <strong className="text-[13px] font-bold text-[var(--foreground)] tabular-nums">{value}</strong>
+            {hint ? <span className="text-[11.5px] font-semibold text-[var(--success-text)]">{hint}</span> : null}
+          </span>
+        ))}
+        {filtered.length > 0 ? (
+          <div className="ml-auto flex h-2.5 min-w-[220px] flex-1 basis-[260px] overflow-hidden rounded-full bg-[var(--track)] sm:max-w-[420px]" title="Bosqichlar bo'yicha taqsimot">
+            {orderedStages.map((stage) => {
+              const count = byStage.get(stage.key)?.length ?? 0
+              return count ? <span key={stage.key} title={`${stage.label}: ${count}`} className="h-full transition-[width] duration-500" style={{ width: `${(count / filtered.length) * 100}%`, background: stage.tone }} /> : null
+            })}
           </div>
-        </div>
-      )}
+        ) : null}
+      </div>
+
+      {/* Board on its own canvas */}
+      <div className="kb-surface mx-7 mb-[18px] min-h-0 flex-1 overflow-hidden rounded-[24px]">
+        {isLoading && conversations.length === 0 ? (
+          <KanbanBoardSkeleton />
+        ) : (
+          <div
+            ref={boardRef}
+            className="kb-scroll h-full overflow-x-auto overflow-y-hidden"
+            onClickCapture={(e) => {
+              if (dragRef.current.didDrag) {
+                e.stopPropagation()
+                dragRef.current.didDrag = false
+              }
+            }}
+          >
+            <div className="flex h-full gap-3 p-4" style={{ width: 'max-content' }}>
+              {orderedStages.map((stage) => (
+                <KanbanColumn
+                  key={stage.key}
+                  stage={stage}
+                  cards={byStage.get(stage.key) ?? []}
+                  total={filtered.length}
+                  onCardClick={handleCardClick}
+                  highlightedConvId={highlightedConvId}
+                  collapsed={isFolded(stage)}
+                  onToggle={() => setFolded((current) => ({ ...current, [stage.key]: !isFolded(stage) }))}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

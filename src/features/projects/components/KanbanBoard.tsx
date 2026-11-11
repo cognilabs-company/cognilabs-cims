@@ -233,8 +233,8 @@ export function KanbanBoard({
       onDragEnd={onDragEnd}
     >
       {/* Horizontal + vertical scroll canvas — Trello-like */}
-      <div className="h-full w-full overflow-x-auto overflow-y-auto horizontal-scrollbar-visible">
-        <div className="stagger-in flex min-h-full items-start gap-4 p-[18px] sm:p-[22px]">
+      <div className="kb-surface kb-scroll h-full w-full overflow-auto rounded-[24px]">
+        <div className="stagger-in flex min-h-full items-start gap-3 p-4 sm:p-5">
           <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
             {localColumns.map((col) => (
               <div key={col.id} className="shrink-0 self-start">
@@ -259,7 +259,7 @@ export function KanbanBoard({
             <button
               type="button"
               onClick={onAddColumn}
-              className="flex h-11 w-[296px] shrink-0 items-center justify-center gap-2 self-start rounded-[12px] border border-dashed border-[var(--border-hover)] bg-transparent px-4 text-[13px] font-semibold text-[var(--muted)] transition-colors hover:border-[var(--primary)] hover:bg-[var(--blue-dim)] hover:text-[var(--primary)]"
+              className="kb-ghost flex h-11 w-[284px] shrink-0 items-center justify-center gap-2 self-start rounded-[16px] px-4 text-[13px] font-semibold"
             >
               <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M8 3v10M3 8h10" strokeLinecap="round" />

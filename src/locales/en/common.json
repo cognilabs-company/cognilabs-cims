@@ -1781,5 +1781,19 @@
   "telephony.targets.toggle": "Forward to this number",
   "telephony.targets.seconds": "{{count}} s",
   "telephony.targets.count": "Forwarded to {{count}} numbers",
-  "telephony.recording_play": "Listen to the recording"
+  "telephony.recording_play": "Listen to the recording",
+  "projects.map.eyebrow": "Project map",
+  "projects.map.title": "Projects",
+  "projects.map.empty": "No projects yet",
+  "projects.map.hint": "Taller block — more boards and people. Hover to see, click to open.",
+  "projects.map.boards": "Boards",
+  "projects.map.people": "People",
+  "projects.map.projects": "Projects",
+  "projects.map.overdue": "Overdue",
+  "projects.map.overview": "Overview",
+  "projects.map.open": "Open project",
+  "projects.map.tip": "A red dot means the deadline has passed, amber — it is close.",
+  "projects.card.overdue": "Overdue",
+  "projects.card.soon": "Due soon",
+  "projects.card.no_members": "No members yet"
 }

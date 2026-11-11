@@ -1781,5 +1781,19 @@
   "telephony.targets.toggle": "Переадресовывать на этот номер",
   "telephony.targets.seconds": "{{count}} с",
   "telephony.targets.count": "Переадресация на {{count}} номера",
-  "telephony.recording_play": "Прослушать запись"
+  "telephony.recording_play": "Прослушать запись",
+  "projects.map.eyebrow": "Карта проектов",
+  "projects.map.title": "Проекты",
+  "projects.map.empty": "Проектов пока нет",
+  "projects.map.hint": "Чем выше блок — тем больше досок и людей. Наведите, чтобы увидеть, нажмите, чтобы открыть.",
+  "projects.map.boards": "Доски",
+  "projects.map.people": "Люди",
+  "projects.map.projects": "Проекты",
+  "projects.map.overdue": "Просрочено",
+  "projects.map.overview": "Обзор",
+  "projects.map.open": "Открыть проект",
+  "projects.map.tip": "Красная точка — срок прошёл, жёлтая — срок близко.",
+  "projects.card.overdue": "Просрочен",
+  "projects.card.soon": "Скоро срок",
+  "projects.card.no_members": "Участников пока нет"
 }

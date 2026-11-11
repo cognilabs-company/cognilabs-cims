@@ -73,10 +73,6 @@ const SettingsPage = lazyPage(
   () => import('../features/settings/pages/SettingsPage'),
   'SettingsPage',
 )
-const CeoTeamUpdatesPage = lazyPage(
-  () => import('../features/ceo/pages/CeoTeamUpdatesPage'),
-  'CeoTeamUpdatesPage',
-)
 const CeoUsersPage = lazyPage(() => import('../features/ceo/pages/CeoUsersPage'), 'CeoUsersPage')
 const CeoWorkdayOverridesPage = lazyPage(
   () => import('../features/ceo/pages/CeoWorkdayOverridesPage'),
@@ -279,14 +275,6 @@ export const router = createBrowserRouter([
               {
                 path: 'ceo/management',
                 element: <RedirectKeepingQuery to="/settings" tab="management" />,
-              },
-              {
-                path: 'ceo/team-updates',
-                element: (
-                  <ProtectedRoute permissionKey="ceo">
-                    {withPageLoader(<CeoTeamUpdatesPage />)}
-                  </ProtectedRoute>
-                ),
               },
               {
                 path: 'ceo/workday-overrides',

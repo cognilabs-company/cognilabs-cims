@@ -1781,5 +1781,19 @@
   "telephony.targets.toggle": "Shu raqamga yo'naltirish",
   "telephony.targets.seconds": "{{count}} s",
   "telephony.targets.count": "{{count}} ta raqamga yo'naltiriladi",
-  "telephony.recording_play": "Yozuvni tinglash"
+  "telephony.recording_play": "Yozuvni tinglash",
+  "projects.map.eyebrow": "Loyihalar xaritasi",
+  "projects.map.title": "Loyihalar",
+  "projects.map.empty": "Hali loyihalar yo'q",
+  "projects.map.hint": "Blok qanchalik baland bo'lsa — doska va odam shuncha ko'p. Ustiga olib boring — ko'rasiz, bosing — ochiladi.",
+  "projects.map.boards": "Doskalar",
+  "projects.map.people": "Odamlar",
+  "projects.map.projects": "Loyihalar",
+  "projects.map.overdue": "Muddati o'tgan",
+  "projects.map.overview": "Umumiy holat",
+  "projects.map.open": "Loyihani ochish",
+  "projects.map.tip": "Qizil nuqta — muddat o'tgan, sariq — muddat yaqin.",
+  "projects.card.overdue": "Muddati o'tgan",
+  "projects.card.soon": "Muddat yaqin",
+  "projects.card.no_members": "Hali a'zolar yo'q"
 }

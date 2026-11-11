@@ -15,6 +15,8 @@ import { useToast } from '../../../shared/toast/useToast'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { Avatar } from '../components/Avatar'
 import { ProjectCard, ProjectCardSkeleton } from '../components/ProjectCard'
+import { ProjectMap3D } from '../components/ProjectMap3D'
+import { Plus, UsersRound } from 'lucide-react'
 import { ProjectFormModal } from '../components/ProjectFormModal'
 import { TeamManagementModal } from '../components/TeamManagementModal'
 import { formatProjectDateTime, getPriorityConfig, isDueDateOverdue, isDueDateSoon } from '../lib/format'
@@ -332,125 +334,63 @@ export function ProjectsListPage() {
   return (
     <>
       <div className="page-enter flex flex-col gap-[18px]">
-        <Card>
-          <div className="flex flex-col gap-[18px]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="ui-section-title text-[var(--foreground)]">{lt('Members')}</h2>
+        <ProjectMap3D
+          projects={filteredProjects}
+          loading={projectsQuery.isLoading || isSelectedMemberProjectsLoading}
+          actions={canManageProjects ? (
+            <>
+              <button type="button" onClick={() => setIsTeamsOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-[11px] bg-white/10 px-3 text-[13px] font-semibold text-white ring-1 ring-white/15 transition-colors hover:bg-white/15">
+                <UsersRound size={15} /> {lt('Teams')}
+              </button>
+              {canCreateProject ? (
+                <button type="button" onClick={() => setIsCreateOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-[11px] bg-[#b8f15a] px-3.5 text-[13px] font-semibold text-[#0e1525] shadow-[0_8px_20px_-10px_rgba(184,241,90,0.9)] transition hover:brightness-105">
+                  <Plus size={15} strokeWidth={2.4} /> {lt('New project')}
+                </button>
+              ) : null}
+            </>
+          ) : null}
+        />
 
-              <div className="flex items-center gap-2">
-                {selectedMemberId !== null ? (
-                  <Button variant="ghost" size="sm" onClick={() => selectMember(null)}>
-                    {lt('Clear member filter')}
-                  </Button>
-                ) : null}
-
-                {canManageProjects ? (
-                  <>
-                    <Button variant="secondary" size="md" onClick={() => setIsTeamsOpen(true)}>
-                      {lt('Teams')}
-                    </Button>
-                    {canCreateProject ? (
-                      <Button
-                        variant="primary"
-                        size="md"
-                        onClick={() => setIsCreateOpen(true)}
-                        leftIcon={(
-                          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                          </svg>
-                        )}
-                      >
-                        {lt('New project')}
-                      </Button>
-                    ) : null}
-                  </>
-                ) : undefined}
-              </div>
-            </div>
-
-            {membersPanelLoading ? (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <Skeleton key={index} rounded="xl" className="h-[84px]" />
-                ))}
-              </div>
-            ) : members.length === 0 ? (
-              <p className="rounded-[18px] bg-[var(--muted-surface)] px-4 py-5 text-sm text-[var(--muted)]">
-                {lt('Members are not available yet.')}
-              </p>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {/* People: a compact strip of chips (click to see one person's projects and tasks) */}
+        {membersPanelLoading ? (
+          <div className="flex gap-2 overflow-hidden">
+            {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} rounded="full" className="h-11 w-40 shrink-0" />)}
+          </div>
+        ) : members.length > 0 ? (
+          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-1">
+            <button
+              type="button"
+              onClick={() => selectMember(null)}
+              className={cn(
+                'inline-flex h-11 shrink-0 items-center gap-2 rounded-full pr-3 pl-1.5 text-[13px] font-semibold transition-all duration-200',
+                selectedMemberId === null ? 'bg-[var(--surface-inverse)] text-white shadow-[var(--elev-md)] dark:bg-white dark:text-[#0e1525]' : 'bg-[var(--surface)] text-[var(--muted-strong)] ring-1 ring-[var(--border)] hover:-translate-y-0.5 hover:text-[var(--foreground)]',
+              )}
+            >
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--primary)] text-white"><UsersRound size={15} /></span>
+              {lt('All members')}
+              <span className="tabular-nums opacity-70">{total}</span>
+            </button>
+            {members.map((member) => {
+              const projectCount = memberProjectCounts.get(member.id) ?? 0
+              const isSelected = member.id === selectedMemberId
+              return (
                 <button
+                  key={member.id}
                   type="button"
-                  onClick={() => selectMember(null)}
+                  onClick={() => selectMember(isSelected ? null : member.id)}
                   className={cn(
-                    'flex min-h-[84px] items-center justify-between gap-4 rounded-[18px] px-4 py-4 text-left transition-colors duration-150',
-                    selectedMemberId === null
-                      ? 'bg-[var(--blue-dim)]'
-                      : 'bg-[var(--accent-soft)] hover:bg-[var(--input-surface-hover)]',
+                    'inline-flex h-11 shrink-0 items-center gap-2 rounded-full pr-3 pl-1.5 text-[13px] font-semibold transition-all duration-200',
+                    isSelected ? 'bg-[var(--surface-inverse)] text-white shadow-[var(--elev-md)] dark:bg-white dark:text-[#0e1525]' : 'bg-[var(--surface)] text-[var(--muted-strong)] ring-1 ring-[var(--border)] hover:-translate-y-0.5 hover:text-[var(--foreground)]',
                   )}
                 >
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--foreground)]">{lt('All members')}</p>
-                  </div>
-                  <span
-                    data-ui-number="true"
-                    className={cn(
-                      'shrink-0 text-[17px] font-bold tabular-nums',
-                      selectedMemberId === null ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]',
-                    )}
-                  >
-                    {total}
-                  </span>
+                  <Avatar name={member.name} surname={member.surname} imageUrl={member.profile_image} size="sm" />
+                  <span className="max-w-[140px] truncate">{member.name} {member.surname}</span>
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--input-surface)] px-1.5 text-[11px] text-[var(--muted-strong)] tabular-nums">{projectCount}</span>
                 </button>
-
-                {members.map((member) => {
-                  const projectCount = memberProjectCounts.get(member.id) ?? 0
-                  const isSelected = member.id === selectedMemberId
-
-                  return (
-                    <button
-                      key={member.id}
-                      type="button"
-                      onClick={() => selectMember(member.id)}
-                      className={cn(
-                        'flex min-h-[84px] items-center justify-between gap-4 rounded-[18px] px-4 py-4 text-left transition-colors duration-150',
-                        isSelected
-                          ? 'bg-[var(--blue-dim)]'
-                          : 'bg-[var(--accent-soft)] hover:bg-[var(--input-surface-hover)]',
-                      )}
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <Avatar
-                          name={member.name}
-                          surname={member.surname}
-                          imageUrl={member.profile_image}
-                          size="md"
-                        />
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-                            {member.name} {member.surname}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span
-                        data-ui-number="true"
-                        className={cn(
-                          'shrink-0 text-[17px] font-bold tabular-nums',
-                          isSelected ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]',
-                        )}
-                      >
-                        {projectCount}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+              )
+            })}
           </div>
-        </Card>
+        ) : null}
 
         {selectedMember ? (
           <Card>

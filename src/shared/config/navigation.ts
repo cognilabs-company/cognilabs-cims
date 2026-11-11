@@ -151,15 +151,6 @@ export const navigationItems: readonly NavigationItem[] = [
     defaultRedirect: false,
   },
   {
-    to: '/ceo/team-updates',
-    label: 'Team Monthly Updates',
-    description: 'Monitor employee update activity by month.',
-    group: 'CEO',
-    permissionKey: 'ceo',
-    sidebar: true,
-    defaultRedirect: false,
-  },
-  {
     to: '/ceo/workday-overrides',
     label: 'Workday Overrides',
     description: 'Create holidays and short working days for update tracking.',

@@ -20,6 +20,7 @@ import { Dialog } from '../../shared/ui/dialog'
 import { Input } from '../../shared/ui/input'
 import { BrandMark, BrandWordmark } from '../../shared/ui/brand-logo'
 import { PROJECTS_NAVIGATION_UPDATED_EVENT } from '../../features/projects/lib/navigationSync'
+import { projectGradient, projectHue, projectInitial } from '../../features/projects/lib/projectLook'
 import { NavGlyph } from './NavGlyph'
 import { getNavigationGlyphName, type GlyphName } from './navGlyphMap'
 import { OPEN_PROFILE_EVENT } from './profileEvents'
@@ -95,7 +96,7 @@ type SidebarItem = { to: string; label: string; icon?: string | null }
 type SidebarGroup = { key: string; label: string; items: SidebarItem[] }
 
 /** Pages taken out of the menu. */
-const hiddenRoutes = new Set(['/ceo/website-stats', '/cognilabsai/media-contexts'])
+const hiddenRoutes = new Set(['/ceo/website-stats', '/cognilabsai/media-contexts', '/ceo/team-updates'])
 /** Pages shown as one menu item (tabs on the merged page); the item sits where the last of them was. */
 const mergedRoutes: Array<{ to: string; from: string[]; label: [string, string] }> = [
   { to: '/settings', from: ['/cognilabsai/integrations', '/ceo/management'], label: ['nav./settings.label', 'Settings'] },
@@ -442,45 +443,57 @@ export function AppSidebar() {
             </button>
           </div>
 
-          {isProjectsExpanded && (
-            <div className="my-0.5 ml-[19px] flex flex-col gap-0.5 border-l border-[var(--sb-line)] pl-2">
-              {projectsQuery.isLoading ? (
-                Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-8 rounded-[10px]" />)
-              ) : projectsQuery.isError ? (
-                <button type="button" onClick={() => void projectsQuery.refetch()} className={cn(sidebarSubItem, 'text-[var(--danger-text)] hover:bg-[var(--danger-dim)]')}>
-                  <span className="truncate">{t('shell.failed_load_projects')} — {t('shell.retry')}</span>
-                </button>
-              ) : sidebarProjects.length === 0 ? (
-                <div className={cn(sidebarSubItem, 'text-[var(--sb-label)]')}>
-                  <span className="truncate">{t('shell.no_projects')}</span>
-                </div>
-              ) : (
-                sidebarProjects.map((project) => {
-                  const isActiveProject =
-                    location.pathname === `/projects/${project.id}` ||
-                    location.pathname.startsWith(`/projects/${project.id}/`)
-                  const openCount = openTaskCountByProject.get(project.id) ?? 0
+          {/* Projects open below with a smooth height animation; each one with its own colour tile */}
+          <div className="sb-collapse" data-open={isProjectsExpanded}>
+            <div>
+              <div className="mt-1 mb-1.5 ml-1 flex flex-col gap-0.5 rounded-[14px] bg-[var(--sb-hover)] p-1.5">
+                {projectsQuery.isLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-9 rounded-[10px]" />)
+                ) : projectsQuery.isError ? (
+                  <button type="button" onClick={() => void projectsQuery.refetch()} className={cn(sidebarSubItem, 'text-[var(--danger-text)] hover:bg-[var(--danger-dim)]')}>
+                    <span className="truncate">{t('shell.failed_load_projects')} — {t('shell.retry')}</span>
+                  </button>
+                ) : sidebarProjects.length === 0 ? (
+                  <div className={cn(sidebarSubItem, 'text-[var(--sb-label)]')}>
+                    <span className="truncate">{t('shell.no_projects')}</span>
+                  </div>
+                ) : (
+                  sidebarProjects.map((project, index) => {
+                    const isActiveProject =
+                      location.pathname === `/projects/${project.id}` ||
+                      location.pathname.startsWith(`/projects/${project.id}/`)
+                    const openCount = openTaskCountByProject.get(project.id) ?? 0
+                    const hue = projectHue(project.project_name)
 
-                  return (
-                    <NavLink
-                      key={project.id}
-                      to={`/projects/${project.id}`}
-                      className={({ isActive }) => cn(
-                        sidebarSubItem,
-                        isActive || isActiveProject ? 'bg-[var(--blue-dim)] font-semibold text-[var(--primary)]' : 'text-[var(--sb-text)] hover:bg-[var(--sb-hover)] hover:text-[var(--sb-strong)]',
-                      )}
-                    >
-                      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', isActiveProject ? 'bg-[var(--primary)]' : 'bg-current opacity-50')} />
-                      <span className="flex-1 truncate text-left">{project.project_name}</span>
-                      {openCount > 0 && (
-                        <span className="ml-auto rounded-full bg-[var(--sb-hover)] px-[7px] py-px text-[11px] font-semibold tabular-nums text-[var(--sb-text)]">{openCount}</span>
-                      )}
-                    </NavLink>
-                  )
-                })
-              )}
+                    return (
+                      <NavLink
+                        key={project.id}
+                        to={`/projects/${project.id}`}
+                        style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
+                        className={({ isActive }) => cn(
+                          'kb-in group/proj flex w-full items-center gap-2.5 rounded-[10px] px-1.5 py-1.5 text-[13px] leading-5 font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35',
+                          isActive || isActiveProject
+                            ? 'bg-[var(--sb-bg)] font-semibold text-[var(--sb-strong)] shadow-[0_6px_16px_-10px_rgba(14,21,37,0.45)]'
+                            : 'text-[var(--sb-text)] hover:bg-[var(--sb-bg)] hover:text-[var(--sb-strong)]',
+                        )}
+                      >
+                        <span
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] text-[11px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] transition-transform duration-300 group-hover/proj:scale-110 group-hover/proj:-rotate-6"
+                          style={{ background: projectGradient(hue) }}
+                        >
+                          {projectInitial(project.project_name)}
+                        </span>
+                        <span className="flex-1 truncate text-left">{project.project_name}</span>
+                        {openCount > 0 ? (
+                          <span className="ml-auto rounded-full px-[7px] py-px text-[11px] font-semibold tabular-nums text-white" style={{ background: `hsl(${hue} 70% 52%)` }}>{openCount}</span>
+                        ) : null}
+                      </NavLink>
+                    )
+                  })
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )
     }

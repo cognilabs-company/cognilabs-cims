@@ -125,11 +125,8 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, isOverlay, canEdit
       onKeyDown={handleKeyDown}
       tabIndex={canEdit ? attributes.tabIndex : 0}
       className={cn(
-        'group relative flex cursor-pointer select-none flex-col gap-2.5 overflow-hidden rounded-[10px] border border-[var(--border)] p-3 pl-3.5',
-        'bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(14,21,37,0.04)]',
-        'transition-[box-shadow,border-color,opacity] duration-200',
-        'hover:border-[var(--border-hover)] hover:shadow-[0_12px_26px_-18px_rgba(14,21,37,0.5)]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#F6F7FA]',
+        'kb-card group relative flex cursor-pointer select-none flex-col gap-2.5 overflow-hidden rounded-[14px] p-3 pl-3.5 text-[var(--foreground)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8f15a]',
         isOverlay && 'rotate-[2deg] scale-[1.03] border-[var(--blue-border)] shadow-[0_26px_50px_-20px_rgba(14,21,37,0.55)]',
       )}
     >

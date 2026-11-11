@@ -949,6 +949,167 @@ input:-webkit-autofill:focus {
   .mac-pop, .mac-ring { animation: none; }
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Kanban surface — AI kanban and project boards. The board sits on its
+   own deep-navy canvas (dot grid + glows) so columns and cards pop.
+   ────────────────────────────────────────────────────────────── */
+.kb-surface {
+  --kb-text: #ffffff;
+  --kb-muted: rgba(255, 255, 255, 0.62);
+  --kb-faint: rgba(255, 255, 255, 0.38);
+  --kb-col: rgba(255, 255, 255, 0.055);
+  --kb-col-hover: rgba(255, 255, 255, 0.08);
+  --kb-line: rgba(255, 255, 255, 0.09);
+  --kb-card: #ffffff;
+  --kb-card-line: rgba(14, 21, 37, 0.06);
+  position: relative;
+  isolation: isolate;
+  color: var(--kb-text);
+  background:
+    radial-gradient(70% 60% at 0% 0%, rgba(43, 89, 255, 0.28) 0%, rgba(43, 89, 255, 0) 60%),
+    radial-gradient(60% 55% at 100% 100%, rgba(184, 241, 90, 0.12) 0%, rgba(184, 241, 90, 0) 60%),
+    radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.4px) 0 0 / 20px 20px,
+    #0d1426;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 22px 48px -30px rgba(14, 21, 37, 0.75);
+}
+:root[data-theme="dark"] .kb-surface {
+  --kb-card: #172034;
+  --kb-card-line: rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(70% 60% at 0% 0%, rgba(76, 116, 255, 0.2) 0%, rgba(76, 116, 255, 0) 60%),
+    radial-gradient(60% 55% at 100% 100%, rgba(184, 241, 90, 0.08) 0%, rgba(184, 241, 90, 0) 60%),
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1.4px) 0 0 / 20px 20px,
+    #080c16;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.kb-col {
+  background: var(--kb-col);
+  border: 1px solid var(--kb-line);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+.kb-col:hover { background: var(--kb-col-hover); }
+.kb-card {
+  background: var(--kb-card);
+  border: 1px solid var(--kb-card-line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 10px 22px -18px rgba(0, 0, 0, 0.7);
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease, border-color 200ms ease;
+}
+.kb-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 18px 34px -20px rgba(0, 0, 0, 0.85); }
+.kb-ghost {
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  color: var(--kb-muted);
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+.kb-ghost:hover { background: rgba(255, 255, 255, 0.08); color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.kb-scroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.22) transparent; }
+.kb-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.kb-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+
+@keyframes kb-card-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.kb-in { animation: kb-card-in 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+@media (prefers-reduced-motion: reduce) { .kb-in { animation: none; } .kb-card:hover { transform: none; } }
+
+/* ──────────────────────────────────────────────────────────────
+   Projects 3D map — each project is an isometric block on a floating
+   plane; height grows with boards/members. Pure CSS 3D.
+   ────────────────────────────────────────────────────────────── */
+@property --pm-h { syntax: '<length>'; inherits: true; initial-value: 0px; }
+.pm-scene {
+  position: relative;
+  overflow: hidden;
+  perspective: 1500px;
+  background:
+    radial-gradient(60% 70% at 50% 60%, rgba(43, 89, 255, 0.3) 0%, rgba(43, 89, 255, 0) 70%),
+    radial-gradient(40% 40% at 90% 10%, rgba(184, 241, 90, 0.14) 0%, rgba(184, 241, 90, 0) 70%),
+    #0b1222;
+}
+:root[data-theme="dark"] .pm-scene {
+  background:
+    radial-gradient(60% 70% at 50% 60%, rgba(76, 116, 255, 0.24) 0%, rgba(76, 116, 255, 0) 70%),
+    radial-gradient(40% 40% at 90% 10%, rgba(184, 241, 90, 0.1) 0%, rgba(184, 241, 90, 0) 70%),
+    #070b15;
+}
+.pm-plane {
+  --pm-scale: 1;
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  display: grid;
+  transform-style: preserve-3d;
+  transform: translate(-50%, -50%) scale(var(--pm-scale)) rotateX(56deg) rotateZ(-45deg);
+  animation: pm-sway 14s ease-in-out infinite;
+}
+.pm-plane::before {
+  content: "";
+  position: absolute;
+  inset: -34px;
+  border-radius: 28px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 24px 24px,
+    rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 80px rgba(43, 89, 255, 0.25);
+  transform: translateZ(-1px);
+}
+@media (max-width: 1100px) { .pm-plane { --pm-scale: 0.82; } }
+@media (max-width: 640px) { .pm-plane { --pm-scale: 0.6; } }
+.pm-cell { position: relative; transform-style: preserve-3d; }
+.pm-block {
+  position: absolute;
+  inset: 12%;
+  transform-style: preserve-3d;
+  cursor: pointer;
+  outline: none;
+  transition: transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: pm-rise 1100ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.pm-block:hover, .pm-block:focus-visible, .pm-block[data-active="true"] { transform: translateZ(16px); }
+.pm-face { position: absolute; }
+.pm-top {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  transform: translateZ(var(--pm-h));
+  background: linear-gradient(135deg, hsl(var(--pm-hue) 92% 72%), hsl(var(--pm-hue) 78% 56%));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  color: #fff;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: filter 250ms ease, box-shadow 250ms ease;
+}
+.pm-block:hover .pm-top, .pm-block[data-active="true"] .pm-top { filter: brightness(1.12); box-shadow: inset 0 0 0 2px #fff, 0 0 28px hsl(var(--pm-hue) 90% 65%); }
+.pm-south { left: 0; top: 100%; width: 100%; height: var(--pm-h); transform-origin: top; transform: rotateX(90deg); background: linear-gradient(hsl(var(--pm-hue) 70% 48%), hsl(var(--pm-hue) 70% 36%)); }
+.pm-west { right: 100%; top: 0; width: var(--pm-h); height: 100%; transform-origin: right; transform: rotateY(90deg); background: linear-gradient(90deg, hsl(var(--pm-hue) 62% 26%), hsl(var(--pm-hue) 65% 38%)); }
+.pm-shadow { inset: -10%; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), transparent); transform: translateZ(0.5px); }
+.pm-flag { position: absolute; top: 6%; right: 6%; width: 9px; height: 9px; border-radius: 9999px; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
+@keyframes pm-rise { from { --pm-h: 0px; opacity: 0; } 30% { opacity: 1; } }
+@keyframes pm-sway {
+  0%, 100% { transform: translate(-50%, -50%) scale(var(--pm-scale)) rotateX(56deg) rotateZ(-45deg); }
+  50% { transform: translate(-50%, -51.5%) scale(var(--pm-scale)) rotateX(54deg) rotateZ(-41deg); }
+}
+@media (prefers-reduced-motion: reduce) { .pm-plane, .pm-block { animation: none; } }
+
+/* Project cards: a light 3D tilt that follows the pointer */
+.pc-tilt {
+  --rx: 0deg;
+  --ry: 0deg;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 300ms ease;
+}
+.pc-tilt:hover { box-shadow: 0 26px 50px -30px rgba(14, 21, 37, 0.55); }
+@media (prefers-reduced-motion: reduce) { .pc-tilt { transform: none; } }
+
+/* Smooth open / close of nested sidebar lists */
+.sb-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 320ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.sb-collapse[data-open="true"] { grid-template-rows: 1fr; }
+.sb-collapse > * { min-height: 0; overflow: hidden; }
+
 /* Checkbox tick (shared/ui/checkbox). --checkbox-on recolours it (e.g. locked RBAC ticks). */
 .ui-checkbox:checked {
   border-color: transparent;
