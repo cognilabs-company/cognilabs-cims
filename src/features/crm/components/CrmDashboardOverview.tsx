@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
+import { Percent, Rocket, UserPlus, UsersRound } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import type { ConversionRateResponse, CustomerStatsResponse, CustomerSummary } from '../../../shared/api/types'
 import { BarChartCard, type BarDatum } from '../../../shared/ui/charts/bar-chart-card'
 import { FunnelStages, type FunnelStage } from '../../../shared/ui/charts/funnel-stages'
 import { GaugeDonut, type GaugeSegment } from '../../../shared/ui/charts/gauge-donut'
 import { Leaderboard, type LeaderboardEntry } from '../../../shared/ui/charts/leaderboard'
-import { Sparkline } from '../../../shared/ui/charts/sparkline'
 import { TaskList, type TaskRow } from '../../../shared/ui/charts/task-list'
-import { StatCard } from '../../../shared/ui/stat-card'
+import { MetricTile } from './MetricTile'
 import { resolveTone, toneByIndex, toneSurface, toneText } from '../../../shared/ui/tone'
 import { cn } from '../../../shared/lib/cn'
 import { getCustomerDisplayName } from '../../../shared/lib/customer-display'
@@ -18,6 +18,10 @@ type CrmDashboardOverviewProps = {
   customers: CustomerSummary[]
   stats: CustomerStatsResponse | null
   conversion: ConversionRateResponse | null
+  /** Leads created since midnight (from the full list, not the selected period). */
+  createdToday: number
+  /** Opens the customer list, optionally with a query such as "period=today". */
+  onOpenList: (query?: string) => void
   period: PeriodKey
   onPeriodChange: (period: PeriodKey) => void
   onOpenCustomer: (customerId: number) => void
@@ -60,35 +64,6 @@ function IconTrophy() {
   )
 }
 
-function IconUsers() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
-      <path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6" />
-    </svg>
-  )
-}
-
-function IconUserPlus() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M2.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6" />
-    </svg>
-  )
-}
-
-function IconTarget() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="1" />
-    </svg>
-  )
-}
-
 function IconAdd() {
   return (
     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
@@ -115,6 +90,8 @@ export function CrmDashboardOverview({
   customers,
   stats,
   conversion,
+  createdToday,
+  onOpenList,
   period,
   onPeriodChange,
   onOpenCustomer,
@@ -130,21 +107,9 @@ export function CrmDashboardOverview({
   const continuing = stats?.continuing ?? 0
   const finished = stats?.finished ?? 0
   const rejected = stats?.rejected ?? 0
-  const conversionRate = conversion?.conversion_rate ?? 0
-
-  const createdTrend = useMemo(() => {
-    const buckets = new Map<string, number>()
-    for (const customer of customers) {
-      const created = customer.created_at ? new Date(customer.created_at) : null
-      if (!created || Number.isNaN(created.getTime())) continue
-      const key = created.toISOString().slice(0, 10)
-      buckets.set(key, (buckets.get(key) ?? 0) + 1)
-    }
-    return [...buckets.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .slice(-14)
-      .map(([, count]) => count)
-  }, [customers])
+  // Outbound CRM has no conversion endpoint: fall back to started projects / all customers.
+  const conversionRate = conversion?.conversion_rate ?? (total > 0 ? (projectStarted / total) * 100 : 0)
+  const conversionStarted = conversion?.project_started_count ?? projectStarted
 
   const statusBars = useMemo<BarDatum[]>(() => {
     const dict = stats?.status_dict ?? {}
@@ -289,42 +254,39 @@ export function CrmDashboardOverview({
 
   return (
     <div className="flex flex-col gap-[18px]">
-      <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
-        <StatCard
-          solid
-          label={t('customers.stats.total', 'Total customers')}
+      {/* Headline numbers (moved here from the Customers page) — each opens the list */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile
+          label={t('customers.list_page.total', 'Customers')}
           value={total}
-          icon={<IconUsers />}
-          hint={t('customers.stats.active_now', 'Active in the pipeline')}
-          delta={continuing > 0 ? t('customers.stats.delta_continuing', '{{count}} continuing', { count: continuing }) : undefined}
+          caption={t('customers.list_page.total_hint', 'All records in the CRM')}
+          icon={UsersRound}
+          accent="#2B59FF"
+          onClick={() => onOpenList()}
         />
-        <StatCard
-          label={t('customers.stats.need_to_call', 'Need to call')}
-          value={needToCall}
-          icon={<IconUserPlus />}
-          iconTone="blue"
-          hint={t('customers.stats.contacted_hint', 'Contacted: {{count}}', { count: contacted })}
-          delta={needToCall > 0 ? t('customers.stats.delta_of_total', '{{value}}% of total', { value: Math.round((needToCall / (total || 1)) * 100) }) : undefined}
-          deltaTone="neutral"
-          onOpen={() => onFocusStatus('need_to_call')}
+        <MetricTile
+          label={t('customers.list_page.added_today', 'Added today')}
+          value={createdToday}
+          caption={t('customers.list_page.added_today_hint', 'New leads since midnight')}
+          icon={UserPlus}
+          accent="#17924A"
+          onClick={() => onOpenList('period=today')}
         />
-        <StatCard
+        <MetricTile
+          label={t('customers.stats.conversion', 'Conversion')}
+          value={conversionRate}
+          format={(value) => `${value.toFixed(1)}%`}
+          caption={t('customers.list_page.conversion_hint', 'Projects started: {{count}}', { count: conversionStarted })}
+          icon={Percent}
+          accent="#7C5CFC"
+        />
+        <MetricTile
           label={t('customers.stats.project_started', 'Project started')}
           value={projectStarted}
-          icon={<IconTrophy />}
-          iconTone="warning"
-          hint={t('customers.stats.finished_hint', 'Finished: {{count}}', { count: finished })}
-          delta={rejected > 0 ? t('customers.stats.delta_rejected', '{{count}} rejected', { count: rejected }) : undefined}
-          deltaTone="danger"
-          onOpen={() => onFocusStatus('project_started')}
-        />
-        <StatCard
-          label={t('customers.stats.conversion', 'Conversion')}
-          value={`${conversionRate.toFixed(1)}%`}
-          icon={<IconTarget />}
-          iconTone="lime"
-          footer={createdTrend.length > 1 ? <Sparkline points={createdTrend} /> : undefined}
-          className={createdTrend.length > 1 ? 'overflow-hidden pb-0' : undefined}
+          caption={t('customers.stats.finished_hint', 'Finished: {{count}}', { count: finished })}
+          icon={Rocket}
+          accent="#E8590C"
+          onClick={() => onFocusStatus('project_started')}
         />
       </div>
 

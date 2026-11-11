@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ceoService, type CeoUserRecord, type CompanyPaymentRecord } from '../../../shared/api/services/ceo.service'
 import { projectsService, type UserOpenCardRecord } from '../../../shared/api/services/projects.service'
 import { crmService } from '../../../shared/api/services/crm.service'
-import { PhoneCall, Percent, Timer, UserPlus, Wallet } from 'lucide-react'
+import { FileWarning, NotebookPen, PhoneCall, Percent, Timer, TriangleAlert, UserPlus, UsersRound, Wallet } from 'lucide-react'
 import type { PaymentItem } from '../../../shared/api/types'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -14,9 +14,8 @@ import { Badge } from '../../../shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../shared/ui/card'
 import { ActionsMenu } from '../../../shared/ui/actions-menu'
 import { Dialog } from '../../../shared/ui/dialog'
-import { StatCard } from '../../../shared/ui/stat-card'
+import { InsightCard } from '../../../shared/ui/insight-card'
 import type { TabItem } from '../../../shared/ui/tabs'
-import type { Tone } from '../../../shared/ui/tone'
 import { BarChartCard, type BarDatum } from '../../../shared/ui/charts/bar-chart-card'
 import { FunnelStages, type FunnelStage } from '../../../shared/ui/charts/funnel-stages'
 import { GaugeDonut, type GaugeSegment } from '../../../shared/ui/charts/gauge-donut'
@@ -71,6 +70,10 @@ function getTaskPath(task: UserOpenCardRecord) {
   return `/projects/${task.project_id}?board=${task.board_id}&card=${task.id}`
 }
 
+function percentOf(part: number, total: number) {
+  return total > 0 ? Math.round((part / total) * 100) : 0
+}
+
 function shortLabel(value: string) {
   const trimmed = value.trim()
 
@@ -91,7 +94,6 @@ function initialsOf(value: string) {
     .toUpperCase() || '—'
 }
 
-const statPanelClassName = 'min-h-[118px] rounded-[18px] bg-[var(--accent-soft)] p-4 ring-0'
 
 const glyphPaths = {
   send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
@@ -616,14 +618,17 @@ export function CeoDashboardPage() {
   const todayDelta = (() => {
     if (!chartsSummary) return null
     const { today, yesterday } = chartsSummary
-    if (yesterday === 0) return today > 0 ? { text: t('ceo.kpi.new_today', 'new today'), tone: 'success' as const } : null
+    if (yesterday === 0) return today > 0 ? { short: t('ceo.kpi.new_today', 'new today'), tone: 'success' as const } : null
     const change = Math.round(((today - yesterday) / yesterday) * 100)
     return {
-      text: t('ceo.kpi.vs_yesterday', '{{value}} vs yesterday', { value: `${change > 0 ? '+' : ''}${change}%` }),
+      short: `${change > 0 ? '+' : ''}${change}%`,
       tone: change > 0 ? ('success' as const) : change < 0 ? ('danger' as const) : ('neutral' as const),
     }
   })()
   const pendingPaymentsCount = payments.length - paidPaymentsCount
+  const needToCallShare = crmStats && crmStats.total_customers > 0 ? percentOf(crmStats.need_to_call, crmStats.total_customers) : null
+  const onTimeShare = hasSla ? percentOf(slaOnTime, slaTotal) : null
+  const paidShare = payments.length > 0 ? percentOf(paidPaymentsCount, payments.length) : null
 
   const leadsBreakdownTabs = useMemo<TabItem<'status' | 'platform'>[]>(
     () => [
@@ -848,59 +853,74 @@ export function CeoDashboardPage() {
         />
       </div>
 
-      {/* The four numbers a CEO checks first */}
+      {/* The four numbers a CEO checks first — same card design as the Customers page */}
       <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
-        <StatCard
-          solid
+        <InsightCard
           label={t('ceo.kpi.today_leads', "Today's leads")}
           value={chartsSummary ? chartsSummary.today : '—'}
-          icon={<UserPlus />}
-          delta={todayDelta?.text}
-          deltaTone={todayDelta?.tone}
-          hint={chartsSummary ? t('ceo.kpi.yesterday', 'Yesterday: {{count}}', { count: chartsSummary.yesterday }) : undefined}
-          onOpen={() => navigate('/crm/customers?period=today')}
-          openLabel={t('ceo.kpi.open_today', "Open today's leads")}
+          icon={UserPlus}
+          color="#2B59FF"
+          badge={todayDelta?.short}
+          badgeTone={todayDelta?.tone ?? 'neutral'}
+          facts={chartsSummary ? [
+            { text: t('ceo.kpi.yesterday', 'Yesterday: {{count}}', { count: chartsSummary.yesterday }) },
+            { text: t('ceo.kpi.last_30_days', '30 days: {{count}}', { count: chartsSummary.total_period_leads }) },
+          ] : undefined}
+          onClick={() => navigate('/crm/customers?period=today')}
+          actionLabel={t('ceo.kpi.open_today', "Open today's leads")}
         />
-        <StatCard
+        <InsightCard
           label={t('ceo.kpi.need_to_call', 'Waiting for a call')}
           value={crmStats ? crmStats.need_to_call : '—'}
-          icon={<PhoneCall />}
-          iconTone="warning"
-          delta={crmStats && crmStats.total_customers > 0 ? t('ceo.kpi.of_all_leads', '{{value}}% of leads', { value: Math.round((crmStats.need_to_call / crmStats.total_customers) * 100) }) : undefined}
-          deltaTone="neutral"
-          hint={crmStats ? t('ceo.kpi.contacted', 'Contacted: {{count}}', { count: crmStats.contacted }) : undefined}
-          onOpen={() => navigate('/crm/customers?status=need_to_call')}
-          openLabel={t('ceo.kpi.open_need_to_call', 'Open leads waiting for a call')}
+          icon={PhoneCall}
+          color="#E8590C"
+          badge={needToCallShare !== null ? t('ceo.kpi.of_all_leads', '{{value}}% of leads', { value: needToCallShare }) : undefined}
+          progress={needToCallShare}
+          facts={crmStats ? [
+            { text: t('ceo.kpi.contacted', 'Contacted: {{count}}', { count: crmStats.contacted }), tone: 'success' },
+            { text: t('ceo.kpi.project_started', 'Projects: {{count}}', { count: crmStats.project_started }) },
+          ] : undefined}
+          onClick={() => navigate('/crm/customers?status=need_to_call')}
+          actionLabel={t('ceo.kpi.open_need_to_call', 'Open leads waiting for a call')}
         />
         {hasSla ? (
-          <StatCard
+          <InsightCard
             label={t('ceo.sla.average', 'Average response')}
             value={slaAverage}
-            icon={<Timer />}
-            iconTone="violet"
-            hint={t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit })}
-            delta={t('ceo.overview.delta_on_time', '{{value}}% on time', { value: Math.round((slaOnTime / slaTotal) * 100) })}
-            deltaTone={slaOnTime / slaTotal >= 0.8 ? 'success' : 'danger'}
+            icon={Timer}
+            color="#7C5CFC"
+            progress={onTimeShare}
+            facts={[
+              { text: t('ceo.overview.delta_on_time', '{{value}}% on time', { value: onTimeShare ?? 0 }), tone: (onTimeShare ?? 0) >= 80 ? 'success' : 'neutral' },
+              { text: t('ceo.kpi.late_count', 'Late: {{count}}', { count: slaLate }), tone: slaLate > 0 ? 'danger' : 'neutral' },
+              { text: t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit }) },
+            ]}
           />
         ) : (
-          <StatCard
+          <InsightCard
             label={t('ceo.kpi.conversion', 'Conversion · 30 days')}
-            value={chartsSummary ? `${Number(chartsSummary.conversion_rate_percent ?? 0).toFixed(1)}%` : '—'}
-            icon={<Percent />}
-            iconTone="success"
-            hint={chartsSummary ? t('ceo.kpi.projects_started', 'Projects started: {{count}}', { count: chartsSummary.project_started }) : undefined}
+            value={chartsSummary ? Number(chartsSummary.conversion_rate_percent ?? 0) : '—'}
+            format={(value) => `${value.toFixed(1)}%`}
+            icon={Percent}
+            color="#17924A"
+            progress={chartsSummary ? Number(chartsSummary.conversion_rate_percent ?? 0) : null}
+            facts={chartsSummary ? [{ text: t('ceo.kpi.projects_started', 'Projects started: {{count}}', { count: chartsSummary.project_started }), tone: 'success' }] : undefined}
           />
         )}
-        <StatCard
+        <InsightCard
           label={t('ceo.kpi.pending_payments', 'Payments due')}
           value={formatCompactNumber(pendingPaymentsAmount)}
-          icon={<Wallet />}
-          iconTone="danger"
-          delta={pendingPaymentsCount > 0 ? t('ceo.kpi.payments_count', '{{count}} unpaid', { count: pendingPaymentsCount }) : undefined}
-          deltaTone="danger"
-          hint={t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount })}
-          onOpen={() => document.getElementById('ceo-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          openLabel={t('ceo.dashboard.payments.title', 'Payments')}
+          icon={Wallet}
+          color="#D63B3B"
+          badge={pendingPaymentsCount > 0 ? t('ceo.kpi.payments_count', '{{count}} unpaid', { count: pendingPaymentsCount }) : undefined}
+          badgeTone="danger"
+          progress={paidShare}
+          facts={[
+            { text: t('ceo.overview.paid_hint', 'Paid: {{count}}', { count: paidPaymentsCount }), tone: 'success' },
+            ...(paidShare !== null ? [{ text: t('ceo.kpi.paid_share', '{{value}}% paid', { value: paidShare }) }] : []),
+          ]}
+          onClick={() => document.getElementById('ceo-payments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          actionLabel={t('ceo.dashboard.payments.title', 'Payments')}
         />
       </div>
 
@@ -960,18 +980,21 @@ export function CeoDashboardPage() {
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {([
-                { label: t('ceo.media.leads', 'Total leads'), value: slaTotal, tone: 'blue', glyph: glyphPaths.lead },
-                { label: t('ceo.note.written', 'Note written'), value: slaNoteWritten, tone: 'success', glyph: glyphPaths.note },
-                { label: t('ceo.note.missing', 'Note missing'), value: slaNoteMissing, tone: 'warning', glyph: glyphPaths.note },
-                { label: t('ceo.note.status_without_note', 'Status without note'), value: slaNoNote, tone: 'violet', glyph: glyphPaths.alert },
-              ] as ReadonlyArray<{ label: string; value: number; tone: Tone; glyph: string }>).map((item) => (
-                <StatCard
+                { label: t('ceo.media.leads', 'Total leads'), value: slaTotal, color: '#2B59FF', icon: UsersRound, share: null },
+                { label: t('ceo.note.written', 'Note written'), value: slaNoteWritten, color: '#17924A', icon: NotebookPen, share: percentOf(slaNoteWritten, slaTotal) },
+                { label: t('ceo.note.missing', 'Note missing'), value: slaNoteMissing, color: '#E8590C', icon: FileWarning, share: percentOf(slaNoteMissing, slaTotal) },
+                { label: t('ceo.note.status_without_note', 'Status without note'), value: slaNoNote, color: '#7C5CFC', icon: TriangleAlert, share: percentOf(slaNoNote, slaTotal) },
+              ]).map((item) => (
+                <InsightCard
                   key={item.label}
+                  compact
                   label={item.label}
                   value={item.value}
-                  icon={<Glyph d={item.glyph} />}
-                  iconTone={item.tone}
-                  className={statPanelClassName}
+                  icon={item.icon}
+                  color={item.color}
+                  badge={item.share !== null ? `${item.share}%` : undefined}
+                  progress={item.share}
+                  caption={item.share === null ? t('ceo.overview.sla_hint', 'SLA target: {{count}} min', { count: slaLimit }) : undefined}
                 />
               ))}
             </div>

@@ -35,6 +35,8 @@ export type GridColumn<T> = {
   hideable?: boolean
   /** Starts hidden (the user can turn it on). */
   defaultHidden?: boolean
+  /** Always pinned to the left — stays in view while the table scrolls sideways. */
+  frozen?: boolean
 }
 
 export type GridDensity = 'comfortable' | 'normal' | 'compact'
@@ -192,6 +194,8 @@ export function DataGrid<T>({
   const [favoriteKeys, setFavoriteKeys] = useState<string[]>(() => readJson<string[]>(`${STORAGE_PREFIX}${id}:fav`, []))
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [resizing, setResizing] = useState<{ key: string; width: number } | null>(null)
+  // True once the table is scrolled sideways: pinned columns then cast a shadow over the rest.
+  const [scrolledX, setScrolledX] = useState(false)
   const [dragKey, setDragKey] = useState<string | null>(null)
   const [dropKey, setDropKey] = useState<string | null>(null)
   const { open: viewOpen, setOpen: setViewOpen, ref: viewRef } = usePopover()
@@ -243,23 +247,28 @@ export function DataGrid<T>({
   const widthOf = useCallback((key: string) => state.widths[key] ?? columnMap.get(key)?.width ?? DEFAULT_WIDTH, [columnMap, state.widths])
   const favoriteSet = useMemo(() => new Set(favoriteKeys), [favoriteKeys])
 
+  // Frozen columns are always pinned (first); the user can pin more next to them.
+  const frozenKeys = useMemo(() => columns.filter((column) => column.frozen).map((column) => column.key), [columns])
+  const isPinned = useCallback((key: string) => frozenKeys.includes(key) || state.pinned.includes(key), [frozenKeys, state.pinned])
+
   const visibleKeys = useMemo(() => {
-    const visible = state.order.filter((key) => columnMap.has(key) && !state.hidden.includes(key))
-    const pinned = visible.filter((key) => state.pinned.includes(key))
-    return [...pinned, ...visible.filter((key) => !state.pinned.includes(key))]
-  }, [columnMap, state.hidden, state.order, state.pinned])
+    const visible = state.order.filter((key) => columnMap.has(key) && (frozenKeys.includes(key) || !state.hidden.includes(key)))
+    const frozen = visible.filter((key) => frozenKeys.includes(key))
+    const pinned = visible.filter((key) => !frozenKeys.includes(key) && state.pinned.includes(key))
+    return [...frozen, ...pinned, ...visible.filter((key) => !isPinned(key))]
+  }, [columnMap, frozenKeys, isPinned, state.hidden, state.order, state.pinned])
 
   const leadWidth = (selectable ? CHECK_WIDTH : 0) + (rowNumbers ? NUMBER_WIDTH : 0) + (favorites ? STAR_WIDTH : 0)
   const pinnedOffsets = useMemo(() => {
     const offsets = new Map<string, number>()
     let left = leadWidth
     for (const key of visibleKeys) {
-      if (!state.pinned.includes(key)) break
+      if (!isPinned(key)) break
       offsets.set(key, left)
       left += widthOf(key)
     }
     return offsets
-  }, [leadWidth, state.pinned, visibleKeys, widthOf])
+  }, [isPinned, leadWidth, visibleKeys, widthOf])
 
   const sortedRows = useMemo(() => {
     const sortColumn = state.sort ? columnMap.get(state.sort.key) : null
@@ -295,7 +304,10 @@ export function DataGrid<T>({
       return { ...current, hidden }
     })
   }
-  const togglePinned = (key: string) => update((current) => ({ ...current, pinned: current.pinned.includes(key) ? current.pinned.filter((item) => item !== key) : [...current.pinned, key] }))
+  const togglePinned = (key: string) => {
+    if (frozenKeys.includes(key)) return
+    update((current) => ({ ...current, pinned: current.pinned.includes(key) ? current.pinned.filter((item) => item !== key) : [...current.pinned, key] }))
+  }
   const moveColumn = (key: string, delta: number) => update((current) => {
     const order = [...current.order]
     const from = order.indexOf(key)
@@ -516,7 +528,8 @@ export function DataGrid<T>({
                   {state.order.filter((key) => columnMap.has(key)).map((key, index, list) => {
                     const column = columnMap.get(key)!
                     const visible = !state.hidden.includes(key)
-                    const pinned = state.pinned.includes(key)
+                    const pinned = isPinned(key)
+                    const frozen = frozenKeys.includes(key)
                     return (
                       <li key={key} className="flex items-center gap-0.5 rounded-[8px] px-1 transition-colors hover:bg-[var(--muted-surface)]">
                         <button type="button" onClick={() => toggleHidden(key)} disabled={column.hideable === false} aria-pressed={visible} className="flex min-w-0 flex-1 items-center gap-2.5 px-1.5 py-1.5 text-left text-[13px] disabled:opacity-60">
@@ -525,7 +538,7 @@ export function DataGrid<T>({
                           </span>
                           <span className={cn('truncate', visible ? 'font-medium text-[var(--foreground)]' : 'text-[var(--muted)]')}>{column.header}</span>
                         </button>
-                        <button type="button" onClick={() => togglePinned(key)} aria-pressed={pinned} title={pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')} aria-label={`${pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')}: ${column.header}`} className={cn('grid h-7 w-7 place-items-center rounded-[6px] transition-colors', pinned ? 'text-[var(--primary)]' : 'text-[var(--caption)] hover:text-[var(--foreground)]')}>
+                        <button type="button" onClick={() => togglePinned(key)} disabled={frozen} aria-pressed={pinned} title={frozen ? t('grid.frozen', 'Always pinned') : pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')} aria-label={`${pinned ? t('grid.unpin', 'Unpin') : t('grid.pin', 'Pin to the left')}: ${column.header}`} className={cn('grid h-7 w-7 place-items-center rounded-[6px] transition-colors disabled:cursor-default', pinned ? 'text-[var(--primary)]' : 'text-[var(--caption)] hover:text-[var(--foreground)]')}>
                           {pinned ? <Pin size={13} /> : <PinOff size={13} />}
                         </button>
                         <button type="button" onClick={() => moveColumn(key, -1)} disabled={index === 0} aria-label={`${t('grid.move_up', 'Move up')}: ${column.header}`} className="grid h-7 w-6 place-items-center rounded-[6px] text-[var(--caption)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowUp size={13} /></button>
@@ -546,7 +559,7 @@ export function DataGrid<T>({
       {belowToolbar}
 
       {/* ── Table ──────────────────────────────────────── */}
-      <div ref={scrollBoxRef} className="no-scrollbar relative overflow-x-auto overflow-y-hidden">
+      <div ref={scrollBoxRef} onScroll={(event) => { const next = event.currentTarget.scrollLeft > 2; if (next !== scrolledX) setScrolledX(next) }} className="no-scrollbar relative overflow-x-auto overflow-y-hidden">
         <table ref={tableRef} className="border-separate border-spacing-0 text-left" style={{ tableLayout: 'fixed', width: tableWidth, minWidth: '100%' }}>
           <colgroup>
             {selectable ? <col style={{ width: CHECK_WIDTH }} /> : null}
@@ -602,6 +615,7 @@ export function DataGrid<T>({
                       sorted && 'text-[var(--primary)]',
                       dropKey === key && 'shadow-[inset_3px_0_0_var(--primary)]',
                       dragKey === key && 'opacity-40',
+                      key === lastPinned && scrolledX && 'shadow-[inset_-1px_0_0_var(--border-hover),10px_0_16px_-12px_rgba(14,21,37,0.35)]',
                     )}
                   >
                     <span className={cn('flex min-w-0 items-center gap-1.5', column.align === 'right' && 'justify-end', column.align === 'center' && 'justify-center')}>
@@ -686,7 +700,9 @@ export function DataGrid<T>({
                           cellBase,
                           'px-3 align-middle text-[var(--foreground)] last:border-r-0',
                           resizing?.key === columnKey && 'shadow-[inset_-2px_0_0_var(--primary)]',
-                          columnKey === lastPinned && 'shadow-[inset_-1px_0_0_var(--border-hover)]',
+                          columnKey === lastPinned && (scrolledX
+                            ? 'shadow-[inset_-1px_0_0_var(--border-hover),10px_0_16px_-12px_rgba(14,21,37,0.35)]'
+                            : 'shadow-[inset_-1px_0_0_var(--border-hover)]'),
                           column.align === 'right' && 'text-right',
                           column.align === 'center' && 'text-center',
                         )}

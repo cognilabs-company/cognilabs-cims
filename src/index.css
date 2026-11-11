@@ -950,6 +950,105 @@ input:-webkit-autofill:focus {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   Calls page — CIMS's own look: a navy "line" header with lime
+   accents, calls grouped into day cards. The --mp-* tokens are
+   re-pointed at the app palette so shared pieces (system tab,
+   recording player, avatars) follow it and the light/dark theme.
+   ────────────────────────────────────────────────────────────── */
+.calls-ui {
+  --mp-window: var(--surface);
+  --mp-toolbar: var(--surface);
+  --mp-text: var(--foreground);
+  --mp-secondary: var(--muted);
+  --mp-tertiary: var(--caption);
+  --mp-separator: var(--border);
+  --mp-hover: var(--row-hover);
+  --mp-selected: var(--row-selected);
+  --mp-control: var(--input-surface);
+  --mp-control-hover: var(--input-surface-hover);
+  --mp-menu: var(--surface-elevated);
+  --mp-menu-border: var(--border);
+  --mp-blue: var(--primary);
+  --mp-red: var(--danger);
+  --mp-green: var(--success);
+  --mp-orange: var(--warning);
+  --mp-purple: var(--violet-text);
+  --mp-group: var(--surface);
+  --mp-segment: var(--surface);
+  --mp-avatar: linear-gradient(150deg, #5d7bff 0%, #2b59ff 100%);
+  --mp-glass: var(--muted-surface);
+  --mp-glass-strong: var(--input-surface);
+  --mp-glass-text: var(--foreground);
+  --mp-glass-secondary: var(--muted);
+  --mp-glass-line: var(--border);
+
+  --calls-in: var(--primary);
+  --calls-in-dim: var(--blue-dim);
+  --calls-out: #7c4dff;
+  --calls-out-dim: var(--violet-dim);
+  --calls-miss: var(--danger);
+  --calls-miss-dim: var(--danger-dim);
+  --calls-live: var(--success);
+  --calls-live-dim: var(--success-dim);
+  --calls-hero-ink: #0e1525;
+}
+:root[data-theme="dark"] .calls-ui {
+  --calls-out: #a688ff;
+  --mp-avatar: linear-gradient(150deg, #4a66d8 0%, #2a45b8 100%);
+}
+
+.calls-hero {
+  --calls-hero-bg: #0e1525;
+  position: relative;
+  isolation: isolate;
+  color: #fff;
+  background:
+    radial-gradient(70% 120% at 100% 0%, rgba(43, 89, 255, 0.55) 0%, rgba(43, 89, 255, 0) 60%),
+    radial-gradient(55% 90% at 0% 110%, rgba(184, 241, 90, 0.16) 0%, rgba(184, 241, 90, 0) 60%),
+    var(--calls-hero-bg);
+  box-shadow: 0 18px 40px -26px rgba(14, 21, 37, 0.7);
+}
+:root[data-theme="dark"] .calls-hero {
+  --calls-hero-bg: #121a2c;
+  background:
+    radial-gradient(70% 120% at 100% 0%, rgba(76, 116, 255, 0.42) 0%, rgba(76, 116, 255, 0) 60%),
+    radial-gradient(55% 90% at 0% 110%, rgba(184, 241, 90, 0.12) 0%, rgba(184, 241, 90, 0) 60%),
+    var(--calls-hero-bg);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+/* faint signal grid, fading out to the left */
+.calls-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(100deg, transparent 30%, #000 85%);
+  -webkit-mask-image: linear-gradient(100deg, transparent 30%, #000 85%);
+}
+
+.calls-scroll { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+.calls-scroll::-webkit-scrollbar { width: 8px; }
+.calls-scroll::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+
+.calls-day-head {
+  background: var(--app-canvas);
+}
+
+@keyframes calls-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(184, 241, 90, 0.6); }
+  70% { box-shadow: 0 0 0 6px rgba(184, 241, 90, 0); }
+}
+.calls-live-dot { animation: calls-live-pulse 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .calls-live-dot { animation: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
    Motion: page entrance, staggered sections, centred modals, rows.
    Transforms end at `none`, so nothing keeps a containing block.
    ────────────────────────────────────────────────────────────── */

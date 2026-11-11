@@ -2,7 +2,7 @@
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlarmClock, Archive as ArchiveIcon, ArrowRight, Bot, CircleDashed, Filter, ListTodo, NotebookPen, Pencil, Percent, PhoneCall, Plus, RefreshCw, Search, Trash2, UserPlus, UsersRound, X, type LucideIcon } from 'lucide-react'
+import { AlarmClock, Archive as ArchiveIcon, ArrowRight, Bot, CircleDashed, ListTodo, NotebookPen, Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react'
 import { env } from '../../../shared/config/env'
 import type { CustomerSummary, DynamicStatusOption } from '../../../shared/api/types'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -28,7 +28,7 @@ import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
 import { CopyButton, FilterPanel, FilterToken, FlagTag, StatusSelect } from '../components/CustomerFilters'
 import { platformVisual } from '../lib/platformIcon'
 import { avatarTone, initialsFor } from '../lib/customerAvatar'
-import { MetricTile } from '../components/MetricTile'
+import { InsightCard, type InsightFact } from '../../../shared/ui/insight-card'
 import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { statusIconFor } from '../lib/statusIcon'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
@@ -450,6 +450,8 @@ function TableAudioControl({
 
 
 type CrmPageView = 'overview' | 'customers'
+/** Customers page cards: need to call → meeting → KP/TZ → payment (normalised status keys). */
+const statusCardKeys = ['needtocall', 'meetingscheduled', 'creatingkptz', 'paymentpending']
 const periodKeys = ['today', '3d', '7d', '30d', '90d'] as const
 
 /** /crm — the CRM dashboard (overview only). */
@@ -1105,8 +1107,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const todayKey = new Date().toDateString()
   const createdTodayCount = (dashboardQuery.data?.customers ?? emptyCustomers)
     .filter((customer) => normalizeDateValue(customer.created_at)?.toDateString() === todayKey).length
-  const needToCallOption = allChipStatuses.find((option) => normalizeStatusKey(option.value) === 'needtocall')
-  const needToCallCount = statusCounts.get('needtocall') ?? 0
 
   const statusChoices = allChipStatuses.map((option) => ({ value: option.value, label: option.label, color: option.color, icon: statusIconFor(option.value) }))
 
@@ -1183,6 +1183,8 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           customers={baseCustomers}
           stats={summaryQuery.data ?? null}
           conversion={conversionQuery.data ?? null}
+          createdToday={createdTodayCount}
+          onOpenList={(query) => navigate(`${routeBasePath}/customers${query ? `?${query}` : ''}`)}
           period={selectedPeriod}
           onPeriodChange={setSelectedPeriod}
           onOpenCustomer={(customerId) => {
@@ -1211,6 +1213,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       header: t('customers.table.client', 'Customer'),
       width: 230,
       hideable: false,
+      frozen: true,
       sortValue: (row) => getCustomerDisplayName(row),
       render: (row) => {
         const name = getCustomerDisplayName(row)
@@ -1400,58 +1403,47 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const filterCount = statusFilters.length + (platformFilter ? 1 : 0) + (selectedPeriod ? 1 : 0) + (dateStart || dateEnd ? 1 : 0)
   const hasAnyFilter = filterCount > 0 || Boolean(search)
 
-  const metrics: Array<{ key: string; label: string; value: number; format?: (value: number) => string; caption: string; icon: LucideIcon; accent: string; active: boolean; onClick?: () => void }> = [
-    {
-      key: 'total',
-      label: t('customers.list_page.total', 'Customers'),
-      value: baseCustomers.length,
-      caption: periodLabel,
-      icon: UsersRound,
-      accent: '#2B59FF',
-      active: !hasAnyFilter,
-      onClick: clearAll,
-    },
-    {
-      key: 'today',
-      label: t('customers.list_page.added_today', 'Added today'),
-      value: createdTodayCount,
-      caption: t('customers.list_page.added_today_hint', 'New leads since midnight'),
-      icon: UserPlus,
-      accent: '#17924A',
-      active: selectedPeriod === 'today',
-      onClick: () => { setSelectedPeriod('today'); setDateStart(''); setDateEnd(''); setTablePage(1) },
-    },
-    {
-      key: 'call',
-      label: t('customers.list_page.need_to_call', 'Waiting for a call'),
-      value: needToCallCount,
-      caption: t('customers.list_page.need_to_call_hint', 'Status: Need to call'),
-      icon: PhoneCall,
-      accent: '#E8590C',
-      active: Boolean(needToCallOption) && selectedStatusFilterSet.has('needtocall') && statusFilters.length === 1,
-      onClick: needToCallOption ? () => { setStatusFilters([needToCallOption.value]); setTablePage(1) } : undefined,
-    },
-    conversionQuery.data
-      ? {
-          key: 'conversion',
-          label: t('customers.stats.conversion', 'Conversion'),
-          value: Number(conversionQuery.data.conversion_rate ?? 0),
-          format: (value: number) => `${value.toFixed(1)}%`,
-          caption: t('customers.list_page.conversion_hint', 'Projects started: {{count}}', { count: conversionQuery.data.project_started_count }),
-          icon: Percent,
-          accent: '#7C5CFC',
-          active: false,
-        }
-      : {
-          key: 'shown',
-          label: t('customers.list_page.shown', 'Shown'),
-          value: displayedCustomers.length,
-          caption: t('customers.section.list.filters_badge', '{{count}} filters', { count: filterCount }),
-          icon: Filter,
-          accent: '#7C5CFC',
-          active: false,
-        },
-  ]
+  // Status cards: the stages a seller acts on, with what is due today and what is overdue.
+  const nowDate = new Date()
+  const nowMs = nowDate.getTime()
+  const todayString = nowDate.toDateString()
+  const dueByStatus = new Map<string, { today: number; overdue: number }>()
+  for (const customer of baseCustomers) {
+    if (!customer.recall_time) continue
+    const recall = new Date(customer.recall_time)
+    if (Number.isNaN(recall.getTime())) continue
+    const key = normalizeStatusKey(customer.status)
+    const entry = dueByStatus.get(key) ?? { today: 0, overdue: 0 }
+    if (recall.getTime() < nowMs) entry.overdue += 1
+    else if (recall.toDateString() === todayString) entry.today += 1
+    dueByStatus.set(key, entry)
+  }
+  const preferredCards = statusCardKeys
+    .map((key) => allChipStatuses.find((option) => normalizeStatusKey(option.value) === key))
+    .filter((option): option is (typeof allChipStatuses)[number] => Boolean(option))
+  const statusCards = [
+    ...preferredCards,
+    // CRMs with their own statuses (outbound) fill the free slots with their busiest ones.
+    ...allChipStatuses
+      .filter((option) => !preferredCards.includes(option))
+      .sort((left, right) => (statusCounts.get(normalizeStatusKey(right.value)) ?? 0) - (statusCounts.get(normalizeStatusKey(left.value)) ?? 0)),
+  ].slice(0, 4).map((option) => {
+    const key = normalizeStatusKey(option.value)
+    const count = statusCounts.get(key) ?? 0
+    const due = dueByStatus.get(key)
+    const facts: InsightFact[] = []
+    if (due?.today) facts.push({ text: t('customers.status_card.today', 'Today: {{count}}', { count: due.today }), tone: 'success' })
+    if (due?.overdue) facts.push({ text: t('customers.status_card.overdue', 'Overdue: {{count}}', { count: due.overdue }), tone: 'danger' })
+    return {
+      key,
+      value: option.value,
+      meta: statusMetaFor(option.value),
+      count,
+      share: baseCustomers.length > 0 ? Math.round((count / baseCustomers.length) * 100) : 0,
+      facts,
+      active: statusFilters.length === 1 && selectedStatusFilterSet.has(key),
+    }
+  })
 
   const tokens = hasAnyFilter ? (
     <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] bg-[var(--card-hover)] px-3 py-2">
@@ -1513,10 +1505,23 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
         </div>
       </header>
 
-      {/* Metric cards — each also works as a quick filter */}
+      {/* Status cards — each also works as a quick filter (click again to clear) */}
       <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
-        {metrics.map((metric) => (
-          <MetricTile key={metric.key} label={metric.label} value={metric.value} caption={metric.caption} icon={metric.icon} accent={metric.accent} format={metric.format} onClick={metric.onClick} active={metric.active} />
+        {statusCards.map((card) => (
+          <InsightCard
+            key={card.key}
+            label={card.meta.label}
+            value={card.count}
+            icon={card.meta.icon}
+            color={card.meta.color}
+            badge={`${card.share}%`}
+            progress={card.share}
+            facts={card.facts}
+            caption={t('customers.status_card.no_reminders', 'No reminders due')}
+            active={card.active}
+            actionLabel={card.active ? t('customers.status_card.clear', 'Show all statuses') : t('customers.status_card.filter', 'Show only this status')}
+            onClick={() => { setStatusFilters(card.active ? [] : [card.value]); setTablePage(1) }}
+          />
         ))}
       </div>
 
