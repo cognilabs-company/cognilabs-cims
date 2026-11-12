@@ -1,21 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowLeftIcon,
-  BackspaceIcon,
-  ClockCounterClockwiseIcon,
-  MicrophoneSlashIcon,
-  PhoneCallIcon,
-  PhoneIcon,
-  PhoneIncomingIcon,
-  PhoneOutgoingIcon,
-  PhoneXIcon,
-  SquaresFourIcon,
+  ArrowLeftIcon, BackspaceIcon, ClockCounterClockwiseIcon, GearSixIcon, MicrophoneSlashIcon, PhoneCallIcon, PhoneIcon, PhoneIncomingIcon, PhoneOutgoingIcon, PhoneXIcon, SquaresFourIcon,
 } from '@phosphor-icons/react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { normalizePhone, telephonyService, type TelephonyCall, type TelephonyCallDetail, type TelephonyLead } from '../../../shared/api/services/telephony.service'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import { useTelephony } from '../../telephony/TelephonyContext'
+import { ForwardingTargets } from '../../telephony/components/ForwardingTargets'
 import { formatPhone } from '../../telephony/components/telephonyFormat'
 import { haptic } from '../lib/telegram'
 
@@ -25,6 +17,9 @@ type Props = {
   onDial: (phone: string, lead?: TelephonyLead | null) => void
   /** RBAC calls:create — without it the keypad is shown but calling is off. */
   canCall: boolean
+  /** calls.edit — the employee may change their call forwarding. */
+  canEdit?: boolean
+  userId?: number
 }
 
 const keys: Array<[string, string]> = [
@@ -57,7 +52,8 @@ function clock(seconds: number) {
 const missedStatuses = new Set(['missed', 'no_answer', 'rejected', 'busy', 'failed'])
 
 /** Phone section of the Mini App: keypad with lead search, recent calls, call notes. */
-export function PhoneTab({ active, onDial, canCall: allowedToCall }: Props) {
+export function PhoneTab({ active, onDial, canCall: allowedToCall, canEdit = false, userId }: Props) {
+  const [forwardingOpen, setForwardingOpen] = useState(false)
   const { t } = useLocale()
   const phone = useTelephony()
   const [view, setView] = useState<'keypad' | 'recent'>('keypad')
@@ -183,6 +179,18 @@ export function PhoneTab({ active, onDial, canCall: allowedToCall }: Props) {
           <span className={cn('h-2 w-2 shrink-0 rounded-full', ready ? 'bg-[var(--success)] mini-pulse' : /fail|unavailable|disabled/i.test(phone.connection) ? 'bg-[var(--danger)]' : 'bg-[var(--warning)]')} />
           <span className="truncate">{lineText}</span>
         </span>
+        <div className="flex shrink-0 items-center gap-2">
+        {canEdit && userId ? (
+          <button
+            type="button"
+            onClick={() => { haptic('select'); setForwardingOpen(true) }}
+            aria-label={t('miniapp.phone.forwarding', 'Call forwarding')}
+            title={t('miniapp.phone.forwarding', 'Call forwarding')}
+            className="mini-key grid h-10 w-10 place-items-center rounded-[12px] bg-[var(--muted-surface)] text-[var(--muted-strong)]"
+          >
+            <GearSixIcon size={18} />
+          </button>
+        ) : null}
         <div role="tablist" className="inline-flex shrink-0 rounded-[12px] bg-[var(--muted-surface)] p-1">
           {([
             ['keypad', SquaresFourIcon, t('miniapp.phone.keypad', 'Keypad')],
@@ -199,6 +207,7 @@ export function PhoneTab({ active, onDial, canCall: allowedToCall }: Props) {
               <Icon size={15} weight={view === value ? 'duotone' : 'regular'} />{label}
             </button>
           ))}
+        </div>
         </div>
       </div>
 
@@ -336,6 +345,24 @@ export function PhoneTab({ active, onDial, canCall: allowedToCall }: Props) {
           )}
         </div>
       )}
+
+      {/* Call forwarding (calls.edit): where calls go when the Mini App is offline or does not answer */}
+      {forwardingOpen && userId ? (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <button type="button" aria-label={t('common.close', 'Close')} onClick={() => setForwardingOpen(false)} className="mini-fade absolute inset-0 bg-black/40" />
+          <div className="mini-sheet relative max-h-[88dvh] overflow-y-auto rounded-t-[26px] bg-[var(--surface)] px-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
+            <span className="mx-auto mb-3 block h-1.5 w-10 rounded-full bg-[var(--border-hover)]" />
+            <div className="mb-3 flex items-center gap-3">
+              <button type="button" onClick={() => setForwardingOpen(false)} aria-label={t('common.close', 'Close')} className="grid h-9 w-9 place-items-center rounded-full bg-[var(--muted-surface)] text-[var(--muted-strong)]"><ArrowLeftIcon size={17} /></button>
+              <div className="min-w-0 flex-1">
+                <p className="text-[17px] font-bold text-[var(--foreground)]">{t('miniapp.phone.forwarding', 'Call forwarding')}</p>
+                <p className="text-[12.5px] text-[var(--muted)]">{t('miniapp.phone.forwarding_hint', 'Where calls go when this app is offline or does not answer.')}</p>
+              </div>
+            </div>
+            <ForwardingTargets userId={userId} />
+          </div>
+        </div>
+      ) : null}
 
       {/* Call detail sheet: lead, notes, add a note */}
       {detailCall ? (

@@ -2766,5 +2766,10 @@
   "mindmap.line_invalid": "Chiziqni bu yerga ulab bo'lmaydi (aylana hosil bo'ladi)",
   "mindmap.line_exists": "Bu tugunlar allaqachon ulangan",
   "mindmap.draw_line": "Chiziq tortish: boshqa tugun ustiga suring",
-  "mindmap.move_line_end": "Chiziqni boshqa tugunga ulash uchun suring"
+  "mindmap.move_line_end": "Chiziqni boshqa tugunga ulash uchun suring",
+  "miniapp.tab.map": "Xarita",
+  "miniapp.map.all": "Hammasi",
+  "miniapp.map.note": "Joylashuv faqat Mini App'i ochiq xodimlardan keladi.",
+  "miniapp.phone.forwarding": "Qo'ng'iroqni yo'naltirish",
+  "miniapp.phone.forwarding_hint": "Ilova o'chiq bo'lsa yoki javob berilmasa, qo'ng'iroq qayerga ketadi."
 }

@@ -2766,5 +2766,10 @@
   "mindmap.line_invalid": "Сюда линию провести нельзя (получится цикл)",
   "mindmap.line_exists": "Эти узлы уже соединены",
   "mindmap.draw_line": "Провести линию: перетащите на другой узел",
-  "mindmap.move_line_end": "Перетащите на другой узел, чтобы перенести линию"
+  "mindmap.move_line_end": "Перетащите на другой узел, чтобы перенести линию",
+  "miniapp.tab.map": "Карта",
+  "miniapp.map.all": "Все",
+  "miniapp.map.note": "Позиции приходят только от сотрудников с открытым Mini App.",
+  "miniapp.phone.forwarding": "Переадресация звонков",
+  "miniapp.phone.forwarding_hint": "Куда идут звонки, если приложение не в сети или не отвечает."
 }

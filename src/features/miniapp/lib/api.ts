@@ -5,7 +5,10 @@ import { request } from '../../../shared/api/http'
 export type MiniUser = { id: number; name: string; surname: string; email: string; role_name: string }
 /** capabilities.calls from /miniapp/session and /miniapp/me; null when the backend does not send it. */
 export type CallsCapability = { view: boolean; create: boolean; edit: boolean } | null
-export type MiniSession = { access_token: string; expires_in: number; user: MiniUser; calls: CallsCapability }
+/** capabilities.live_location: the live employee map (CEO always; others through attendance.view). */
+export type LiveLocationCapability = { view: boolean } | null
+export type MiniCapabilities = { calls: CallsCapability; liveLocation: LiveLocationCapability }
+export type MiniSession = { access_token: string; expires_in: number; user: MiniUser; capabilities: MiniCapabilities }
 
 export type MiniLocation = {
   id: number
@@ -84,12 +87,15 @@ export function normalizePresence(raw: unknown): Presence | null {
   }
 }
 
-/** capabilities.calls of a session / me response. */
-function callsCapabilityFrom(raw: unknown): CallsCapability {
+/** `capabilities` of a session / me response (each part null when the backend does not send it). */
+function capabilitiesFrom(raw: unknown): MiniCapabilities {
   const capabilities = isObject(raw) && isObject(raw.capabilities) ? raw.capabilities : null
   const calls = capabilities && isObject(capabilities.calls) ? capabilities.calls : null
-  if (!calls) return null
-  return { view: calls.view === true, create: calls.create === true, edit: calls.edit === true }
+  const live = capabilities && isObject(capabilities.live_location) ? capabilities.live_location : null
+  return {
+    calls: calls ? { view: calls.view === true, create: calls.create === true, edit: calls.edit === true } : null,
+    liveLocation: live ? { view: live.view === true } : null,
+  }
 }
 
 /** What the signed-in employee may do with calls (RBAC module "calls"); null = unknown (no RBAC answer). */
@@ -112,11 +118,11 @@ export const miniApi = {
   },
   async session(initData: string): Promise<MiniSession> {
     const data = await request<Raw>({ path: '/miniapp/session', method: 'POST', headers: initHeaders(initData), auth: false })
-    return { access_token: String(data.access_token ?? ''), expires_in: num(data.expires_in, 7200), user: normalizeUser(data.user), calls: callsCapabilityFrom(data) }
+    return { access_token: String(data.access_token ?? ''), expires_in: num(data.expires_in, 7200), user: normalizeUser(data.user), capabilities: capabilitiesFrom(data) }
   },
-  /** GET /miniapp/me → fresh capabilities (null when the backend does not send them). */
-  async callsCapability(initData: string): Promise<CallsCapability> {
-    try { return callsCapabilityFrom(await request<unknown>({ path: '/miniapp/me', headers: initHeaders(initData) })) } catch { return null }
+  /** GET /miniapp/me → fresh capabilities (null when the request fails). */
+  async capabilities(initData: string): Promise<MiniCapabilities | null> {
+    try { return capabilitiesFrom(await request<unknown>({ path: '/miniapp/me', headers: initHeaders(initData) })) } catch { return null }
   },
   async locations(initData: string): Promise<LocationsPayload> {
     const data = await request<unknown>({ path: '/miniapp/attendance/locations', headers: initHeaders(initData) })
