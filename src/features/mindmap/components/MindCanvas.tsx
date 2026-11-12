@@ -247,6 +247,13 @@ export function MindCanvas(props: Props) {
     const child = shown.boxes.get(id)
     return parent && child ? [{ id, d: edgePath(parent, child, map.edgeStyle), color: child.color, depth: child.depth, mid: edgeMidpoint(parent, child), ends: edgeEnds(parent, child), parentId: parent.id }] : []
   })
+  const pad = 400
+  const svgBox = {
+    x: Math.floor(shown.bounds.minX - pad),
+    y: Math.floor(shown.bounds.minY - pad),
+    w: Math.ceil(shown.bounds.maxX - shown.bounds.minX + pad * 2),
+    h: Math.ceil(shown.bounds.maxY - shown.bounds.minY + pad * 2),
+  }
   // The selected line shows a handle on each end: drag one onto another node to re-attach the line.
   const selectedLine = drag || lineDrag || props.readOnly ? undefined : edges.find((edge) => edge.id === props.selectedEdge)
   // The cut button: on the selected line, or the one under the pointer.
@@ -271,7 +278,15 @@ export function MindCanvas(props: Props) {
       }}
     >
       <div className={cn('absolute top-0 left-0 origin-top-left will-change-transform', animateView && 'mm-world-animate')} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
-        <svg className="pointer-events-none absolute top-0 left-0 overflow-visible" width="1" height="1" aria-hidden="true">
+        {/* Sized to the whole map: the browser only lets you click lines inside the svg's own box. */}
+        <svg
+          className="pointer-events-none absolute overflow-visible"
+          style={{ left: svgBox.x, top: svgBox.y }}
+          width={svgBox.w}
+          height={svgBox.h}
+          viewBox={`${svgBox.x} ${svgBox.y} ${svgBox.w} ${svgBox.h}`}
+          aria-hidden="true"
+        >
           {edges.map((edge) => (
             <path
               key={edge.id}
@@ -296,7 +311,9 @@ export function MindCanvas(props: Props) {
               stroke="transparent"
               strokeWidth={16}
               data-edge-id={edge.id}
-              className={props.readOnly ? 'pointer-events-none' : 'pointer-events-[stroke] cursor-pointer'}
+              className={props.readOnly ? undefined : 'cursor-pointer'}
+              // Inline: Tailwind has no class for SVG's "stroke" value, and only the line itself should be clickable.
+              style={{ pointerEvents: props.readOnly ? 'none' : 'stroke' }}
               onPointerDown={(event) => { event.stopPropagation(); props.onSelectEdge(edge.id) }}
               onPointerEnter={() => setHoverEdge(edge.id)}
               onPointerLeave={() => setHoverEdge((current) => (current === edge.id ? null : current))}

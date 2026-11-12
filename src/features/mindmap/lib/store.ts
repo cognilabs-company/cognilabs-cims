@@ -1,6 +1,6 @@
 import { mindmapsService, type MindMapConflictDto, type MindMapDocumentDto, type MindMapDto, type MindMapListItemDto } from '../../../shared/api/services/mindmaps.service'
 import { importMap } from './tree'
-import type { MindMap, MindMapSummary } from './types'
+import type { MindMap, MindMapSummary, MindNode } from './types'
 
 /** Everything the page needs from storage. */
 export type MindMapStore = {
@@ -41,8 +41,24 @@ export function isConflict(error: unknown): error is MindMapConflict {
 
 // ── Server store (/mindmaps) ────────────────────────────────────────────────
 
-function toDocument(map: MindMap): MindMapDocumentDto {
-  return { rootId: map.rootId, edgeStyle: map.edgeStyle ?? 'curved', nodes: map.nodes }
+/**
+ * The document as the API validates it: `dir` / `branch` only on direct children of the central topic or of a
+ * free node, `x` / `y` only on free nodes, `px` / `py` only on connected nodes. Leftovers from earlier moves are dropped.
+ */
+export function toDocument(map: MindMap): MindMapDocumentDto {
+  const nodes: Record<string, MindNode> = {}
+  for (const [id, node] of Object.entries(map.nodes)) {
+    const parent = node.parentId ? map.nodes[node.parentId] : undefined
+    const isRootOrFree = (candidate: MindNode | undefined) => Boolean(candidate && (candidate.id === map.rootId || candidate.parentId === null))
+    const hubChild = isRootOrFree(parent)
+    const free = node.parentId === null && id !== map.rootId
+    const clean: MindNode = { ...node }
+    if (!hubChild) { delete clean.dir; delete clean.branch }
+    if (!free) { delete clean.x; delete clean.y }
+    if (node.parentId === null) { delete clean.px; delete clean.py }
+    nodes[id] = clean
+  }
+  return { rootId: map.rootId, edgeStyle: map.edgeStyle ?? 'curved', nodes }
 }
 
 function fromDto(dto: MindMapDto): MindMap | null {
