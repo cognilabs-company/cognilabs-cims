@@ -6,6 +6,7 @@ import { cn } from '../../../shared/lib/cn'
 import { Button } from '../../../shared/ui/button'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Skeleton } from '../../../shared/ui/skeleton'
+import { ItemGlyph } from './ItemGlyph'
 
 export type PickedFolder = { id: string | null; name: string }
 
@@ -155,8 +156,8 @@ export function FolderPickerDialog({
                       onClick={() => setFolderId(folder.id)}
                       className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-[var(--row-hover)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                     >
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-[color-mix(in_oklab,var(--warning)_14%,transparent)] text-[color-mix(in_oklab,var(--warning-text)_70%,var(--lime))]">
-                        {isBlocked ? <ProhibitIcon size={16} /> : <FolderIcon size={16} weight="duotone" />}
+                      <span className="grid h-8 w-8 shrink-0 place-items-center text-[var(--muted)]">
+                        {isBlocked ? <ProhibitIcon size={18} /> : <ItemGlyph kind="folder" size={28} system={folder.system} filled={(folder.fileCount ?? 0) + (folder.folderCount ?? 0) > 0} />}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-[var(--foreground)]">{folder.name}</span>
                       {folder.system ? <LockSimpleIcon size={13} className="shrink-0 text-[var(--muted)]" aria-label={t('files.system_folder', 'System folder')} /> : null}

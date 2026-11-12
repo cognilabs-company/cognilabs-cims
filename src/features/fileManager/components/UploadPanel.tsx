@@ -55,7 +55,7 @@ export function UploadPanel({ queue }: { queue: UploadQueue }) {
   return (
     <section
       aria-label={t('files.upload.panel', 'Uploads')}
-      className="mm-pop fixed inset-x-3 bottom-3 z-[90] overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-lg)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[380px]"
+      className="fx-upload-panel fixed inset-x-3 bottom-[76px] z-[90] overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-xl)] sm:inset-x-auto sm:right-10 sm:bottom-[84px] sm:w-[380px]"
     >
       <header className="flex items-center gap-3 px-4 py-3">
         <span className={cn(
@@ -109,7 +109,7 @@ export function UploadPanel({ queue }: { queue: UploadQueue }) {
             const kind = fileKind(extensionOf(item.file.name), item.file.type)
             return (
               <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
-                <KindTile kind={kind} size="sm" />
+                <KindTile kind={kind} extension={extensionOf(item.file.name)} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12.5px] font-semibold text-[var(--foreground)]" title={item.file.name}>{item.file.name}</p>
                   {item.status === 'uploading' ? (

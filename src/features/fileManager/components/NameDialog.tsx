@@ -3,8 +3,7 @@ import { useLocale } from '../../../app/hooks/useLocale'
 import { Button } from '../../../shared/ui/button'
 import { Dialog } from '../../../shared/ui/dialog'
 import { baseNameRange } from '../lib/items'
-
-const MAX_NAME = 255
+import { MAX_NAME, nameError } from '../lib/names'
 
 /** One-field dialog for "New folder" and "Rename". Mount it fresh for every use (it keeps its own draft). */
 export function NameDialog({
@@ -49,15 +48,7 @@ export function NameDialog({
   }, [selectBaseName])
 
   const name = value.trim()
-  const error = !name
-    ? t('files.name.required', 'Enter a name')
-    : name.length > MAX_NAME
-      ? t('files.name.too_long', 'The name is too long (max {{count}} characters)', { count: MAX_NAME })
-      : /[\\/]/.test(name)
-        ? t('files.name.slash', 'The name cannot contain / or \\')
-        : name === '.' || name === '..'
-          ? t('files.name.dots', 'This name is not allowed')
-          : null
+  const error = nameError(value, t)
   const unchanged = Boolean(initialValue) && name === initialValue.trim()
 
   async function submit(event: FormEvent) {
