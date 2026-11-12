@@ -2771,5 +2771,14 @@
   "miniapp.map.all": "Все",
   "miniapp.map.note": "Позиции приходят только от сотрудников с открытым Mini App.",
   "miniapp.phone.forwarding": "Переадресация звонков",
-  "miniapp.phone.forwarding_hint": "Куда идут звонки, если приложение не в сети или не отвечает."
+  "miniapp.phone.forwarding_hint": "Куда идут звонки, если приложение не в сети или не отвечает.",
+  "calendar.kind.call": "Звонок",
+  "calendar.filter.quick": "Быстрые фильтры",
+  "calendar.field.direction": "Направление",
+  "calendar.field.duration": "Длительность",
+  "calendar.call.incoming": "Входящий",
+  "calendar.call.outgoing": "Исходящий",
+  "telephony.status.no_answer": "Нет ответа",
+  "telephony.status.cancelled": "Отменён",
+  "telephony.status.canceled": "Отменён"
 }

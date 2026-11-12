@@ -35,6 +35,8 @@ export function SidePanel({ day, events, selected, onOpenEvent, onCloseEvent, on
         ? `${recurrenceLabel(selected.recurrence, t)}${selected.recurrenceUntil ? ` · ${t('calendar.field.until', 'until {{date}}', { date: dayParts(selected.recurrenceUntil.slice(0, 10)).date })}` : ''}`
         : null],
       [t('calendar.field.reminder', 'Reminder'), selected.kind === 'manual' ? (selected.reminder ? t('calendar.field.reminder_on', 'Telegram, before it starts') : t('calendar.field.reminder_off', 'Off')) : null],
+      [t('calendar.field.direction', 'Direction'), selected.kind === 'call' && selected.direction ? (selected.direction === 'incoming' ? t('calendar.call.incoming', 'Incoming') : t('calendar.call.outgoing', 'Outgoing')) : null],
+      [t('calendar.field.duration', 'Talk time'), selected.kind === 'call' ? `${Math.floor((selected.talkSeconds ?? 0) / 60)}:${String((selected.talkSeconds ?? 0) % 60).padStart(2, '0')}` : null],
       [t('calendar.field.status', 'Status'), selected.status],
       [t('calendar.field.phone', 'Phone'), selected.phone ? formatPhone(selected.phone) : null],
       [t('calendar.field.assigned', 'Responsible'), selected.assignedName],
@@ -70,7 +72,7 @@ export function SidePanel({ day, events, selected, onOpenEvent, onCloseEvent, on
           {selected.note ? <p className="rounded-[12px] bg-[var(--muted-surface)] px-3 py-2.5 text-[13px] whitespace-pre-wrap text-[var(--foreground)]">{selected.note}</p> : null}
         </dl>
         <div className="mt-auto flex flex-wrap gap-2 border-t border-[var(--border-subtle)] p-4">
-          {(selected.kind === 'recall' || selected.kind === 'meeting') && selected.customerId ? (
+          {(selected.kind === 'recall' || selected.kind === 'meeting' || selected.kind === 'call') && selected.customerId ? (
             <button type="button" onClick={() => onGo(selected)} className="inline-flex h-10 items-center gap-2 rounded-[11px] bg-[var(--primary)] px-4 text-[13px] font-semibold text-white hover:bg-[var(--primary-hover)]">
               <ArrowSquareOutIcon size={16} /> {t('calendar.open_customer', 'Open customer')}
             </button>

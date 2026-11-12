@@ -7,6 +7,7 @@ export function kindLabel(kind: EventKind, t: T) {
   switch (kind) {
     case 'recall': return t('calendar.kind.recall', 'Callback')
     case 'meeting': return t('calendar.kind.meeting', 'Meeting')
+    case 'call': return t('calendar.kind.call', 'Call')
     case 'task': return t('calendar.kind.task', 'Task deadline')
     case 'holiday': return t('calendar.kind.holiday', 'Holiday')
     case 'short_day': return t('calendar.kind.short_day', 'Short day')

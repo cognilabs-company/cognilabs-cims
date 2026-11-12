@@ -97,6 +97,9 @@ const mergedRoutes: Array<{ to: string; from: string[]; label: [string, string] 
   { to: '/salary', from: ['/faults', '/developer-kpi'], label: ['nav./salary.label', 'Salary & KPI'] },
 ]
 
+/** RBAC modules that exist only for the Telegram Mini App (no page in the web app). */
+const MINIAPP_ONLY_MODULES = new Set(['miniapp_calls'])
+
 function consolidate(groups: SidebarGroup[], t: (key: string, fallback: string) => string): SidebarGroup[] {
   // The merged page's own route counts too (the backend may already send /salary or /settings).
   const mergeOf = (to: string) => mergedRoutes.find((entry) => entry.to === to || entry.from.includes(to))
@@ -219,7 +222,8 @@ export function AppSidebar() {
         return {
           key: `${group.group}-${index}`,
           label: key ? t(`shell.group.${key}`, groupFallback[key]) : group.group,
-          items: group.items.map((item) => ({ to: resolveNavRoute(item), label: item.display_name, icon: item.icon })),
+          // Modules that only switch something on in the Telegram Mini App have no web page.
+          items: group.items.filter((item) => !MINIAPP_ONLY_MODULES.has(item.name)).map((item) => ({ to: resolveNavRoute(item), label: item.display_name, icon: item.icon })),
         }
       }), t)
       return withFrontendPages(groups, [

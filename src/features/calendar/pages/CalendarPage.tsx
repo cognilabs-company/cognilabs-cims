@@ -10,6 +10,7 @@ import { SelectField } from '../../../shared/ui/select-field'
 import { isProbablyEncryptedValue } from '../../../shared/lib/customer-display'
 import { formatPhone } from '../../telephony/components/telephonyFormat'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { KindIcon } from '../components/kinds'
 import { AgendaView } from '../components/AgendaView'
 import { EventDialog } from '../components/EventDialog'
 import { MonthView } from '../components/MonthView'
@@ -18,7 +19,7 @@ import { SidePanel } from '../components/SidePanel'
 import { WeekView } from '../components/WeekView'
 import { addDays, dayOf, dayParts, joinDayTime, monthGrid, monthTitle, parseDay, tashkentToday, timeOf, toDayString, weekDays } from '../lib/dates'
 import { kindLabel } from '../lib/kindLabel'
-import { apiToEvent, loadCalendarEvents, loadCustomerNames, loadDayTypes, loadTasks } from '../lib/sources'
+import { apiToEvent, loadCalendarEvents, loadCalls, loadCustomerNames, loadDayTypes, loadTasks } from '../lib/sources'
 import { hasLocalEvents, migrateLocalEvents } from '../lib/store'
 import { KIND_COLORS, KINDS, type CalEvent, type CalendarView, type EventDraft, type EventKind } from '../lib/types'
 
@@ -96,6 +97,8 @@ export function CalendarPage() {
   const [types, setTypes] = useState<EventKind[]>(DEFAULT_TYPES)
   const [customerNames, setCustomerNames] = useState<Map<number, string>>(() => new Map())
   const canCrm = can('customers') || can('crm')
+  const canCalls = can('calls')
+  const [calls, setCalls] = useState<CalEvent[]>([])
   const view = prefs.view
 
   useEffect(() => {
@@ -158,6 +161,14 @@ export function CalendarPage() {
     return () => { alive = false }
   }, [rangeStart, rangeEnd, personId, userId, refreshKey])
 
+  const wantCalls = canCalls && types.includes('call')
+  useEffect(() => {
+    if (!wantCalls) return
+    let alive = true
+    loadCalls(rangeStart, rangeEnd).then((items) => { if (alive) setCalls(items) }).catch(() => { if (alive) setCalls([]) })
+    return () => { alive = false }
+  }, [rangeEnd, rangeStart, refreshKey, wantCalls])
+
   const loading = events === null || tasks === null
 
   // The calendar API may send CRM names encrypted: show the customer's real name from the CRM instead.
@@ -172,7 +183,7 @@ export function CalendarPage() {
   const allEvents = useMemo(() => {
     const needle = query.toLowerCase()
     // Tasks and holidays are filtered here; the server already searched its own items.
-    const local = [...(tasks ?? []), ...dayTypes].filter((event) => !needle || event.title.toLowerCase().includes(needle))
+    const local = [...(tasks ?? []), ...dayTypes, ...(wantCalls ? calls : [])].filter((event) => !needle || event.title.toLowerCase().includes(needle) || (event.phone ?? '').includes(needle))
     const server = (events ?? []).map((event) => {
       if (event.kind !== 'recall' && event.kind !== 'meeting') return event
       const phone = event.phone && !hasEncrypted(event.phone) ? event.phone : null
@@ -183,7 +194,7 @@ export function CalendarPage() {
       return { ...event, title: name, phone }
     })
     return [...server, ...local]
-  }, [customerNames, dayTypes, events, query, t, tasks])
+  }, [calls, customerNames, dayTypes, events, query, t, tasks, wantCalls])
 
   const typeSet = useMemo(() => new Set(types), [types])
   const visibleEvents = useMemo(() => allEvents.filter((event) => typeSet.has(event.kind)), [allEvents, typeSet])
@@ -255,7 +266,7 @@ export function CalendarPage() {
   }
 
   function go(event: CalEvent) {
-    if ((event.kind === 'recall' || event.kind === 'meeting') && event.customerId) navigate(`/crm/customers?customer_id=${event.customerId}`)
+    if ((event.kind === 'recall' || event.kind === 'meeting' || event.kind === 'call') && event.customerId) navigate(`/crm/customers?customer_id=${event.customerId}`)
     if (event.kind === 'task' && event.boardId) navigate(`/boards/${event.boardId}`)
   }
 
@@ -368,7 +379,11 @@ export function CalendarPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([day, events]) => ({ day, events }))
   }, [byDay, rangeEnd, rangeStart, view])
-  const typeOptions = KINDS.map((kind) => ({ value: kind, label: kindLabel(kind, t), color: KIND_COLORS[kind], hint: String(counts[kind]) }))
+  const availableKinds = KINDS.filter((kind) => kind !== 'call' || canCalls)
+  const typeOptions = availableKinds.map((kind) => ({ value: kind, label: kindLabel(kind, t), color: KIND_COLORS[kind], hint: kind === 'call' && !types.includes('call') ? undefined : String(counts[kind]) }))
+  function toggleType(kind: EventKind) {
+    setTypes((current) => (current.includes(kind) ? current.filter((item) => item !== kind) : KINDS.filter((item) => item === kind || current.includes(item))))
+  }
 
   return (
     <section className="flex h-[calc(100dvh-var(--header-h)-44px)] min-h-[620px] flex-col gap-3">
@@ -424,8 +439,9 @@ export function CalendarPage() {
       </div>
 
       {/* Filters: what to show, whose, and a search — each a clear field of its own */}
-      <div className="flex flex-wrap items-end gap-2.5 rounded-[18px] border border-[var(--border)] bg-[var(--card)] p-3">
-        <div className="w-full min-w-[220px] sm:w-[300px]">
+      <div className="space-y-2.5 rounded-[18px] border border-[var(--border)] bg-[var(--card)] p-3">
+        <div className="flex flex-wrap items-end gap-2.5">
+        <div className="w-full min-w-[220px] sm:w-[240px]">
           <span className="mb-1 block px-0.5 text-[11.5px] font-semibold text-[var(--muted)]">{t('calendar.filter.types', 'What to show')}</span>
           <SelectField
             multiple
@@ -437,6 +453,33 @@ export function CalendarPage() {
             leadingIcon={<FunnelSimpleIcon size={15} />}
           />
         </div>
+        {/* Quick switches next to the select: one tap turns a type on or off */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5" role="group" aria-label={t('calendar.filter.quick', 'Quick filters')}>
+          {availableKinds.map((kind) => {
+            const on = types.includes(kind)
+            return (
+              <button
+                key={kind}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleType(kind)}
+                className={cn(
+                  'mm-press inline-flex h-10 items-center gap-1.5 rounded-[11px] border px-3 text-[12.5px] font-semibold transition-[background-color,border-color,color] duration-150',
+                  on ? 'text-[var(--foreground)]' : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted-strong)] hover:bg-[var(--input-surface)]',
+                )}
+                style={on ? { borderColor: `color-mix(in srgb, ${KIND_COLORS[kind]} 45%, transparent)`, background: `color-mix(in srgb, ${KIND_COLORS[kind]} 12%, var(--surface))` } : undefined}
+              >
+                <span className="grid h-5 w-5 place-items-center rounded-full" style={{ color: KIND_COLORS[kind], background: on ? 'transparent' : `color-mix(in srgb, ${KIND_COLORS[kind]} 12%, transparent)` }}>
+                  <KindIcon kind={kind} size={14} />
+                </span>
+                {kindLabel(kind, t)}
+                {on && !(kind === 'call' && calls.length === 0 && counts.call === 0) ? <span className="rounded-full bg-[var(--surface)] px-1.5 text-[11px] font-semibold text-[var(--muted-strong)] tabular-nums">{counts[kind]}</span> : null}
+              </button>
+            )
+          })}
+        </div>
+        </div>
+        <div className="flex flex-wrap items-end gap-2.5">
         {users.length > 1 ? (
           <div className="w-full min-w-[200px] sm:w-[240px]">
             <span className="mb-1 block px-0.5 text-[11.5px] font-semibold text-[var(--muted)]">{t('calendar.filter.user', 'Employee')}</span>
@@ -473,21 +516,15 @@ export function CalendarPage() {
             <ArrowCounterClockwiseIcon size={14} /> {t('calendar.filter.reset', 'Reset')}
           </button>
         ) : null}
+        </div>
       </div>
 
-      {/* What is on screen now: the chosen types with their counts */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
-        {types.length === 0 ? <span className="text-[12.5px] font-semibold text-[var(--warning-text)]">{t('calendar.filter.types_none', 'Nothing selected')}</span> : null}
-        {types.map((kind) => (
-          <span key={kind} className="inline-flex items-center gap-1.5 text-[12px] text-[var(--muted-strong)]">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: KIND_COLORS[kind] }} />
-            {kindLabel(kind, t)}
-            <span className="font-semibold text-[var(--foreground)] tabular-nums">{counts[kind]}</span>
-          </span>
-        ))}
-        {eventsFailed ? <span className="text-[12px] font-medium text-[var(--danger-text)]">{t('calendar.load_failed', 'Calendar events could not be loaded')}</span> : null}
-        <span className="ml-auto hidden text-[11.5px] text-[var(--muted)] 2xl:inline">{t('calendar.tip', 'Double-click a day or an hour to add an event · ← → to move · T — today')}</span>
-      </div>
+      {eventsFailed || types.length === 0 ? (
+        <div className="flex flex-wrap items-center gap-3 px-1">
+          {types.length === 0 ? <span className="text-[12.5px] font-semibold text-[var(--warning-text)]">{t('calendar.filter.types_none', 'Nothing selected')}</span> : null}
+          {eventsFailed ? <span className="text-[12px] font-medium text-[var(--danger-text)]">{t('calendar.load_failed', 'Calendar events could not be loaded')}</span> : null}
+        </div>
+      ) : null}
 
       {/* Calendar + day / event panel */}
       <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">

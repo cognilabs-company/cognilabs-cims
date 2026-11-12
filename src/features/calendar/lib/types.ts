@@ -1,7 +1,7 @@
 import type { CalendarRecurrence } from '../../../shared/api/services/calendar.service'
 
 /** What a calendar item is. recall / meeting come from the CRM, manual are events people add. */
-export type EventKind = 'manual' | 'meeting' | 'recall' | 'task' | 'holiday' | 'short_day'
+export type EventKind = 'manual' | 'meeting' | 'recall' | 'call' | 'task' | 'holiday' | 'short_day'
 
 /** One item on the calendar, from any source. */
 export type CalEvent = {
@@ -20,6 +20,9 @@ export type CalEvent = {
   status?: string | null
   phone?: string | null
   assignedName?: string | null
+  // Telephony calls
+  direction?: 'incoming' | 'outgoing'
+  talkSeconds?: number
   // Tasks
   boardId?: number
   projectName?: string
@@ -45,12 +48,13 @@ export const KIND_COLORS: Record<EventKind, string> = {
   manual: '#17924A',
   meeting: '#0D9488',
   recall: '#2B59FF',
+  call: '#0E7490',
   task: '#E8590C',
   holiday: '#E5484D',
   short_day: '#0EA5E9',
 }
 
-export const KINDS: EventKind[] = ['manual', 'meeting', 'recall', 'task', 'holiday', 'short_day']
+export const KINDS: EventKind[] = ['meeting', 'recall', 'call', 'manual', 'task', 'holiday', 'short_day']
 
 export type CalendarView = 'month' | 'week' | 'list'
 

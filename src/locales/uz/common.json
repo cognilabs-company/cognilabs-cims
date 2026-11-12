@@ -2771,5 +2771,14 @@
   "miniapp.map.all": "Hammasi",
   "miniapp.map.note": "Joylashuv faqat Mini App'i ochiq xodimlardan keladi.",
   "miniapp.phone.forwarding": "Qo'ng'iroqni yo'naltirish",
-  "miniapp.phone.forwarding_hint": "Ilova o'chiq bo'lsa yoki javob berilmasa, qo'ng'iroq qayerga ketadi."
+  "miniapp.phone.forwarding_hint": "Ilova o'chiq bo'lsa yoki javob berilmasa, qo'ng'iroq qayerga ketadi.",
+  "calendar.kind.call": "Qo'ng'iroq",
+  "calendar.filter.quick": "Tez filtrlar",
+  "calendar.field.direction": "Yo'nalish",
+  "calendar.field.duration": "Suhbat vaqti",
+  "calendar.call.incoming": "Kiruvchi",
+  "calendar.call.outgoing": "Chiquvchi",
+  "telephony.status.no_answer": "Javob berilmadi",
+  "telephony.status.cancelled": "Bekor qilindi",
+  "telephony.status.canceled": "Bekor qilindi"
 }

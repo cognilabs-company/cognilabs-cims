@@ -2771,5 +2771,14 @@
   "miniapp.map.all": "All",
   "miniapp.map.note": "Positions come only from employees whose Mini App is open.",
   "miniapp.phone.forwarding": "Call forwarding",
-  "miniapp.phone.forwarding_hint": "Where calls go when this app is offline or does not answer."
+  "miniapp.phone.forwarding_hint": "Where calls go when this app is offline or does not answer.",
+  "calendar.kind.call": "Call",
+  "calendar.filter.quick": "Quick filters",
+  "calendar.field.direction": "Direction",
+  "calendar.field.duration": "Talk time",
+  "calendar.call.incoming": "Incoming",
+  "calendar.call.outgoing": "Outgoing",
+  "telephony.status.no_answer": "No answer",
+  "telephony.status.cancelled": "Cancelled",
+  "telephony.status.canceled": "Cancelled"
 }

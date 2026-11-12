@@ -1,6 +1,8 @@
 import { calendarService, type CalendarApiEvent } from '../../../shared/api/services/calendar.service'
 import { crmService } from '../../../shared/api/services/crm.service'
 import { getCustomerDisplayName } from '../../../shared/lib/customer-display'
+import { telephonyService } from '../../../shared/api/services/telephony.service'
+import { statusLabel } from '../../telephony/components/telephonyFormat'
 import { projectsService } from '../../../shared/api/services/projects.service'
 import { updateTrackingService } from '../../../shared/api/services/updateTracking.service'
 import { dayOf } from './dates'
@@ -96,3 +98,33 @@ export function loadCustomerNames() {
   }
   return customerNames
 }
+
+/** Telephony calls (incoming / outgoing) in a day range, newest pages first (at most ~1000). */
+export async function loadCalls(dateFrom: string, dateTo: string): Promise<CalEvent[]> {
+  const out: CalEvent[] = []
+  for (let page = 1; page <= 5; page += 1) {
+    const response = await telephonyService.calls({ page, page_size: 200, date_from: dateFrom, date_to: dateTo })
+    for (const call of response.items ?? []) {
+      if (!call.started_at || Number.isNaN(new Date(call.started_at).getTime())) continue
+      const talk = Number(call.talk_seconds) || 0
+      out.push({
+        id: `call:${call.id}`,
+        kind: 'call',
+        title: call.customer_name?.trim() || call.phone_number,
+        start: call.started_at,
+        end: talk > 0 ? new Date(new Date(call.started_at).getTime() + talk * 1000).toISOString() : null,
+        allDay: false,
+        color: KIND_COLORS.call,
+        customerId: call.customer_id ?? undefined,
+        phone: call.phone_number,
+        status: statusLabel(call.status),
+        assignedName: call.user_name,
+        direction: call.direction,
+        talkSeconds: talk,
+      })
+    }
+    if (page >= (response.pages || 1)) break
+  }
+  return out
+}
+
