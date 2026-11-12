@@ -1,4 +1,6 @@
 import { calendarService, type CalendarApiEvent } from '../../../shared/api/services/calendar.service'
+import { crmService } from '../../../shared/api/services/crm.service'
+import { getCustomerDisplayName } from '../../../shared/lib/customer-display'
 import { projectsService } from '../../../shared/api/services/projects.service'
 import { updateTrackingService } from '../../../shared/api/services/updateTracking.service'
 import { dayOf } from './dates'
@@ -78,4 +80,19 @@ export async function loadDayTypes(startDate: string, endDate: string, userId: n
         member: item.member_name ?? null,
       }
     })
+}
+
+let customerNames: Promise<Map<number, string>> | null = null
+
+/** CRM customer id → readable name (loaded once per visit; the calendar API may send names encrypted). */
+export function loadCustomerNames() {
+  if (!customerNames) {
+    customerNames = crmService.dashboardWithAllCustomers()
+      .then((dashboard) => new Map((dashboard.customers ?? []).map((customer) => [customer.id, getCustomerDisplayName(customer, '')])))
+      .catch(() => {
+        customerNames = null
+        return new Map<number, string>()
+      })
+  }
+  return customerNames
 }

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowClockwiseIcon, CaretLeftIcon, CaretRightIcon, GearSixIcon, MagnifyingGlassIcon, PlusIcon, UserIcon, XIcon } from '@phosphor-icons/react'
+import { ArrowClockwiseIcon, ArrowCounterClockwiseIcon, CaretLeftIcon, CaretRightIcon, FunnelSimpleIcon, GearSixIcon, MagnifyingGlassIcon, PlusIcon, UserIcon, XIcon } from '@phosphor-icons/react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { calendarService, type CalendarUser } from '../../../shared/api/services/calendar.service'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { cn } from '../../../shared/lib/cn'
 import { useToast } from '../../../shared/toast/useToast'
 import { SelectField } from '../../../shared/ui/select-field'
+import { isProbablyEncryptedValue } from '../../../shared/lib/customer-display'
+import { formatPhone } from '../../telephony/components/telephonyFormat'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { AgendaView } from '../components/AgendaView'
 import { EventDialog } from '../components/EventDialog'
@@ -16,23 +18,20 @@ import { SidePanel } from '../components/SidePanel'
 import { WeekView } from '../components/WeekView'
 import { addDays, dayOf, dayParts, joinDayTime, monthGrid, monthTitle, parseDay, tashkentToday, timeOf, toDayString, weekDays } from '../lib/dates'
 import { kindLabel } from '../lib/kindLabel'
-import { apiToEvent, loadCalendarEvents, loadDayTypes, loadTasks } from '../lib/sources'
+import { apiToEvent, loadCalendarEvents, loadCustomerNames, loadDayTypes, loadTasks } from '../lib/sources'
 import { hasLocalEvents, migrateLocalEvents } from '../lib/store'
-import { KIND_COLORS, SOURCE_KINDS, type CalEvent, type CalendarView, type EventDraft, type EventKind } from '../lib/types'
+import { KIND_COLORS, KINDS, type CalEvent, type CalendarView, type EventDraft, type EventKind } from '../lib/types'
 
 const PREFS_KEY = 'cims.calendar.prefs'
-type SourceFilter = 'all' | 'manual' | 'crm'
+/** Opening the calendar always starts with meetings. */
+const DEFAULT_TYPES: EventKind[] = ['meeting']
 
-function readPrefs(): { view: CalendarView; hidden: EventKind[]; source: SourceFilter } {
+function readPrefs(): { view: CalendarView } {
   try {
-    const data = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as { view?: CalendarView; hidden?: EventKind[]; source?: SourceFilter }
-    return {
-      view: data.view === 'week' || data.view === 'list' ? data.view : 'month',
-      hidden: Array.isArray(data.hidden) ? data.hidden : [],
-      source: data.source === 'manual' || data.source === 'crm' ? data.source : 'all',
-    }
+    const data = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as { view?: CalendarView }
+    return { view: data.view === 'week' || data.view === 'list' ? data.view : 'month' }
   } catch {
-    return { view: 'month', hidden: [], source: 'all' }
+    return { view: 'month' }
   }
 }
 
@@ -86,9 +85,10 @@ export function CalendarPage() {
   const [dialog, setDialog] = useState<{ draft: EventDraft; saving: boolean; errors: Record<string, string> } | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [types, setTypes] = useState<EventKind[]>(DEFAULT_TYPES)
+  const [customerNames, setCustomerNames] = useState<Map<number, string>>(() => new Map())
+  const canCrm = can('customers') || can('crm')
   const view = prefs.view
-  const source = prefs.source
-  const hidden = useMemo(() => new Set(prefs.hidden), [prefs.hidden])
 
   useEffect(() => {
     try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* private mode */ }
@@ -152,15 +152,32 @@ export function CalendarPage() {
 
   const loading = events === null || tasks === null
 
+  // The calendar API may send CRM names encrypted: show the customer's real name from the CRM instead.
+  const needsNames = canCrm && (events ?? []).some((event) => (event.kind === 'recall' || event.kind === 'meeting') && isProbablyEncryptedValue(event.title))
+  useEffect(() => {
+    if (!needsNames) return
+    let alive = true
+    void loadCustomerNames().then((names) => { if (alive) setCustomerNames(names) })
+    return () => { alive = false }
+  }, [needsNames])
+
   const allEvents = useMemo(() => {
     const needle = query.toLowerCase()
     // Tasks and holidays are filtered here; the server already searched its own items.
     const local = [...(tasks ?? []), ...dayTypes].filter((event) => !needle || event.title.toLowerCase().includes(needle))
-    return [...(events ?? []), ...local]
-  }, [dayTypes, events, query, tasks])
+    const server = (events ?? []).map((event) => {
+      if (event.kind !== 'recall' && event.kind !== 'meeting') return event
+      const phone = event.phone && !isProbablyEncryptedValue(event.phone) ? event.phone : null
+      if (!isProbablyEncryptedValue(event.title)) return phone === event.phone ? event : { ...event, phone }
+      const name = (event.customerId ? customerNames.get(event.customerId) : '') || (phone ? formatPhone(phone) : '')
+        || (event.customerId ? t('calendar.customer_n', 'Customer #{{id}}', { id: event.customerId }) : t('calendar.customer', 'Customer'))
+      return { ...event, title: name, phone }
+    })
+    return [...server, ...local]
+  }, [customerNames, dayTypes, events, query, t, tasks])
 
-  const sourceKinds = useMemo(() => new Set(SOURCE_KINDS[source]), [source])
-  const visibleEvents = useMemo(() => allEvents.filter((event) => sourceKinds.has(event.kind) && !hidden.has(event.kind)), [allEvents, hidden, sourceKinds])
+  const typeSet = useMemo(() => new Set(types), [types])
+  const visibleEvents = useMemo(() => allEvents.filter((event) => typeSet.has(event.kind)), [allEvents, typeSet])
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
@@ -178,7 +195,7 @@ export function CalendarPage() {
   }, [visibleEvents])
 
   const counts = useMemo(() => {
-    const out = Object.fromEntries(SOURCE_KINDS.all.map((kind) => [kind, 0])) as Record<EventKind, number>
+    const out = Object.fromEntries(KINDS.map((kind) => [kind, 0])) as Record<EventKind, number>
     for (const event of allEvents) {
       const key = dayOf(event.start)
       if (key >= rangeStart && key <= rangeEnd) out[event.kind] += 1
@@ -322,16 +339,13 @@ export function CalendarPage() {
     }
   }
 
-  function toggleKind(kind: EventKind) {
-    setPrefs((current) => ({ ...current, hidden: current.hidden.includes(kind) ? current.hidden.filter((item) => item !== kind) : [...current.hidden, kind] }))
-  }
-
-  const filtersActive = source !== 'all' || personId !== null || search.trim() !== '' || prefs.hidden.length > 0
+  const isDefaultTypes = types.length === DEFAULT_TYPES.length && DEFAULT_TYPES.every((kind) => typeSet.has(kind))
+  const filtersActive = !isDefaultTypes || personId !== null || search.trim() !== ''
   function clearFilters() {
     setSearch('')
     setQuery('')
     setPersonId(null)
-    setPrefs((current) => ({ ...current, source: 'all', hidden: [] }))
+    setTypes(DEFAULT_TYPES)
   }
 
   const title = view === 'week'
@@ -345,12 +359,7 @@ export function CalendarPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([day, events]) => ({ day, events }))
   }, [byDay, rangeEnd, rangeStart, view])
-  const kinds = SOURCE_KINDS[source]
-  const sources: Array<[SourceFilter, string]> = [
-    ['all', t('calendar.source.all', 'All')],
-    ['manual', t('calendar.source.manual', 'Events')],
-    ['crm', t('calendar.source.crm', 'CRM')],
-  ]
+  const typeOptions = KINDS.map((kind) => ({ value: kind, label: kindLabel(kind, t), color: KIND_COLORS[kind], hint: String(counts[kind]) }))
 
   return (
     <section className="flex h-[calc(100dvh-var(--header-h)-44px)] min-h-[620px] flex-col gap-3">
@@ -405,44 +414,25 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {/* Filters — each one on its own: search, source, person, kinds */}
-      <div className="flex flex-wrap items-center gap-2 rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-2">
-        <label className="relative flex h-9 min-w-[200px] flex-1 items-center sm:max-w-[260px]">
-          <MagnifyingGlassIcon size={15} className="pointer-events-none absolute left-2.5 text-[var(--muted)]" />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t('calendar.filter.search', 'Search events, customers…')}
-            aria-label={t('calendar.filter.search', 'Search events, customers…')}
-            className="h-9 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] pr-8 pl-8 text-[13px] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+      {/* Filters: what to show, whose, and a search — each a clear field of its own */}
+      <div className="flex flex-wrap items-end gap-2.5 rounded-[18px] border border-[var(--border)] bg-[var(--card)] p-3">
+        <div className="w-full min-w-[220px] sm:w-[300px]">
+          <span className="mb-1 block px-0.5 text-[11.5px] font-semibold text-[var(--muted)]">{t('calendar.filter.types', 'What to show')}</span>
+          <SelectField
+            multiple
+            value=""
+            values={types}
+            onValuesChange={(values) => setTypes(KINDS.filter((kind) => values.includes(kind)))}
+            options={typeOptions}
+            placeholder={t('calendar.filter.types_none', 'Nothing selected')}
+            leadingIcon={<FunnelSimpleIcon size={15} />}
           />
-          {search ? (
-            <button type="button" onClick={() => setSearch('')} aria-label={t('common.clear', 'Clear')} className="absolute right-1.5 grid h-6 w-6 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--input-surface)]">
-              <XIcon size={12} />
-            </button>
-          ) : null}
-        </label>
-
-        <div role="radiogroup" aria-label={t('calendar.filter.source', 'Source')} className="inline-flex h-9 items-center rounded-[11px] bg-[var(--muted-surface)] p-0.5">
-          {sources.map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={source === value}
-              onClick={() => setPrefs((current) => ({ ...current, source: value }))}
-              className={cn('h-8 rounded-[9px] px-3 text-[12.5px] font-semibold transition-colors', source === value ? 'bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_3px_rgba(14,21,37,0.12)]' : 'text-[var(--muted-strong)] hover:text-[var(--foreground)]')}
-            >
-              {label}
-            </button>
-          ))}
         </div>
-
         {users.length > 1 ? (
-          <div className="w-[220px]">
+          <div className="w-full min-w-[200px] sm:w-[240px]">
+            <span className="mb-1 block px-0.5 text-[11.5px] font-semibold text-[var(--muted)]">{t('calendar.filter.user', 'Employee')}</span>
             <SelectField
               searchable
-              size="sm"
               value={personId === null ? '' : String(personId)}
               onValueChange={(value) => setPersonId(value ? Number(value) : null)}
               options={[{ value: '', label: t('calendar.filter.user_any', 'Everyone I can see') }, ...users.map((person) => ({ value: String(person.id), label: person.name, hint: person.detail ?? undefined }))]}
@@ -452,33 +442,42 @@ export function CalendarPage() {
             />
           </div>
         ) : null}
-
+        <label className="block w-full min-w-[200px] flex-1 sm:max-w-[320px]">
+          <span className="mb-1 block px-0.5 text-[11.5px] font-semibold text-[var(--muted)]">{t('calendar.filter.search_label', 'Search')}</span>
+          <span className="relative flex h-10 items-center">
+            <MagnifyingGlassIcon size={15} className="pointer-events-none absolute left-3 text-[var(--muted)]" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('calendar.filter.search', 'Search events, customers…')}
+              className="h-10 w-full rounded-[11px] border border-[var(--border)] bg-[var(--surface)] pr-8 pl-9 text-[13.5px] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+            />
+            {search ? (
+              <button type="button" onClick={() => setSearch('')} aria-label={t('common.clear', 'Clear')} className="absolute right-2 grid h-6 w-6 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--input-surface)]">
+                <XIcon size={12} />
+              </button>
+            ) : null}
+          </span>
+        </label>
         {filtersActive ? (
-          <button type="button" onClick={clearFilters} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] font-semibold text-[var(--muted-strong)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]">
-            <XIcon size={13} /> {t('calendar.filter.clear', 'Clear filters')}
+          <button type="button" onClick={clearFilters} className="inline-flex h-10 items-center gap-1.5 rounded-[11px] px-3 text-[13px] font-semibold text-[var(--muted-strong)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]">
+            <ArrowCounterClockwiseIcon size={14} /> {t('calendar.filter.reset', 'Reset')}
           </button>
         ) : null}
-        <span className="ml-auto hidden text-[11.5px] text-[var(--muted)] 2xl:inline">{t('calendar.tip', 'Double-click a day or an hour to add an event · ← → to move · T — today')}</span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        {kinds.map((kind) => {
-          const off = hidden.has(kind)
-          return (
-            <button
-              key={kind}
-              type="button"
-              aria-pressed={!off}
-              onClick={() => toggleKind(kind)}
-              className={cn('mm-press inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[12.5px] font-semibold transition-colors', off ? 'border-[var(--border)] bg-transparent text-[var(--muted)] line-through decoration-[1.5px]' : 'border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]')}
-            >
-              <span className={cn('h-2.5 w-2.5 rounded-full transition-opacity', off && 'opacity-35')} style={{ background: KIND_COLORS[kind] }} />
-              {kindLabel(kind, t)}
-              <span className="rounded-full bg-[var(--muted-surface)] px-1.5 text-[11px] text-[var(--muted-strong)] tabular-nums">{counts[kind]}</span>
-            </button>
-          )
-        })}
+      {/* What is on screen now: the chosen types with their counts */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
+        {types.length === 0 ? <span className="text-[12.5px] font-semibold text-[var(--warning-text)]">{t('calendar.filter.types_none', 'Nothing selected')}</span> : null}
+        {types.map((kind) => (
+          <span key={kind} className="inline-flex items-center gap-1.5 text-[12px] text-[var(--muted-strong)]">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: KIND_COLORS[kind] }} />
+            {kindLabel(kind, t)}
+            <span className="font-semibold text-[var(--foreground)] tabular-nums">{counts[kind]}</span>
+          </span>
+        ))}
         {eventsFailed ? <span className="text-[12px] font-medium text-[var(--danger-text)]">{t('calendar.load_failed', 'Calendar events could not be loaded')}</span> : null}
+        <span className="ml-auto hidden text-[11.5px] text-[var(--muted)] 2xl:inline">{t('calendar.tip', 'Double-click a day or an hour to add an event · ← → to move · T — today')}</span>
       </div>
 
       {/* Calendar + day / event panel */}

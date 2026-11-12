@@ -40,7 +40,9 @@ export function MonthView({ days, month, byDay, today, selectedDay, selectedEven
           const isToday = day === today
           const isSelected = day === selectedDay
           const weekend = index % 7 >= 5
-          const shown = timed.slice(0, dayType ? MAX_CHIPS - 1 : MAX_CHIPS)
+          // Leave a line for "+N more" so it is never cut off.
+          const room = dayType ? MAX_CHIPS - 1 : MAX_CHIPS
+          const shown = timed.slice(0, timed.length > room ? room - 1 : room)
           const more = timed.length - shown.length
           return (
             <div
@@ -51,7 +53,7 @@ export function MonthView({ days, month, byDay, today, selectedDay, selectedEven
               onDoubleClick={() => onCreate(day)}
               onKeyDown={(event) => { if (event.key === 'Enter') onSelectDay(day) }}
               className={cn(
-                'group/cell relative flex min-h-0 cursor-pointer flex-col gap-0.5 overflow-hidden border-r border-b border-[var(--border-subtle)] p-1.5 transition-colors [&:nth-child(7n)]:border-r-0',
+                'group/cell relative flex min-h-[104px] cursor-pointer flex-col gap-[3px] overflow-hidden border-r border-b border-[var(--border-subtle)] p-1.5 transition-colors [&:nth-child(7n)]:border-r-0',
                 weekend && 'bg-[var(--muted-surface)]/40',
                 !inMonth && 'opacity-45',
                 isSelected ? 'bg-[var(--blue-dim)]/60 shadow-[inset_0_0_0_2px_var(--primary)]' : 'hover:bg-[var(--input-surface)]/60',
@@ -59,7 +61,7 @@ export function MonthView({ days, month, byDay, today, selectedDay, selectedEven
               style={dayType ? { background: `color-mix(in srgb, ${dayType.color} ${isSelected ? 14 : 8}%, transparent)` } : undefined}
             >
               <div className="flex items-center justify-between gap-1">
-                <span className={cn('grid h-[22px] min-w-[22px] place-items-center rounded-full px-1 text-[12px] font-semibold tabular-nums', isToday ? 'bg-[var(--primary)] text-white' : 'text-[var(--foreground)]')}>
+                <span className={cn('grid h-[24px] min-w-[24px] place-items-center rounded-full px-1 tabular-nums', isToday ? 'bg-[var(--primary)] text-[13px] font-extrabold text-white shadow-[0_4px_10px_-4px_var(--primary)]' : 'text-[12.5px] font-semibold text-[var(--foreground)]')}>
                   {date.getDate()}
                 </span>
                 <button
@@ -73,7 +75,7 @@ export function MonthView({ days, month, byDay, today, selectedDay, selectedEven
               </div>
               {dayType ? <EventChip event={dayType} selected={dayType.id === selectedEventId} onOpen={onOpenEvent} /> : null}
               {shown.map((event) => <EventChip key={event.id} event={event} selected={event.id === selectedEventId} onOpen={onOpenEvent} />)}
-              {more > 0 ? <span className="shrink-0 px-1.5 text-[10.5px] leading-[14px] font-semibold text-[var(--primary)]">{t('calendar.more', '+{{count}} more', { count: more })}</span> : null}
+              {more > 0 ? <span className="shrink-0 px-1.5 text-[11px] leading-[14px] font-semibold text-[var(--primary)]">{t('calendar.more', '+{{count}} more', { count: more })}</span> : null}
             </div>
           )
         })}

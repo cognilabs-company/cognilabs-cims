@@ -2250,13 +2250,8 @@
   "calendar.save_failed": "Tadbir saqlanmadi",
   "calendar.delete_series_text": "Bu takrorlanuvchi tadbir — barcha takrorlari o'chadi.",
   "calendar.delete_failed": "Tadbir o'chirilmadi",
-  "calendar.source.all": "Hammasi",
-  "calendar.source.manual": "Tadbirlar",
-  "calendar.source.crm": "CRM",
   "calendar.filter.search": "Tadbir yoki mijozni qidirish…",
-  "calendar.filter.source": "Manba",
   "calendar.filter.user_any": "Barcha xodimlar",
-  "calendar.filter.clear": "Filtrlarni tozalash",
   "calendar.load_failed": "Kalendar tadbirlari yuklanmadi",
   "nav./files.label": "Fayllar",
   "nav./registrations.label": "Ro'yxatdan o'tish",
@@ -2759,5 +2754,12 @@
   "registrations.type_hint.radio": "Bittasi, hammasi ko'rinadi",
   "registrations.type_hint.select": "Ro'yxatdan bittasi",
   "registrations.type_hint.text": "Bir qator",
-  "registrations.type_hint.textarea": "Bir necha qator"
+  "registrations.type_hint.textarea": "Bir necha qator",
+  "calendar.customer_n": "Mijoz #{{id}}",
+  "calendar.customer": "Mijoz",
+  "calendar.filter.types": "Nimalar ko'rinsin",
+  "calendar.filter.types_none": "Hech narsa tanlanmagan",
+  "calendar.filter.user": "Xodim",
+  "calendar.filter.search_label": "Qidiruv",
+  "calendar.filter.reset": "Asliga qaytarish"
 }

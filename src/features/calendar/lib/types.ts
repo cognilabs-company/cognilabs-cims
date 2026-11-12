@@ -52,14 +52,6 @@ export const KIND_COLORS: Record<EventKind, string> = {
 
 export const KINDS: EventKind[] = ['manual', 'meeting', 'recall', 'task', 'holiday', 'short_day']
 
-/** Which kinds belong to which source filter. */
-export const SOURCE_KINDS: Record<'all' | 'manual' | 'crm' | 'other', EventKind[]> = {
-  all: KINDS,
-  manual: ['manual'],
-  crm: ['meeting', 'recall'],
-  other: ['task', 'holiday', 'short_day'],
-}
-
 export type CalendarView = 'month' | 'week' | 'list'
 
 /** The form behind "New event" / "Edit". Times are Tashkent wall-clock HH:MM. */

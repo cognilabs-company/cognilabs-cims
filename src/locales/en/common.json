@@ -2250,13 +2250,8 @@
   "calendar.save_failed": "Could not save the event",
   "calendar.delete_series_text": "It is a repeating event — every repeat is deleted.",
   "calendar.delete_failed": "Could not delete the event",
-  "calendar.source.all": "All",
-  "calendar.source.manual": "Events",
-  "calendar.source.crm": "CRM",
   "calendar.filter.search": "Search events, customers…",
-  "calendar.filter.source": "Source",
   "calendar.filter.user_any": "Everyone I can see",
-  "calendar.filter.clear": "Clear filters",
   "calendar.load_failed": "Calendar events could not be loaded",
   "nav./files.label": "Files",
   "nav./registrations.label": "Registrations",
@@ -2759,5 +2754,12 @@
   "registrations.type_hint.radio": "One, all visible",
   "registrations.type_hint.select": "One from a list",
   "registrations.type_hint.text": "One line",
-  "registrations.type_hint.textarea": "Several lines"
+  "registrations.type_hint.textarea": "Several lines",
+  "calendar.customer_n": "Customer #{{id}}",
+  "calendar.customer": "Customer",
+  "calendar.filter.types": "What to show",
+  "calendar.filter.types_none": "Nothing selected",
+  "calendar.filter.user": "Employee",
+  "calendar.filter.search_label": "Search",
+  "calendar.filter.reset": "Reset"
 }

@@ -2250,13 +2250,8 @@
   "calendar.save_failed": "Не удалось сохранить событие",
   "calendar.delete_series_text": "Это повторяющееся событие — удалятся все повторы.",
   "calendar.delete_failed": "Не удалось удалить событие",
-  "calendar.source.all": "Все",
-  "calendar.source.manual": "События",
-  "calendar.source.crm": "CRM",
   "calendar.filter.search": "Поиск событий, клиентов…",
-  "calendar.filter.source": "Источник",
   "calendar.filter.user_any": "Все сотрудники",
-  "calendar.filter.clear": "Сбросить фильтры",
   "calendar.load_failed": "Не удалось загрузить события",
   "nav./files.label": "Файлы",
   "nav./registrations.label": "Регистрации",
@@ -2759,5 +2754,12 @@
   "registrations.type_hint.radio": "Один, все видны",
   "registrations.type_hint.select": "Один из списка",
   "registrations.type_hint.text": "Одна строка",
-  "registrations.type_hint.textarea": "Несколько строк"
+  "registrations.type_hint.textarea": "Несколько строк",
+  "calendar.customer_n": "Клиент #{{id}}",
+  "calendar.customer": "Клиент",
+  "calendar.filter.types": "Что показывать",
+  "calendar.filter.types_none": "Ничего не выбрано",
+  "calendar.filter.user": "Сотрудник",
+  "calendar.filter.search_label": "Поиск",
+  "calendar.filter.reset": "Сбросить"
 }

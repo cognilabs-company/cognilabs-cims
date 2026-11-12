@@ -1,3 +1,4 @@
+import { ClockIcon } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
@@ -90,7 +91,7 @@ export function WeekView({ days, byDay, today, selectedDay, selectedEventId, gri
             <div key={day} className={cn('min-w-0 border-l border-[var(--border-subtle)] px-1.5 pt-2 pb-1.5', day === selectedDay && 'bg-[var(--blue-dim)]/50')}>
               <button type="button" onClick={() => onSelectDay(day)} className="flex w-full items-baseline gap-1.5 text-left">
                 <span className="text-[11.5px] font-semibold text-[var(--muted)] uppercase">{names[index]}</span>
-                <span className={cn('grid h-7 min-w-7 place-items-center rounded-full px-1 text-[15px] font-bold tabular-nums', day === today ? 'bg-[var(--primary)] text-white' : 'text-[var(--foreground)]')}>{date.getDate()}</span>
+                <span className={cn('grid h-7 min-w-7 place-items-center rounded-full px-1 text-[15px] tabular-nums', day === today ? 'bg-[var(--primary)] font-extrabold text-white shadow-[0_4px_10px_-4px_var(--primary)]' : 'font-bold text-[var(--foreground)]')}>{date.getDate()}</span>
               </button>
               <div className="mt-1 space-y-0.5">
                 {allDay.map((event) => (
@@ -146,7 +147,7 @@ export function WeekView({ days, byDay, today, selectedDay, selectedEventId, gri
                     title={`${timeOf(event.start)} · ${event.title}`}
                   >
                     <span className="block truncate font-semibold text-[var(--foreground)]" data-i18n-skip="true">{event.title}</span>
-                    {height > 34 ? <span className="block truncate text-[var(--muted)] tabular-nums">{timeOf(event.start)}{event.end && event.kind === 'manual' ? `–${timeOf(event.end)}` : ''}</span> : null}
+                    {height > 34 ? <span className="flex items-center gap-0.5 truncate font-semibold tabular-nums" style={{ color: event.color }}><ClockIcon size={11} weight="bold" className="shrink-0" />{timeOf(event.start)}{event.end && event.kind === 'manual' ? `–${timeOf(event.end)}` : ''}</span> : null}
                   </button>
                 ))}
                 {day === today && nowTop >= 0 && nowTop <= hours.length * HOUR ? (
