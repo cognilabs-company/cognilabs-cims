@@ -44,6 +44,14 @@ function isTyping(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]'))
 }
 
+/**
+ * The calendar API may send CRM names / phones Fernet-encrypted ("gAAAAAB…"), sometimes several parts
+ * joined with spaces ("gAAAA… gAAAA…"), so look for an encrypted part anywhere in the text.
+ */
+function hasEncrypted(value: string | null | undefined) {
+  return Boolean(value) && (/gAAAAA[A-Za-z0-9_\-=]{16,}/.test(value!) || isProbablyEncryptedValue(value))
+}
+
 /** 422 → { field: message } from FastAPI's `detail: [{ loc, msg }]`. */
 function fieldErrors(error: unknown): Record<string, string> {
   const detail = ((error as { details?: { detail?: unknown } } | null)?.details?.detail)
@@ -153,7 +161,7 @@ export function CalendarPage() {
   const loading = events === null || tasks === null
 
   // The calendar API may send CRM names encrypted: show the customer's real name from the CRM instead.
-  const needsNames = canCrm && (events ?? []).some((event) => (event.kind === 'recall' || event.kind === 'meeting') && isProbablyEncryptedValue(event.title))
+  const needsNames = canCrm && (events ?? []).some((event) => (event.kind === 'recall' || event.kind === 'meeting') && hasEncrypted(event.title))
   useEffect(() => {
     if (!needsNames) return
     let alive = true
@@ -167,9 +175,10 @@ export function CalendarPage() {
     const local = [...(tasks ?? []), ...dayTypes].filter((event) => !needle || event.title.toLowerCase().includes(needle))
     const server = (events ?? []).map((event) => {
       if (event.kind !== 'recall' && event.kind !== 'meeting') return event
-      const phone = event.phone && !isProbablyEncryptedValue(event.phone) ? event.phone : null
-      if (!isProbablyEncryptedValue(event.title)) return phone === event.phone ? event : { ...event, phone }
-      const name = (event.customerId ? customerNames.get(event.customerId) : '') || (phone ? formatPhone(phone) : '')
+      const phone = event.phone && !hasEncrypted(event.phone) ? event.phone : null
+      if (!hasEncrypted(event.title)) return phone === event.phone ? event : { ...event, phone }
+      const known = event.customerId ? customerNames.get(event.customerId) : ''
+      const name = (known && !hasEncrypted(known) ? known : '') || (phone ? formatPhone(phone) : '')
         || (event.customerId ? t('calendar.customer_n', 'Customer #{{id}}', { id: event.customerId }) : t('calendar.customer', 'Customer'))
       return { ...event, title: name, phone }
     })

@@ -101,7 +101,14 @@ function normalizeEvent(raw: unknown): CalendarApiEvent | null {
     occurrenceId: str(item.occurrence_id) ?? (num(item.occurrence_id) !== null ? String(item.occurrence_id) : null),
     source,
     eventType: type,
-    title: str(item.title) ?? str(item.customer_name) ?? '—',
+    // A readable customer name wins over a title that came encrypted.
+    title: (() => {
+      const title = str(item.title)
+      const customer = str(item.customer_name) ?? str(item.customer_full_name) ?? personName(item.customer)
+      const encrypted = (value: string | null) => Boolean(value && /gAAAAA[A-Za-z0-9_\-=]{16,}/.test(value))
+      if (title && !encrypted(title)) return title
+      return (customer && !encrypted(customer) ? customer : null) ?? title ?? '—'
+    })(),
     description: str(item.description) ?? str(item.note),
     startAt: start,
     endAt: str(item.end_at),

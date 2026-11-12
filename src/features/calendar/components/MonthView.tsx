@@ -30,7 +30,8 @@ export function MonthView({ days, month, byDay, today, selectedDay, selectedEven
           <span key={name} className={cn('px-2.5 py-2 text-[11.5px] font-semibold tracking-wide uppercase', index >= 5 ? 'text-[var(--caption)]' : 'text-[var(--muted)]')}>{name}</span>
         ))}
       </div>
-      <div key={gridKey} className={cn('grid min-h-0 flex-1 grid-cols-7 grid-rows-6', slide === 'left' ? 'cal-slide-left' : slide === 'right' ? 'cal-slide-right' : '')}>
+      {/* Rows never get shorter than a readable cell; on a low screen the grid scrolls instead of overlapping. */}
+      <div key={gridKey} className={cn('grid min-h-0 flex-1 grid-cols-7 grid-rows-[repeat(6,minmax(100px,1fr))] overflow-y-auto', slide === 'left' ? 'cal-slide-left' : slide === 'right' ? 'cal-slide-right' : '')}>
         {days.map((date, index) => {
           const day = toDayString(date)
           const events = byDay.get(day) ?? []
@@ -53,7 +54,7 @@ export function MonthView({ days, month, byDay, today, selectedDay, selectedEven
               onDoubleClick={() => onCreate(day)}
               onKeyDown={(event) => { if (event.key === 'Enter') onSelectDay(day) }}
               className={cn(
-                'group/cell relative flex min-h-[104px] cursor-pointer flex-col gap-[3px] overflow-hidden border-r border-b border-[var(--border-subtle)] p-1.5 transition-colors [&:nth-child(7n)]:border-r-0',
+                'group/cell relative flex min-h-0 cursor-pointer flex-col gap-[3px] overflow-hidden border-r border-b border-[var(--border-subtle)] p-1.5 transition-colors [&:nth-child(7n)]:border-r-0',
                 weekend && 'bg-[var(--muted-surface)]/40',
                 !inMonth && 'opacity-45',
                 isSelected ? 'bg-[var(--blue-dim)]/60 shadow-[inset_0_0_0_2px_var(--primary)]' : 'hover:bg-[var(--input-surface)]/60',
