@@ -291,7 +291,7 @@ export function computeLayout(map: MindMap): Layout {
   return { boxes, order, bounds: { minX, minY, maxX, maxY } }
 }
 
-function edgeEnds(parent: NodeBox, child: NodeBox) {
+export function edgeEnds(parent: NodeBox, child: NodeBox) {
   switch (child.dir) {
     case 'left': return { x1: parent.x, y1: parent.y + parent.h / 2, x2: child.x + child.w, y2: child.y + child.h / 2 }
     case 'down': return { x1: parent.x + parent.w / 2, y1: parent.y + parent.h, x2: child.x + child.w / 2, y2: child.y }

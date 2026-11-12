@@ -2184,7 +2184,7 @@
   "mindmap.dir.left": "chapga",
   "mindmap.dir.up": "tepaga",
   "mindmap.dir.down": "pastga",
-  "mindmap.hint_v2": "Tugunni tanlang — har tomondagi «+» o'sha tomonga qo'shadi (markaziy mavzu atrofida — o'sha tomonga yangi tarmoq) · tugunni xohlagan joyga suring — u o'sha yerda qoladi va chizig'i uzilmaydi; boshqa tugun ustiga tashlasangiz, unga ulanadi · chiziqni bosib, Delete yoki ✂ bilan uzing · «Joyiga qaytarish» yoki «Avto joylash» tartibga soladi",
+  "mindmap.hint_v2": "Tugunni tanlang — har tomondagi «+» o'sha tomonga qo'shadi (markaziy mavzu atrofida — o'sha tomonga yangi tarmoq) · tugunni xohlagan joyga suring — u o'sha yerda qoladi va chizig'i uzilmaydi; boshqa tugun ustiga tashlasangiz, unga ulanadi · chiziqni bosib, Delete yoki ✂ bilan uzing · «Joyiga qaytarish» yoki «Avto joylash» tartibga soladi · chiziqni bosing va uchidagi nuqtani boshqa tugunga suring — chiziq o'shanga ko'chadi · tanlangan tugun burchagidagi chiziq tutqichini boshqa tugunga suring — yangi chiziq tortiladi",
   "rbac.module.mind_map": "Mind map",
   "mindmap.read_only": "Faqat ko'rish",
   "mindmap.not_saved": "Saqlanmadi",
@@ -2761,5 +2761,10 @@
   "calendar.filter.types_none": "Hech narsa tanlanmagan",
   "calendar.filter.user": "Xodim",
   "calendar.filter.search_label": "Qidiruv",
-  "calendar.filter.reset": "Asliga qaytarish"
+  "calendar.filter.reset": "Asliga qaytarish",
+  "mindmap.cut_done_v2": "Chiziq olib tashlandi — tugundagi chiziq tutqichidan yangisini torting yoki tugunni boshqasiga suring",
+  "mindmap.line_invalid": "Chiziqni bu yerga ulab bo'lmaydi (aylana hosil bo'ladi)",
+  "mindmap.line_exists": "Bu tugunlar allaqachon ulangan",
+  "mindmap.draw_line": "Chiziq tortish: boshqa tugun ustiga suring",
+  "mindmap.move_line_end": "Chiziqni boshqa tugunga ulash uchun suring"
 }

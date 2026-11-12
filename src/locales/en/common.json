@@ -2184,7 +2184,7 @@
   "mindmap.dir.left": "left",
   "mindmap.dir.up": "up",
   "mindmap.dir.down": "down",
-  "mindmap.hint_v2": "Select a node — “+” on every side adds there (around the central topic: a branch that way) · drag a node anywhere — it stays there and keeps its line; drop it onto another node to connect it there · click a line and press Delete or ✂ to cut it · “Back to its place” or Auto layout tidies nodes up",
+  "mindmap.hint_v2": "Select a node — “+” on every side adds there (around the central topic: a branch that way) · drag a node anywhere — it stays there and keeps its line; drop it onto another node to connect it there · click a line and press Delete or ✂ to cut it · “Back to its place” or Auto layout tidies nodes up · select a line, then drag a dot at its end onto another node to move it · drag the line handle at a selected node’s corner onto another node to draw a new line",
   "rbac.module.mind_map": "Mind map",
   "mindmap.read_only": "View only",
   "mindmap.not_saved": "Not saved",
@@ -2761,5 +2761,10 @@
   "calendar.filter.types_none": "Nothing selected",
   "calendar.filter.user": "Employee",
   "calendar.filter.search_label": "Search",
-  "calendar.filter.reset": "Reset"
+  "calendar.filter.reset": "Reset",
+  "mindmap.cut_done_v2": "Line removed — draw a new one from the node’s line handle, or drag the node onto another one",
+  "mindmap.line_invalid": "This line cannot go there (it would make a loop)",
+  "mindmap.line_exists": "These nodes are already connected",
+  "mindmap.draw_line": "Draw a line: drag onto another node",
+  "mindmap.move_line_end": "Drag onto another node to move the line"
 }

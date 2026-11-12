@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { CheckSquareIcon, LinkSimpleIcon, NoteIcon, PlusIcon, ScissorsIcon, XIcon } from '@phosphor-icons/react'
+import { CheckSquareIcon, LineSegmentIcon, LinkSimpleIcon, NoteIcon, PlusIcon, ScissorsIcon, XIcon } from '@phosphor-icons/react'
 import { cn } from '../../../shared/lib/cn'
-import { computeLayout, edgeMidpoint, edgePath, isHub, type Layout, type NodeBox } from '../lib/layout'
+import { computeLayout, edgeEnds, edgeMidpoint, edgePath, isHub, type Layout, type NodeBox } from '../lib/layout'
 import { subtreeIds, updateNode } from '../lib/tree'
 import type { Dir, MindMap, MindNode, NodeTask } from '../lib/types'
 import { clampZoom, type View } from '../lib/view'
@@ -9,6 +9,8 @@ import { Minimap } from './Minimap'
 
 
 type DragState = { id: string; dx: number; dy: number; targetId: string | null }
+/** A line being drawn or re-attached: from a fixed point to the pointer (world coordinates). */
+type LineDrag = { from: { x: number; y: number }; to: { x: number; y: number }; targetId: string | null; color: string }
 
 type Props = {
   map: MindMap
@@ -29,7 +31,7 @@ type Props = {
   leavingIds: Set<string>
   /** Glide the camera (button-driven moves); wheel and drag stay instant. */
   animateView: boolean
-  labels: { collapse: string; expand: string; openLink: string; openTask: string; note: string; remove: string; cut: string; side: (id: string, side: Dir) => string }
+  labels: { collapse: string; expand: string; openLink: string; openTask: string; note: string; remove: string; cut: string; side: (id: string, side: Dir) => string; drawLine: string; moveLineEnd: string }
   onSize: (size: { w: number; h: number }) => void
   onSelect: (id: string) => void
   onStartEdit: (id: string) => void
@@ -44,6 +46,10 @@ type Props = {
   onSideAdd: (id: string, side: Dir) => void
   /** Cut the line between this node and its parent. */
   onDetach: (id: string) => void
+  /** A line's end was dragged onto a node: `end` = which end moved ("parent" or "child"); edge = its child's id. */
+  onReconnect: (edgeId: string, end: 'parent' | 'child', targetId: string) => void
+  /** A new line was drawn from one node to another. */
+  onConnect: (sourceId: string, targetId: string) => void
   /** A line is selected (by its child's id), or nothing. */
   selectedEdge: string | null
   onSelectEdge: (id: string | null) => void
@@ -84,6 +90,7 @@ export function MindCanvas(props: Props) {
   const [drag, setDrag] = useState<DragState | null>(null)
   const [panning, setPanning] = useState(false)
   const [hoverEdge, setHoverEdge] = useState<string | null>(null)
+  const [lineDrag, setLineDrag] = useState<LineDrag | null>(null)
   const { onSize } = props
 
   // Container size (fit / centre / minimap need it).
@@ -199,12 +206,49 @@ export function MindCanvas(props: Props) {
     window.addEventListener('pointercancel', up)
   }
 
+  /**
+   * Drag a line end (or a new line) from `from` to a node. `exclude`: nodes it may not land on.
+   * On release over a node → `done(nodeId)`; over empty space nothing changes.
+   */
+  function startLineDrag(event: ReactPointerEvent, from: { x: number; y: number }, color: string, exclude: Set<string>, done: (targetId: string) => void) {
+    event.preventDefault()
+    event.stopPropagation()
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const toWorld = (e: { clientX: number; clientY: number }) => ({ x: (e.clientX - rect.left - view.x) / view.k, y: (e.clientY - rect.top - view.y) / view.k })
+    const targetAt = (e: PointerEvent) => {
+      for (const element of document.elementsFromPoint(e.clientX, e.clientY)) {
+        const id = (element as HTMLElement).closest?.('[data-node-id]')?.getAttribute('data-node-id')
+        if (id && !exclude.has(id)) return id
+      }
+      return null
+    }
+    let last: LineDrag = { from, to: toWorld(event), targetId: null, color }
+    setLineDrag(last)
+    const move = (e: PointerEvent) => {
+      last = { from, to: toWorld(e), targetId: targetAt(e), color }
+      setLineDrag(last)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+      setLineDrag(null)
+      if (last.targetId) done(last.targetId)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+  }
+
   const edges = shown.order.flatMap((id) => {
     const node = map.nodes[id]
     const parent = node?.parentId ? shown.boxes.get(node.parentId) : undefined
     const child = shown.boxes.get(id)
-    return parent && child ? [{ id, d: edgePath(parent, child, map.edgeStyle), color: child.color, depth: child.depth, mid: edgeMidpoint(parent, child) }] : []
+    return parent && child ? [{ id, d: edgePath(parent, child, map.edgeStyle), color: child.color, depth: child.depth, mid: edgeMidpoint(parent, child), ends: edgeEnds(parent, child), parentId: parent.id }] : []
   })
+  // The selected line shows a handle on each end: drag one onto another node to re-attach the line.
+  const selectedLine = drag || lineDrag || props.readOnly ? undefined : edges.find((edge) => edge.id === props.selectedEdge)
   // The cut button: on the selected line, or the one under the pointer.
   const cutEdge = drag || props.readOnly ? undefined : edges.find((edge) => edge.id === props.selectedEdge) ?? edges.find((edge) => edge.id === hoverEdge)
 
@@ -258,7 +302,37 @@ export function MindCanvas(props: Props) {
               onPointerLeave={() => setHoverEdge((current) => (current === edge.id ? null : current))}
             />
           ))}
+          {lineDrag ? (
+            <path
+              d={`M ${lineDrag.from.x} ${lineDrag.from.y} L ${lineDrag.to.x} ${lineDrag.to.y}`}
+              fill="none"
+              stroke={lineDrag.targetId ? 'var(--primary)' : lineDrag.color}
+              strokeWidth={2.5}
+              strokeDasharray="7 6"
+              strokeLinecap="round"
+            />
+          ) : null}
         </svg>
+
+        {selectedLine ? (['parent', 'child'] as const).map((end) => {
+          const point = end === 'parent' ? { x: selectedLine.ends.x1, y: selectedLine.ends.y1 } : { x: selectedLine.ends.x2, y: selectedLine.ends.y2 }
+          const fixed = end === 'parent' ? { x: selectedLine.ends.x2, y: selectedLine.ends.y2 } : { x: selectedLine.ends.x1, y: selectedLine.ends.y1 }
+          // The child end may not go into the child's own branch; the parent end may not land on the child or below it.
+          const exclude = end === 'parent' ? new Set(subtreeIds(map, selectedLine.id)) : new Set([selectedLine.id, selectedLine.parentId])
+          return (
+            <button
+              key={end}
+              type="button"
+              data-canvas-ui
+              data-line-end={end}
+              title={labels.moveLineEnd}
+              aria-label={labels.moveLineEnd}
+              onPointerDown={(event) => startLineDrag(event, fixed, selectedLine.color, exclude, (targetId) => props.onReconnect(selectedLine.id, end, targetId))}
+              className="mm-pop absolute z-10 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-[var(--primary)] bg-[var(--card)] shadow-[0_1px_4px_rgba(14,21,37,0.3)] transition-transform hover:scale-150 active:cursor-grabbing"
+              style={{ left: point.x, top: point.y }}
+            />
+          )
+        }) : null}
 
         {cutEdge && !leavingIds.has(cutEdge.id) ? (
           <button
@@ -282,7 +356,7 @@ export function MindCanvas(props: Props) {
           if (!node) return null
           const selected = id === selectedId
           const editing = id === editingId
-          const isDropTarget = drag?.targetId === id
+          const isDropTarget = drag?.targetId === id || lineDrag?.targetId === id
           const isMatch = matches.has(id)
           const hasChildren = node.children.length > 0
           const hub = isHub(map, id)
@@ -370,6 +444,21 @@ export function MindCanvas(props: Props) {
                 </button>
               ) : null}
 
+              {/* Draw a new line from this node — bottom-left corner */}
+              {selected && !editing && !drag && !props.readOnly ? (
+                <button
+                  type="button"
+                  data-canvas-ui
+                  data-draw-line
+                  title={labels.drawLine}
+                  aria-label={labels.drawLine}
+                  onPointerDown={(event) => startLineDrag(event, { x: box.x + box.w / 2, y: box.y + box.h / 2 }, box.color, new Set([id]), (targetId) => props.onConnect(id, targetId))}
+                  className="mm-pop absolute -bottom-2.5 -left-2.5 grid h-5 w-5 cursor-crosshair place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--primary)] shadow-[0_2px_6px_rgba(14,21,37,0.15)] transition-transform hover:scale-125"
+                >
+                  <LineSegmentIcon size={11} weight="bold" />
+                </button>
+              ) : null}
+
               {/* Delete (not the central topic) — top-right corner */}
               {!editing && !props.readOnly && id !== map.rootId ? (
                 <button
@@ -389,7 +478,7 @@ export function MindCanvas(props: Props) {
               ) : null}
 
               {/* "+" on every side: outer = child, sides = sibling before / after, inner = parent; around a hub every side adds a branch that way */}
-              {!editing && !drag && !props.readOnly ? (['up', 'right', 'down', 'left'] as Dir[]).map((side) => {
+              {!editing && !drag && !lineDrag && !props.readOnly && props.selectedEdge !== id ? (['up', 'right', 'down', 'left'] as Dir[]).map((side) => {
                 const outer = hub || side === box.dir
                 const offset = !hub && side === box.dir && hasChildren ? 34 : 12
                 return (

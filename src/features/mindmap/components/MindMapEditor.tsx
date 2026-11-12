@@ -430,12 +430,69 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   function detachNode(id = selected) {
     const box = layout.boxes.get(id)
     if (!box || !map.nodes[id]?.parentId) return
-    // Step it a little outward, so it does not sit on the sibling that moves into its place.
-    const step = { right: [box.w / 2 + 70, -28], left: [-(box.w / 2 + 70), -28], down: [60, box.h / 2 + 50], up: [60, -(box.h / 2 + 50)] }[box.dir]
-    commit(settleFree(detach(map, id, { x: box.x + box.w / 2 + step[0], y: box.y + box.h / 2 + step[1] }, box.dir), id))
+    // Only the line goes away: the node stays exactly where it is.
+    commit(detach(map, id, { x: box.x + box.w / 2, y: box.y + box.h / 2 }, box.dir))
     setSelectedEdge(null)
     setSelectedId(id)
-    showToast({ title: t('mindmap.cut_done', 'Line removed — drag the node onto another one to connect it again'), tone: 'info' })
+    showToast({ title: t('mindmap.cut_done_v2', 'Line removed — draw a new one from the node’s line handle, or drag the node onto another one'), tone: 'info' })
+  }
+
+  /** Connects `id` under `parentId` without moving it: it keeps its spot (hand-placed next to the new parent). */
+  function attachKeeping(current: MindMap, id: string, parentId: string): MindMap {
+    const box = layout.boxes.get(id)
+    const parent = layout.boxes.get(parentId)
+    if (!box || !parent) return current
+    const px = Math.round(box.x + box.w / 2 - (parent.x + parent.w / 2))
+    const py = Math.round(box.y + box.h / 2 - (parent.y + parent.h / 2))
+    const next = reparent(current, id, parentId, isHub(current, parentId) ? dirOf(px, py) : undefined)
+    return next === current ? current : updateNode(next, id, { px, py, dx: 0, dy: 0 })
+  }
+
+  /** A line's end was dragged to another node. Nodes never move — only the line changes. */
+  function reconnectLine(edgeId: string, end: 'parent' | 'child', targetId: string) {
+    const child = map.nodes[edgeId]
+    if (!child?.parentId) return
+    let next: MindMap
+    if (end === 'parent') {
+      // Same child, new parent.
+      next = attachKeeping(map, edgeId, targetId)
+    } else {
+      // Same parent, new child: the old child keeps its spot without a line.
+      const box = layout.boxes.get(edgeId)
+      if (!box) return
+      const freed = detach(map, edgeId, { x: box.x + box.w / 2, y: box.y + box.h / 2 }, box.dir)
+      const attached = attachKeeping(freed, targetId, child.parentId)
+      next = attached === freed ? map : attached
+    }
+    if (next === map) {
+      showToast({ title: t('mindmap.line_invalid', 'This line cannot go there (it would make a loop)'), tone: 'error' })
+      return
+    }
+    commit(next)
+    setSelectedEdge(end === 'parent' ? edgeId : targetId)
+  }
+
+  /**
+   * A new line from `sourceId` to `targetId`. A line drawn from a node without a line (cut off / free) attaches
+   * it to the target; otherwise the target joins the source. If that would make a loop, the other way round.
+   */
+  function connectNodes(sourceId: string, targetId: string) {
+    const isLoose = (id: string) => id !== map.rootId && !map.nodes[id]?.parentId
+    const sourceJoins = isLoose(sourceId) && !isLoose(targetId)
+    const [first, second] = sourceJoins ? [[sourceId, targetId], [targetId, sourceId]] : [[targetId, sourceId], [sourceId, targetId]]
+    let next = attachKeeping(map, first[0], first[1])
+    let edge = first[0]
+    if (next === map) {
+      next = attachKeeping(map, second[0], second[1])
+      edge = second[0]
+    }
+    if (next === map) {
+      showToast({ title: map.nodes[targetId]?.parentId === sourceId || map.nodes[sourceId]?.parentId === targetId ? t('mindmap.line_exists', 'These nodes are already connected') : t('mindmap.line_invalid', 'This line cannot go there (it would make a loop)'), tone: 'error' })
+      return
+    }
+    commit(next)
+    setSelectedId(edge)
+    setSelectedEdge(edge)
   }
 
   /** Fade the node (and its subtree) out, then remove it — one undo step. */
@@ -831,11 +888,15 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
               remove: t('mindmap.remove', 'Delete'),
               cut: t('mindmap.cut', 'Remove the line to the parent'),
               side: sideLabel,
+              drawLine: t('mindmap.draw_line', 'Draw a line: drag onto another node'),
+              moveLineEnd: t('mindmap.move_line_end', 'Drag onto another node to move the line'),
             }}
             onSideAdd={sideAdd}
             selectedEdge={selectedEdge}
             onSelectEdge={(id) => { setSelectedEdge(id); if (id) setSelectedId(id) }}
             onDetach={detachNode}
+            onReconnect={reconnectLine}
+            onConnect={connectNodes}
             onCreateFree={(x, y) => addFree(x, y)}
             leavingIds={leavingIds}
             animateView={animateView}
