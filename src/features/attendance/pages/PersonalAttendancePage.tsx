@@ -1,3 +1,4 @@
+import { ManualCheckOutButton } from '../components/ManualCheckOutButton'
 import { useState } from 'react'
 import { ClockIcon } from '@phosphor-icons/react'
 import { attendanceService } from '../../../shared/api/services/attendance.service'
@@ -220,6 +221,7 @@ export function PersonalAttendancePage() {
 
   return (
     <section className="page-enter space-y-[18px]">
+      <ManualCheckOutButton />
       <PageHeader
         eyebrow="Member / Attendance"
         title="My Attendance"

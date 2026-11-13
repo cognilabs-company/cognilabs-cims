@@ -5,6 +5,8 @@ import {
   type LocationMapSnapshot,
 } from '../../../shared/api/services/attendanceLocations.service'
 
+import { MANUAL_CHECKOUT_EVENT } from './manualCheckOut'
+
 export type LiveConnection = 'connecting' | 'live' | 'reconnecting'
 
 const RETRY_DELAYS = [1_000, 2_000, 5_000, 10_000, 20_000, 30_000]
@@ -106,6 +108,13 @@ export function useLiveLocationMap() {
         socket.close()
       }
     }
+  }, [load])
+
+  // A manual check-out changes presence: re-fetch the map.
+  useEffect(() => {
+    const onChange = () => { void load() }
+    window.addEventListener(MANUAL_CHECKOUT_EVENT, onChange)
+    return () => window.removeEventListener(MANUAL_CHECKOUT_EVENT, onChange)
   }, [load])
 
   return { ...snapshot, status, error, connection, now, reload: load }

@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/hooks/useAuth'
 import { PageTabs, type PageTab } from '../../../shared/ui/page-tabs'
 import { LoadingStateBlock } from '../../../shared/ui/state-block'
 import { AttendanceRecordsTab } from '../components/AttendanceRecordsTab'
+import { ManualCheckOutButton } from '../components/ManualCheckOutButton'
 
 // The location tabs carry Leaflet; load them only when one is opened.
 const LocationsTab = lazy(() => import('../components/locations/LocationsTab').then((module) => ({ default: module.LocationsTab })))
@@ -30,5 +31,10 @@ export function AttendanceManagementPage() {
         ]
       : []),
   ]
-  return <PageTabs tabs={tabs} ariaLabel={t('attendance.loc.tabs_label', 'Attendance sections')} />
+  return (
+    <>
+      <ManualCheckOutButton />
+      <PageTabs tabs={tabs} ariaLabel={t('attendance.loc.tabs_label', 'Attendance sections')} />
+    </>
+  )
 }

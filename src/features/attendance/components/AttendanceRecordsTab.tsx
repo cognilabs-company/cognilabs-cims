@@ -3,6 +3,7 @@ import { ClockCountdownIcon, HourglassMediumIcon, UserCheckIcon } from '@phospho
 import type { ApiResponseError } from '../../../shared/api/types'
 import { faceIdAttendanceService, type FaceIdAttendanceStatus, type FaceIdDailyRecord } from '../../../shared/api/services/attendance.service'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
+import { MANUAL_CHECKOUT_EVENT } from '../lib/manualCheckOut'
 import { Alert } from '../../../shared/ui/alert'
 import { Badge } from '../../../shared/ui/badge'
 import { Button } from '../../../shared/ui/button'
@@ -192,6 +193,15 @@ export function AttendanceRecordsTab() {
   )
 
   useEffect(() => { setPage(1) }, [month, day, employeeId, status, source])
+
+  // A manual check-out (top bar) changed someone's day: reload what is on screen.
+  const refetchRecords = recordsQuery.refetch
+  const refetchDetail = employeeDetailQuery.refetch
+  useEffect(() => {
+    const onChange = () => { void refetchRecords(); void refetchDetail() }
+    window.addEventListener(MANUAL_CHECKOUT_EVENT, onChange)
+    return () => window.removeEventListener(MANUAL_CHECKOUT_EVENT, onChange)
+  }, [refetchDetail, refetchRecords])
 
   const employeeOptions = useMemo<SelectFieldOption[]>(() => [
     { value: '', label: 'All employees' },

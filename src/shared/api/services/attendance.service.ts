@@ -315,6 +315,23 @@ export type FaceIdAttendanceUsersResponse = {
   total_pages?: number
 }
 
+export type ManualCheckOutAccess = { allowed: boolean; timezone?: string; supports_all_employees?: boolean }
+
+export type ManualCheckOutResult = {
+  success: boolean
+  record_id: number
+  employee_id: number
+  employee_name: string | null
+  attendance_date: string
+  check_in_at: string | null
+  check_out_at: string | null
+  check_in_time: string | null
+  check_out_time: string | null
+  worked_minutes: number | null
+  worked_hours_decimal: number | null
+  is_manual: boolean
+}
+
 export type FaceIdDailyRecord = {
   employee_id: number
   employee_full_name?: string | null
@@ -412,6 +429,16 @@ export const faceIdAttendanceService = {
       path: '/attendance/users',
       query: params,
     })
+  },
+
+  /** Whether the current user may set a manual check-out (CEO and specific people; others get 403). */
+  manualCheckOutAccess() {
+    return attendanceReadRequest<ManualCheckOutAccess>({ path: '/attendance/manual-check-out/access' })
+  },
+
+  /** Sets (or corrects) an employee's check-out. `occurred_at` must carry the Asia/Tashkent offset. */
+  manualCheckOut(body: { employee_id: number; occurred_at: string; comment?: string | null }) {
+    return attendanceReadRequest<ManualCheckOutResult>({ path: '/attendance/manual-check-out', method: 'PATCH', body })
   },
 
   listDailyRecords(params: {
