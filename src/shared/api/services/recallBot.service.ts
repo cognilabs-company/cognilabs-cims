@@ -1,0 +1,190 @@
+import { request } from '../http'
+
+/* ──────────────────────────────────────────────────────────────
+   CRM recall bot — /recall-bot (CIMS_RECALL_BOT_FRONTEND.md). CEO only.
+   Responses are not typed in the OpenAPI schema, so readers are defensive.
+   ────────────────────────────────────────────────────────────── */
+
+export type RecallBotSettings = {
+  enabled: boolean
+  reminder_minutes: number
+  retry_enabled: boolean
+  max_retry_attempts: number
+  retry_interval_minutes: number
+  bot_username: string | null
+  updated_at: string | null
+}
+
+export type RecallBotSettingsPatch = Partial<Pick<RecallBotSettings, 'enabled' | 'reminder_minutes' | 'retry_enabled' | 'max_retry_attempts' | 'retry_interval_minutes'>>
+
+export type RecallBotStatus = {
+  botConfigured: boolean | null
+  botUsername: string | null
+  schedulerRunning: boolean | null
+  activeRecipients: number | null
+  sent24h: number | null
+  failed24h: number | null
+  pendingRetries: number | null
+}
+
+export type DeliveryStatus = 'unknown' | 'ready' | 'not_started' | 'blocked' | 'error'
+
+export type RecallRecipient = {
+  id: number
+  userId: number | null
+  name: string
+  email: string | null
+  isActive: boolean
+  deliveryStatus: DeliveryStatus
+  lastError: string | null
+  lastSentAt: string | null
+}
+
+export type RecallCandidate = {
+  userId: number
+  name: string
+  email: string | null
+  recipientId: number | null
+  isRecipient: boolean
+  deliveryStatus: DeliveryStatus
+  telegramReady: boolean
+}
+
+type Dict = Record<string, unknown>
+const asDict = (value: unknown): Dict => (value && typeof value === 'object' ? (value as Dict) : {})
+const str = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
+const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)) ? Number(value) : null)
+const bool = (value: unknown) => (typeof value === 'boolean' ? value : null)
+
+function firstOf<T>(data: Dict, keys: string[], read: (value: unknown) => T | null): T | null {
+  for (const key of keys) {
+    const value = read(data[key])
+    if (value !== null) return value
+  }
+  return null
+}
+
+function listOf(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw
+  const data = asDict(raw)
+  for (const key of ['items', 'recipients', 'candidates', 'results', 'data']) if (Array.isArray(data[key])) return data[key] as unknown[]
+  return []
+}
+
+function deliveryOf(value: unknown): DeliveryStatus {
+  return value === 'ready' || value === 'not_started' || value === 'blocked' || value === 'error' ? value : 'unknown'
+}
+
+function nameOf(data: Dict) {
+  const user = asDict(data.user)
+  const full = str(data.full_name) ?? str(user.full_name)
+  if (full) return full
+  const joined = [str(data.name) ?? str(user.name), str(data.surname) ?? str(user.surname)].filter(Boolean).join(' ')
+  return joined || str(data.email) || str(user.email) || str(data.username) || '—'
+}
+
+function normalizeSettings(raw: unknown): RecallBotSettings {
+  const data = asDict(raw)
+  return {
+    enabled: data.enabled === true,
+    reminder_minutes: num(data.reminder_minutes) ?? 5,
+    retry_enabled: data.retry_enabled === true,
+    max_retry_attempts: num(data.max_retry_attempts) ?? 3,
+    retry_interval_minutes: num(data.retry_interval_minutes) ?? 2,
+    bot_username: str(data.bot_username),
+    updated_at: str(data.updated_at),
+  }
+}
+
+/** Status is described only loosely in the contract: read the usual key names, nested or flat. */
+function normalizeStatus(raw: unknown): RecallBotStatus {
+  const data = asDict(raw)
+  const bot = asDict(data.bot)
+  const scheduler = asDict(data.scheduler)
+  const stats = { ...asDict(data.last_24h), ...asDict(data.stats), ...asDict(data.last_24_hours) }
+  const all = { ...data, ...stats }
+  return {
+    botConfigured: bool(bot.configured) ?? firstOf(data, ['bot_configured', 'configured', 'token_configured'], bool),
+    botUsername: str(bot.username) ?? firstOf(data, ['bot_username', 'username'], str),
+    schedulerRunning: bool(scheduler.running) ?? bool(scheduler.enabled) ?? firstOf(data, ['scheduler_running', 'scheduler_enabled', 'scheduler'], bool),
+    activeRecipients: firstOf(all, ['active_recipients', 'active_recipient_count', 'active_recipients_count', 'recipients_active'], num),
+    sent24h: firstOf(all, ['sent_last_24h', 'sent_24h', 'last_24h_sent', 'sent'], num),
+    failed24h: firstOf(all, ['failed_last_24h', 'failed_24h', 'last_24h_failed', 'failed'], num),
+    pendingRetries: firstOf(all, ['pending_retries', 'pending_retry_count', 'retries_pending'], num),
+  }
+}
+
+function normalizeRecipient(raw: unknown): RecallRecipient | null {
+  const data = asDict(raw)
+  const id = num(data.id ?? data.recipient_id)
+  if (id === null) return null
+  return {
+    id,
+    userId: num(data.user_id ?? asDict(data.user).id),
+    name: nameOf(data),
+    email: str(data.email) ?? str(asDict(data.user).email),
+    isActive: data.is_active !== false,
+    deliveryStatus: deliveryOf(data.delivery_status),
+    lastError: str(data.last_error) ?? str(data.error),
+    lastSentAt: str(data.last_sent_at) ?? str(data.last_delivery_at) ?? str(data.updated_at),
+  }
+}
+
+function normalizeCandidate(raw: unknown): RecallCandidate | null {
+  const data = asDict(raw)
+  const userId = num(data.user_id ?? data.id)
+  if (userId === null) return null
+  return {
+    userId,
+    name: nameOf(data),
+    email: str(data.email),
+    recipientId: num(data.recipient_id),
+    isRecipient: data.is_recipient === true,
+    deliveryStatus: deliveryOf(data.delivery_status),
+    telegramReady: data.telegram_ready === true || Boolean(num(data.chat_id) ?? str(data.chat_id)),
+  }
+}
+
+const recipientPath = (id: number) => `/recall-bot/recipients/${id}`
+
+export const recallBotService = {
+  async settings() {
+    return normalizeSettings(await request<unknown>({ path: '/recall-bot/settings' }))
+  },
+
+  /** Only the changed fields (an empty body is a 422). */
+  async updateSettings(patch: RecallBotSettingsPatch) {
+    return normalizeSettings(await request<unknown>({ path: '/recall-bot/settings', method: 'PATCH', body: patch }))
+  },
+
+  async status() {
+    return normalizeStatus(await request<unknown>({ path: '/recall-bot/status' }))
+  },
+
+  async candidates(search: string) {
+    const raw = await request<unknown>({ path: '/recall-bot/recipient-candidates', query: { search: search.trim() || undefined } })
+    return listOf(raw).map(normalizeCandidate).filter((item): item is RecallCandidate => item !== null)
+  },
+
+  async recipients() {
+    return listOf(await request<unknown>({ path: '/recall-bot/recipients' })).map(normalizeRecipient).filter((item): item is RecallRecipient => item !== null)
+  },
+
+  /** 201 new / 200 reactivated; 422 when the user has no Telegram chat yet. */
+  addRecipient(userId: number) {
+    return request<unknown>({ path: '/recall-bot/recipients', method: 'POST', body: { user_id: userId } })
+  },
+
+  setActive(id: number, isActive: boolean) {
+    return request<unknown>({ path: recipientPath(id), method: 'PATCH', body: { is_active: isActive } })
+  },
+
+  remove(id: number) {
+    return request<void>({ path: recipientPath(id), method: 'DELETE' })
+  },
+
+  /** { status: "ready" } on success; 422 with detail.status = "not_started" when the user never started the bot. */
+  test(id: number) {
+    return request<unknown>({ path: `${recipientPath(id)}/test`, method: 'POST' })
+  },
+}
