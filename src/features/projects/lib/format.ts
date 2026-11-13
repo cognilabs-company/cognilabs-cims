@@ -1,6 +1,11 @@
 import type { CardPriority } from '../../../shared/api/services/projects.service'
 import { getStoredLocale, translateCurrent } from '../../../shared/i18n/translations'
-import { formatShortDate as formatSharedShortDate, formatShortDateTime as formatSharedShortDateTime } from '../../../shared/lib/format'
+import {
+  formatShortDate as formatSharedShortDate,
+  formatShortDateTime as formatSharedShortDateTime,
+  formatShortMonthDay,
+  formatShortMonthDayTime,
+} from '../../../shared/lib/format'
 
 function parseProjectDate(value?: string | null): Date | null {
   if (typeof value !== 'string') {
@@ -40,6 +45,23 @@ export function formatProjectDateTime(date?: string | null): string {
   }
 
   return formatSharedShortDate(date, getStoredLocale())
+}
+
+/** A short due date: "12 Nov", plus the year only when it is not this year and (optionally) the time when one was set. */
+export function formatProjectDueShort(date?: string | null, withTime = true): string {
+  const parsed = parseProjectDate(date)
+
+  if (!parsed) {
+    return ''
+  }
+
+  const hasTime = withTime && typeof date === 'string' && /(?:T| )\d{1,2}:\d{2}/.test(date) && (parsed.getHours() !== 0 || parsed.getMinutes() !== 0)
+
+  if (parsed.getFullYear() !== new Date().getFullYear()) {
+    return hasTime ? formatSharedShortDateTime(date, getStoredLocale()) : formatSharedShortDate(date, getStoredLocale())
+  }
+
+  return hasTime ? formatShortMonthDayTime(date, getStoredLocale()) : formatShortMonthDay(date, getStoredLocale())
 }
 
 /** Get relative time label (e.g. "2 days ago") */

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { CalendarDays, ChartLine, ChevronLeft, Columns3, History, Paperclip, Pencil, Plus, Send, Trash2, UsersRound } from 'lucide-react'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { getIntlLocale, translateCurrentLiteral } from '../../../shared/i18n/translations'
+import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { Card } from '../../../shared/ui/card'
 import { Button } from '../../../shared/ui/button'
 import { Badge } from '../../../shared/ui/badge'
@@ -22,15 +24,16 @@ import {
   type UserSummary,
   type UserOpenCardRecord,
 } from '../../../shared/api/services/projects.service'
-import { resolveMediaUrl } from '../../../shared/lib/media-url'
 import { useAuth } from '../../auth/hooks/useAuth'
-import { projectHue, projectInitial } from '../lib/projectLook'
 import { Avatar } from '../components/Avatar'
 import { BoardFormModal } from '../components/BoardFormModal'
 import { BoardWorkspace } from '../components/BoardWorkspace'
 import { ProjectFormModal } from '../components/ProjectFormModal'
 import { ProjectAttachmentsModal } from '../components/ProjectAttachmentsModal'
-import { formatProjectDate, formatProjectDateTime } from '../lib/format'
+import { formatProjectDate, formatProjectDateTime, isDueDateOverdue } from '../lib/format'
+import { KanbanMenu } from '../components/KanbanCard'
+import { MembersPicker } from '../components/MembersPicker'
+import { ProjectMark } from '../components/ProjectMark'
 import { notifyProjectsNavigationChanged } from '../lib/navigationSync'
 import { cn } from '../../../shared/lib/cn'
 import {
@@ -61,31 +64,12 @@ export function ProjectDetailPage() {
   const { confirm } = useConfirm()
   const { user, can } = useAuth()
   const lt = translateCurrentLiteral
-  const locale = getIntlLocale()
-  const tr = (key: string, uzFallback: string, ruFallback: string) => {
-    const value = lt(key)
-
-    if (value !== key) {
-      return value
-    }
-
-    if (locale.startsWith('ru')) {
-      return ruFallback
-    }
-
-    if (locale.startsWith('en')) {
-      return key
-    }
-
-    return uzFallback
-  }
-
+  const { t } = useLocale()
   const id = Number(projectId)
   const canManageProjects = Boolean(user)
   const canCreateProjects = can('projects', 'create')
   const canEditProjects = can('projects', 'edit')
   const canDeleteProjects = can('projects', 'delete')
-  const hasBoardActions = canEditProjects || canDeleteProjects
   // KPI "Add" buttons below only create records (features, quality events, blocked periods).
   const canManageKpi = (user?.role === 'CEO' || user?.role === 'Admin') && can('developer_kpi', 'create')
 
@@ -135,7 +119,6 @@ export function ProjectDetailPage() {
   const [blockedSubmitting, setBlockedSubmitting] = useState(false)
 
   const project = projectQuery.data
-  const projectImage = resolveMediaUrl(project?.image) ?? project?.image ?? null
 
   const selectedBoardId = parseBoardId(searchParams.get('board'))
   const selectedBoardParam = searchParams.get('board')
@@ -477,15 +460,62 @@ export function ProjectDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockedForm, id])
 
+  const tabBoards = selectedBoard?.is_archived ? [...activeBoards, selectedBoard] : activeBoards
+  const deadlineOverdue = project?.deadline ? isDueDateOverdue(project.deadline) : false
+
+  /** The project's boards as underlined tabs; the selected one carries its menu, "+" adds a board. */
+  const boardTabs = (
+    <div className="no-scrollbar flex h-[52px] items-stretch gap-0.5 overflow-x-auto" role="tablist" aria-label={lt('Boards')}>
+      {tabBoards.map((board) => {
+        const isSelected = selectedBoard?.id === board.id
+        const boardActions = [
+          ...(canEditProjects ? [{ label: lt('Edit'), onSelect: () => { setEditingBoard(board); setIsEditBoardOpen(true) } }] : []),
+          ...(canDeleteProjects ? [{ label: lt('Delete'), tone: 'danger' as const, onSelect: () => void handleDeleteBoard(board.id, board.name) }] : []),
+        ]
+        return (
+          <div key={board.id} className="relative flex shrink-0 items-center">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isSelected}
+              onClick={() => selectBoard(board.id)}
+              className={cn(
+                'flex h-9 items-center gap-2 rounded-[9px] px-3 text-[13px] whitespace-nowrap transition-colors',
+                isSelected
+                  ? 'font-semibold text-[var(--foreground)]'
+                  : 'font-medium text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]',
+              )}
+            >
+              {board.name}
+              {board.is_archived ? <span className="text-[11px] font-medium text-[var(--caption)]">{lt('Archived')}</span> : null}
+            </button>
+            {isSelected && boardActions.length > 0 ? (
+              <KanbanMenu label={lt('Board actions')} items={boardActions} className="-ml-2 h-7 w-7 rounded-[8px]" />
+            ) : null}
+            {isSelected ? <span aria-hidden="true" className="pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-[var(--foreground)]" /> : null}
+          </div>
+        )
+      })}
+      {canCreateProjects ? (
+        <IconButton label={t('projects.add_board', 'Add board')} size="sm" onClick={() => setIsCreateBoardOpen(true)} className="ml-0.5 self-center">
+          <Plus size={16} strokeWidth={2} />
+        </IconButton>
+      ) : null}
+    </div>
+  )
+
   if (projectQuery.isLoading) {
     return (
-      <div className="flex flex-col gap-[18px] page-enter">
-        <Skeleton rounded="xl" className="h-48 rounded-[24px]" />
-        <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={index} rounded="xl" className="h-28 rounded-[24px]" />
-          ))}
+      <div className="flex h-[calc(100dvh-132px)] flex-col gap-4 lg:h-[var(--page-h)]">
+        <Skeleton rounded="full" className="h-3.5 w-24" />
+        <div className="flex items-center gap-3.5">
+          <Skeleton rounded="lg" className="h-12 w-12" />
+          <div className="flex-1">
+            <Skeleton rounded="full" className="h-6 w-64 max-w-full" />
+            <Skeleton rounded="full" className="mt-2 h-3.5 w-48" />
+          </div>
         </div>
+        <Skeleton rounded="xl" className="min-h-0 flex-1 rounded-[20px]" />
       </div>
     )
   }
@@ -505,306 +535,107 @@ export function ProjectDetailPage() {
 
   return (
     <>
-      <div className="relative flex flex-col gap-[18px] page-enter h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] overflow-hidden">
-        {/* Project header */}
-        <div className="relative shrink-0 overflow-hidden rounded-[24px] bg-[var(--card)] p-[18px] sm:p-[22px]">
-          <div className="flex flex-col gap-[18px]">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-                {projectImage ? (
-                  <img
-                    src={projectImage}
-                    alt={project.project_name}
-                    className="h-11 w-11 shrink-0 rounded-[14px] object-cover sm:h-12 sm:w-12"
-                  />
-                ) : (
-                  <div
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] text-lg font-bold sm:h-12 sm:w-12 sm:text-xl"
-                    style={{ background: `hsl(${projectHue(project.project_name)} 85% 94%)`, color: `hsl(${projectHue(project.project_name)} 60% 38%)` }}
-                  >
-                    {projectInitial(project.project_name)}
-                  </div>
-                )}
+      <div className="relative flex h-[calc(100dvh-132px)] flex-col gap-4 lg:h-[var(--page-h)]">
+        {/* Header: back link, the project's mark, name and facts; people, files and the menu on the right */}
+        <header className="flex shrink-0 flex-col gap-3">
+          <Link
+            to="/projects"
+            className="inline-flex w-fit items-center gap-0.5 text-[12.5px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
+          >
+            <ChevronLeft size={15} strokeWidth={2} />
+            {lt('Projects')}
+          </Link>
 
-                <div className="min-w-0">
-                  <h1 className="truncate text-2xl font-bold tracking-[-0.03em] text-[var(--foreground)] sm:text-3xl">
-                    {project.project_name}
-                  </h1>
-                  {project.team || project.deadline || project.telegram_group_id ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {project.team ? <Badge variant="blue">{project.team.name}</Badge> : null}
-                      {project.deadline ? <Badge variant="outline">Deadline: {formatProjectDateTime(project.deadline)}</Badge> : null}
-                      {project.telegram_group_id ? <Badge variant="outline">Telegram connected</Badge> : null}
-                    </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-center gap-3.5">
+              <ProjectMark projectId={project.id} name={project.project_name} image={project.image} size={52} />
+              <div className="min-w-0">
+                <h1 title={project.project_name} className="truncate text-[22px] leading-7 font-semibold tracking-[-0.025em] text-[var(--foreground)] sm:text-[24px] sm:leading-8">
+                  {project.project_name}
+                </h1>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-[var(--muted)]">
+                  {project.team ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <UsersRound size={13} strokeWidth={2} />
+                      {project.team.name}
+                    </span>
+                  ) : null}
+                  <span className="inline-flex items-center gap-1.5 tabular-nums">
+                    <Columns3 size={13} strokeWidth={2} />
+                    {t('projects.boards_n', '{{count}} boards', { count: activeBoards.length })}
+                  </span>
+                  {project.deadline ? (
+                    <span className="inline-flex items-center gap-1.5 tabular-nums">
+                      <CalendarDays size={13} strokeWidth={2} />
+                      {deadlineOverdue
+                        ? t('projects.overdue_on', 'Overdue · {{date}}', { date: formatProjectDate(project.deadline) })
+                        : t('projects.due_on', 'Due {{date}}', { date: formatProjectDate(project.deadline) })}
+                    </span>
+                  ) : null}
+                  {project.telegram_group_id ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Send size={13} strokeWidth={2} />
+                      {t('projects.telegram_connected', 'Telegram connected')}
+                    </span>
                   ) : null}
                 </div>
               </div>
+            </div>
 
-              {canManageProjects ? (
-                <div className="flex shrink-0 items-center gap-2 sm:mt-0">
-                  <ActionsMenu
-                    triggerVariant="button"
-                    label={lt('Actions')}
-                    items={[
-                      {
-                        label: lt('History'),
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.5 1.5C4.18629 1.5 1.5 4.18629 1.5 7.5C1.5 10.8137 4.18629 13.5 7.5 13.5C10.8137 13.5 13.5 10.8137 13.5 7.5C13.5 4.18629 10.8137 1.5 7.5 1.5ZM0.5 7.5C0.5 3.63401 3.63401 0.5 7.5 0.5C11.366 0.5 14.5 3.63401 14.5 7.5C14.5 11.366 11.366 14.5 7.5 14.5C3.63401 14.5 0.5 11.366 0.5 7.5ZM8 4C8 3.44772 7.55228 3 7 3C6.44772 3 6 3.44772 6 4V7.5C6 7.76522 6.10536 8.01957 6.29289 8.20711L8.29289 10.2071C8.68342 10.5976 9.31658 10.5976 9.70711 10.2071C10.0976 9.81658 10.0976 9.18342 9.70711 8.79289L8 6.88582V4Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                          </svg>
-                        ),
-                        onSelect: () => navigate(`/audit/logs?entity_type=Project&entity_id=${project.id}`),
-                      },
-                      {
-                        label: lt('Attachments'),
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.81825 1.18196C8.61335 0.38687 9.69661 0 10.7 0C11.7034 0 12.7867 0.38687 13.5818 1.18196C14.3769 1.97706 14.7638 3.06033 14.7638 4.06373C14.7638 5.06714 14.3769 6.1504 13.5818 6.9455L7.67539 12.8519C7.06985 13.4575 6.2363 13.7606 5.40274 13.7606C4.56918 13.7606 3.73563 13.4575 3.13009 12.8519C2.52455 12.2464 2.22146 11.4128 2.22146 10.5793C2.22146 9.74571 2.52455 8.91216 3.13009 8.30662L8.99252 2.4442C9.30591 2.13082 9.74923 1.9519 10.2025 1.9519C10.6558 1.9519 11.0991 2.13082 11.4125 2.4442C11.7259 2.75759 11.9048 3.20091 11.9048 3.65423C11.9048 4.10754 11.7259 4.55086 11.4125 4.86425L5.88966 10.3871C5.74635 10.5304 5.55108 10.6119 5.34745 10.6119C5.14382 10.6119 4.94855 10.5304 4.80524 10.3871C4.66193 10.2438 4.58038 10.0485 4.58038 9.84487C4.58038 9.64124 4.66193 9.44597 4.80524 9.30266L10.0312 4.07663C10.1888 3.91908 10.1888 3.66102 10.0312 3.50347C9.87367 3.34592 9.61561 3.34592 9.45806 3.50347L4.23203 8.72949C3.93829 9.02323 3.77198 9.42532 3.77198 9.84487C3.77198 10.2644 3.93829 10.6665 4.23203 10.9602C4.52577 11.254 4.92787 11.4203 5.34745 11.4203C5.76703 11.4203 6.16912 11.254 6.46286 10.9602L11.9857 5.4374C12.4765 4.94659 12.7132 4.30054 12.7132 3.65423C12.7132 3.00791 12.4765 2.36186 11.9857 1.87105C11.4949 1.38023 10.8488 1.14352 10.2025 1.14352C9.55622 1.14352 8.91017 1.38023 8.41936 1.87105L2.55693 7.73347C1.79451 8.4959 1.41309 9.53756 1.41309 10.5793C1.41309 11.621 1.79451 12.6626 2.55693 13.4251C3.31935 14.1875 4.36101 14.569 5.40274 14.569C6.44447 14.569 7.48613 14.1875 8.24855 13.4251L14.1553 7.51845C14.3128 7.3609 14.3128 7.10284 14.1553 6.94529C13.9977 6.78774 13.7397 6.78774 13.5821 6.94529L7.67547 12.852C7.06993 13.4575 6.23638 13.7606 5.40282 13.7606C4.56926 13.7606 3.7357 13.4575 3.13016 12.852C2.52463 12.2464 2.22154 11.4129 2.22154 10.5793C2.22154 9.74571 2.52463 8.91216 3.13016 8.30663L8.99259 2.4442C9.30598 2.13082 9.7493 1.9519 10.2026 1.9519C10.6559 1.9519 11.0992 2.13082 11.4126 2.4442C11.726 2.75759 11.9049 3.20091 11.9049 3.65423C11.9049 4.10754 11.726 4.55086 11.4126 4.86425L5.88974 10.3871C5.74643 10.5304 5.55116 10.6119 5.34753 10.6119C5.1439 10.6119 4.94863 10.5304 4.80532 10.3871C4.66201 10.2438 4.58046 10.0485 4.58046 9.84487C4.58046 9.64124 4.66201 9.44597 4.80532 9.30266L10.0313 4.07663C10.1889 3.91908 10.1889 3.66102 10.0313 3.50347C9.87378 3.34592 9.61572 3.34592 9.45817 3.50347L4.23211 8.72949C3.93837 9.02323 3.77206 9.42532 3.77206 9.84487C3.77206 10.2644 3.93837 10.6665 4.23211 10.9602C4.52585 11.254 4.92795 11.4203 5.34753 11.4203C5.76711 11.4203 6.1692 11.254 6.46294 10.9602L11.9858 5.4374C12.4766 4.94659 12.7133 4.30054 12.7133 3.65423C12.7133 3.00791 12.4766 2.36186 11.9858 1.87105C11.495 1.38023 10.8489 1.14352 10.2026 1.14352C9.5563 1.14352 8.91025 1.38023 8.41944 1.87105L2.55701 7.73347C1.79459 8.4959 1.41317 9.53756 1.41317 10.5793C1.41317 11.621 1.79459 12.6626 2.55701 13.4251C3.31943 14.1875 4.36109 14.569 5.40282 14.569C6.44455 14.569 7.48621 14.1875 8.24863 13.4251L14.1554 7.51845C14.3129 7.3609 14.3129 7.10284 14.1554 6.94529L14.1553 6.94529Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                          </svg>
-                        ),
-                        onSelect: () => setIsAttachmentsOpen(true),
-                      },
-                      {
-                        label: 'Project KPI',
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M1 11L4.5 7L7 9L10.5 4L14 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        ),
-                        onSelect: () => setIsKpiOpen(true),
-                      },
-                      ...(canEditProjects ? [{
-                        label: lt('Edit'),
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11.8536 1.14645C11.6583 0.951184 11.3417 0.951184 11.1464 1.14645L3.71457 8.57836C3.62459 8.66834 3.55263 8.77461 3.50251 8.89155L2.04044 12.303C1.9599 12.491 2.00189 12.709 2.14645 12.8536C2.29101 12.9981 2.50905 13.0401 2.69697 12.9596L6.10845 11.4975C6.22539 11.4474 6.33166 11.3754 6.42164 11.2854L13.8536 3.85355C14.0488 3.65829 14.0488 3.34171 13.8536 3.14645L11.8536 1.14645ZM4.42168 9.28547L10.5 3.20711L11.7929 4.5L5.71453 10.5784L4.21921 11.2192L4.42168 9.28547Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                          </svg>
-                        ),
-                        onSelect: () => setIsEditProjectOpen(true),
-                      }] : []),
-                      ...(canDeleteProjects ? [{
-                        label: lt('Delete'),
-                        tone: 'danger' as const,
-                        icon: (
-                          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5.5 1C5.22386 1 5 1.22386 5 1.5C5 1.77614 5.22386 2 5.5 2H9.5C9.77614 2 10 1.77614 10 1.5C10 1.22386 9.77614 1 -9.5 1H5.5ZM3 3.5C3 3.22386 3.22386 3 3.5 3H11.5C11.7761 3 12 3.22386 12 3.5C12 3.77614 11.7761 4 11.5 4H11V12C11 12.5523 10.5523 13 10 13H5C9.44772 13 9 12.5523 9 12V4L3.5 4C3.22386 4 3 3.77614 3 3.5ZM5 4V12H10V4H5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                          </svg>
-                        ),
-                        onSelect: handleDeleteProject,
-                      }] : []),
-                    ]}
+            {canManageProjects ? (
+              <div className="flex shrink-0 items-center gap-2">
+                {projectMembers.length > 0 ? (
+                  <MembersPicker
+                    members={projectMembers}
+                    label={t('projects.members_label', 'Members')}
+                    fallbackRole={t('projects.member_role', 'Member')}
+                    onSelect={selectMember}
                   />
-                </div>
-              ) : null}
-            </div>
-
-            {/* Stats row - Hidden/compact on mobile */}
-            <div className="flex flex-wrap items-center gap-3 rounded-[18px] bg-[var(--muted-surface)] px-4 py-3 sm:gap-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Avatar
-                  name={project.created_by.name}
-                  surname={project.created_by.surname}
-                  imageUrl={project.created_by.profile_image}
-                  size="sm"
+                ) : null}
+                <Button variant="secondary" size="sm" className="h-9" onClick={() => setIsAttachmentsOpen(true)} leftIcon={<Paperclip size={14} strokeWidth={2} />}>
+                  {lt('Attachments')}
+                </Button>
+                <ActionsMenu
+                  label={t('projects.actions', 'Actions')}
+                  className="border border-[var(--border-hover)] bg-[var(--surface)]"
+                  items={[
+                    { label: t('projects.project_kpi', 'Project KPI'), icon: <ChartLine size={15} strokeWidth={2} />, onSelect: () => setIsKpiOpen(true) },
+                    { label: t('projects.history', 'History'), icon: <History size={15} strokeWidth={2} />, onSelect: () => navigate(`/audit/logs?entity_type=Project&entity_id=${project.id}`) },
+                    ...(canEditProjects ? [{ label: lt('Edit'), icon: <Pencil size={15} strokeWidth={2} />, onSelect: () => setIsEditProjectOpen(true) }] : []),
+                    ...(canDeleteProjects ? [{ label: lt('Delete'), tone: 'danger' as const, icon: <Trash2 size={15} strokeWidth={2} />, onSelect: handleDeleteProject }] : []),
+                  ]}
                 />
-                <div className="hidden sm:block">
-                  <p className="text-[12.5px] font-semibold text-[var(--foreground)]">
-                    {project.created_by.name} {project.created_by.surname}
-                  </p>
-                </div>
-                <div className="sm:hidden">
-                  <span className="block max-w-[100px] truncate text-xs font-semibold text-[var(--foreground)]">
-                    {project.created_by.name}
-                  </span>
-                </div>
               </div>
-
-              <div className="h-4 w-px bg-[var(--border-hover)]" />
-
-              <div>
-                <p className="text-xs font-medium text-[var(--muted-strong)] sm:text-[12.5px]">
-                  {formatProjectDate(project.created_at)}
-                </p>
-              </div>
-
-              <div className="h-4 w-px bg-[var(--border-hover)]" />
-
-              <div>
-                <p className="text-xs font-medium text-[var(--muted-strong)] sm:text-[12.5px]">
-                  {project.boards_count} <span className="hidden sm:inline">{lt('boards')}</span>
-                </p>
-              </div>
-            </div>
+            ) : null}
           </div>
-        </div>
+        </header>
 
-        {/* Boards Content Overlay Container - Scroll internally */}
-        <div className="relative z-20 flex min-h-0 flex-1 flex-col">
-           <Card noPadding className="flex flex-1 flex-col overflow-hidden rounded-[24px] bg-[var(--card)]">
-              {/* Board Header & Filters Area - Highly scrollable on mobile */}
-              <div className="flex flex-col border-b border-[var(--border-subtle)] px-[18px] py-4 sm:px-[22px]">
-                 <div className="flex items-center justify-between gap-4 mb-3 sm:mb-0">
-                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden flex-1">
-                       {/* Board Tabs - Horizontal Scroll on mobile */}
-                       <div className="flex items-center gap-1 overflow-x-auto rounded-[14px] bg-[var(--input-surface)] p-1 custom-scrollbar-none scroll-smooth">
-                         {activeBoards.map((board) => {
-                           const isSelected = selectedBoard?.id === board.id
-                           return (
-                             <div key={board.id} className="group relative flex shrink-0 items-center">
-                               <button
-                               type="button"
-                               onClick={() => selectBoard(board.id)}
-                               className={cn(
-                                 "h-9 whitespace-nowrap rounded-[11px] pl-3.5 text-[12.5px] transition-colors",
-                                 hasBoardActions ? "pr-10" : "pr-3.5",
-                                 isSelected
-                                   ? "bg-[var(--surface)] font-semibold text-[var(--foreground)] shadow-[var(--elev-seg)]"
-                                   : "font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
-                               )}
-                               >{board.name}
-                               </button>
-                               {hasBoardActions && (
-                                 <div className="absolute right-0.5">
-                                    <ActionsMenu
-                                      label={lt('Board actions')}
-                                      className="h-8 w-8 hover:bg-[var(--border-hover)]"
-                                      items={[
-                                        ...(canEditProjects ? [{ label: lt('Edit'), onSelect: () => { setEditingBoard(board); setIsEditBoardOpen(true) } }] : []),
-                                        ...(canDeleteProjects ? [{ label: lt('Delete'), tone: 'danger' as const, onSelect: () => void handleDeleteBoard(board.id, board.name) }] : []),
-                                      ]}
-                                    />
-                                 </div>
-                               )}
-                             </div>
-                           )
-                         })}
-                         {canCreateProjects && (
-                            <IconButton
-                               label={lt('Add board')}
-                               onClick={() => setIsCreateBoardOpen(true)}
-                               className="hover:bg-[var(--surface)]"
-                            >
-                               <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                               </svg>
-                            </IconButton>
-                         )}
-                       </div>
-
-                       <div className="hidden sm:block h-8 w-px bg-[var(--border-hover)] shrink-0" />
-
-                       {/* Members Selector (Desktop) */}
-                       <div className="hidden sm:flex items-center gap-3 shrink-0">
-                          <p className="text-[12.5px] font-medium text-[var(--muted)]">{lt('Members')}:</p>
-                          <div className="flex items-center -space-x-2">
-                             {projectMembers.map((member) => {
-                               const isExpanded = member.id === expandedMemberId
-                               return (
-                                 <button
-                                   key={member.id}
-                                   type="button"
-                                   onClick={() => selectMember(member.id)}
-                                   className={cn(
-                                     'relative transition-transform hover:scale-110 hover:z-10',
-                                     isExpanded ? 'scale-110 z-10' : 'z-0'
-                                   )}
-                                 >
-                                   <Avatar
-                                     name={member.name}
-                                     surname={member.surname}
-                                     imageUrl={member.profile_image}
-                                     size="sm"
-                                     className={cn(
-                                        "ring-2 transition-all",
-                                        isExpanded ? "ring-[var(--primary)]" : "ring-[var(--surface)]"
-                                     )}
-                                   />
-                                 </button>
-                               )
-                             })}
-                          </div>
-                       </div>
-                    </div>
-
-                    {/* Desktop Right Actions */}
-                    <div className="hidden sm:flex items-center gap-3 shrink-0">
-                       {canCreateProjects && (
-                          <Button
-                             variant="secondary"
-                             size="sm"
-                             onClick={() => setIsCreateBoardOpen(true)}
-                          >
-                            {tr('New list', 'Yangi list', 'Novyi spisok')}
-                          </Button>
-                       )}
-                    </div>
-
-                    {/* Mobile Create Button */}
-                    <div className="sm:hidden flex items-center shrink-0">
-                       {canCreateProjects && (
-                          <IconButton
-                             label={tr('New list', 'Yangi list', 'Novyi spisok')}
-                             onClick={() => setIsCreateBoardOpen(true)}
-                             className="bg-[var(--primary)] text-white shadow-[var(--elev-primary)] hover:bg-[var(--primary-hover)] hover:text-white"
-                          >
-                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" strokeLinecap="round"/></svg>
-                          </IconButton>
-                       )}
-                    </div>
-                 </div>
-
-                 {/* Mobile Members Row */}
-                 <div className="sm:hidden flex items-center gap-3 overflow-hidden">
-                    <p className="shrink-0 text-xs font-medium text-[var(--muted)]">{lt('Team')}:</p>
-                    <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar-none pb-1">
-                       {projectMembers.map((member) => {
-                         const isExpanded = member.id === expandedMemberId
-                         return (
-                           <button
-                             key={member.id}
-                             type="button"
-                             onClick={() => selectMember(member.id)}
-                             className="shrink-0"
-                           >
-                             <Avatar
-                               name={member.name}
-                               surname={member.surname}
-                               imageUrl={member.profile_image}
-                               size="sm"
-                               className={cn(
-                                  "h-7 w-7 ring-2 transition-all",
-                                  isExpanded ? "ring-[var(--primary)] scale-110" : "ring-[var(--surface)]"
-                               )}
-                             />
-                           </button>
-                         )
-                       })}
-                    </div>
-                 </div>
+        {/* The board: tabs + toolbar, then the kanban */}
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] bg-[var(--card)] ring-1 ring-[var(--border)]">
+          {selectedBoard ? (
+            <BoardWorkspace
+              boardId={selectedBoard.id}
+              projectId={project.id}
+              mode="embedded"
+              onBoardsChanged={() => projectQuery.refetch()}
+              toolbarStart={boardTabs}
+            />
+          ) : (
+            <>
+              <div className="flex h-[52px] shrink-0 items-center border-b border-[var(--border)] pr-3 pl-1.5 sm:pl-2.5">{boardTabs}</div>
+              <div className="grid min-h-0 flex-1 place-items-center p-8 sm:p-12">
+                <StateBlock
+                  tone="empty"
+                  eyebrow={lt('No boards')}
+                  title={lt('Select or create a board')}
+                  description={lt('Choose a board from the list above to start managing tasks.')}
+                  actionLabel={canCreateProjects ? t('projects.add_board', 'Add board') : undefined}
+                  onAction={canCreateProjects ? () => setIsCreateBoardOpen(true) : undefined}
+                />
               </div>
-
-              {/* Scrollable Board Workspace */}
-              <div className="flex flex-col flex-1 min-h-0">
-                 {selectedBoard ? (
-                    <BoardWorkspace
-                      boardId={selectedBoard.id}
-                      projectId={project.id}
-                      mode="embedded"
-                      onBoardsChanged={() => projectQuery.refetch()}
-                    />
-                 ) : (
-                    <div className="flex h-full items-center justify-center p-8 sm:p-12">
-                       <StateBlock
-                         tone="empty"
-                         eyebrow={lt('No boards')}
-                         title={lt('Select or create a board')}
-                         description={lt('Choose a board from the list above to start managing tasks.')}
-                       />
-                    </div>
-                 )}
-              </div>
-           </Card>
-        </div>
+            </>
+          )}
+        </section>
 
         {/* Member Tasks Panel (Centered Overlay with Backdrop) */}
         {expandedMember && expandedMemberId !== null && (

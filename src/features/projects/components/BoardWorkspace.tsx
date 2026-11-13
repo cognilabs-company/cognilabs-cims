@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { ChevronLeft, Plus } from 'lucide-react'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { Badge } from '../../../shared/ui/badge'
@@ -33,6 +35,8 @@ type BoardWorkspaceProps = {
   projectId?: number | null
   mode?: BoardWorkspaceMode
   onBoardsChanged?: () => Promise<unknown> | unknown
+  /** Embedded mode: shown at the left of the board toolbar (the project's board tabs). */
+  toolbarStart?: ReactNode
 }
 
 function moveCardInBoard(board: BoardDetail, cardId: number, columnId: number, order: number): BoardDetail {
@@ -130,7 +134,9 @@ export function BoardWorkspace({
   projectId = null,
   mode = 'fullscreen',
   onBoardsChanged,
+  toolbarStart,
 }: BoardWorkspaceProps) {
+  const { t } = useLocale()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { showToast } = useToast()
@@ -434,27 +440,29 @@ export function BoardWorkspace({
     }
   }
 
-  if (boardQuery.isLoading) {
-    return (
-      <div className="flex flex-col gap-[18px] p-[18px] sm:p-[22px]">
-        <Skeleton rounded="lg" className="h-14 w-full max-w-sm" />
-        <div className="flex gap-[18px] overflow-hidden">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton
-              key={index}
-              rounded="xl"
-              className={isEmbedded
-                ? 'h-[520px] w-[280px] shrink-0'
-                : 'h-[calc(100vh-242px)] w-[280px] shrink-0'}
-            />
+  const statsLabel = board
+    ? `${t('projects.columns_n', '{{count}} columns', { count: boardStats.columnCount })} · ${t('projects.tasks_n', '{{count}} tasks', { count: boardStats.cardCount })}`
+    : null
+
+  const addColumnButton = canCreate ? (
+    <Button variant="secondary" size="sm" onClick={() => setIsAddColumnOpen(true)} leftIcon={<Plus size={14} strokeWidth={2.2} />}>
+      {t('projects.kanban.add_column', 'Add column')}
+    </Button>
+  ) : null
+
+  const body = boardQuery.isLoading ? (
+    <div className="flex h-full gap-3 overflow-hidden p-3 sm:p-4">
+      {[5, 3, 4, 2].map((count, index) => (
+        <div key={index} className="kb-col flex w-[calc(100vw-72px)] shrink-0 flex-col gap-2 self-start rounded-[16px] p-2 sm:w-[296px]">
+          <Skeleton rounded="full" className="mx-1.5 my-1.5 h-3.5 w-24" />
+          {Array.from({ length: count }).map((__, cardIndex) => (
+            <Skeleton key={cardIndex} rounded="md" className="h-[76px] w-full" />
           ))}
         </div>
-      </div>
-    )
-  }
-
-  if (boardQuery.isError || !board) {
-    return (
+      ))}
+    </div>
+  ) : boardQuery.isError || !board ? (
+    <div className="grid h-full place-items-center p-6">
       <StateBlock
         tone="error"
         eyebrow={lt('Error')}
@@ -463,122 +471,86 @@ export function BoardWorkspace({
         actionLabel={isEmbedded ? undefined : lt('Go back')}
         onAction={isEmbedded ? undefined : () => navigate(-1)}
       />
-    )
-  }
-
-  const header = (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface)] px-[18px] py-4 sm:px-[22px]">
-      <div className="min-w-0 flex flex-col gap-1">
-        {!isEmbedded ? (
-          <Link
-            to={`/projects/${board.project_id}`}
-            className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
-          >
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M10 4L6 8l4 4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {lt('Back to project')}
-          </Link>
-        ) : null}
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className={isEmbedded ? 'text-[17px] font-semibold tracking-[-0.01em] text-[var(--foreground)]' : 'text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]'}>
-            {board.name}
-          </h2>
-          {board.is_archived ? (
-            <Badge variant="secondary" size="sm" dot>
-              {lt('Archived')}
-            </Badge>
-          ) : null}
-        </div>
-
-        <p className="text-[12.5px] tabular-nums text-[var(--muted)]">
-          {`${boardStats.columnCount} ${lt('columns')} · ${boardStats.cardCount} ${lt('cards')}`}
-        </p>
-      </div>
-
-      {canCreate || canEdit || canDelete ? (
-        <div className="flex shrink-0 items-center gap-2.5">
-          {canCreate ? (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsAddColumnOpen(true)}
-              leftIcon={(
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                </svg>
-              )}
-            >
-              {lt('Add column')}
-            </Button>
-          ) : null}
-          {canEdit ? (
-            <Button variant="ghost" size="sm" onClick={() => setIsEditBoardOpen(true)}>
-              {lt('Edit')}
-            </Button>
-          ) : null}
-          {canDelete ? (
-            <Button variant="danger" size="sm" onClick={handleDeleteBoard}>
-              {lt('Delete')}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
     </div>
-  )
-
-  const content = board.columns.length === 0 ? (
-    <div className={isEmbedded ? 'p-[22px]' : 'flex flex-1 items-center justify-center p-[22px]'}>
+  ) : board.columns.length === 0 ? (
+    <div className="grid h-full place-items-center p-6">
       <StateBlock
         tone="empty"
         eyebrow={lt('No boards')}
         title={lt('No columns yet')}
-        description={
-          canCreate
-            ? lt('Add your first column to start organizing cards.')
-            : lt('This board has no visible columns yet.')
-        }
-        actionLabel={canCreate ? lt('Add column') : undefined}
+        description={canCreate ? lt('Add your first column to start organizing cards.') : lt('This board has no visible columns yet.')}
+        actionLabel={canCreate ? t('projects.kanban.add_column', 'Add column') : undefined}
         onAction={canCreate ? () => setIsAddColumnOpen(true) : undefined}
       />
     </div>
   ) : (
-    <div
-      className={isEmbedded ? 'flex-1 min-h-0 overflow-hidden boards-section' : 'overflow-hidden boards-section'}
-      style={!isEmbedded ? { height: 'calc(100vh - 204px)' } : undefined}
-    >
-      <KanbanBoard
-        columns={board.columns}
-        members={allUsers}
-        onMoveCard={handleMoveCard}
-        onMoveColumn={handleMoveColumn}
-        onOpenAddCardModal={(columnId) => setAddCardState({ columnId })}
-        onEditCard={(card) => setEditCardState({ card })}
-        onDeleteCard={handleDeleteCard}
-        onClickCard={openCardDetail}
-        onEditColumn={(column) => setEditColumnState({ column })}
-        onDeleteColumn={handleDeleteColumn}
-        onAddColumn={() => setIsAddColumnOpen(true)}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        canDelete={canDelete}
-      />
+    <KanbanBoard
+      columns={board.columns}
+      members={allUsers}
+      onMoveCard={handleMoveCard}
+      onMoveColumn={handleMoveColumn}
+      onOpenAddCardModal={(columnId) => setAddCardState({ columnId })}
+      onEditCard={(card) => setEditCardState({ card })}
+      onDeleteCard={handleDeleteCard}
+      onClickCard={openCardDetail}
+      onEditColumn={(column) => setEditColumnState({ column })}
+      onDeleteColumn={handleDeleteColumn}
+      onAddColumn={() => setIsAddColumnOpen(true)}
+      canCreate={canCreate}
+      canEdit={canEdit}
+      canDelete={canDelete}
+    />
+  )
+
+  const layout = isEmbedded ? (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Toolbar: the project's board tabs on the left, this board's size and "Add column" on the right */}
+      <div className="flex h-[52px] shrink-0 items-center gap-3 border-b border-[var(--border)] pr-3 pl-1.5 sm:pr-4 sm:pl-2.5">
+        <div className="min-w-0 flex-1">{toolbarStart}</div>
+        {statsLabel ? <span className="hidden shrink-0 text-[12.5px] text-[var(--muted)] tabular-nums lg:inline">{statsLabel}</span> : null}
+        {board?.is_archived ? <Badge variant="secondary" size="sm" dot>{lt('Archived')}</Badge> : null}
+        {addColumnButton ? <span className="hidden shrink-0 sm:inline-flex">{addColumnButton}</span> : null}
+      </div>
+      <div className="min-h-0 flex-1">{body}</div>
+    </div>
+  ) : (
+    <div className="flex h-[calc(100dvh-132px)] flex-col gap-4 lg:h-[var(--page-h)]">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          {board ? (
+            <Link
+              to={`/projects/${board.project_id}`}
+              className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
+            >
+              <ChevronLeft size={15} strokeWidth={2} />
+              {lt('Back to project')}
+            </Link>
+          ) : null}
+          <div className="mt-1 flex flex-wrap items-center gap-2.5">
+            <h1 className="truncate text-[22px] leading-7 font-semibold tracking-[-0.025em] text-[var(--foreground)]">{board?.name ?? ' '}</h1>
+            {board?.is_archived ? <Badge variant="secondary" size="sm" dot>{lt('Archived')}</Badge> : null}
+          </div>
+          {statsLabel ? <p className="mt-0.5 text-[12.5px] text-[var(--muted)] tabular-nums">{statsLabel}</p> : null}
+        </div>
+        {board && (canCreate || canEdit || canDelete) ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {addColumnButton}
+            {canEdit ? <Button variant="ghost" size="sm" onClick={() => setIsEditBoardOpen(true)}>{lt('Edit')}</Button> : null}
+            {canDelete ? <Button variant="danger" size="sm" onClick={handleDeleteBoard}>{lt('Delete')}</Button> : null}
+          </div>
+        ) : null}
+      </header>
+      <section className="min-h-0 flex-1 overflow-hidden rounded-[20px] bg-[var(--card)] ring-1 ring-[var(--border)]">{body}</section>
     </div>
   )
 
+  if (!board) {
+    return layout
+  }
+
   return (
     <>
-      {isEmbedded ? (
-        <div className="flex-1 flex flex-col min-h-0">
-          {content}
-        </div>
-      ) : (
-        <div className="flex flex-col -mx-7 bg-[var(--surface)]">
-          {header}
-          {content}
-        </div>
-      )}
+      {layout}
 
       {canEdit ? (
         <>

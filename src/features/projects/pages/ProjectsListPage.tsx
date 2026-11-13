@@ -29,7 +29,7 @@ function parseMemberId(rawValue: string | null) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
-const gridClass = 'grid grid-cols-1 gap-5 md:grid-cols-2 min-[110rem]:grid-cols-3'
+const gridClass = 'grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3.5'
 const chipClass = 'inline-flex h-10 shrink-0 items-center gap-2 rounded-full text-[13px] font-medium transition-[background-color,color,box-shadow] duration-200'
 const chipOn = 'bg-[var(--foreground)] text-[var(--background)]'
 const chipOff = 'bg-[var(--card)] text-[var(--muted-strong)] ring-1 ring-[var(--border)] hover:text-[var(--foreground)] hover:ring-[var(--border-hover)]'
@@ -437,7 +437,7 @@ export function ProjectsListPage() {
         ) : null}
 
         {selectedMember ? (
-          <section className="rounded-[26px] bg-[var(--card)] p-5 ring-1 ring-[var(--border)] sm:p-7">
+          <section className="rounded-[20px] bg-[var(--card)] p-5 ring-1 ring-[var(--border)] sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-5">
               <div className="flex min-w-0 items-center gap-3.5">
                 <Face user={selectedMember} size={52} />
@@ -481,7 +481,7 @@ export function ProjectsListPage() {
               ) : memberOverview && memberOverview.projects.length > 0 ? (
                 <div className="grid gap-4 xl:grid-cols-2">
                   {memberOverview.projects.map((project) => (
-                    <div key={project.projectId} className="rounded-[20px] bg-[var(--muted-surface)] p-4 sm:p-5">
+                    <div key={project.projectId} className="rounded-[16px] bg-[var(--muted-surface)] p-4 sm:p-5">
                       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                         <Link
                           to={`/projects/${project.projectId}`}
@@ -548,7 +548,7 @@ export function ProjectsListPage() {
 
         {projectsQuery.isLoading || isSelectedMemberProjectsLoading ? (
           <div className={gridClass}>
-            {Array.from({ length: 6 }).map((_, index) => (
+            {Array.from({ length: 8 }).map((_, index) => (
               <ProjectCardSkeleton key={index} />
             ))}
           </div>

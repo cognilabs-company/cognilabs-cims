@@ -1,30 +1,25 @@
-/** Card colour of a project tile. `light` is the default; the others are used only with an illustration made for them. */
-export type ProjectTone = 'light' | 'brand' | 'ink' | 'coral'
-
-const TONES = new Set<ProjectTone>(['light', 'brand', 'ink', 'coral'])
-
 /**
- * 3D illustrations for the project tiles, one per project, kept next to the code:
- * `src/assets/projects/<projectId>-<tone>.webp` (or .png), transparent background.
- * `tone` is the card colour the picture was made for. Adding a file is enough — no code change.
+ * 3D objects for the project cards, one per project, kept next to the code:
+ * `src/assets/projects/<projectId>.webp` (or .png) with a transparent background, trimmed to the object.
+ * Adding a file is enough — no code change.
  */
 const files = import.meta.glob<string>('../../../assets/projects/*.{webp,png}', { eager: true, query: '?url', import: 'default' })
 
-const byProject = new Map<number, { src: string; tone: ProjectTone }>()
+export type ProjectArt = { src: string }
+
+const byProject = new Map<number, ProjectArt>()
 for (const [path, src] of Object.entries(files)) {
-  const match = /\/(\d+)-([a-z]+)\.(?:webp|png)$/.exec(path)
-  if (!match) continue
-  const tone = TONES.has(match[2] as ProjectTone) ? (match[2] as ProjectTone) : 'light'
-  byProject.set(Number(match[1]), { src, tone })
+  const match = /\/(\d+)\.(?:webp|png)$/i.exec(path)
+  if (match) byProject.set(Number(match[1]), { src })
 }
 
-export function projectArt(projectId: number) {
+export function projectArt(projectId: number): ProjectArt | null {
   return byProject.get(projectId) ?? null
 }
 
 /**
- * The project name on two lines like the tiles' headings: the first part dark, the rest muted.
- * Words are split where the two parts are closest in length ("Content | Creation").
+ * The project name on two lines, as on the cards: the first part dark, the rest grey.
+ * Words are split where the two parts are closest in length ("Cognilabs | Management").
  */
 export function splitProjectName(name: string): [string, string] {
   const words = name.trim().split(/\s+/).filter(Boolean)
