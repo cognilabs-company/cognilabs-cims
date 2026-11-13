@@ -1,4 +1,5 @@
 import { request } from '../http'
+import { asDict, bool, candidatesOf, num, recipientsOf, str, type BotCandidate, type BotRecipient, type Dict } from './botRecipients'
 
 /* ──────────────────────────────────────────────────────────────
    CRM recall bot — /recall-bot (CIMS_RECALL_BOT_FRONTEND.md). CEO only.
@@ -27,34 +28,9 @@ export type RecallBotStatus = {
   pendingRetries: number | null
 }
 
-export type DeliveryStatus = 'unknown' | 'ready' | 'not_started' | 'blocked' | 'error'
-
-export type RecallRecipient = {
-  id: number
-  userId: number | null
-  name: string
-  email: string | null
-  isActive: boolean
-  deliveryStatus: DeliveryStatus
-  lastError: string | null
-  lastSentAt: string | null
-}
-
-export type RecallCandidate = {
-  userId: number
-  name: string
-  email: string | null
-  recipientId: number | null
-  isRecipient: boolean
-  deliveryStatus: DeliveryStatus
-  telegramReady: boolean
-}
-
-type Dict = Record<string, unknown>
-const asDict = (value: unknown): Dict => (value && typeof value === 'object' ? (value as Dict) : {})
-const str = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
-const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)) ? Number(value) : null)
-const bool = (value: unknown) => (typeof value === 'boolean' ? value : null)
+export type { DeliveryStatus } from './botRecipients'
+export type RecallRecipient = BotRecipient
+export type RecallCandidate = BotCandidate
 
 function firstOf<T>(data: Dict, keys: string[], read: (value: unknown) => T | null): T | null {
   for (const key of keys) {
@@ -62,25 +38,6 @@ function firstOf<T>(data: Dict, keys: string[], read: (value: unknown) => T | nu
     if (value !== null) return value
   }
   return null
-}
-
-function listOf(raw: unknown): unknown[] {
-  if (Array.isArray(raw)) return raw
-  const data = asDict(raw)
-  for (const key of ['items', 'recipients', 'candidates', 'results', 'data']) if (Array.isArray(data[key])) return data[key] as unknown[]
-  return []
-}
-
-function deliveryOf(value: unknown): DeliveryStatus {
-  return value === 'ready' || value === 'not_started' || value === 'blocked' || value === 'error' ? value : 'unknown'
-}
-
-function nameOf(data: Dict) {
-  const user = asDict(data.user)
-  const full = str(data.full_name) ?? str(user.full_name)
-  if (full) return full
-  const joined = [str(data.name) ?? str(user.name), str(data.surname) ?? str(user.surname)].filter(Boolean).join(' ')
-  return joined || str(data.email) || str(user.email) || str(data.username) || '—'
 }
 
 function normalizeSettings(raw: unknown): RecallBotSettings {
@@ -114,37 +71,6 @@ function normalizeStatus(raw: unknown): RecallBotStatus {
   }
 }
 
-function normalizeRecipient(raw: unknown): RecallRecipient | null {
-  const data = asDict(raw)
-  const id = num(data.id ?? data.recipient_id)
-  if (id === null) return null
-  return {
-    id,
-    userId: num(data.user_id ?? asDict(data.user).id),
-    name: nameOf(data),
-    email: str(data.email) ?? str(asDict(data.user).email),
-    isActive: data.is_active !== false,
-    deliveryStatus: deliveryOf(data.delivery_status),
-    lastError: str(data.last_error) ?? str(data.error),
-    lastSentAt: str(data.last_sent_at) ?? str(data.last_delivery_at) ?? str(data.updated_at),
-  }
-}
-
-function normalizeCandidate(raw: unknown): RecallCandidate | null {
-  const data = asDict(raw)
-  const userId = num(data.user_id ?? data.id)
-  if (userId === null) return null
-  return {
-    userId,
-    name: nameOf(data),
-    email: str(data.email),
-    recipientId: num(data.recipient_id),
-    isRecipient: data.is_recipient === true,
-    deliveryStatus: deliveryOf(data.delivery_status),
-    telegramReady: data.telegram_ready === true || Boolean(num(data.chat_id) ?? str(data.chat_id)),
-  }
-}
-
 const recipientPath = (id: number) => `/recall-bot/recipients/${id}`
 
 export const recallBotService = {
@@ -162,12 +88,11 @@ export const recallBotService = {
   },
 
   async candidates(search: string) {
-    const raw = await request<unknown>({ path: '/recall-bot/recipient-candidates', query: { search: search.trim() || undefined } })
-    return listOf(raw).map(normalizeCandidate).filter((item): item is RecallCandidate => item !== null)
+    return candidatesOf(await request<unknown>({ path: '/recall-bot/recipient-candidates', query: { search: search.trim() || undefined } }))
   },
 
   async recipients() {
-    return listOf(await request<unknown>({ path: '/recall-bot/recipients' })).map(normalizeRecipient).filter((item): item is RecallRecipient => item !== null)
+    return recipientsOf(await request<unknown>({ path: '/recall-bot/recipients' }))
   },
 
   /** 201 new / 200 reactivated; 422 when the user has no Telegram chat yet. */
