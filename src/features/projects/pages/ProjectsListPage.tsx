@@ -1,23 +1,22 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { projectsService, type ProjectRecord, type UserSummary } from '../../../shared/api/services/projects.service'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
-import { Badge } from '../../../shared/ui/badge'
+import { resolveMediaUrl } from '../../../shared/lib/media-url'
 import { Button } from '../../../shared/ui/button'
-import { Card } from '../../../shared/ui/card'
 import { Skeleton } from '../../../shared/ui/skeleton'
 import { StateBlock } from '../../../shared/ui/state-block'
 import { useToast } from '../../../shared/toast/useToast'
 import { useAuth } from '../../auth/hooks/useAuth'
-import { Avatar } from '../components/Avatar'
 import { ProjectCard, ProjectCardSkeleton } from '../components/ProjectCard'
 import { Plus, Search, UsersRound, X } from 'lucide-react'
 import { ProjectFormModal } from '../components/ProjectFormModal'
 import { TeamManagementModal } from '../components/TeamManagementModal'
-import { formatProjectDateTime, getPriorityConfig, isDueDateOverdue, isDueDateSoon } from '../lib/format'
+import { formatProjectDateTime, getInitials, getPriorityConfig, isDueDateOverdue, isDueDateSoon } from '../lib/format'
 import { buildMemberProjectOverview } from '../lib/memberOverview'
 import { notifyProjectsNavigationChanged } from '../lib/navigationSync'
 
@@ -30,10 +29,32 @@ function parseMemberId(rawValue: string | null) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
+const gridClass = 'grid grid-cols-1 gap-5 md:grid-cols-2 min-[110rem]:grid-cols-3'
+const chipClass = 'inline-flex h-10 shrink-0 items-center gap-2 rounded-full text-[13px] font-medium transition-[background-color,color,box-shadow] duration-200'
+const chipOn = 'bg-[var(--foreground)] text-[var(--background)]'
+const chipOff = 'bg-[var(--card)] text-[var(--muted-strong)] ring-1 ring-[var(--border)] hover:text-[var(--foreground)] hover:ring-[var(--border-hover)]'
+
+/** A person's photo, or their initials in quiet grey (inverted on a selected chip). */
+function Face({ user, size, inverted = false }: { user: UserSummary; size: number; inverted?: boolean }) {
+  const image = resolveMediaUrl(user.profile_image) ?? user.profile_image ?? null
+  const name = [user.name, user.surname].filter(Boolean).join(' ')
+  if (image) return <img src={image} alt="" title={name} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />
+  return (
+    <span
+      title={name}
+      className={cn('grid shrink-0 place-items-center rounded-full font-semibold', inverted ? 'bg-white/15 text-current' : 'bg-[var(--input-surface)] text-[var(--muted-strong)]')}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
+    >
+      {getInitials(user.name, user.surname)}
+    </span>
+  )
+}
+
 export function ProjectsListPage() {
   const { showToast } = useToast()
   const { confirm } = useConfirm()
   const { user, can } = useAuth()
+  const { t } = useLocale()
   const lt = translateCurrentLiteral
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -68,7 +89,7 @@ export function ProjectsListPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const selectedMemberId = parseMemberId(searchParams.get('member'))
-  const projects = projectsQuery.data?.projects ?? []
+  const projects = useMemo(() => projectsQuery.data?.projects ?? [], [projectsQuery.data])
   const total = projectsQuery.data?.total_count ?? projects.length
 
   const selectedMemberProjectsQuery = useAsyncData(
@@ -82,8 +103,8 @@ export function ProjectsListPage() {
     { enabled: selectedMemberId !== null },
   )
 
-  const selectedMemberProjects = selectedMemberProjectsQuery.data?.projects ?? []
-  const selectedMemberCards = selectedMemberCardsQuery.data?.cards ?? []
+  const selectedMemberProjects = useMemo(() => selectedMemberProjectsQuery.data?.projects ?? [], [selectedMemberProjectsQuery.data])
+  const selectedMemberCards = useMemo(() => selectedMemberCardsQuery.data?.cards ?? [], [selectedMemberCardsQuery.data])
 
   const projectIdsKey = useMemo(
     () => projects.map((project) => project.id).sort((left, right) => left - right).join(','),
@@ -221,6 +242,14 @@ export function ProjectsListPage() {
     )
   }, [scopedProjects, search])
 
+  const peopleCount = useMemo(() => {
+    const ids = new Set<number>()
+    for (const project of filteredProjects) {
+      for (const person of [project.created_by, ...(project.members ?? [])]) if (person && person.id > 0) ids.add(person.id)
+    }
+    return ids.size
+  }, [filteredProjects])
+
   async function handleCreate(fd: FormData) {
     if (!canCreateProject) {
       return
@@ -329,24 +358,32 @@ export function ProjectsListPage() {
     }
   }
 
+  const summary = [
+    t('projects.projects_n', '{{count}} projects', { count: filteredProjects.length }),
+    t('projects.boards_n', '{{count}} boards', { count: filteredProjects.reduce((sum, project) => sum + (project.boards_count ?? 0), 0) }),
+    t('projects.people_n', '{{count}} people', { count: peopleCount }),
+  ].join(' · ')
+
   return (
     <>
-      <div className="page-enter flex flex-col gap-[18px]">
-        {/* Simple header: title + count, search, Teams, New project */}
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-[24px] leading-8 font-bold tracking-[-0.025em] text-[var(--foreground)]">{lt('Projects')}</h1>
-            <span className="rounded-[6px] bg-[var(--blue-dim)] px-2 py-0.5 text-[12px] font-semibold text-[var(--primary)] tabular-nums">{filteredProjects.length}</span>
+      <div className="page-enter flex flex-col gap-6">
+        {/* Header: title + a one-line summary; search, teams, new project */}
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-[30px] leading-9 font-semibold tracking-[-0.035em] text-[var(--foreground)]">{lt('Projects')}</h1>
+            <p className="mt-1 text-[13px] text-[var(--muted)] tabular-nums">
+              {projectsQuery.isLoading ? ' ' : summary}
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative flex h-10 w-full items-center sm:w-[280px]">
-              <Search size={16} className="pointer-events-none absolute left-3 text-[var(--muted)]" />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <label className="relative flex h-10 w-full min-w-0 items-center sm:w-[280px]">
+              <Search size={16} className="pointer-events-none absolute left-3.5 text-[var(--muted)]" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={selectedMember ? lt('Search selected member projects...') : lt('Search projects...')}
                 aria-label={lt('Search projects...')}
-                className="h-10 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] pr-9 pl-9 text-[13.5px] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+                className="h-10 w-full rounded-full border border-[var(--border)] bg-[var(--card)] pr-9 pl-10 text-[13.5px] text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] hover:border-[var(--border-hover)] focus:border-[var(--foreground)] focus:outline-none"
               />
               {search ? (
                 <button type="button" onClick={() => setSearch('')} aria-label={lt('Clear')} className="absolute right-2.5 grid h-6 w-6 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--muted-surface)]">
@@ -355,32 +392,29 @@ export function ProjectsListPage() {
               ) : null}
             </label>
             {canManageProjects ? (
-              <Button variant="secondary" onClick={() => setIsTeamsOpen(true)} leftIcon={<UsersRound size={15} />}>{lt('Teams')}</Button>
+              <Button variant="secondary" className="rounded-full max-sm:flex-1" onClick={() => setIsTeamsOpen(true)} leftIcon={<UsersRound size={15} />}>{t('projects.teams_button', 'Teams')}</Button>
             ) : null}
             {canManageProjects && canCreateProject ? (
-              <Button onClick={() => setIsCreateOpen(true)} leftIcon={<Plus size={15} />}>{lt('New project')}</Button>
+              <Button className="rounded-full max-sm:flex-1" onClick={() => setIsCreateOpen(true)} leftIcon={<Plus size={15} />}>{t('projects.new_project_button', 'New project')}</Button>
             ) : null}
           </div>
         </header>
 
-        {/* People: a compact strip of chips (click to see one person's projects and tasks) */}
+        {/* People: one quiet row — pick a person to see their projects and tasks */}
         {membersPanelLoading ? (
           <div className="flex gap-2 overflow-hidden">
-            {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} rounded="full" className="h-11 w-40 shrink-0" />)}
+            {Array.from({ length: 7 }).map((_, index) => <Skeleton key={index} rounded="full" className="h-10 w-36 shrink-0" />)}
           </div>
         ) : members.length > 0 ? (
-          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-1">
+          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-0.5" role="toolbar" aria-label={lt('All members')}>
             <button
               type="button"
               onClick={() => selectMember(null)}
-              className={cn(
-                'inline-flex h-11 shrink-0 items-center gap-2 rounded-full pr-3 pl-1.5 text-[13px] font-semibold transition-all duration-200',
-                selectedMemberId === null ? 'bg-[var(--surface-inverse)] text-white shadow-[var(--elev-md)] dark:bg-white dark:text-[#0e1525]' : 'bg-[var(--surface)] text-[var(--muted-strong)] ring-1 ring-[var(--border)] hover:-translate-y-0.5 hover:text-[var(--foreground)]',
-              )}
+              aria-pressed={selectedMemberId === null}
+              className={cn(chipClass, 'px-4', selectedMemberId === null ? chipOn : chipOff)}
             >
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--primary)] text-white"><UsersRound size={15} /></span>
-              {lt('All members')}
-              <span className="tabular-nums opacity-70">{total}</span>
+              {t('projects.filter_all', 'All')}
+              <span className="text-[12px] tabular-nums opacity-55">{total}</span>
             </button>
             {members.map((member) => {
               const projectCount = memberProjectCounts.get(member.id) ?? 0
@@ -390,14 +424,12 @@ export function ProjectsListPage() {
                   key={member.id}
                   type="button"
                   onClick={() => selectMember(isSelected ? null : member.id)}
-                  className={cn(
-                    'inline-flex h-11 shrink-0 items-center gap-2 rounded-full pr-3 pl-1.5 text-[13px] font-semibold transition-all duration-200',
-                    isSelected ? 'bg-[var(--surface-inverse)] text-white shadow-[var(--elev-md)] dark:bg-white dark:text-[#0e1525]' : 'bg-[var(--surface)] text-[var(--muted-strong)] ring-1 ring-[var(--border)] hover:-translate-y-0.5 hover:text-[var(--foreground)]',
-                  )}
+                  aria-pressed={isSelected}
+                  className={cn(chipClass, 'pr-3.5 pl-1', isSelected ? chipOn : chipOff)}
                 >
-                  <Avatar name={member.name} surname={member.surname} imageUrl={member.profile_image} size="sm" />
-                  <span className="max-w-[140px] truncate">{member.name} {member.surname}</span>
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--input-surface)] px-1.5 text-[11px] text-[var(--muted-strong)] tabular-nums">{projectCount}</span>
+                  <Face user={member} size={32} inverted={isSelected} />
+                  <span className="max-w-[150px] truncate">{member.name} {member.surname}</span>
+                  <span className="text-[12px] tabular-nums opacity-55">{projectCount}</span>
                 </button>
               )
             })}
@@ -405,119 +437,99 @@ export function ProjectsListPage() {
         ) : null}
 
         {selectedMember ? (
-          <Card>
-            <div className="flex flex-col gap-[18px]">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3.5">
-                  <Avatar
-                    name={selectedMember.name}
-                    surname={selectedMember.surname}
-                    imageUrl={selectedMember.profile_image}
-                    size="lg"
-                  />
-                  <div className="min-w-0">
-                    <h2 className="truncate text-[20px] font-bold tracking-[-0.02em] text-[var(--foreground)]">
-                      {selectedMember.name} {selectedMember.surname}
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="violet">{selectedMemberProjects.length} {lt('projects')}</Badge>
-                  <Badge variant="secondary">{memberOverview?.boardCount ?? 0} {lt('boards')}</Badge>
-                  <Badge variant={(memberOverview?.taskCount ?? 0) > 0 ? 'warning' : 'secondary'}>
-                    {memberOverview?.taskCount ?? 0} {lt('tasks')}
-                  </Badge>
+          <section className="rounded-[26px] bg-[var(--card)] p-5 ring-1 ring-[var(--border)] sm:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-5">
+              <div className="flex min-w-0 items-center gap-3.5">
+                <Face user={selectedMember} size={52} />
+                <div className="min-w-0">
+                  <h2 className="truncate text-[20px] font-semibold tracking-[-0.025em] text-[var(--foreground)]">
+                    {selectedMember.name} {selectedMember.surname}
+                  </h2>
+                  <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">{t('projects.member_overview_hint', 'Assigned tasks in active boards')}</p>
                 </div>
               </div>
+              <dl className="flex gap-7">
+                {([
+                  [t('projects.member_stats_projects', 'Projects'), selectedMemberProjects.length],
+                  [t('projects.member_stats_boards', 'Boards'), memberOverview?.boardCount ?? 0],
+                  [t('projects.member_stats_tasks', 'Tasks'), memberOverview?.taskCount ?? 0],
+                ] as const).map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-[11px] font-medium tracking-[0.07em] text-[var(--muted)] uppercase">{label}</dt>
+                    <dd className="mt-0.5 text-[24px] leading-7 font-semibold tracking-[-0.02em] text-[var(--foreground)] tabular-nums">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
 
+            <div className="mt-6">
               {isSelectedMemberOverviewLoading ? (
-                <div className="grid gap-[18px] xl:grid-cols-2">
+                <div className="grid gap-4 xl:grid-cols-2">
                   {Array.from({ length: Math.max(selectedMemberProjects.length, 2) }).map((_, index) => (
-                    <Skeleton key={index} rounded="xl" className="h-48" />
+                    <Skeleton key={index} rounded="xl" className="h-44" />
                   ))}
                 </div>
               ) : isSelectedMemberOverviewError ? (
                 <StateBlock
                   tone="error"
-                  eyebrow="Error"
+                  eyebrow={lt('Error')}
                   title={lt('Failed to load member tasks')}
                   description={lt('There was an error loading the member overview. Please try again.')}
                   actionLabel={lt('Retry')}
                   onAction={refetchSelectedMemberData}
                 />
               ) : memberOverview && memberOverview.projects.length > 0 ? (
-                <div className="grid gap-[18px] xl:grid-cols-2">
+                <div className="grid gap-4 xl:grid-cols-2">
                   {memberOverview.projects.map((project) => (
-                    <div
-                      key={project.projectId}
-                      className="rounded-[18px] bg-[var(--accent-soft)] p-[18px]"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <Link
-                            to={`/projects/${project.projectId}`}
-                            className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)] transition-colors hover:text-[var(--primary)]"
-                          >
-                            {project.projectName}
-                          </Link>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="secondary" size="sm">{project.boardCount} {lt('boards')}</Badge>
-                          <Badge variant={project.taskCount > 0 ? 'warning' : 'secondary'} size="sm">
-                            {project.taskCount} {lt('tasks')}
-                          </Badge>
-                        </div>
+                    <div key={project.projectId} className="rounded-[20px] bg-[var(--muted-surface)] p-4 sm:p-5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                        <Link
+                          to={`/projects/${project.projectId}`}
+                          className="min-w-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-[var(--foreground)] underline-offset-4 hover:underline"
+                        >
+                          {project.projectName}
+                        </Link>
+                        <span className="text-[12px] text-[var(--muted)] tabular-nums">
+                          {t('projects.boards_n', '{{count}} boards', { count: project.boardCount })} · {t('projects.tasks_n', '{{count}} tasks', { count: project.taskCount })}
+                        </span>
                       </div>
 
                       {project.tasks.length === 0 ? (
-                        <p className="mt-4 rounded-[14px] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--muted)]">
+                        <p className="mt-3.5 rounded-[14px] bg-[var(--card)] px-4 py-3 text-[13px] text-[var(--muted)]">
                           {lt('This member has no assigned tasks in active boards for this project.')}
                         </p>
                       ) : (
-                        <div className="mt-4 space-y-2.5">
+                        <ul className="mt-3.5 space-y-2">
                           {project.tasks.map((task) => {
-                            const priorityConfig = task.priority ? priorityConfigMap[task.priority] : null
-                            const dueVariant = task.dueDate
-                              ? isDueDateOverdue(task.dueDate)
-                                ? 'danger'
-                                : isDueDateSoon(task.dueDate)
-                                  ? 'warning'
-                                  : 'secondary'
-                              : 'ghost'
-
+                            const priority = task.priority ? priorityConfigMap[task.priority] : null
+                            const overdue = task.dueDate ? isDueDateOverdue(task.dueDate) : false
+                            const soon = !overdue && task.dueDate ? isDueDateSoon(task.dueDate) : false
                             return (
-                              <Link
-                                key={task.cardId}
-                                to={`/projects/${task.projectId}?board=${task.boardId}`}
-                                className="block rounded-[14px] bg-[var(--surface)] px-4 py-3 transition-colors hover:bg-[var(--blue-dim)]"
-                              >
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-                                      {task.title}
-                                    </p>
-                                    <p className="mt-1 text-[12px] text-[var(--muted)]">
-                                      {task.boardName} - {task.columnName}
-                                    </p>
-                                  </div>
-
-                                  <div className="flex flex-wrap gap-2">
-                                    {priorityConfig ? (
-                                      <Badge variant={priorityConfig.badgeVariant} size="sm">
-                                        {priorityConfig.label}
-                                      </Badge>
+                              <li key={task.cardId}>
+                                <Link
+                                  to={`/projects/${task.projectId}?board=${task.boardId}`}
+                                  className="flex items-start justify-between gap-3 rounded-[14px] bg-[var(--card)] px-4 py-3 ring-1 ring-transparent transition-shadow hover:ring-[var(--border-hover)]"
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-[13.5px] font-semibold text-[var(--foreground)]">{task.title}</span>
+                                    <span className="mt-0.5 block truncate text-[12px] text-[var(--muted)]">{task.boardName} · {task.columnName}</span>
+                                  </span>
+                                  <span className="flex shrink-0 flex-col items-end gap-1 text-[12px]">
+                                    {priority ? (
+                                      <span className="inline-flex items-center gap-1.5 font-medium text-[var(--muted-strong)]">
+                                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: priority.color }} />
+                                        {priority.label}
+                                      </span>
                                     ) : null}
-                                    <Badge variant={dueVariant} size="sm">
+                                    <span className={cn('tabular-nums', overdue ? 'font-medium text-[var(--danger-text)]' : soon ? 'font-medium text-[var(--warning-text)]' : 'text-[var(--muted)]')}>
                                       {task.dueDate ? `${lt('Due')} ${formatProjectDateTime(task.dueDate)}` : lt('No due date')}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </Link>
+                                    </span>
+                                  </span>
+                                </Link>
+                              </li>
                             )
                           })}
-                        </div>
+                        </ul>
                       )}
                     </div>
                   ))}
@@ -531,12 +543,12 @@ export function ProjectsListPage() {
                 />
               )}
             </div>
-          </Card>
+          </section>
         ) : null}
 
         {projectsQuery.isLoading || isSelectedMemberProjectsLoading ? (
-          <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, index) => (
+          <div className={gridClass}>
+            {Array.from({ length: 6 }).map((_, index) => (
               <ProjectCardSkeleton key={index} />
             ))}
           </div>
@@ -573,7 +585,7 @@ export function ProjectsListPage() {
             onAction={!search && !selectedMember && canCreateProject ? () => setIsCreateOpen(true) : undefined}
           />
         ) : (
-          <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={gridClass}>
             {filteredProjects.map((project) => (
               <ProjectCard
                 key={project.id}
