@@ -9,6 +9,8 @@ export type MindMapDocumentDto = {
   rootId: string
   edgeStyle?: string
   nodes: Record<string, unknown>
+  /** Extra lines between nodes ({ id, from, to }); stored by the API as an unknown document key. */
+  relations?: Array<{ id: string; from: string; to: string }>
 }
 
 export type MindMapListItemDto = {

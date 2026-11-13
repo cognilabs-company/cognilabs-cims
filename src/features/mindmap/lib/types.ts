@@ -50,12 +50,24 @@ export const DIRS: Dir[] = ['right', 'left', 'up', 'down']
 export type EdgeStyle = 'curved' | 'straight' | 'elbow'
 export const EDGE_STYLES: EdgeStyle[] = ['curved', 'straight', 'elbow']
 
+/**
+ * An extra line between two nodes that are both already in the tree ("relationship"). It never changes
+ * the tree: no node loses its own line because of it. Stored in the document as `relations`.
+ */
+export type MindRelation = {
+  id: string
+  from: string
+  to: string
+}
+
 export type MindMap = {
   id: string
   /** Same as the root node's text. */
   title: string
   rootId: string
   nodes: Record<string, MindNode>
+  /** Extra lines between nodes (see MindRelation). */
+  relations?: MindRelation[]
   edgeStyle?: EdgeStyle
   createdAt: string
   updatedAt: string

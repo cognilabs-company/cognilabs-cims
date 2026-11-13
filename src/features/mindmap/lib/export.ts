@@ -1,5 +1,5 @@
-import { computeLayout, edgePath, nodeFont, type Layout, type NodeBox } from './layout'
-import { floatingIds, outline } from './tree'
+import { computeLayout, edgePath, nodeFont, relationGeometry, type Layout, type NodeBox } from './layout'
+import { floatingIds, outline, relationsOf } from './tree'
 import type { MindMap, MindNode } from './types'
 
 const PAD = 48
@@ -53,12 +53,23 @@ function edges(map: MindMap, layout: Layout) {
   const list: Array<{ parent: NodeBox; child: NodeBox }> = []
   for (const id of layout.order) {
     const node = map.nodes[id]
-    const parent = node.parentId ? layout.boxes.get(node.parentId) : undefined
+    const parent = node?.parentId ? layout.boxes.get(node.parentId) : undefined
     const child = layout.boxes.get(id)
     if (parent && child) list.push({ parent, child })
   }
   return list
 }
+
+/** Extra lines whose two nodes are both drawn. */
+function relationShapes(map: MindMap, layout: Layout) {
+  return relationsOf(map).flatMap((relation) => {
+    const from = layout.boxes.get(relation.from)
+    const to = layout.boxes.get(relation.to)
+    return from && to ? [relationGeometry(from, to)] : []
+  })
+}
+
+const RELATION_COLOR = '#64748B'
 
 export function exportSvg(map: MindMap) {
   const layout = computeLayout(map)
@@ -72,6 +83,10 @@ export function exportSvg(map: MindMap) {
   ]
   for (const { parent, child } of edges(map, layout)) {
     parts.push(`<path d="${edgePath(parent, child, map.edgeStyle)}" fill="none" stroke="${child.color}" stroke-opacity="0.75" stroke-width="${child.depth === 1 ? 3 : 2}" stroke-linecap="round"/>`)
+  }
+  for (const shape of relationShapes(map, layout)) {
+    parts.push(`<path d="${shape.d}" fill="none" stroke="${RELATION_COLOR}" stroke-width="2" stroke-dasharray="7 6" stroke-linecap="round"/>`)
+    parts.push(`<path d="${shape.arrow}" fill="${RELATION_COLOR}"/>`)
   }
   for (const id of layout.order) {
     const box = layout.boxes.get(id)!
@@ -125,6 +140,15 @@ export async function exportPng(map: MindMap) {
     ctx.stroke(new Path2D(edgePath(parent, child, map.edgeStyle)))
   }
   ctx.globalAlpha = 1
+  ctx.strokeStyle = RELATION_COLOR
+  ctx.fillStyle = RELATION_COLOR
+  ctx.lineWidth = 2
+  for (const shape of relationShapes(map, layout)) {
+    ctx.setLineDash([7, 6])
+    ctx.stroke(new Path2D(shape.d))
+    ctx.setLineDash([])
+    ctx.fill(new Path2D(shape.arrow))
+  }
   for (const id of layout.order) {
     const box = layout.boxes.get(id)!
     const node = map.nodes[id]

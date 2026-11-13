@@ -175,10 +175,14 @@ export function computeLayout(map: MindMap): Layout {
   const order: string[] = []
   const sizes = new Map<string, ReturnType<typeof nodeSize>>()
   const breadths = new Map<string, number>()
+  // Every node is placed once, even if a broken document lists it twice (or in a loop).
+  const measuring = new Set<string>()
 
+  /** Children that are drawn: hubs (central topic, free nodes) are never collapsed. */
   const visibleChildren = (id: string) => {
     const node = map.nodes[id]
-    return node && !node.collapsed ? node.children.filter((child) => map.nodes[child]) : []
+    if (!node || (node.collapsed && !isHub(map, id))) return []
+    return node.children.filter((child) => map.nodes[child] && !boxes.has(child))
   }
   const sizeOf = (id: string, depth: number) => {
     let size = sizes.get(id)
@@ -189,10 +193,14 @@ export function computeLayout(map: MindMap): Layout {
   /** Size of a subtree across its growth direction (heights for left/right, widths for up/down). */
   const measure = (id: string, depth: number, dir: Dir): number => {
     const size = sizeOf(id, depth)
+    const own = isHorizontal(dir) ? size.h : size.w
+    if (measuring.has(id)) return own
+    measuring.add(id)
     const kids = visibleChildren(id).filter((child) => !isPinned(map, child))
     const gap = isHorizontal(dir) ? V_GAP : H_SIB_GAP
     const stack = kids.reduce((sum, child) => sum + measure(child, depth + 1, dir), 0) + Math.max(0, kids.length - 1) * gap
-    const breadth = Math.max(isHorizontal(dir) ? size.h : size.w, stack)
+    measuring.delete(id)
+    const breadth = Math.max(own, stack)
     breadths.set(id, breadth)
     return breadth
   }
@@ -202,9 +210,9 @@ export function computeLayout(map: MindMap): Layout {
     order.push(box.id)
   }
 
-  /** Lays children out in one direction from `parent`; `colorOf` gives each child's branch colour. */
   /** A hand-placed node: at its spot next to the parent; its own children grow away from the parent. */
   const placePinned = (parent: NodeBox, child: string, depth: number, color: string) => {
+    if (boxes.has(child)) return
     const node = map.nodes[child]
     const size = sizeOf(child, depth)
     const cx = parent.x + parent.w / 2 + (node.px ?? 0)
@@ -215,9 +223,10 @@ export function computeLayout(map: MindMap): Layout {
     placeGroup(box, visibleChildren(child), dir, depth + 1, () => node.color ?? box.color, isHorizontal(dir) ? H_GAP : V_DIST)
   }
 
+  /** Lays children out in one direction from `parent`; `colorOf` gives each child's branch colour. */
   const placeGroup = (parent: NodeBox, all: string[], dir: Dir, depth: number, colorOf: (child: string) => string, distance: number) => {
     for (const child of all) if (isPinned(map, child)) placePinned(parent, child, depth, colorOf(child))
-    const kids = all.filter((child) => !isPinned(map, child))
+    const kids = all.filter((child) => !isPinned(map, child) && !boxes.has(child))
     if (!kids.length) return
     const horizontal = isHorizontal(dir)
     const gap = horizontal ? V_GAP : H_SIB_GAP
@@ -225,6 +234,7 @@ export function computeLayout(map: MindMap): Layout {
     const total = kids.reduce((sum, child) => sum + breadths.get(child)!, 0) + (kids.length - 1) * gap
     let cursor = (horizontal ? parent.y + parent.h / 2 : parent.x + parent.w / 2) - total / 2
     for (const child of kids) {
+      if (boxes.has(child)) continue
       const node = map.nodes[child]
       const size = sizeOf(child, depth)
       const breadth = breadths.get(child)!
@@ -259,7 +269,7 @@ export function computeLayout(map: MindMap): Layout {
 
   // Free nodes: where the user put them.
   for (const node of Object.values(map.nodes)) {
-    if (node.parentId !== null || node.id === map.rootId) continue
+    if (node.parentId !== null || node.id === map.rootId || boxes.has(node.id)) continue
     const size = sizeOf(node.id, 1)
     const box: NodeBox = {
       id: node.id,
@@ -331,8 +341,67 @@ export function edgePath(parent: NodeBox, child: NodeBox, style: EdgeStyle = 'cu
   return `M ${x1} ${y1} C ${x1} ${y1 + mid}, ${x2} ${y2 - mid}, ${x2} ${y2}`
 }
 
-/** The middle of a connector (all three styles pass through it) — where the "cut" button sits. */
-export function edgeMidpoint(parent: NodeBox, child: NodeBox) {
+/** `offset` px from `point`, at a right angle to the direction (tx, ty) — on the upper (or left) side. */
+function beside(point: { x: number; y: number }, tx: number, ty: number, offset: number) {
+  const length = Math.hypot(tx, ty) || 1
+  let nx = -ty / length
+  let ny = tx / length
+  if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny }
+  return { x: point.x + nx * offset, y: point.y + ny * offset }
+}
+
+/**
+ * Where a line's ✂ button sits: next to the middle of the line, never on it — so clicking the line (to select or
+ * pull it) can never hit the button by accident.
+ */
+export function edgeCutPoint(parent: NodeBox, child: NodeBox, style: EdgeStyle = 'curved', offset = 20) {
   const { x1, y1, x2, y2 } = edgeEnds(parent, child)
-  return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }
+  const mid = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const horizontal = isHorizontal(child.dir)
+  // The line's direction at its middle.
+  let tangent: [number, number]
+  if (style === 'straight') tangent = [dx, dy]
+  else if (style === 'elbow') tangent = horizontal ? (Math.abs(dy) < 1 ? [1, 0] : [0, 1]) : (Math.abs(dx) < 1 ? [0, 1] : [1, 0])
+  else tangent = horizontal ? [dx, 2 * dy] : [2 * dx, dy]
+  return beside(mid, tangent[0], tangent[1], offset)
+}
+
+/** Where a ray from the centre of `box` towards (tx, ty) leaves the box, `gap` px outside it. */
+export function borderPoint(box: Pick<NodeBox, 'x' | 'y' | 'w' | 'h'>, tx: number, ty: number, gap = 0) {
+  const cx = box.x + box.w / 2
+  const cy = box.y + box.h / 2
+  const dx = tx - cx
+  const dy = ty - cy
+  if (!dx && !dy) return { x: cx, y: cy }
+  const scale = Math.min(dx ? (box.w / 2 + gap) / Math.abs(dx) : Infinity, dy ? (box.h / 2 + gap) / Math.abs(dy) : Infinity)
+  return { x: cx + dx * scale, y: cy + dy * scale }
+}
+
+/**
+ * An extra line (relation) from `from` to `to`: a dashed arc that bends to one side, so it never hides a
+ * tree line, with an arrow head at `to`. `mid` = the point of the arc where its remove button sits.
+ */
+export function relationGeometry(from: NodeBox, to: NodeBox) {
+  const ax = from.x + from.w / 2
+  const ay = from.y + from.h / 2
+  const bx = to.x + to.w / 2
+  const by = to.y + to.h / 2
+  const length = Math.hypot(bx - ax, by - ay) || 1
+  const bend = Math.min(90, length * 0.22)
+  const cx = (ax + bx) / 2 - ((by - ay) / length) * bend
+  const cy = (ay + by) / 2 + ((bx - ax) / length) * bend
+  const start = borderPoint(from, cx, cy, 4)
+  const end = borderPoint(to, cx, cy, 7)
+  const angle = Math.atan2(end.y - cy, end.x - cx)
+  const head = 9
+  const spread = 4.5
+  const back = { x: end.x - Math.cos(angle) * head, y: end.y - Math.sin(angle) * head }
+  const arrow = `M ${end.x} ${end.y} L ${back.x - Math.sin(angle) * spread} ${back.y + Math.cos(angle) * spread} L ${back.x + Math.sin(angle) * spread} ${back.y - Math.cos(angle) * spread} Z`
+  const mid = { x: 0.25 * start.x + 0.5 * cx + 0.25 * end.x, y: 0.25 * start.y + 0.5 * cy + 0.25 * end.y }
+  // The remove button: just outside the arc, on its bulging side (never on the line itself).
+  const out = Math.hypot(cx - mid.x, cy - mid.y) || 1
+  const cut = { x: mid.x + ((cx - mid.x) / out) * 20, y: mid.y + ((cy - mid.y) / out) * 20 }
+  return { d: `M ${start.x} ${start.y} Q ${cx} ${cy} ${end.x} ${end.y}`, arrow, mid, cut }
 }

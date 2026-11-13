@@ -1,5 +1,5 @@
 import { mindmapsService, type MindMapConflictDto, type MindMapDocumentDto, type MindMapDto, type MindMapListItemDto } from '../../../shared/api/services/mindmaps.service'
-import { importMap } from './tree'
+import { importMap, relationsOf } from './tree'
 import type { MindMap, MindMapSummary, MindNode } from './types'
 
 /** Everything the page needs from storage. */
@@ -44,6 +44,7 @@ export function isConflict(error: unknown): error is MindMapConflict {
 /**
  * The document as the API validates it: `dir` / `branch` only on direct children of the central topic or of a
  * free node, `x` / `y` only on free nodes, `px` / `py` only on connected nodes. Leftovers from earlier moves are dropped.
+ * Extra lines go in `relations` (an extra document key — the API keeps unknown keys as they are).
  */
 export function toDocument(map: MindMap): MindMapDocumentDto {
   const nodes: Record<string, MindNode> = {}
@@ -56,9 +57,10 @@ export function toDocument(map: MindMap): MindMapDocumentDto {
     if (!hubChild) { delete clean.dir; delete clean.branch }
     if (!free) { delete clean.x; delete clean.y }
     if (node.parentId === null) { delete clean.px; delete clean.py }
+    for (const key of Object.keys(clean) as (keyof MindNode)[]) if (clean[key] === undefined) delete clean[key]
     nodes[id] = clean
   }
-  return { rootId: map.rootId, edgeStyle: map.edgeStyle ?? 'curved', nodes }
+  return { rootId: map.rootId, edgeStyle: map.edgeStyle ?? 'curved', nodes, relations: relationsOf(map).map(({ id, from, to }) => ({ id, from, to })) }
 }
 
 function fromDto(dto: MindMapDto): MindMap | null {

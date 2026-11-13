@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { CheckSquareIcon, LineSegmentIcon, LinkSimpleIcon, NoteIcon, PlusIcon, ScissorsIcon, XIcon } from '@phosphor-icons/react'
 import { cn } from '../../../shared/lib/cn'
-import { computeLayout, edgeEnds, edgeMidpoint, edgePath, isHub, type Layout, type NodeBox } from '../lib/layout'
-import { subtreeIds, updateNode } from '../lib/tree'
+import { borderPoint, computeLayout, edgeCutPoint, edgeEnds, edgePath, isHub, relationGeometry, type Layout, type NodeBox } from '../lib/layout'
+import { relationsOf, subtreeIds, updateNode } from '../lib/tree'
 import type { Dir, MindMap, MindNode, NodeTask } from '../lib/types'
 import { clampZoom, type View } from '../lib/view'
 import { Minimap } from './Minimap'
 
-
+type Point = { x: number; y: number }
 type DragState = { id: string; dx: number; dy: number; targetId: string | null }
-/** A line being drawn or re-attached: from a fixed point to the pointer (world coordinates). */
-type LineDrag = { from: { x: number; y: number }; to: { x: number; y: number }; targetId: string | null; color: string }
+/** A line being drawn or moved: from a fixed point to the pointer (world coordinates). */
+type LineDrag = { from: Point; to: Point; targetId: string | null; color: string; /** The tree line being moved (hidden meanwhile). */ edgeId: string | null }
+/** A line on the canvas: a tree line (by its child's id) or an extra line (by its id). */
+type LineRef = { kind: 'edge' | 'rel'; id: string }
 
 type Props = {
   map: MindMap
@@ -31,7 +33,19 @@ type Props = {
   leavingIds: Set<string>
   /** Glide the camera (button-driven moves); wheel and drag stay instant. */
   animateView: boolean
-  labels: { collapse: string; expand: string; openLink: string; openTask: string; note: string; remove: string; cut: string; side: (id: string, side: Dir) => string; drawLine: string; moveLineEnd: string }
+  labels: {
+    collapse: string
+    expand: string
+    openLink: string
+    openTask: string
+    note: string
+    remove: string
+    cut: string
+    cutRelation: string
+    side: (id: string, side: Dir) => string
+    drawLine: string
+    moveLine: string
+  }
   onSize: (size: { w: number; h: number }) => void
   onSelect: (id: string) => void
   onStartEdit: (id: string) => void
@@ -46,13 +60,17 @@ type Props = {
   onSideAdd: (id: string, side: Dir) => void
   /** Cut the line between this node and its parent. */
   onDetach: (id: string) => void
-  /** A line's end was dragged onto a node: `end` = which end moved ("parent" or "child"); edge = its child's id. */
-  onReconnect: (edgeId: string, end: 'parent' | 'child', targetId: string) => void
+  /** A tree line (by its child's id) was pulled onto another node: the child moves under `targetId`. */
+  onReconnect: (edgeId: string, targetId: string) => void
   /** A new line was drawn from one node to another. */
   onConnect: (sourceId: string, targetId: string) => void
-  /** A line is selected (by its child's id), or nothing. */
+  /** A tree line is selected (by its child's id), or nothing. */
   selectedEdge: string | null
   onSelectEdge: (id: string | null) => void
+  /** An extra line is selected (by its id), or nothing. */
+  selectedRelation: string | null
+  onSelectRelation: (id: string | null) => void
+  onRemoveRelation: (id: string) => void
   /** Double-click on empty canvas: a free node at that point (world coordinates). */
   onCreateFree: (x: number, y: number) => void
 }
@@ -83,15 +101,32 @@ function nodeStyle(node: MindNode, box: NodeBox): CSSProperties {
   }
 }
 
+/** A straight dashed preview between two boxes (border to border). */
+function linkBetween(a: NodeBox, b: NodeBox) {
+  const start = borderPoint(a, b.x + b.w / 2, b.y + b.h / 2, 3)
+  const end = borderPoint(b, a.x + a.w / 2, a.y + a.h / 2, 3)
+  return `M ${start.x} ${start.y} L ${end.x} ${end.y}`
+}
+
+const sameLine = (a: LineRef | null, b: LineRef | null) => Boolean(a && b && a.kind === b.kind && a.id === b.id)
+
+/** How long a hovered line keeps its ✂ button after the pointer leaves it (time to reach the button). */
+const HOVER_GRACE_MS = 260
+
 export function MindCanvas(props: Props) {
   const { map, layout, view, setView, selectedId, editingId, editSelectAll, matches, activeMatchId, spacePan, showMinimap, leavingIds, animateView, labels } = props
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const viewRef = useRef(view)
   const [size, setSize] = useState({ w: 0, h: 0 })
   const [drag, setDrag] = useState<DragState | null>(null)
   const [panning, setPanning] = useState(false)
-  const [hoverEdge, setHoverEdge] = useState<string | null>(null)
+  const [hoverLine, setHoverLine] = useState<LineRef | null>(null)
+  const hoverTimer = useRef<number | undefined>(undefined)
   const [lineDrag, setLineDrag] = useState<LineDrag | null>(null)
   const { onSize } = props
+
+  useEffect(() => { viewRef.current = view }, [view])
+  useEffect(() => () => window.clearTimeout(hoverTimer.current), [])
 
   // Container size (fit / centre / minimap need it).
   useEffect(() => {
@@ -133,6 +168,31 @@ export function MindCanvas(props: Props) {
     return node ? computeLayout(updateNode(map, drag.id, { dx: node.dx + drag.dx, dy: node.dy + drag.dy })) : layout
   }, [drag, layout, map])
 
+  function hover(line: LineRef) {
+    window.clearTimeout(hoverTimer.current)
+    setHoverLine((current) => (sameLine(current, line) ? current : line))
+  }
+
+  function unhover(line: LineRef) {
+    window.clearTimeout(hoverTimer.current)
+    hoverTimer.current = window.setTimeout(() => setHoverLine((current) => (sameLine(current, line) ? null : current)), HOVER_GRACE_MS)
+  }
+
+  function toWorld(event: { clientX: number; clientY: number }): Point {
+    const rect = containerRef.current?.getBoundingClientRect()
+    const current = viewRef.current
+    return { x: (event.clientX - (rect?.left ?? 0) - current.x) / current.k, y: (event.clientY - (rect?.top ?? 0) - current.y) / current.k }
+  }
+
+  /** The node under the pointer (not one of `exclude`). */
+  function nodeAt(event: { clientX: number; clientY: number }, exclude: Set<string>) {
+    for (const element of document.elementsFromPoint(event.clientX, event.clientY)) {
+      const id = (element as HTMLElement).closest?.('[data-node-id]')?.getAttribute('data-node-id')
+      if (id && !exclude.has(id)) return id
+    }
+    return null
+  }
+
   function startPan(event: ReactPointerEvent) {
     const start = { cx: event.clientX, cy: event.clientY, x: view.x, y: view.y }
     setPanning(true)
@@ -149,19 +209,18 @@ export function MindCanvas(props: Props) {
   }
 
   function onBackgroundDoubleClick(event: React.MouseEvent<HTMLDivElement>) {
-    if (props.readOnly || (event.target as HTMLElement).closest('[data-node-id],[data-canvas-ui]')) return
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (!rect) return
-    props.onCreateFree((event.clientX - rect.left - view.x) / view.k, (event.clientY - rect.top - view.y) / view.k)
+    if (props.readOnly || (event.target as HTMLElement).closest('[data-node-id],[data-canvas-ui],[data-edge-id],[data-rel-id]')) return
+    const point = toWorld(event)
+    props.onCreateFree(point.x, point.y)
   }
 
   function onBackgroundPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0 && event.button !== 1) return
     const target = event.target as HTMLElement
     if (target.closest('[data-node-id],[data-canvas-ui]') && !spacePan && event.button !== 1) return
-    if (target.closest('[data-edge-id]') && !spacePan) return
     event.preventDefault()
     if (props.selectedEdge) props.onSelectEdge(null)
+    if (props.selectedRelation) props.onSelectRelation(null)
     startPan(event)
   }
 
@@ -181,71 +240,100 @@ export function MindCanvas(props: Props) {
       const dyScreen = e.clientY - start.cy
       if (!moved && Math.hypot(dxScreen, dyScreen) < 4) return
       moved = true
-      let targetId: string | null = null
-      if (id !== map.rootId) {
-        for (const element of document.elementsFromPoint(e.clientX, e.clientY)) {
-          const candidate = (element as HTMLElement).closest?.('[data-node-id]')?.getAttribute('data-node-id')
-          if (candidate && !dragged.has(candidate)) { targetId = candidate; break }
-        }
-      }
+      // The central topic is never connected to anything: it only moves.
+      const targetId = id === map.rootId ? null : nodeAt(e, dragged)
       last = { id, dx: dxScreen / k, dy: dyScreen / k, targetId }
       setDrag(last)
     }
-    const up = () => {
+    const finish = (drop: boolean) => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
-      window.removeEventListener('pointercancel', up)
+      window.removeEventListener('pointercancel', cancel)
+      window.removeEventListener('keydown', onKey, true)
       setDrag(null)
-      if (!moved) return
+      if (!drop || !moved) return
       const box = layout.boxes.get(id)
       if (!box) return
       props.onDropNode(id, { x: box.x + box.w / 2 + last.dx, y: box.y + box.h / 2 + last.dy }, last.targetId)
     }
+    const up = () => finish(true)
+    const cancel = () => finish(false)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopPropagation()
+      cancel()
+    }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
-    window.addEventListener('pointercancel', up)
+    window.addEventListener('pointercancel', cancel)
+    window.addEventListener('keydown', onKey, true)
   }
 
   /**
-   * Drag a line end (or a new line) from `from` to a node. `exclude`: nodes it may not land on.
-   * On release over a node → `done(nodeId)`; over empty space nothing changes.
+   * Pull a line from a fixed point to a node. `exclude`: nodes it may not land on. `threshold`: screen px the
+   * pointer must move before the drag starts (a plain click stays a click). Released over a node → `done(id)`;
+   * over empty space, or Escape → nothing changes.
    */
-  function startLineDrag(event: ReactPointerEvent, from: { x: number; y: number }, color: string, exclude: Set<string>, done: (targetId: string) => void) {
+  function startLineDrag(
+    event: ReactPointerEvent,
+    options: { from: Point; color: string; exclude: Set<string>; edgeId?: string | null; threshold?: number; done: (targetId: string) => void },
+  ) {
     event.preventDefault()
     event.stopPropagation()
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const toWorld = (e: { clientX: number; clientY: number }) => ({ x: (e.clientX - rect.left - view.x) / view.k, y: (e.clientY - rect.top - view.y) / view.k })
-    const targetAt = (e: PointerEvent) => {
-      for (const element of document.elementsFromPoint(e.clientX, e.clientY)) {
-        const id = (element as HTMLElement).closest?.('[data-node-id]')?.getAttribute('data-node-id')
-        if (id && !exclude.has(id)) return id
-      }
-      return null
-    }
-    let last: LineDrag = { from, to: toWorld(event), targetId: null, color }
-    setLineDrag(last)
+    const startX = event.clientX
+    const startY = event.clientY
+    const threshold = options.threshold ?? 0
+    let active = threshold === 0
+    let last: LineDrag = { from: options.from, to: toWorld(event), targetId: null, color: options.color, edgeId: options.edgeId ?? null }
+    if (active) setLineDrag(last)
     const move = (e: PointerEvent) => {
-      last = { from, to: toWorld(e), targetId: targetAt(e), color }
+      if (!active) {
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) < threshold) return
+        active = true
+      }
+      last = { ...last, to: toWorld(e), targetId: nodeAt(e, options.exclude) }
       setLineDrag(last)
     }
-    const up = () => {
+    const finish = (commit: boolean) => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
-      window.removeEventListener('pointercancel', up)
+      window.removeEventListener('pointercancel', cancel)
+      window.removeEventListener('keydown', onKey, true)
       setLineDrag(null)
-      if (last.targetId) done(last.targetId)
+      if (commit && active && last.targetId) options.done(last.targetId)
+    }
+    const up = () => finish(true)
+    const cancel = () => finish(false)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopPropagation()
+      cancel()
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
-    window.addEventListener('pointercancel', up)
+    window.addEventListener('pointercancel', cancel)
+    window.addEventListener('keydown', onKey, true)
   }
+
+  // A dragged node held over another node: its line will go there — show that line, hide the old one.
+  const dragTarget = drag?.targetId ? shown.boxes.get(drag.targetId) : undefined
+  const draggedBox = drag ? shown.boxes.get(drag.id) : undefined
+  const changesParent = Boolean(drag?.targetId && map.nodes[drag.id]?.parentId !== drag.targetId)
 
   const edges = shown.order.flatMap((id) => {
     const node = map.nodes[id]
     const parent = node?.parentId ? shown.boxes.get(node.parentId) : undefined
     const child = shown.boxes.get(id)
-    return parent && child ? [{ id, d: edgePath(parent, child, map.edgeStyle), color: child.color, depth: child.depth, mid: edgeMidpoint(parent, child), ends: edgeEnds(parent, child), parentId: parent.id }] : []
+    if (!parent || !child) return []
+    if (lineDrag?.edgeId === id || (changesParent && drag?.id === id)) return []
+    return [{ id, d: edgePath(parent, child, map.edgeStyle), color: child.color, depth: child.depth, cut: edgeCutPoint(parent, child, map.edgeStyle), ends: edgeEnds(parent, child), parentId: parent.id }]
+  })
+  const relations = relationsOf(map).flatMap((relation) => {
+    const from = shown.boxes.get(relation.from)
+    const to = shown.boxes.get(relation.to)
+    return from && to ? [{ ...relation, ...relationGeometry(from, to) }] : []
   })
   const pad = 400
   const svgBox = {
@@ -254,10 +342,36 @@ export function MindCanvas(props: Props) {
     w: Math.ceil(shown.bounds.maxX - shown.bounds.minX + pad * 2),
     h: Math.ceil(shown.bounds.maxY - shown.bounds.minY + pad * 2),
   }
-  // The selected line shows a handle on each end: drag one onto another node to re-attach the line.
-  const selectedLine = drag || lineDrag || props.readOnly ? undefined : edges.find((edge) => edge.id === props.selectedEdge)
-  // The cut button: on the selected line, or the one under the pointer.
-  const cutEdge = drag || props.readOnly ? undefined : edges.find((edge) => edge.id === props.selectedEdge) ?? edges.find((edge) => edge.id === hoverEdge)
+  const busy = Boolean(drag || lineDrag)
+  const selectedLineRef: LineRef | null = props.selectedRelation ? { kind: 'rel', id: props.selectedRelation } : props.selectedEdge ? { kind: 'edge', id: props.selectedEdge } : null
+  const isActiveLine = (line: LineRef) => sameLine(selectedLineRef, line) || sameLine(hoverLine, line)
+  // The selected tree line shows a handle at its parent end: pull it (or the line itself) onto another node.
+  const selectedEdgeShape = busy || props.readOnly ? undefined : edges.find((edge) => edge.id === props.selectedEdge)
+  // ✂ buttons (beside the line, not on it): for the selected line and for the one under the pointer.
+  const cutButtons = busy || props.readOnly ? [] : [selectedLineRef, sameLine(hoverLine, selectedLineRef) ? null : hoverLine].flatMap((line) => {
+    if (!line) return []
+    if (line.kind === 'edge') {
+      const edge = edges.find((item) => item.id === line.id)
+      return edge && !leavingIds.has(edge.id) ? [{ line, at: edge.cut, label: labels.cut }] : []
+    }
+    const relation = relations.find((item) => item.id === line.id)
+    return relation && !leavingIds.has(relation.from) && !leavingIds.has(relation.to) ? [{ line, at: relation.cut, label: labels.cutRelation }] : []
+  })
+  const lineDragTarget = lineDrag?.targetId ? shown.boxes.get(lineDrag.targetId) : undefined
+  const lineDragEnd = lineDrag ? (lineDragTarget ? borderPoint(lineDragTarget, lineDrag.from.x, lineDrag.from.y, 3) : lineDrag.to) : null
+
+  /** Pull a tree line (from its child end) onto another node. */
+  function grabEdge(event: ReactPointerEvent, edge: (typeof edges)[number], threshold: number) {
+    startLineDrag(event, {
+      from: { x: edge.ends.x2, y: edge.ends.y2 },
+      color: edge.color,
+      // Never into its own branch; its current parent changes nothing.
+      exclude: new Set([...subtreeIds(map, edge.id), edge.parentId]),
+      edgeId: edge.id,
+      threshold,
+      done: (targetId) => props.onReconnect(edge.id, targetId),
+    })
+  }
 
   return (
     <div
@@ -270,6 +384,7 @@ export function MindCanvas(props: Props) {
         animateView && 'mm-bg-animate',
         spacePan || panning ? 'cursor-grabbing' : 'cursor-default',
         spacePan && !panning && 'cursor-grab',
+        lineDrag && 'cursor-crosshair',
       )}
       style={{
         backgroundImage: 'radial-gradient(var(--mm-dot) 1.1px, transparent 1.3px)',
@@ -287,22 +402,41 @@ export function MindCanvas(props: Props) {
           viewBox={`${svgBox.x} ${svgBox.y} ${svgBox.w} ${svgBox.h}`}
           aria-hidden="true"
         >
-          {edges.map((edge) => (
-            <path
-              key={edge.id}
-              d={edge.d}
-              pathLength={1}
-              className={cn('mm-edge', leavingIds.has(edge.id) && 'mm-edge-leave')}
-              style={{ d: `path("${edge.d}")` } as CSSProperties}
-              fill="none"
-              stroke={props.selectedEdge === edge.id ? 'var(--primary)' : edge.color}
-              strokeOpacity={hoverEdge === edge.id || props.selectedEdge === edge.id ? 1 : 0.7}
-              strokeWidth={(edge.depth === 1 ? 3 : 2) + (hoverEdge === edge.id || props.selectedEdge === edge.id ? 1.5 : 0)}
-              strokeDasharray={props.selectedEdge === edge.id ? '0.02 0.012' : undefined}
-              strokeLinecap="round"
-            />
+          {/* Halo under the selected tree line */}
+          {edges.filter((edge) => edge.id === props.selectedEdge).map((edge) => (
+            <path key={`halo-${edge.id}`} d={edge.d} fill="none" stroke="var(--primary)" strokeOpacity={0.18} strokeWidth={10} strokeLinecap="round" />
           ))}
-          {/* Wide invisible lines for hovering (cut button) */}
+          {edges.map((edge) => {
+            const active = isActiveLine({ kind: 'edge', id: edge.id })
+            return (
+              <path
+                key={edge.id}
+                d={edge.d}
+                pathLength={1}
+                className={cn('mm-edge', leavingIds.has(edge.id) && 'mm-edge-leave')}
+                style={{ d: `path("${edge.d}")` } as CSSProperties}
+                fill="none"
+                stroke={props.selectedEdge === edge.id ? 'var(--primary)' : edge.color}
+                strokeOpacity={active ? 1 : 0.7}
+                strokeWidth={(edge.depth === 1 ? 3 : 2) + (active ? 1.5 : 0)}
+                strokeLinecap="round"
+              />
+            )
+          })}
+          {relations.map((relation) => {
+            const line: LineRef = { kind: 'rel', id: relation.id }
+            const selected = sameLine(selectedLineRef, line)
+            const color = selected || sameLine(hoverLine, line) ? 'var(--primary)' : 'var(--muted-strong)'
+            const fading = leavingIds.has(relation.from) || leavingIds.has(relation.to)
+            return (
+              <g key={relation.id} className={cn('mm-rel', fading && 'mm-edge-leave')}>
+                {selected ? <path d={relation.d} fill="none" stroke="var(--primary)" strokeOpacity={0.16} strokeWidth={10} strokeLinecap="round" /> : null}
+                <path d={relation.d} fill="none" stroke={color} strokeOpacity={selected ? 1 : 0.75} strokeWidth={selected ? 2.5 : 2} strokeDasharray="7 6" strokeLinecap="round" />
+                <path d={relation.arrow} fill={color} fillOpacity={selected ? 1 : 0.85} />
+              </g>
+            )
+          })}
+          {/* Wide invisible lines: hover shows ✂, click selects, press and pull moves the line to another node */}
           {edges.map((edge) => (
             <path
               key={`hit-${edge.id}`}
@@ -314,58 +448,95 @@ export function MindCanvas(props: Props) {
               className={props.readOnly ? undefined : 'cursor-pointer'}
               // Inline: Tailwind has no class for SVG's "stroke" value, and only the line itself should be clickable.
               style={{ pointerEvents: props.readOnly ? 'none' : 'stroke' }}
-              onPointerDown={(event) => { event.stopPropagation(); props.onSelectEdge(edge.id) }}
-              onPointerEnter={() => setHoverEdge(edge.id)}
-              onPointerLeave={() => setHoverEdge((current) => (current === edge.id ? null : current))}
+              onPointerDown={(event) => {
+                if (event.button !== 0 || spacePan) return
+                event.stopPropagation()
+                props.onSelectEdge(edge.id)
+                grabEdge(event, edge, 5)
+              }}
+              onPointerEnter={() => hover({ kind: 'edge', id: edge.id })}
+              onPointerLeave={() => unhover({ kind: 'edge', id: edge.id })}
             />
           ))}
-          {lineDrag ? (
+          {relations.map((relation) => (
             <path
-              d={`M ${lineDrag.from.x} ${lineDrag.from.y} L ${lineDrag.to.x} ${lineDrag.to.y}`}
+              key={`hit-${relation.id}`}
+              d={relation.d}
               fill="none"
-              stroke={lineDrag.targetId ? 'var(--primary)' : lineDrag.color}
-              strokeWidth={2.5}
-              strokeDasharray="7 6"
-              strokeLinecap="round"
+              stroke="transparent"
+              strokeWidth={14}
+              data-rel-id={relation.id}
+              className={props.readOnly ? undefined : 'cursor-pointer'}
+              style={{ pointerEvents: props.readOnly ? 'none' : 'stroke' }}
+              onPointerDown={(event) => {
+                if (event.button !== 0 || spacePan) return
+                event.stopPropagation()
+                event.preventDefault()
+                props.onSelectRelation(relation.id)
+              }}
+              onPointerEnter={() => hover({ kind: 'rel', id: relation.id })}
+              onPointerLeave={() => unhover({ kind: 'rel', id: relation.id })}
             />
+          ))}
+          {/* A dragged node over another node: the line it will get */}
+          {dragTarget && draggedBox && changesParent ? (
+            <path d={linkBetween(dragTarget, draggedBox)} fill="none" stroke="var(--primary)" strokeWidth={2.5} strokeDasharray="7 6" strokeLinecap="round" />
+          ) : null}
+          {lineDrag && lineDragEnd ? (
+            <>
+              <path
+                d={`M ${lineDrag.from.x} ${lineDrag.from.y} L ${lineDragEnd.x} ${lineDragEnd.y}`}
+                fill="none"
+                stroke={lineDrag.targetId ? 'var(--primary)' : lineDrag.color}
+                strokeWidth={2.5}
+                strokeDasharray="7 6"
+                strokeLinecap="round"
+              />
+              <circle cx={lineDragEnd.x} cy={lineDragEnd.y} r={4.5} fill={lineDrag.targetId ? 'var(--primary)' : lineDrag.color} />
+            </>
           ) : null}
         </svg>
 
-        {selectedLine ? (['parent', 'child'] as const).map((end) => {
-          const point = end === 'parent' ? { x: selectedLine.ends.x1, y: selectedLine.ends.y1 } : { x: selectedLine.ends.x2, y: selectedLine.ends.y2 }
-          const fixed = end === 'parent' ? { x: selectedLine.ends.x2, y: selectedLine.ends.y2 } : { x: selectedLine.ends.x1, y: selectedLine.ends.y1 }
-          // The child end may not go into the child's own branch; the parent end may not land on the child or below it.
-          const exclude = end === 'parent' ? new Set(subtreeIds(map, selectedLine.id)) : new Set([selectedLine.id, selectedLine.parentId])
-          return (
-            <button
-              key={end}
-              type="button"
-              data-canvas-ui
-              data-line-end={end}
-              title={labels.moveLineEnd}
-              aria-label={labels.moveLineEnd}
-              onPointerDown={(event) => startLineDrag(event, fixed, selectedLine.color, exclude, (targetId) => props.onReconnect(selectedLine.id, end, targetId))}
-              className="mm-pop absolute z-10 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-[var(--primary)] bg-[var(--card)] shadow-[0_1px_4px_rgba(14,21,37,0.3)] transition-transform hover:scale-150 active:cursor-grabbing"
-              style={{ left: point.x, top: point.y }}
-            />
-          )
-        }) : null}
-
-        {cutEdge && !leavingIds.has(cutEdge.id) ? (
+        {selectedEdgeShape ? (
           <button
             type="button"
             data-canvas-ui
-            onPointerEnter={() => setHoverEdge(cutEdge.id)}
+            data-line-end="parent"
+            title={labels.moveLine}
+            aria-label={labels.moveLine}
+            onPointerDown={(event) => { if (event.button === 0) grabEdge(event, selectedEdgeShape, 0) }}
+            className="mm-pop absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-[var(--primary)] bg-[var(--card)] shadow-[0_1px_4px_rgba(14,21,37,0.3)] transition-transform hover:scale-150 active:cursor-grabbing"
+            style={{ left: selectedEdgeShape.ends.x1, top: selectedEdgeShape.ends.y1 }}
+          />
+        ) : null}
+
+        {cutButtons.map(({ line, at, label }) => (
+          <button
+            key={`${line.kind}:${line.id}`}
+            type="button"
+            data-canvas-ui
+            onPointerEnter={() => hover(line)}
+            onPointerLeave={() => unhover(line)}
             onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => { setHoverEdge(null); props.onSelectEdge(null); props.onDetach(cutEdge.id) }}
-            title={labels.cut}
-            aria-label={labels.cut}
+            onClick={() => {
+              window.clearTimeout(hoverTimer.current)
+              setHoverLine(null)
+              if (line.kind === 'edge') {
+                props.onSelectEdge(null)
+                props.onDetach(line.id)
+              } else {
+                props.onSelectRelation(null)
+                props.onRemoveRelation(line.id)
+              }
+            }}
+            title={label}
+            aria-label={label}
             className="mm-pop absolute z-10 grid h-6 w-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted-strong)] shadow-[0_2px_8px_rgba(14,21,37,0.18)] transition-colors hover:border-transparent hover:bg-[var(--danger)] hover:text-white"
-            style={{ left: cutEdge.mid.x, top: cutEdge.mid.y }}
+            style={{ left: at.x, top: at.y }}
           >
             <ScissorsIcon size={13} weight="bold" />
           </button>
-        ) : null}
+        ))}
 
         {shown.order.map((id) => {
           const box = shown.boxes.get(id)!
@@ -452,8 +623,9 @@ export function MindCanvas(props: Props) {
                   title={node.collapsed ? labels.expand : labels.collapse}
                   className={cn(
                     'absolute grid h-[18px] min-w-[18px] place-items-center rounded-full border px-1 text-[10px] leading-none font-bold transition-opacity',
-                    node.collapsed ? 'text-white opacity-100' : 'bg-[var(--card)] opacity-0 group-hover/node:opacity-100',
-                    selected && 'opacity-100',
+                    // Hidden controls never take clicks (they sit right on the child lines).
+                    node.collapsed || selected ? 'opacity-100' : 'pointer-events-none opacity-0 group-hover/node:pointer-events-auto group-hover/node:opacity-100',
+                    node.collapsed ? 'text-white' : 'bg-[var(--card)]',
                   )}
                   style={{ ...sidePosition(box.dir, 10, 18), borderColor: box.color, background: node.collapsed ? box.color : undefined, color: node.collapsed ? '#fff' : box.color }}
                 >
@@ -462,14 +634,17 @@ export function MindCanvas(props: Props) {
               ) : null}
 
               {/* Draw a new line from this node — bottom-left corner */}
-              {selected && !editing && !drag && !props.readOnly ? (
+              {selected && !editing && !busy && !props.readOnly ? (
                 <button
                   type="button"
                   data-canvas-ui
                   data-draw-line
                   title={labels.drawLine}
                   aria-label={labels.drawLine}
-                  onPointerDown={(event) => startLineDrag(event, { x: box.x + box.w / 2, y: box.y + box.h / 2 }, box.color, new Set([id]), (targetId) => props.onConnect(id, targetId))}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) return
+                    startLineDrag(event, { from: { x: box.x + box.w / 2, y: box.y + box.h / 2 }, color: box.color, exclude: new Set([id]), done: (targetId) => props.onConnect(id, targetId) })
+                  }}
                   className="mm-pop absolute -bottom-2.5 -left-2.5 grid h-5 w-5 cursor-crosshair place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--primary)] shadow-[0_2px_6px_rgba(14,21,37,0.15)] transition-transform hover:scale-125"
                 >
                   <LineSegmentIcon size={11} weight="bold" />
@@ -487,7 +662,7 @@ export function MindCanvas(props: Props) {
                   title={`${labels.remove} (Delete)`}
                   className={cn(
                     'absolute -top-2.5 -right-2.5 grid h-5 w-5 scale-75 place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted-strong)] opacity-0 shadow-[0_2px_6px_rgba(14,21,37,0.15)] transition-[opacity,scale,background-color,color] duration-200 hover:border-transparent hover:bg-[var(--danger)] hover:text-white',
-                    selected ? 'scale-100 opacity-100' : 'group-hover/node:scale-100 group-hover/node:opacity-100',
+                    selected ? 'scale-100 opacity-100' : 'pointer-events-none group-hover/node:pointer-events-auto group-hover/node:scale-100 group-hover/node:opacity-100',
                   )}
                 >
                   <XIcon size={10} weight="bold" />
@@ -495,9 +670,10 @@ export function MindCanvas(props: Props) {
               ) : null}
 
               {/* "+" on every side: outer = child, sides = sibling before / after, inner = parent; around a hub every side adds a branch that way */}
-              {!editing && !drag && !lineDrag && !props.readOnly && props.selectedEdge !== id ? (['up', 'right', 'down', 'left'] as Dir[]).map((side) => {
+              {!editing && !busy && !props.readOnly && props.selectedEdge !== id ? (['up', 'right', 'down', 'left'] as Dir[]).map((side) => {
                 const outer = hub || side === box.dir
-                const offset = !hub && side === box.dir && hasChildren ? 34 : 12
+                // Past the collapse toggle, touching it — so the pointer can travel node → toggle → "+" without losing hover.
+                const offset = !hub && side === box.dir && hasChildren ? 28 : 12
                 return (
                   <button
                     key={side}
@@ -510,7 +686,7 @@ export function MindCanvas(props: Props) {
                     className={cn(
                       'absolute grid place-items-center rounded-full bg-[var(--card)] shadow-[0_2px_6px_rgba(14,21,37,0.12)] transition-[opacity,scale] duration-200 hover:scale-125',
                       outer ? 'h-5 w-5 border-2' : 'h-[18px] w-[18px] border-[1.5px]',
-                      selected ? 'scale-100 opacity-100' : outer && !hub ? 'scale-50 opacity-0 group-hover/node:scale-100 group-hover/node:opacity-100' : 'pointer-events-none scale-50 opacity-0',
+                      selected ? 'scale-100 opacity-100' : outer && !hub ? 'pointer-events-none scale-50 opacity-0 group-hover/node:pointer-events-auto group-hover/node:scale-100 group-hover/node:opacity-100' : 'pointer-events-none scale-50 opacity-0',
                     )}
                     style={{ ...sidePosition(side, offset, outer ? 20 : 18), borderColor: box.color, color: box.color }}
                   >

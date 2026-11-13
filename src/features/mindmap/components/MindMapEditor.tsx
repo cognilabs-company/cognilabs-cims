@@ -41,9 +41,13 @@ import { useConfirm } from '../../../shared/confirm/useConfirm'
 import { cn } from '../../../shared/lib/cn'
 import { useToast } from '../../../shared/toast/useToast'
 import { exportJson, exportMarkdown, exportPng, exportSvg } from '../lib/export'
-import { computeLayout, dirOf, isHub, type Layout } from '../lib/layout'
+import { computeLayout, dirOf, H_SIB_GAP, isHorizontal, isHub, V_GAP, type Layout } from '../lib/layout'
 import {
   addChild,
+  addRelation,
+  relationBetween,
+  relationsOf,
+  removeRelation,
   addSibling,
   depthOf,
   expandPath,
@@ -168,8 +172,14 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   const [animateView, setAnimateView] = useState(false)
   const animateTimer = useRef<number | undefined>(undefined)
   const [leavingIds, setLeavingIds] = useState<Set<string>>(() => new Set())
-  // A selected line (by its child's id): Delete / ✂ cuts it.
-  const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
+  // A selected tree line (by its child's id): Delete / ✂ cuts it. Only while that line is still on the canvas
+  // (undo, a cut or a collapse can take it away; Delete then acts on the highlighted node, as everywhere else).
+  const [selectedEdgeId, setSelectedEdge] = useState<string | null>(null)
+  const selectedEdge = selectedEdgeId && map.nodes[selectedEdgeId]?.parentId && layout.boxes.has(selectedEdgeId) ? selectedEdgeId : null
+  // A selected extra line (by its id): Delete / ✂ removes it.
+  const [selectedRelationId, setSelectedRelation] = useState<string | null>(null)
+  const relations = useMemo(() => relationsOf(map), [map])
+  const selectedRelation = selectedRelationId && relations.some((relation) => relation.id === selectedRelationId) ? selectedRelationId : null
   const [prefs, setPrefs] = useState(readPrefs)
   const [query, setQuery] = useState('')
   const [matchIndex, setMatchIndex] = useState(0)
@@ -299,6 +309,18 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
   function select(id: string) {
     setSelectedId(id)
     setSelectedEdge(null)
+    setSelectedRelation(null)
+  }
+
+  function selectEdge(id: string | null) {
+    setSelectedEdge(id)
+    setSelectedRelation(null)
+    if (id) setSelectedId(id)
+  }
+
+  function selectRelation(id: string | null) {
+    setSelectedRelation(id)
+    setSelectedEdge(null)
   }
 
   function startEdit(id: string, typed?: string) {
@@ -328,15 +350,30 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
 
   function addNode(kind: 'child' | 'sibling' | 'above' | 'parent', from = selected, dir?: Dir) {
     const id = uid()
+    if (!map.nodes[from]) return
     // Around a hub (central topic / free node) every add is a new branch.
     if (kind !== 'child' && isHub(map, from)) { addNode('child', from, dir); return }
-    const [next] = kind === 'child'
+    let [next] = kind === 'child'
       ? addChild(map, from, newNodeText, id, dir)
       : kind === 'above'
         ? addSiblingAbove(map, from, newNodeText, id)
         : kind === 'parent'
           ? insertParent(map, from, newNodeText, id)
           : addSibling(map, from, newNodeText, id)
+    if (!next.nodes[id]) return
+    // A sibling of a hand-placed node appears right next to it (not somewhere in the automatic column).
+    const reference = map.nodes[from]
+    const referenceBox = layout.boxes.get(from)
+    if ((kind === 'sibling' || kind === 'above') && reference.px !== undefined && reference.py !== undefined && referenceBox) {
+      const added = computeLayout(next).boxes.get(id)
+      if (added) {
+        const sign = kind === 'sibling' ? 1 : -1
+        const along = isHorizontal(referenceBox.dir)
+          ? { px: reference.px, py: reference.py + sign * (referenceBox.h / 2 + V_GAP + added.h / 2) }
+          : { px: reference.px + sign * (referenceBox.w / 2 + H_SIB_GAP + added.w / 2), py: reference.py }
+        next = updateNode(next, id, { px: Math.round(along.px), py: Math.round(along.py) })
+      }
+    }
     commit(next)
     const nextLayout = computeLayout(next)
     const state = { id, original: newNodeText, selectAll: true, fresh: true }
@@ -433,8 +470,13 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     // Only the line goes away: the node stays exactly where it is.
     commit(detach(map, id, { x: box.x + box.w / 2, y: box.y + box.h / 2 }, box.dir))
     setSelectedEdge(null)
+    setSelectedRelation(null)
     setSelectedId(id)
-    showToast({ title: t('mindmap.cut_done_v2', 'Line removed — draw a new one from the node’s line handle, or drag the node onto another one'), tone: 'info' })
+    showToast({
+      title: t('mindmap.cut_done_v3', 'Line cut — the node stays where it is'),
+      description: t('mindmap.cut_done_v3_hint', 'To connect it again, pull a line from its corner handle onto another node, or drag the node onto one. Ctrl+Z undoes it.'),
+      tone: 'info',
+    })
   }
 
   /** Connects `id` under `parentId` without moving it: it keeps its spot (hand-placed next to the new parent). */
@@ -448,51 +490,63 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     return next === current ? current : updateNode(next, id, { px, py, dx: 0, dy: 0 })
   }
 
-  /** A line's end was dragged to another node. Nodes never move — only the line changes. */
-  function reconnectLine(edgeId: string, end: 'parent' | 'child', targetId: string) {
+  /**
+   * A tree line was pulled onto another node: its child (with its whole branch) is now connected there and keeps
+   * its spot on the canvas. Only this one line changes — no other node loses its line.
+   */
+  function reconnectLine(edgeId: string, targetId: string) {
     const child = map.nodes[edgeId]
-    if (!child?.parentId) return
-    let next: MindMap
-    if (end === 'parent') {
-      // Same child, new parent.
-      next = attachKeeping(map, edgeId, targetId)
-    } else {
-      // Same parent, new child: the old child keeps its spot without a line.
-      const box = layout.boxes.get(edgeId)
-      if (!box) return
-      const freed = detach(map, edgeId, { x: box.x + box.w / 2, y: box.y + box.h / 2 }, box.dir)
-      const attached = attachKeeping(freed, targetId, child.parentId)
-      next = attached === freed ? map : attached
-    }
+    if (!child?.parentId || targetId === child.parentId || targetId === edgeId) return
+    const next = attachKeeping(map, edgeId, targetId)
     if (next === map) {
       showToast({ title: t('mindmap.line_invalid', 'This line cannot go there (it would make a loop)'), tone: 'error' })
       return
     }
     commit(next)
-    setSelectedEdge(end === 'parent' ? edgeId : targetId)
+    setSelectedId(edgeId)
+    setSelectedEdge(edgeId)
+    setSelectedRelation(null)
   }
 
   /**
-   * A new line from `sourceId` to `targetId`. A line drawn from a node without a line (cut off / free) attaches
-   * it to the target; otherwise the target joins the source. If that would make a loop, the other way round.
+   * A new line from `sourceId` to `targetId`. A node without a line (a free node) gets connected by it. When both
+   * nodes already have their lines, the new one is an extra link: the tree stays exactly as it is, nothing is cut.
    */
   function connectNodes(sourceId: string, targetId: string) {
-    const isLoose = (id: string) => id !== map.rootId && !map.nodes[id]?.parentId
-    const sourceJoins = isLoose(sourceId) && !isLoose(targetId)
-    const [first, second] = sourceJoins ? [[sourceId, targetId], [targetId, sourceId]] : [[targetId, sourceId], [sourceId, targetId]]
-    let next = attachKeeping(map, first[0], first[1])
-    let edge = first[0]
-    if (next === map) {
-      next = attachKeeping(map, second[0], second[1])
-      edge = second[0]
-    }
-    if (next === map) {
-      showToast({ title: map.nodes[targetId]?.parentId === sourceId || map.nodes[sourceId]?.parentId === targetId ? t('mindmap.line_exists', 'These nodes are already connected') : t('mindmap.line_invalid', 'This line cannot go there (it would make a loop)'), tone: 'error' })
+    const source = map.nodes[sourceId]
+    const target = map.nodes[targetId]
+    if (!source || !target || sourceId === targetId) return
+    if (target.parentId === sourceId || source.parentId === targetId || relationBetween(map, sourceId, targetId)) {
+      showToast({ title: t('mindmap.line_exists', 'These nodes are already connected'), tone: 'info' })
       return
     }
+    const free = (id: string) => id !== map.rootId && map.nodes[id]?.parentId === null
+    // The node the line was drawn to joins first; a free source joins the target otherwise.
+    const attempts: Array<[string, string]> = []
+    if (free(targetId)) attempts.push([targetId, sourceId])
+    if (free(sourceId)) attempts.push([sourceId, targetId])
+    for (const [child, parent] of attempts) {
+      const next = attachKeeping(map, child, parent)
+      if (next !== map) {
+        commit(next)
+        setSelectedId(child)
+        setSelectedEdge(child)
+        setSelectedRelation(null)
+        return
+      }
+    }
+    const id = uid()
+    const next = addRelation(map, sourceId, targetId, id)
+    if (next === map) return
     commit(next)
-    setSelectedId(edge)
-    setSelectedEdge(edge)
+    setSelectedEdge(null)
+    setSelectedRelation(id)
+    showToast({ title: t('mindmap.relation_added', 'Link added'), description: t('mindmap.relation_added_hint', 'Both nodes keep their own lines. Click the dashed link and press Delete to remove it.'), tone: 'info' })
+  }
+
+  function removeRelationById(id: string) {
+    commit(removeRelation(map, id))
+    setSelectedRelation(null)
   }
 
   /** Fade the node (and its subtree) out, then remove it — one undo step. */
@@ -503,11 +557,18 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     }
     if (!map.nodes[id] || leavingIds.has(id)) return
     const [, nextSelected] = removeNode(map, id)
-    setLeavingIds(new Set(subtreeIds(map, id)))
+    const doomed = subtreeIds(map, id)
+    setLeavingIds((current) => new Set([...current, ...doomed]))
     setSelectedId(nextSelected)
+    setSelectedEdge(null)
+    setSelectedRelation(null)
     window.setTimeout(() => {
       apply((current) => removeNode(current, id)[0])
-      setLeavingIds(new Set())
+      setLeavingIds((current) => {
+        const next = new Set(current)
+        for (const key of doomed) next.delete(key)
+        return next
+      })
     }, 190)
   }
 
@@ -636,7 +697,8 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
       if (event.key === 'Enter') { event.preventDefault(); addNode(event.shiftKey ? 'above' : 'sibling'); return }
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault()
-        if (selectedEdge && map.nodes[selectedEdge]?.parentId) detachNode(selectedEdge)
+        if (selectedRelation) removeRelationById(selectedRelation)
+        else if (selectedEdge) detachNode(selectedEdge)
         else deleteSelected()
         return
       }
@@ -652,7 +714,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
         }
         return
       }
-      if (event.key === 'Escape') { setQuery(''); setSelectedEdge(null); return }
+      if (event.key === 'Escape') { setQuery(''); setSelectedEdge(null); setSelectedRelation(null); return }
       if (event.key.length === 1 && !event.altKey) {
         event.preventDefault()
         startEdit(selected, event.key)
@@ -824,7 +886,11 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
           ) : null}
         </div>
         <ToolButton icon={<TrashIcon size={15} />} label={t('mindmap.remove', 'Delete')} onClick={deleteSelected} disabled={selected === map.rootId} danger />
-        <ToolButton iconOnly icon={<ScissorsIcon size={15} />} label={t('mindmap.cut', 'Remove the line to the parent')} onClick={() => detachNode()} disabled={!node.parentId} />
+        {selectedRelation ? (
+          <ToolButton iconOnly icon={<ScissorsIcon size={15} />} label={t('mindmap.cut_relation', 'Remove this link')} onClick={() => removeRelationById(selectedRelation)} danger />
+        ) : (
+          <ToolButton iconOnly icon={<ScissorsIcon size={15} />} label={t('mindmap.cut', 'Remove the line to the parent')} onClick={() => detachNode()} disabled={!node.parentId} />
+        )}
         {node.px !== undefined && node.py !== undefined ? (
           <ToolButton compact icon={<ArrowCounterClockwiseIcon size={15} />} label={t('mindmap.unpin', 'Back to its place')} onClick={() => unpin()} />
         ) : null}
@@ -887,13 +953,17 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
               note: t('mindmap.has_note', 'Has a note'),
               remove: t('mindmap.remove', 'Delete'),
               cut: t('mindmap.cut', 'Remove the line to the parent'),
+              cutRelation: t('mindmap.cut_relation', 'Remove this link'),
               side: sideLabel,
               drawLine: t('mindmap.draw_line', 'Draw a line: drag onto another node'),
-              moveLineEnd: t('mindmap.move_line_end', 'Drag onto another node to move the line'),
+              moveLine: t('mindmap.move_line', 'Drag onto another node — this branch moves there'),
             }}
             onSideAdd={sideAdd}
             selectedEdge={selectedEdge}
-            onSelectEdge={(id) => { setSelectedEdge(id); if (id) setSelectedId(id) }}
+            onSelectEdge={selectEdge}
+            selectedRelation={selectedRelation}
+            onSelectRelation={selectRelation}
+            onRemoveRelation={removeRelationById}
             onDetach={detachNode}
             onReconnect={reconnectLine}
             onConnect={connectNodes}
@@ -934,7 +1004,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
                 <ToolButton iconOnly flat icon={<QuestionIcon size={16} />} label={t('mindmap.help', 'How it works')} onClick={() => setHelpOpen((open) => !open)} active={helpOpen} />
                 <span className={cn('absolute bottom-[calc(100%+10px)] left-0 w-[300px] rounded-[12px] border border-[var(--border)] bg-[var(--card)] p-3 text-[12px] leading-relaxed text-[var(--muted-strong)] shadow-[var(--elev-lg)]', helpOpen ? 'block' : 'hidden group-hover/help:block')}>
                   {hint.split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
-                  {t('mindmap.hint_v2', 'Select a node — “+” on every side adds there (around the central topic: a branch that way) · drag a node anywhere — it stays there and keeps its line; drop it onto another node to connect it there · click a line and press Delete or ✂ to cut it · “Back to its place” or Auto layout tidies nodes up').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
+                  {t('mindmap.hint_v3', 'Select a node — “+” on every side adds there (around the central topic: a branch that way) · drag a node anywhere — it stays there and keeps its line; drop it onto another node to move it there · click a line: ✂ or Delete cuts it, pulling the line onto another node moves that branch there · pull the handle at a selected node’s corner onto another node: a free node gets connected, two connected nodes get a dashed link — no line is ever cut by it · “Back to its place” or Auto layout tidies nodes up').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
                   <span className="mt-1.5 block text-[var(--muted)]">{t('mindmap.edit_tip', 'Double-click or start typing to edit')} · Tab / Enter / Delete · Ctrl+Z</span>
                 </span>
               </span>
