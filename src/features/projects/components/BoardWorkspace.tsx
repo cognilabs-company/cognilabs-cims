@@ -580,7 +580,7 @@ export function BoardWorkspace({
             onSubmit={handleUpdateCard}
             initial={editCardState?.card ?? null}
             members={allUsers}
-            title={lt('Edit card')}
+            title={t('projects.kanban.edit_task', 'Edit task')}
             submitLabel={lt('Save changes')}
             isSubmitting={isCardSubmitting}
           />
@@ -603,8 +603,8 @@ export function BoardWorkspace({
             onClose={() => setAddCardState(null)}
             onSubmit={handleCreateCard}
             members={allUsers}
-            title={lt('Create card')}
-            submitLabel={lt('Create card')}
+            title={t('projects.kanban.add_task', 'Add task')}
+            submitLabel={t('projects.kanban.add_task', 'Add task')}
             isSubmitting={isCardSubmitting}
           />
         </>

@@ -3080,5 +3080,9 @@
   "attnotify.range_total": "{{from}}–{{to}} / {{total}}",
   "attnotify.range": "{{from}}–{{to}}",
   "attnotify.prev": "Oldingi sahifa",
-  "attnotify.next": "Keyingi sahifa"
+  "attnotify.next": "Keyingi sahifa",
+  "projects.assignees": "Bajaruvchilar",
+  "projects.due_date_time": "Muddat",
+  "projects.kanban.edit_task": "Vazifani tahrirlash",
+  "projects.task_title_placeholder": "Vazifa nomi"
 }

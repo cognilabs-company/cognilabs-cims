@@ -1,7 +1,6 @@
 import { cn } from '../../../shared/lib/cn'
 import { translateCurrent } from '../../../shared/i18n/translations'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
-import { pickAvatarTone } from '../../../shared/ui/avatar-tone'
 import { getInitials } from '../lib/format'
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg'
@@ -50,7 +49,8 @@ export function Avatar({ name, surname, imageUrl, size = 'md', className, title 
       className={cn(
         'inline-flex shrink-0 items-center justify-center rounded-full font-semibold select-none',
         sizeClasses[size],
-        pickAvatarTone(displayName),
+        // One quiet tone for everyone: the project area keeps colour for the pictures only.
+        'bg-[var(--input-surface)] text-[var(--muted-strong)]',
         className,
       )}
       aria-label={title ?? displayName}

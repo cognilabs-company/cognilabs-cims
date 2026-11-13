@@ -3080,5 +3080,9 @@
   "attnotify.range_total": "{{from}}–{{to}} of {{total}}",
   "attnotify.range": "{{from}}–{{to}}",
   "attnotify.prev": "Previous page",
-  "attnotify.next": "Next page"
+  "attnotify.next": "Next page",
+  "projects.assignees": "Assignees",
+  "projects.due_date_time": "Due date",
+  "projects.kanban.edit_task": "Edit task",
+  "projects.task_title_placeholder": "Task name"
 }

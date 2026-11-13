@@ -7,7 +7,7 @@ import { cn } from '../../../shared/lib/cn'
 import { ActionsMenu, type ActionsMenuItem } from '../../../shared/ui/actions-menu'
 import type { CardPriority, CardRecord } from '../../../shared/api/services/projects.service'
 import { Avatar } from './Avatar'
-import { formatProjectDateTime, formatProjectDueShort, getPriorityConfig, isDueDateOverdue, isDueDateSoon } from '../lib/format'
+import { formatProjectDateTime, formatProjectDueShort, getPriorityConfig, isDueDateOverdue } from '../lib/format'
 
 type KanbanCardProps = {
   card: CardRecord
@@ -46,48 +46,27 @@ export function KanbanMenu({ items, label, className }: { items: ActionsMenuItem
   return <ActionsMenu label={label} items={items} className={className} />
 }
 
-const PRIORITY_LEVEL: Record<CardPriority, number> = { low: 1, medium: 2, high: 3, urgent: 4 }
+const PRIORITY_LEVEL: Record<CardPriority, number> = { low: 1, medium: 2, high: 3, urgent: 3 }
 
-/** Signal bars: one bar for low, two for medium, three for high; a filled "!" tile for urgent. */
-function PriorityIcon({ priority, color }: { priority: CardPriority; color: string }) {
+/** Signal bars in the text colour: one bar for low, two for medium, three for high. */
+function PriorityIcon({ priority }: { priority: CardPriority }) {
   const level = PRIORITY_LEVEL[priority]
-  if (level === 4) {
-    return (
-      <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" aria-hidden="true">
-        <rect width="12" height="12" rx="3" fill={color} />
-        <path d="M6 3v3.6M6 8.6v.1" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
-    )
-  }
   return (
     <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" aria-hidden="true">
       {[0, 1, 2].map((index) => (
-        <rect
-          key={index}
-          x={1 + index * 3.75}
-          y={8 - index * 3}
-          width="2.5"
-          height={3 + index * 3}
-          rx="0.9"
-          fill={index < level ? color : 'currentColor'}
-          opacity={index < level ? 1 : 0.22}
-        />
+        <rect key={index} x={1 + index * 3.75} y={8 - index * 3} width="2.5" height={3 + index * 3} rx="0.9" fill="currentColor" opacity={index < level ? 1 : 0.25} />
       ))}
     </svg>
   )
 }
 
-function Chip({ tone = 'neutral', title, children }: { tone?: 'neutral' | 'warning' | 'danger'; title?: string; children: ReactNode }) {
+function Fact({ title, strong = false, children }: { title?: string; strong?: boolean; children: ReactNode }) {
   return (
     <span
       title={title}
       className={cn(
-        'inline-flex h-[22px] max-w-full items-center gap-1 rounded-[6px] px-1.5 text-[11px] leading-none font-medium whitespace-nowrap tabular-nums',
-        tone === 'danger'
-          ? 'bg-[var(--danger-dim)] text-[var(--danger-text)]'
-          : tone === 'warning'
-            ? 'bg-[var(--warning-dim)] text-[var(--warning-text)]'
-            : 'kb-chip text-[var(--muted-strong)]',
+        'inline-flex items-center gap-1 text-[11.5px] leading-none whitespace-nowrap tabular-nums',
+        strong ? 'font-medium text-[var(--foreground)]' : 'text-[var(--muted)]',
       )}
     >
       {children}
@@ -95,11 +74,13 @@ function Chip({ tone = 'neutral', title, children }: { tone?: 'neutral' | 'warni
   )
 }
 
-/** What a card shows: title, a short description, then priority, due date, files and the assignees. */
+/**
+ * What a card shows: the title, a short description, then quiet grey facts — priority bars, due date
+ * (overdue reads darker, never red), files — and the assignees.
+ */
 function CardContent({ card, reserveMenuSpace }: { card: CardRecord; reserveMenuSpace: boolean }) {
   const priority = card.priority ? getPriorityConfig()[card.priority] : null
   const overdue = card.due_date ? isDueDateOverdue(card.due_date) : false
-  const soon = !overdue && card.due_date ? isDueDateSoon(card.due_date) : false
   const images = Array.isArray(card.images) ? card.images : Array.isArray(card.files) ? card.files : []
   const assignees = Array.isArray(card.assignees) && card.assignees.length > 0 ? card.assignees : card.assignee ? [card.assignee] : []
   const assigneeNames = assignees.map((assignee) => [assignee.name, assignee.surname].filter(Boolean).join(' ').trim()).join(', ')
@@ -117,25 +98,25 @@ function CardContent({ card, reserveMenuSpace }: { card: CardRecord; reserveMenu
       ) : null}
 
       {hasFooter ? (
-        <div className="mt-2.5 flex items-end gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+        <div className="mt-3 flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
             {priority && card.priority ? (
-              <Chip title={priority.label}>
-                <PriorityIcon priority={card.priority} color={priority.color} />
+              <Fact title={priority.label}>
+                <PriorityIcon priority={card.priority} />
                 {priority.label}
-              </Chip>
+              </Fact>
             ) : null}
             {card.due_date ? (
-              <Chip tone={overdue ? 'danger' : soon ? 'warning' : 'neutral'} title={formatProjectDateTime(card.due_date)}>
-                <CalendarDays size={12} strokeWidth={2.2} className="shrink-0" />
+              <Fact strong={overdue} title={formatProjectDateTime(card.due_date)}>
+                <CalendarDays size={12} strokeWidth={2} className="shrink-0" />
                 {formatProjectDueShort(card.due_date)}
-              </Chip>
+              </Fact>
             ) : null}
             {images.length > 0 ? (
-              <span className="inline-flex h-[22px] items-center gap-0.5 px-1 text-[11px] font-medium text-[var(--muted)] tabular-nums">
-                <Paperclip size={12} strokeWidth={2.2} />
+              <Fact>
+                <Paperclip size={12} strokeWidth={2} />
                 {images.length}
-              </span>
+              </Fact>
             ) : null}
           </div>
 
@@ -159,7 +140,7 @@ function CardContent({ card, reserveMenuSpace }: { card: CardRecord; reserveMenu
   )
 }
 
-const cardClassName = 'kb-card group relative flex flex-col rounded-[12px] p-3 text-[var(--foreground)] select-none'
+const cardClassName = 'kb-card group relative flex flex-col rounded-[14px] p-3.5 text-[var(--foreground)] select-none'
 
 /**
  * The card that follows the pointer while dragging. It is only a picture: it must not register with
@@ -207,7 +188,7 @@ export function KanbanCard({ card, onEdit, onDelete, onClick, canEdit = false, c
         data-slot="card"
         ref={setNodeRef}
         style={style}
-        className="min-h-[76px] w-full rounded-[12px] border border-dashed border-[var(--blue-border)] bg-[var(--blue-dim)] opacity-80"
+        className="min-h-[76px] w-full rounded-[14px] border border-dashed border-[var(--border-hover)] bg-[color-mix(in_srgb,var(--foreground)_3%,transparent)]"
       />
     )
   }

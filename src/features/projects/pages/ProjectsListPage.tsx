@@ -16,7 +16,7 @@ import { ProjectCard, ProjectCardSkeleton } from '../components/ProjectCard'
 import { Plus, Search, UsersRound, X } from 'lucide-react'
 import { ProjectFormModal } from '../components/ProjectFormModal'
 import { TeamManagementModal } from '../components/TeamManagementModal'
-import { formatProjectDateTime, getInitials, getPriorityConfig, isDueDateOverdue, isDueDateSoon } from '../lib/format'
+import { formatProjectDateTime, getInitials, getPriorityConfig, isDueDateOverdue } from '../lib/format'
 import { buildMemberProjectOverview } from '../lib/memberOverview'
 import { notifyProjectsNavigationChanged } from '../lib/navigationSync'
 
@@ -503,7 +503,6 @@ export function ProjectsListPage() {
                           {project.tasks.map((task) => {
                             const priority = task.priority ? priorityConfigMap[task.priority] : null
                             const overdue = task.dueDate ? isDueDateOverdue(task.dueDate) : false
-                            const soon = !overdue && task.dueDate ? isDueDateSoon(task.dueDate) : false
                             return (
                               <li key={task.cardId}>
                                 <Link
@@ -516,12 +515,9 @@ export function ProjectsListPage() {
                                   </span>
                                   <span className="flex shrink-0 flex-col items-end gap-1 text-[12px]">
                                     {priority ? (
-                                      <span className="inline-flex items-center gap-1.5 font-medium text-[var(--muted-strong)]">
-                                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: priority.color }} />
-                                        {priority.label}
-                                      </span>
+                                      <span className="font-medium text-[var(--muted-strong)]">{priority.label}</span>
                                     ) : null}
-                                    <span className={cn('tabular-nums', overdue ? 'font-medium text-[var(--danger-text)]' : soon ? 'font-medium text-[var(--warning-text)]' : 'text-[var(--muted)]')}>
+                                    <span className={cn('tabular-nums', overdue ? 'font-medium text-[var(--foreground)]' : 'text-[var(--muted)]')}>
                                       {task.dueDate ? `${lt('Due')} ${formatProjectDateTime(task.dueDate)}` : lt('No due date')}
                                     </span>
                                   </span>

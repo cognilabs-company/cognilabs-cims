@@ -292,7 +292,7 @@ export function KanbanBoard({
             <button
               type="button"
               onClick={onAddColumn}
-              className="kb-add-col flex h-11 w-[calc(100vw-72px)] shrink-0 items-center justify-center gap-2 rounded-[14px] px-4 text-[13px] font-medium sm:w-[296px]"
+              className="kb-ghost flex h-11 w-[calc(100vw-72px)] shrink-0 items-center gap-2 rounded-[14px] px-4 text-[13px] font-medium sm:w-[296px]"
             >
               <Plus size={16} strokeWidth={2} />
               {t('projects.kanban.add_column', 'Add column')}

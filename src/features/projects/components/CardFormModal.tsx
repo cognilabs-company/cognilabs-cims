@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Eye, Paperclip, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { Dialog } from '../../../shared/ui/dialog'
 import { Button } from '../../../shared/ui/button'
 import { IconButton } from '../../../shared/ui/icon-button'
-import { Input } from '../../../shared/ui/input'
 import { CalendarField } from '../../../shared/ui/calendar-field'
-import { Label } from '../../../shared/ui/label'
-import { Textarea } from '../../../shared/ui/textarea'
 import { SelectField, type SelectFieldOption } from '../../../shared/ui/select-field'
 import type {
   CardRecord,
@@ -273,90 +271,68 @@ export function CardFormModal({
         </>
       )}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
-        <div className="flex flex-col gap-2">
-          <Label>
-            {t('projects.card_title', 'Title')} <span className="text-[var(--danger-text)]">*</span>
-          </Label>
-          <Input
-            value={values.title}
-            onChange={(event) => set('title', event.target.value)}
-            placeholder={t('projects.card_title_placeholder', 'What needs to be done?')}
-            autoFocus
-          />
-          {titleError ? <p className="text-xs text-[var(--danger-text)]">{titleError}</p> : null}
-        </div>
+      <form onSubmit={handleSubmit} className="flex flex-col">
+        {/* The task itself: a borderless title and description, like writing on paper */}
+        <input
+          value={values.title}
+          onChange={(event) => set('title', event.target.value)}
+          placeholder={t('projects.task_title_placeholder', 'Task name')}
+          aria-label={t('projects.card_title', 'Title')}
+          autoFocus
+          className="w-full bg-transparent text-[19px] leading-7 font-semibold tracking-[-0.02em] text-[var(--foreground)] outline-none placeholder:font-medium placeholder:text-[var(--caption)]"
+        />
+        {titleError ? <p className="mt-1 text-xs text-[var(--danger-text)]">{titleError}</p> : null}
+        <textarea
+          value={values.description}
+          onChange={(event) => set('description', event.target.value)}
+          placeholder={t('projects.card_description_placeholder', 'Add more details...')}
+          aria-label={t('projects.description', 'Description')}
+          rows={3}
+          className="mt-2 w-full resize-none bg-transparent text-[14px] leading-[1.6] text-[var(--foreground)] outline-none placeholder:text-[var(--caption)]"
+        />
 
-        <div className="flex flex-col gap-2">
-          <Label>
-            {t('projects.description', 'Description')}
-          </Label>
-          <Textarea
-            value={values.description}
-            onChange={(event) => set('description', event.target.value)}
-            placeholder={t('projects.card_description_placeholder', 'Add more details...')}
-            rows={3}
-          />
-        </div>
-
-        <div className={cn('grid gap-[18px]', showPriority ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
-          {showPriority ? (
-            <div className="flex flex-col gap-2">
-              <Label>
-                {t('projects.priority', 'Priority')}
-              </Label>
-              <SelectField
-                value={values.priority}
-                options={priorityOptions}
-                onValueChange={(value) => set('priority', value)}
-                placeholder={t('projects.no_priority', 'No priority')}
-              />
+        {/* Properties */}
+        <div className="mt-4 flex flex-col gap-4 border-t border-[var(--border)] pt-4">
+          <div className={cn('grid gap-4', showPriority ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
+            {showPriority ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[12px] font-medium text-[var(--muted)]">{t('projects.priority', 'Priority')}</span>
+                <SelectField
+                  value={values.priority}
+                  options={priorityOptions}
+                  onValueChange={(value) => set('priority', value)}
+                  placeholder={t('projects.no_priority', 'No priority')}
+                />
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-[var(--muted)]">{t('projects.due_date_time', 'Due date')}</span>
+              <CalendarField mode="datetime" value={values.due_date} onValueChange={(value) => set('due_date', value)} />
             </div>
-          ) : null}
+          </div>
 
-          <div className="flex flex-col gap-2">
-            <Label>
-              {t('projects.assignees', 'Assignees')}
-            </Label>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-[var(--muted)]">{t('projects.assignees', 'Assignees')}</span>
             <MemberSelector
               allUsers={members}
               selectedIds={values.assignee_ids}
               onChange={(ids) => set('assignee_ids', ids)}
             />
           </div>
-        </div>
 
-        <div className="flex flex-col gap-2">
-          <Label>
-            {t('projects.due_date_time', 'Due Date & Time')}
-          </Label>
-          <CalendarField mode="datetime" value={values.due_date} onValueChange={(value) => set('due_date', value)} />
-        </div>
-
-        <div className="flex flex-col gap-2.5">
-          <Label>
-            {t('projects.attachments', 'Attachments')}
-          </Label>
-
-          {imagePreviews.length > 0 ? (
-            <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-col gap-2">
+            <span className="text-[12px] font-medium text-[var(--muted)]">{t('projects.attachments', 'Attachments')}</span>
+            <div className="flex flex-wrap items-center gap-2">
               {imagePreviews.map((url, index) => (
-                <div key={`${url}-${index}`} className="group relative h-[72px] w-[72px] overflow-hidden rounded-[14px] bg-[var(--muted-surface)]">
-                  <img
-                    src={url}
-                    alt={t('projects.attachment', 'Attachment')}
-                    className="h-full w-full object-cover"
-                  />
+                <div key={`${url}-${index}`} className="group relative h-16 w-16 overflow-hidden rounded-[12px] bg-[var(--muted-surface)] ring-1 ring-[var(--border)]">
+                  <img src={url} alt={t('projects.attachment', 'Attachment')} className="h-full w-full object-cover" />
                   <button
                     type="button"
                     onClick={() => openImagePreview(url)}
                     className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:bg-[var(--surface-inverse)]/45 group-hover:opacity-100"
                     aria-label={t('projects.preview_image', 'Preview image')}
                   >
-                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-white" fill="none" stroke="currentColor" strokeWidth="1.8">
-                      <path d="M2.25 12c1.9-4.82 6.07-8 9.75-8s7.85 3.18 9.75 8c-1.9 4.82-6.07 8-9.75 8s-7.85-3.18-9.75-8Z" />
-                      <circle cx="12" cy="12" r="3.5" />
-                    </svg>
+                    <Eye size={18} className="text-white" />
                   </button>
                   <IconButton
                     label={t('projects.remove', 'Remove')}
@@ -365,52 +341,22 @@ export function CardFormModal({
                     onClick={() => removeImage(index)}
                     className="absolute top-1 right-1 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100"
                   >
-                    <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-                    </svg>
+                    <X size={12} strokeWidth={2.4} />
                   </IconButton>
                 </div>
               ))}
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="inline-flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-[12.5px] font-medium text-[var(--muted-strong)] ring-1 ring-[var(--border-hover)] transition-colors hover:bg-[var(--input-surface)] hover:text-[var(--foreground)]"
+              >
+                <Paperclip size={14} strokeWidth={2} />
+                {t('projects.add_images', 'Add images')}
+              </button>
+              {values.images.length > 0 ? <span className="text-xs text-[var(--muted)]">{newFilesLabel}</span> : null}
             </div>
-          ) : null}
-
-          <div className="flex items-center gap-2.5">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => fileRef.current?.click()}
-              leftIcon={(
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                </svg>
-              )}
-            >
-              {t('projects.add_images', 'Add images')}
-            </Button>
-
-            {values.images.length > 0 ? (
-              <span className="text-xs text-[var(--muted)]">{newFilesLabel}</span>
-            ) : null}
+            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagesChange} />
           </div>
-
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleImagesChange}
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-4">
-          {(Object.entries(priorityConfig) as [string, { label: string; color: string }][]).map(([key, value]) => (
-            <span key={key} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--muted)]">
-              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: value.color }} />
-              {value.label}
-            </span>
-          ))}
         </div>
       </form>
 

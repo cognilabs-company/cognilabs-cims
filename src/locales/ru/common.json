@@ -3080,5 +3080,9 @@
   "attnotify.range_total": "{{from}}–{{to}} из {{total}}",
   "attnotify.range": "{{from}}–{{to}}",
   "attnotify.prev": "Предыдущая страница",
-  "attnotify.next": "Следующая страница"
+  "attnotify.next": "Следующая страница",
+  "projects.assignees": "Исполнители",
+  "projects.due_date_time": "Срок",
+  "projects.kanban.edit_task": "Редактировать задачу",
+  "projects.task_title_placeholder": "Название задачи"
 }

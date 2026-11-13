@@ -6,8 +6,8 @@ import { IconButton } from '../../../shared/ui/icon-button'
 import { toneDot, tonePill, type Tone } from '../../../shared/ui/tone'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import type { CardRecord } from '../../../shared/api/services/projects.service'
-import { Avatar, AvatarGroup } from './Avatar'
-import { formatProjectDate, formatProjectDateTime, getPriorityConfig, isDueDateOverdue, isDueDateSoon } from '../lib/format'
+import { Avatar } from './Avatar'
+import { formatProjectDate, formatProjectDateTime, getPriorityConfig } from '../lib/format'
 import { cn } from '../../../shared/lib/cn'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
 
@@ -23,13 +23,6 @@ type CardDetailModalProps = {
   canEdit?: boolean
   /** RBAC projects.delete — shows the "Delete" button. */
   canDelete?: boolean
-}
-
-const priorityTones: Record<string, Tone> = {
-  urgent: 'danger',
-  high: 'warning',
-  medium: 'blue',
-  low: 'neutral',
 }
 
 function getCardImageUrl(image: { url?: string | null; url_path?: string | null }) {
@@ -100,8 +93,6 @@ export function CardDetailModal({
 
   const priorityConfig = getPriorityConfig()
   const priority = card.priority ? priorityConfig[card.priority] : null
-  const overdue = card.due_date ? isDueDateOverdue(card.due_date) : false
-  const soon = card.due_date ? isDueDateSoon(card.due_date) : false
   const assignees = Array.isArray(card.assignees) && card.assignees.length > 0
     ? card.assignees
     : card.assignee
@@ -122,8 +113,9 @@ export function CardDetailModal({
     card.telegram_source_chat_id ||
     card.telegram_source_message_id,
   )
-  const priorityTone: Tone = priorityTones[card.priority ?? ''] ?? 'neutral'
-  const dueTone: Tone = overdue ? 'danger' : soon ? 'warning' : 'neutral'
+  // The project area keeps no status colours: priority and due date read in neutral pills.
+  const priorityTone: Tone = 'neutral'
+  const dueTone: Tone = 'neutral'
 
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">
@@ -205,7 +197,7 @@ export function CardDetailModal({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar-visible">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
+          <div className="grid min-h-full grid-cols-1 lg:grid-cols-[1fr_340px]">
 
             {/* Main Column */}
             <div className="space-y-4 p-5">
@@ -283,7 +275,6 @@ export function CardDetailModal({
                   </h4>
                   {assignees.length > 0 ? (
                     <div className="space-y-3 rounded-[18px] bg-[var(--surface)] p-4">
-                      <AvatarGroup users={assignees} max={4} size="sm" className="flex-wrap" />
                       <div className="space-y-2.5">
                         {assignees.map((assignee) => (
                           <div key={assignee.id} className="flex items-center gap-2.5">
@@ -338,7 +329,7 @@ export function CardDetailModal({
                 <div className="grid gap-3.5 rounded-[18px] bg-[var(--surface)] p-4">
                   <DetailInfoBlock
                     label={lt('Created')}
-                    icon={<svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+                    icon={<svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.6"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>}
                   >
                     <span className="font-medium text-[var(--muted-strong)]">{formatProjectDate(card.created_at)}</span>
                   </DetailInfoBlock>

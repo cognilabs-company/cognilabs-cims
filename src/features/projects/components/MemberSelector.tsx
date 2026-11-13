@@ -82,7 +82,7 @@ export function MemberSelector({ allUsers, selectedIds, onChange, disabled }: Me
       />
 
       {/* User list */}
-      <div className="max-h-48 overflow-y-auto rounded-[18px] bg-[var(--muted-surface)] p-1.5">
+      <div className="max-h-48 overflow-y-auto rounded-[14px] bg-[var(--muted-surface)] p-1.5">
         {filtered.length === 0 ? (
           <p className="px-4 py-6 text-center text-[13px] text-[var(--muted)]">
             {t('projects.no_users_found', 'No users found')}
@@ -98,7 +98,7 @@ export function MemberSelector({ allUsers, selectedIds, onChange, disabled }: Me
                 onClick={() => toggle(user.id)}
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-[11px] px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-[var(--surface)]',
-                  selected && 'bg-[var(--blue-dim)] hover:bg-[var(--blue-dim)]',
+                  selected && 'bg-[var(--surface)] shadow-[var(--elev-sm)] hover:bg-[var(--surface)]',
                 )}
               >
                 <Avatar name={user.name} surname={user.surname} imageUrl={user.profile_image} size="sm" />
@@ -109,7 +109,7 @@ export function MemberSelector({ allUsers, selectedIds, onChange, disabled }: Me
                   <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
                 </div>
                 {selected && (
-                  <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 fill-current text-[var(--primary)]" aria-hidden="true">
+                  <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 fill-current text-[var(--foreground)]" aria-hidden="true">
                     <path d="M6.6 11.2 3.4 8a.75.75 0 1 0-1.06 1.06l3.73 3.73a.75.75 0 0 0 1.06 0l6.53-6.53A.75.75 0 1 0 12.64 5.2L6.6 11.2Z" />
                   </svg>
                 )}
