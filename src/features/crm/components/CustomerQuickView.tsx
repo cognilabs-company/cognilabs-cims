@@ -39,6 +39,7 @@ import { getRecallTimeTone } from '../lib/recallTime'
 import { statusIconFor } from '../lib/statusIcon'
 import { formatClock, formatDayShort, wallFromInstant, type WallTime } from '../lib/tashkentTime'
 import { AudioPlayerCard } from './AudioPlayerCard'
+import { CustomerCallRecordings } from './CustomerCallRecordings'
 import { CopyButton, StatusPill } from './CustomerFilters'
 import { RecallTimePicker } from './RecallTimePicker'
 
@@ -569,6 +570,9 @@ export function CustomerQuickView({
             <AudioPlayerCard src={audioSource} name={name} />
           </section>
         ) : null}
+
+        {/* recorded phone calls with this customer */}
+        {phoneNumber ? <CustomerCallRecordings key={customer.id} customerId={customer.id} phoneNumber={phoneNumber} /> : null}
 
         <CustomerNotes customer={customer} readOnly={!onSaveRecall} />
       </div>

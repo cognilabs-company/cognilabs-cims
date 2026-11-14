@@ -3084,5 +3084,7 @@
   "projects.assignees": "Исполнители",
   "projects.due_date_time": "Срок",
   "projects.kanban.edit_task": "Редактировать задачу",
-  "projects.task_title_placeholder": "Название задачи"
+  "projects.task_title_placeholder": "Название задачи",
+  "customers.calls.recordings": "Записи звонков",
+  "customers.calls.show_all": "Показать все ({{count}})"
 }

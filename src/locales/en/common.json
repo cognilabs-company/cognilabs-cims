@@ -3084,5 +3084,7 @@
   "projects.assignees": "Assignees",
   "projects.due_date_time": "Due date",
   "projects.kanban.edit_task": "Edit task",
-  "projects.task_title_placeholder": "Task name"
+  "projects.task_title_placeholder": "Task name",
+  "customers.calls.recordings": "Call recordings",
+  "customers.calls.show_all": "Show all {{count}}"
 }

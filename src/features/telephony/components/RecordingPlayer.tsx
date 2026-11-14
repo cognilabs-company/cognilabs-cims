@@ -2,11 +2,28 @@ import { useEffect, useState } from 'react'
 import { Download } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
+import { cn } from '../../../shared/lib/cn'
 import { telephonyService } from '../../../shared/api/services/telephony.service'
 
-/** Call recording player — styled for the macOS Phone inspector (uses --mp-* tokens). */
-export function RecordingPlayer({ callId }: { callId: number }) {
+const looks = {
+  // The macOS Phone inspector (--mp-* tokens live under .mac-phone).
+  phone: {
+    loading: 'text-[13px] text-[var(--mp-glass-secondary)]',
+    error: 'text-[13px] text-[var(--mp-red)]',
+    download: 'bg-[var(--mp-glass-strong)] text-[var(--mp-glass-text)] hover:text-[var(--mp-blue)]',
+  },
+  // Anywhere else in the app (site tokens, light and dark).
+  app: {
+    loading: 'text-[12.5px] text-[var(--muted)]',
+    error: 'text-[12.5px] text-[var(--danger-text)]',
+    download: 'bg-[var(--muted-surface)] text-[var(--muted-strong)] hover:text-[var(--primary)]',
+  },
+}
+
+/** Call recording player: the audio comes as an authorised blob, so it plays and downloads from memory. */
+export function RecordingPlayer({ callId, variant = 'phone' }: { callId: number; variant?: keyof typeof looks }) {
   const { t } = useLocale()
+  const look = looks[variant]
   const [url, setUrl] = useState<string | null>(null)
   const [extension, setExtension] = useState('webm')
   const [loading, setLoading] = useState(true)
@@ -26,8 +43,12 @@ export function RecordingPlayer({ callId }: { callId: number }) {
 
   useEffect(() => () => { if (url) URL.revokeObjectURL(url) }, [url])
 
-  if (loading) return <p className="text-[13px] text-[var(--mp-glass-secondary)]">{t('telephony.recording_loading', 'Loading recording…')}</p>
-  if (error) return <p role="alert" className="text-[13px] text-[var(--mp-red)]">{error}</p>
+  if (loading) {
+    return variant === 'app'
+      ? <span role="status" aria-label={t('telephony.recording_loading', 'Loading recording…')} className="skeleton block h-9 rounded-full" />
+      : <p className={look.loading}>{t('telephony.recording_loading', 'Loading recording…')}</p>
+  }
+  if (error) return <p role="alert" className={look.error}>{error}</p>
   if (!url) return null
 
   return (
@@ -38,7 +59,7 @@ export function RecordingPlayer({ callId }: { callId: number }) {
         download={`call-${callId}.${extension}`}
         title={t('telephony.recording_download', 'Download recording')}
         aria-label={t('telephony.recording_download', 'Download recording')}
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--mp-glass-strong)] text-[var(--mp-glass-text)] transition-colors hover:text-[var(--mp-blue)]"
+        className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors', look.download)}
       >
         <Download size={15} aria-hidden="true" />
       </a>
