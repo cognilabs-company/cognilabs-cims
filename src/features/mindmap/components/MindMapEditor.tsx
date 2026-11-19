@@ -523,7 +523,10 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     const free = (id: string) => id !== map.rootId && map.nodes[id]?.parentId === null
     // The node the line was drawn to joins first; a free source joins the target otherwise.
     const attempts: Array<[string, string]> = []
-    if (free(targetId)) attempts.push([targetId, sourceId])
+    // Both free: the block that already leads others stays the parent (ORG chart: several people drawn onto
+    // one manager must all end up under that manager, not the manager under the first of them).
+    const targetLeads = free(sourceId) && free(targetId) && target.children.length > 0 && source.children.length === 0
+    if (free(targetId) && !targetLeads) attempts.push([targetId, sourceId])
     if (free(sourceId)) attempts.push([sourceId, targetId])
     for (const [child, parent] of attempts) {
       const next = attachKeeping(map, child, parent)

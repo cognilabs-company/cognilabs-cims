@@ -87,6 +87,18 @@ export type PaginatedResponse<T> = {
   offset: number
 }
 
+export type MessageAttachment = {
+  id?: number | null
+  /** image | photo | video | voice | audio | file | share | ig_reel | story_mention | … */
+  attachment_type: string
+  url?: string | null
+  thumbnail_url?: string | null
+  media_id?: string | null
+  mime_type?: string | null
+  title?: string | null
+  position?: number
+}
+
 export type MessageItem = {
   id: number
   conversation_id: number
@@ -99,6 +111,8 @@ export type MessageItem = {
   telegram_message_id: string | null
   media_type?: 'sticker' | 'animated_sticker' | 'video_sticker' | string | null
   media_url?: string | null
+  /** Photos, videos, voice messages, files and shared posts (newer backends). */
+  attachments?: MessageAttachment[] | null
   text: string
   is_read: boolean
   read_at: string | null

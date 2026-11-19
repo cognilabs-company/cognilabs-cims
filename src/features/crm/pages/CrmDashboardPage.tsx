@@ -35,6 +35,9 @@ import { gridButton } from '../../../shared/ui/data-grid-styles'
 import { statusIconFor, statusKpiIconFor } from '../lib/statusIcon'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
+import { RejectReasonDialog } from '../components/RejectReasonDialog'
+import { isRejectedStatus, rejectionReasonError } from '../lib/rejection'
+import { useRejectionReason } from '../lib/useRejectionReason'
 import { useCrmScope } from '../lib/crmScope'
 import { getCustomerActionErrorMessage, getCustomerUnavailableTitle } from '../lib/customerErrors'
 import { HeaderActions } from '../../../widgets/navigation/HeaderActions'
@@ -57,6 +60,7 @@ const initialFormValues: CustomerFormValues = {
   clear_recall_time: false,
   customer_type: '',
   conversation_language: 'uz',
+  rejection_reason: '',
 }
 
 function toDateTimeLocalValue(value?: string | null) {
@@ -115,6 +119,7 @@ function toFormValues(customer?: CustomerSummary | null): CustomerFormValues {
     clear_recall_time: false,
     customer_type: '',
     conversation_language: customer.conversation_language ?? 'uz',
+    rejection_reason: customer.rejection_reason ?? '',
   }
 }
 
@@ -152,6 +157,10 @@ function buildCustomerFormData(
     }
   }
 
+  if (isRejectedStatus(normalizedStatus) && values.rejection_reason.trim()) {
+    formData.append('rejection_reason', values.rejection_reason.trim())
+  }
+
   if (values.recall_time) {
     formData.append('recall_time', toApiDateTimeWithOffset(values.recall_time))
   }
@@ -185,6 +194,7 @@ function buildCustomerDraft(customer: CustomerSummary, values: CustomerFormValue
     notes: values.notes.trim(),
     recall_time: normalizedRecallTime,
     conversation_language: values.conversation_language.trim(),
+    rejection_reason: isRejectedStatus(values.status) ? values.rejection_reason.trim() || customer.rejection_reason || null : customer.rejection_reason ?? null,
   }
 }
 
@@ -896,6 +906,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     setSelectedCustomer(null)
     setFormValues(initialFormValues)
     setAudioFile(null)
+    setRejectionError(null)
     setIsFormOpen(true)
   }
 
@@ -904,6 +915,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     setSelectedCustomer(customer)
     setFormValues(toFormValues(customer))
     setAudioFile(null)
+    setRejectionError(null)
     setIsFormOpen(true)
   }
 
@@ -978,14 +990,23 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   }
 
   const [savingStatusId, setSavingStatusId] = useState<number | null>(null)
+  const { ask: askRejectionReason, request: rejectionRequest, resolve: resolveRejection } = useRejectionReason()
+  const [rejectionError, setRejectionError] = useState<string | null>(null)
 
   async function handleInlineStatusChange(customer: CustomerSummary, nextStatus: string): Promise<boolean> {
     const previous = customer
+    // Rejecting a lead always needs the reason why.
+    let rejectionReason: string | null = null
+    if (isRejectedStatus(nextStatus) && !isRejectedStatus(customer.status)) {
+      rejectionReason = await askRejectionReason(getCustomerDisplayName(customer))
+      if (!rejectionReason) return false
+    }
     const formData = new FormData()
     formData.append('status', nextStatus)
     formData.append('customer_status', nextStatus)
+    if (rejectionReason) formData.append('rejection_reason', rejectionReason)
     setSavingStatusId(customer.id)
-    syncCustomerInUi({ ...customer, status: nextStatus })
+    syncCustomerInUi({ ...customer, status: nextStatus, ...(rejectionReason ? { rejection_reason: rejectionReason, rejected_at: new Date().toISOString() } : {}) })
     try {
       await crmService.patchCustomer(customer.id, formData)
       showToast({
@@ -1026,6 +1047,17 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
       showToast({
         title: t('customers.errors.required_fields.title', 'Required fields missing'),
         description: t('customers.errors.required_fields.description', 'Full name, platform, phone number, and status are required.'),
+        tone: 'error',
+      })
+      return
+    }
+
+    const rejectionProblem = isRejectedStatus(formValues.status) ? rejectionReasonError(formValues.rejection_reason, (key, fallback, params) => (params ? t(key, fallback, params) : t(key, fallback))) : null
+    setRejectionError(rejectionProblem)
+    if (rejectionProblem) {
+      showToast({
+        title: t('customers.reject.required_title', 'Rejection reason is required'),
+        description: rejectionProblem,
         tone: 'error',
       })
       return
@@ -1145,6 +1177,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           setSelectedCustomer(customer)
           setFormValues(toFormValues(customer))
           setModalMode('edit')
+          setRejectionError(null)
           setIsFormOpen(true)
         }}
         statusChoices={statusChoices}
@@ -1159,16 +1192,20 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
         values={formValues}
         statusOptions={[...statusFilterOptions]}
         onClose={() => setIsFormOpen(false)}
-        onChange={(field, value) =>
+        onChange={(field, value) => {
+          if (field === 'rejection_reason' || field === 'status') setRejectionError(null)
           setFormValues((current: CustomerFormValues) => ({
             ...current,
             [field]: value,
           }))
-        }
+        }}
         onFileChange={setAudioFile}
         onSubmit={() => void handleSubmitCustomer()}
         isSubmitting={isFormSubmitting}
+        rejectionError={rejectionError}
       />
+
+      <RejectReasonDialog key={rejectionRequest?.id ?? 'none'} request={rejectionRequest} onResolve={resolveRejection} />
 
       {audioModal && (
         <AudioPlayerModal

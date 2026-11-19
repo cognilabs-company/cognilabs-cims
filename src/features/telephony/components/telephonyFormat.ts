@@ -257,3 +257,11 @@ export function dayParts(day: string) {
   const date = parseDay(day) ?? new Date()
   return { weekday: capitalize(weekdayName(date)), date: dayMonthLong(date, date.getFullYear() !== new Date().getFullYear()) }
 }
+
+/** Colour of a 0–100 grade. */
+export function scoreTone(score: number | null) {
+  if (score === null) return 'var(--muted)'
+  if (score >= 80) return 'var(--success)'
+  if (score >= 60) return 'var(--warning)'
+  return 'var(--danger)'
+}

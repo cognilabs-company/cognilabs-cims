@@ -285,6 +285,13 @@ export function createCrmCustomerService(basePath: string) {
       })
     },
 
+    /** Every status change of a lead, raw (see features/crm/lib/statusHistory for the normaliser). */
+    statusHistory(customerId: number) {
+      return request<unknown>({
+        path: `${basePath}/customers/${customerId}/status-history`,
+      })
+    },
+
     restoreCustomer(customerId: number) {
       return request<SuccessResponse>({
         path: `${basePath}/customers/${customerId}/restore`,

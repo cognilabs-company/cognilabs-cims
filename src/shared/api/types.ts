@@ -150,6 +150,10 @@ export type CustomerSummary = {
   is_archived?: boolean
   additional_notes?: AdditionalNote[]
   lead_response_metrics?: LeadResponseMetrics | null
+  /** Why the lead was rejected (required when the status becomes "rejected"). */
+  rejection_reason?: string | null
+  rejected_at?: string | null
+  rejected_by?: number | null
 }
 
 export type PaymentItem = {

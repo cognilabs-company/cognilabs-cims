@@ -224,6 +224,15 @@ export const navigationItems: readonly NavigationItem[] = [
     defaultRedirect: false,
   },
   {
+    to: '/vault',
+    label: 'Passwords',
+    description: 'Company passwords and accesses kept in CIMS; managers choose who may open each one.',
+    group: 'Work',
+    permissionKey: undefined,
+    sidebar: true,
+    defaultRedirect: false,
+  },
+  {
     to: '/files',
     label: 'Files',
     description: 'Private company files: folders, uploads, previews and ZIP downloads.',

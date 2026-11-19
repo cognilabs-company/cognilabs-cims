@@ -3,7 +3,7 @@ import { ShieldCheckIcon } from '@phosphor-icons/react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { localeLabels, type AppLocale } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
-import { BrandMark, BrandWordmark } from '../../../shared/ui/brand-logo'
+import { BrandWordmark } from '../../../shared/ui/brand-logo'
 
 /** The public registration page frame: brand, language switch, a centred column — no app shell. */
 export function PublicLayout({ children }: { children: ReactNode }) {
@@ -15,9 +15,8 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
       <header className="relative z-10 mx-auto flex w-full max-w-[720px] items-center justify-between gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:pt-6">
         <span className="flex min-w-0 items-center gap-2.5">
-          <BrandMark size={36} />
           <span className="min-w-0 leading-tight">
-            <BrandWordmark height={20} className="text-[var(--foreground)]" />
+            <BrandWordmark height={22} className="block text-[var(--foreground)]" />
             <span className="mt-0.5 block truncate text-[11px] text-[var(--muted)]">{t('registrations.public.tagline', 'Registration')}</span>
           </span>
         </span>

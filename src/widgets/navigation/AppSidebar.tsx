@@ -17,7 +17,7 @@ import { Badge } from '../../shared/ui/badge'
 import { Button } from '../../shared/ui/button'
 import { Dialog } from '../../shared/ui/dialog'
 import { Input } from '../../shared/ui/input'
-import { BrandMark } from '../../shared/ui/brand-logo'
+import { BrandMonogram, BrandWordmark } from '../../shared/ui/brand-logo'
 import { NavGlyph } from './NavGlyph'
 import { getNavigationGlyphName, type GlyphName } from './navGlyphMap'
 import { OPEN_PROFILE_EVENT } from './profileEvents'
@@ -149,7 +149,7 @@ function withFrontendPages(groups: SidebarGroup[], entries: SidebarItem[]): Side
 function navGroupOf(path: string): NavGroupKey {
   if (path === '/member/dashboard' || path === '/ceo/dashboard') return 'main'
   if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony')) return 'sales'
-  if (path.startsWith('/projects') || path.startsWith('/mindmap') || path.startsWith('/calendar') || path.startsWith('/files')) return 'work'
+  if (path.startsWith('/projects') || path.startsWith('/mindmap') || path.startsWith('/calendar') || path.startsWith('/files') || path.startsWith('/vault')) return 'work'
   if (path.startsWith('/cognilabsai') || path.startsWith('/ceo/ai')) return 'ai'
   if (['/ceo/website-stats', '/ceo/management', '/audit', '/ceo/workday-overrides'].some((prefix) => path.startsWith(prefix))) return 'system'
   return 'team'
@@ -230,6 +230,8 @@ export function AppSidebar() {
         ...(can('mind_map', 'view') ? [{ to: '/mindmap', label: t('nav./mindmap.label', 'Mind map'), icon: 'mindmap' }] : []),
         ...(can('calendar', 'view') ? [{ to: '/calendar', label: t('nav./calendar.label', 'Calendar'), icon: 'calendar' }] : []),
         ...(can('file_manager', 'view') ? [{ to: '/files', label: t('nav./files.label', 'Files'), icon: 'files' }] : []),
+        // Everyone gets the page; the backend only lists the accesses given to them.
+        { to: '/vault', label: t('nav./vault.label', 'Passwords'), icon: 'vault' },
         ...(can('registrations', 'view') ? [{ to: '/registrations', label: t('nav./registrations.label', 'Registrations'), icon: 'registrations' }] : []),
       ])
     }
@@ -420,10 +422,10 @@ export function AppSidebar() {
         <div className={cn('flex h-full flex-col overflow-hidden rounded-[22px] border border-[var(--sb-line)] bg-[var(--sb-bg)] pt-4 pb-3 shadow-[var(--sb-shadow)] transition-[padding] duration-200', rail ? 'px-2.5' : 'px-3')}>
           {/* Brand */}
           <div className={cn('flex items-center gap-2.5 pb-3', rail ? 'flex-col px-0' : 'px-1.5')}>
-            <BrandMark size={34} />
+            {rail ? <BrandMonogram height={26} className="text-[var(--sb-strong)]" /> : null}
             <div className={cn('min-w-0 flex-1', rail && 'hidden')}>
-              <p className="truncate text-[15px] leading-5 font-semibold tracking-[-0.01em] text-[var(--sb-strong)]">Cognilabs</p>
-              <p className="truncate text-[11.5px] leading-4 font-medium text-[var(--sb-label)]">CIMS · {subtitle}</p>
+              <BrandWordmark height={21} className="block text-[var(--sb-strong)]" />
+              <p className="mt-1 truncate text-[11.5px] leading-4 font-medium text-[var(--sb-label)]">CIMS · {subtitle}</p>
             </div>
             <button
               type="button"

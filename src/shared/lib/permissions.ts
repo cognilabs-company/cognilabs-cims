@@ -23,6 +23,7 @@ const moduleRoutes: Array<[prefix: string, module: RbacModuleName]> = [
   ['/mindmap', 'mind_map'],
   ['/calendar', 'calendar'],
   ['/files', 'file_manager'],
+  ['/vault', 'access_vault'],
   ['/registrations', 'registrations'],
   ['/boards', 'projects'],
   ['/faults', 'salary'],
@@ -87,6 +88,7 @@ function legacyModuleAccess(user: CurrentUser | null, module: RbacModuleName) {
     case 'developer_kpi':
     case 'mind_map':
     case 'calendar':
+    case 'access_vault':
       return Boolean(user)
     case 'ai_chat':
     case 'ai_kanban':

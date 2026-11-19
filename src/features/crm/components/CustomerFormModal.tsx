@@ -7,6 +7,8 @@ import { Input } from '../../../shared/ui/input'
 import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Modal } from '../../../shared/ui/modal'
 import { SelectField } from '../../../shared/ui/select-field'
+import { isRejectedStatus } from '../lib/rejection'
+import { RejectionReasonField } from './RejectReasonDialog'
 
 export type CustomerFormValues = {
   full_name: string
@@ -20,6 +22,8 @@ export type CustomerFormValues = {
   clear_recall_time: boolean
   customer_type: string
   conversation_language: string
+  /** Required while the status is "rejected". */
+  rejection_reason: string
 }
 
 type StatusOption = {
@@ -38,6 +42,8 @@ type CustomerFormModalProps = {
   onFileChange: (file: File | null) => void
   onSubmit: () => void
   isSubmitting: boolean
+  /** Shown under the rejection reason after a failed submit. */
+  rejectionError?: string | null
 }
 
 function Section({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
@@ -71,6 +77,7 @@ export function CustomerFormModal({
   onFileChange,
   onSubmit,
   isSubmitting,
+  rejectionError,
 }: CustomerFormModalProps) {
   const { t } = useTranslation()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -158,6 +165,14 @@ export function CustomerFormModal({
               <Input value={values.assistant_name} onChange={(event) => onChange('assistant_name', event.target.value)} />
             </Field>
           </div>
+          {isRejectedStatus(values.status) ? (
+            <div className="mt-3 rounded-[14px] border border-[color-mix(in_srgb,var(--danger)_28%,transparent)] bg-[color-mix(in_srgb,var(--danger-dim)_55%,transparent)] p-3">
+              <p className="mb-2 text-[12.5px] font-semibold text-[var(--foreground)]">
+                {t('customers.reject.label', 'Reason for rejection')} <span className="text-[var(--danger-text)]">*</span>
+              </p>
+              <RejectionReasonField value={values.rejection_reason} onChange={(next) => onChange('rejection_reason', next)} error={rejectionError} />
+            </div>
+          ) : null}
         </Section>
 
         <Section icon={CalendarClock} title={t('customers.quick.recall', 'Call back')}>

@@ -301,8 +301,24 @@ export function computeLayout(map: MindMap): Layout {
   return { boxes, order, bounds: { minX, minY, maxX, maxY } }
 }
 
+/**
+ * Which side of the parent a line leaves from. Auto-laid-out children follow their branch. A hand-placed child
+ * (ORG chart: several blocks put under one block) uses where it really is — otherwise every line left from the
+ * side the parent's own line comes in, and 3–4 children looked tangled into the parent's line instead of
+ * connected to the block.
+ */
+export function lineDir(parent: NodeBox, child: NodeBox): Dir {
+  if (!child.pinned) return child.dir
+  const dx = (child.x + child.w / 2) - (parent.x + parent.w / 2)
+  const dy = (child.y + child.h / 2) - (parent.y + parent.h / 2)
+  // Measured in "box sizes", so wide blocks side by side below a parent still count as below it.
+  const nx = dx / ((parent.w + child.w) / 2 || 1)
+  const ny = dy / ((parent.h + child.h) / 2 || 1)
+  return Math.abs(nx) >= Math.abs(ny) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up')
+}
+
 export function edgeEnds(parent: NodeBox, child: NodeBox) {
-  switch (child.dir) {
+  switch (lineDir(parent, child)) {
     case 'left': return { x1: parent.x, y1: parent.y + parent.h / 2, x2: child.x + child.w, y2: child.y + child.h / 2 }
     case 'down': return { x1: parent.x + parent.w / 2, y1: parent.y + parent.h, x2: child.x + child.w / 2, y2: child.y }
     case 'up': return { x1: parent.x + parent.w / 2, y1: parent.y, x2: child.x + child.w / 2, y2: child.y + child.h }
@@ -313,7 +329,7 @@ export function edgeEnds(parent: NodeBox, child: NodeBox) {
 /** Connector from a parent to a child (world coordinates): curved, straight or elbow (rounded corners). */
 export function edgePath(parent: NodeBox, child: NodeBox, style: EdgeStyle = 'curved') {
   const { x1, y1, x2, y2 } = edgeEnds(parent, child)
-  const horizontal = isHorizontal(child.dir)
+  const horizontal = isHorizontal(lineDir(parent, child))
   if (style === 'straight') return `M ${x1} ${y1} L ${x2} ${y2}`
   if (style === 'elbow') {
     if (horizontal) {
@@ -359,7 +375,7 @@ export function edgeCutPoint(parent: NodeBox, child: NodeBox, style: EdgeStyle =
   const mid = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }
   const dx = x2 - x1
   const dy = y2 - y1
-  const horizontal = isHorizontal(child.dir)
+  const horizontal = isHorizontal(lineDir(parent, child))
   // The line's direction at its middle.
   let tangent: [number, number]
   if (style === 'straight') tangent = [dx, dy]

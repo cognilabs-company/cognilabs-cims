@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   AtSign,
   Bot,
   CalendarClock,
+  CalendarDays,
   CalendarPlus,
+  ChevronRight,
+  CircleX,
   Check,
   ChevronDown,
   Download,
@@ -40,6 +44,8 @@ import { statusIconFor } from '../lib/statusIcon'
 import { formatClock, formatDayShort, wallFromInstant, type WallTime } from '../lib/tashkentTime'
 import { AudioPlayerCard } from './AudioPlayerCard'
 import { CustomerCallRecordings } from './CustomerCallRecordings'
+import { CustomerStatusHistory } from './CustomerStatusHistory'
+import { isRejectedStatus } from '../lib/rejection'
 import { CopyButton, StatusPill } from './CustomerFilters'
 import { RecallTimePicker } from './RecallTimePicker'
 
@@ -284,6 +290,7 @@ export function CustomerQuickView({
   const { t, locale } = useLocale()
   const { can } = useAuth()
   const { kind } = useCrmScope()
+  const navigate = useNavigate()
   const phone = useTelephony()
   const [panel, setPanel] = useState<'recall' | 'status' | null>(null)
   const [savingRecall, setSavingRecall] = useState(false)
@@ -377,6 +384,17 @@ export function CustomerQuickView({
     if (ok) setPanel(null)
   }
 
+  // The call-back sits in the calendar on its own day: open that day with this lead's event selected.
+  const canOpenCalendar = Boolean(recallWall) && can('calendar', 'view')
+  function openInCalendar() {
+    if (!recallWall) return
+    const params = new URLSearchParams({ date: recallWall.date, customer_id: String(customer.id), focus: 'recall' })
+    navigate(`/calendar?${params.toString()}`)
+    onClose()
+  }
+
+  const rejected = isRejectedStatus(customer.status)
+
   const language = customer.conversation_language ? formatConversationLanguageLabel((key, fallback) => t(key, fallback), customer.conversation_language) : null
   const metrics = customer.lead_response_metrics
 
@@ -449,6 +467,21 @@ export function CustomerQuickView({
             ) : null}
           </div>
 
+          {canOpenCalendar && recallWall ? (
+            <button
+              type="button"
+              onClick={openInCalendar}
+              className="group/cal mt-2 flex w-full items-center gap-2.5 rounded-[12px] border border-dashed border-[var(--border-hover)] px-3 py-2 text-left transition-colors hover:border-[var(--primary)] hover:bg-[var(--blue-dim)]"
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] bg-[var(--blue-dim)] text-[var(--primary)]"><CalendarDays size={15} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12.5px] font-semibold text-[var(--foreground)]">{t('customers.quick.open_calendar', 'Show in calendar')}</span>
+                <span className="block truncate text-[11.5px] text-[var(--muted)]">{t('customers.quick.open_calendar_hint', 'Call-back on {{when}}', { when: `${formatDayShort(locale, recallWall.date)}, ${formatClock(recallWall)}` })}</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-[var(--caption)] transition-transform group-hover/cal:translate-x-0.5 group-hover/cal:text-[var(--primary)]" />
+            </button>
+          ) : null}
+
           <div ref={panelRef} className="scroll-mt-3">
             {panel === 'recall' ? (
               <div className="mt-2">
@@ -491,6 +524,19 @@ export function CustomerQuickView({
             ) : null}
           </div>
         </section>
+
+        {/* why the lead was rejected */}
+        {rejected ? (
+          <section className="rounded-[14px] border border-[color-mix(in_srgb,var(--danger)_25%,transparent)] bg-[color-mix(in_srgb,var(--danger-dim)_60%,transparent)] px-3.5 py-3">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.06em] text-[var(--danger-text)] uppercase">
+              <CircleX size={13} /> {t('customers.reject.reason_title', 'Rejection reason')}
+            </p>
+            <p className={cn('mt-1.5 text-[13px] leading-[1.55] whitespace-pre-wrap', customer.rejection_reason ? 'text-[var(--foreground)]' : 'text-[var(--muted)] italic')}>
+              {customer.rejection_reason || t('customers.reject.no_reason', 'No reason was written (rejected before reasons became required).')}
+            </p>
+            {customer.rejected_at ? <p className="mt-1 text-[11.5px] text-[var(--muted)] tabular-nums">{formatNumericDateTime(customer.rejected_at)}</p> : null}
+          </section>
+        ) : null}
 
         {/* details */}
         <section className="grid grid-cols-1 gap-x-4 rounded-[16px] border border-[var(--border)] px-3 py-1.5 sm:grid-cols-2">
@@ -570,6 +616,9 @@ export function CustomerQuickView({
             <AudioPlayerCard src={audioSource} name={name} />
           </section>
         ) : null}
+
+        {/* which status the lead moved from / to, and how long it stayed in each */}
+        <CustomerStatusHistory customerId={customer.id} currentStatus={customer.status} statusChoices={statusChoices} />
 
         {/* recorded phone calls with this customer */}
         {phoneNumber ? <CustomerCallRecordings key={customer.id} customerId={customer.id} phoneNumber={phoneNumber} /> : null}

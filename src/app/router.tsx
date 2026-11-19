@@ -144,6 +144,10 @@ const CalendarPage = lazyPage(
   () => import('../features/calendar/pages/CalendarPage'),
   'CalendarPage',
 )
+const AccessVaultPage = lazyPage(
+  () => import('../features/accessVault/pages/AccessVaultPage'),
+  'AccessVaultPage',
+)
 const FileManagerPage = lazyPage(
   () => import('../features/fileManager/pages/FileManagerPage'),
   'FileManagerPage',
@@ -465,6 +469,14 @@ export const router = createBrowserRouter([
                 element: (
                   <ProtectedRoute>
                     {withPageLoader(<CalendarPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'vault',
+                element: (
+                  <ProtectedRoute>
+                    {withPageLoader(<AccessVaultPage />)}
                   </ProtectedRoute>
                 ),
               },

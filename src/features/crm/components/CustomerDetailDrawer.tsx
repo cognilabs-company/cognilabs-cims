@@ -33,6 +33,8 @@ import { getCustomerActionErrorMessage, getCustomerUnavailableMessage, getCustom
 import { getRecallTimeTone, getRecallTimeToneClasses } from '../lib/recallTime'
 import { AudioPlayerCard } from './AudioPlayerCard'
 import { CustomerQuickView, type QuickStatusChoice } from './CustomerQuickView'
+import { CustomerStatusHistory } from './CustomerStatusHistory'
+import { isRejectedStatus } from '../lib/rejection'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { formatClock, formatDayLong, toRecallApiValue, type WallTime } from '../lib/tashkentTime'
 import { formatConversationLanguageLabel, formatCustomerNotes } from '../lib/customerNotes'
@@ -290,6 +292,22 @@ export function CustomerDetailContent({
               </span>
             </div>
           </div>
+        </Card>
+
+        {/* Why the lead was rejected */}
+        {isRejectedStatus(customer.status) ? (
+          <Card className="flex flex-col gap-2 border-[color-mix(in_srgb,var(--danger)_25%,transparent)] lg:col-span-2">
+            <SectionTitle title={t('customers.reject.reason_title', 'Rejection reason')} />
+            <p className={cn('text-sm leading-[1.55] whitespace-pre-wrap', customer.rejection_reason ? 'text-[var(--foreground)]' : 'text-[var(--muted)] italic')}>
+              {customer.rejection_reason || t('customers.reject.no_reason', 'No reason was written (rejected before reasons became required).')}
+            </p>
+            {customer.rejected_at ? <p className="text-xs text-[var(--muted)] tabular-nums">{formatNumericDateTime(customer.rejected_at)}</p> : null}
+          </Card>
+        ) : null}
+
+        {/* Status timeline: which status the lead moved from and to, and how long it stayed */}
+        <Card className="flex flex-col gap-2 lg:col-span-2">
+          <CustomerStatusHistory customerId={customer.id} currentStatus={customer.status} />
         </Card>
 
         {/* Lead Response Metrics */}

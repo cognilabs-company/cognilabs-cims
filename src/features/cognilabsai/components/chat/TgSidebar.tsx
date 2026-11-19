@@ -6,6 +6,7 @@ import { cn } from '../../../../shared/lib/cn'
 import type { ConversationItem } from '../../../../shared/api/services/cognilabsai.service'
 import { formatListTime, getClientName, getConversationTab, isOnline, type ChannelTab } from './chatUtils'
 import { ChannelGlyph, TgAvatar } from './TgParts'
+import { mediaPreview } from './media'
 
 type TgSidebarProps = {
   conversations: ConversationItem[]
@@ -146,7 +147,7 @@ export function TgSidebar({
                 </span>
                 <span className="mt-0.5 flex items-center gap-2">
                   <span className={cn('min-w-0 flex-1 truncate text-[15px] leading-[21px]', active ? 'text-white/85' : 'text-[var(--tg-secondary)]')}>
-                    {conv.last_message_preview || <i>{t('aichat.no_messages', 'No messages')}</i>}
+                    {mediaPreview(conv.last_message_preview, t) || <i>{t('aichat.no_messages', 'No messages')}</i>}
                   </span>
                   {conv.unread_count > 0 ? (
                     <span className={cn('grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-full px-1.5 text-[13px] font-semibold tabular-nums', active ? 'bg-white text-[var(--tg-active)]' : 'bg-[var(--tg-badge)] text-white')}>

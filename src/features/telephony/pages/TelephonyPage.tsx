@@ -17,6 +17,7 @@ import { CallsHero, type CallsCounts, type CallsTab, type CallsView } from '../c
 import { CallDayPicker } from '../components/CallDayPicker'
 import { DialerPane } from '../components/DialerPane'
 import { CeoTelephonyPanel } from '../components/CeoTelephonyPanel'
+import { CallQualityPanel } from '../components/CallQualityPanel'
 import { dayHeading, dayKeyOf, formatTalkTime, periodRange, statusLabel, type CallPeriod } from '../components/telephonyFormat'
 
 const PAGE_SIZE = 30
@@ -86,6 +87,8 @@ export function TelephonyPage() {
   const isCeo = user?.role === 'CEO'
   // RBAC calls:create shows the call buttons at all; canDial says whether the line can call right now.
   const mayCall = can('calls', 'create')
+  // RBAC call_quality:view opens the AI grades tab (the CEO always has it).
+  const mayGrade = isCeo || can('call_quality', 'view')
   const canCall = canDial
   const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, () => true)
 
@@ -349,6 +352,7 @@ export function TelephonyPage() {
   const hero = (
     <CallsHero
       isCeo={isCeo}
+      showQuality={mayGrade}
       tab={tab}
       onTabChange={setTab}
       connection={connection}
@@ -376,7 +380,13 @@ export function TelephonyPage() {
 
   return (
     <div className="calls-ui page-enter">
-      {tab === 'system' && isCeo ? (
+      {tab === 'quality' && mayGrade ? (
+        <div className="space-y-4">
+          {hero}
+          {phoneAlert}
+          <CallQualityPanel isCeo={isCeo} />
+        </div>
+      ) : tab === 'system' && isCeo ? (
         <div className="space-y-4">
           {hero}
           {phoneAlert}

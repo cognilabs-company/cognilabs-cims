@@ -1,7 +1,7 @@
 import type { LucideIcon, LucideProps } from 'lucide-react'
 import {
   Archive, Blocks, CalendarDays, ClipboardSignature, FolderOpen, ChartPie, CalendarClock, CalendarCog, CalendarRange, Circle, CircleUserRound, Contact, CreditCard, FolderKanban,
-  Globe, Images, LayoutDashboard, ListChecks, ListTodo, LockKeyhole, LogOut, MessageCircleReply, MessagesSquare, Network, Newspaper,
+  Globe, Images, KeyRound, LayoutDashboard, ListChecks, ListTodo, LockKeyhole, LogOut, MessageCircleReply, MessagesSquare, Network, Newspaper,
   Phone, Plug, ScrollText, ServerCog, Sparkles, SquareKanban, TrendingUp, TriangleAlert, UserCheck, UserCog, Users, Wallet,
 } from 'lucide-react'
 import { cn } from '../../shared/lib/cn'
@@ -30,6 +30,7 @@ const glyphs: Record<GlyphName, LucideIcon> = {
   mindmap: Network,
   calendar: CalendarDays,
   files: FolderOpen,
+  vault: KeyRound,
   registrations: ClipboardSignature,
   management: ServerCog,
   team: Users,

@@ -3,6 +3,8 @@ import Lottie from 'lottie-react'
 import { cn } from '../../../../shared/lib/cn'
 import { resolveMediaUrl } from '../../../../shared/lib/media-url'
 import { cognilabsaiService, type MessageItem } from '../../../../shared/api/services/cognilabsai.service'
+import { MediaPieceView, MissingPiece } from './TgMedia'
+import { extractMedia } from './media'
 import { avatarGradient, formatMessageTime, initialsOf, isPendingMessage, isStickerMediaType, shouldShowStickerCaption } from './chatUtils'
 
 /* ── avatar ──────────────────────────────────────────── */
@@ -148,6 +150,7 @@ export function MessageRow({ msg, first, last, labels }: MessageRowProps) {
     )
   }
 
+  const media = extractMedia(msg)
   const time = formatMessageTime(msg.created_at)
   const pending = isPendingMessage(msg)
   const meta = (
@@ -196,11 +199,16 @@ export function MessageRow({ msg, first, last, labels }: MessageRowProps) {
           </div>
         ) : null}
 
-        <p className="break-words whitespace-pre-wrap">
-          {msg.text}
-          {/* room for the time so it never overlaps the last line */}
-          <span className={cn('inline-block', incoming ? 'w-[44px]' : 'w-[64px]')} aria-hidden="true" />
-        </p>
+        {media.pieces.map((piece) => <MediaPieceView key={piece.key} piece={piece} incoming={incoming} seed={`${msg.id}-${piece.key}`} />)}
+        {media.placeholder ? <MissingPiece kind={media.placeholder} /> : null}
+
+        {media.text || (!media.pieces.length && !media.placeholder) ? (
+          <p className="break-words whitespace-pre-wrap">
+            {media.text}
+            {/* room for the time so it never overlaps the last line */}
+            <span className={cn('inline-block', incoming ? 'w-[44px]' : 'w-[64px]')} aria-hidden="true" />
+          </p>
+        ) : <span className="block h-[14px]" aria-hidden="true" />}
         <span className={cn('tg-meta absolute right-2 bottom-[4px] inline-flex items-center gap-[3px] text-[12px] leading-none select-none', incoming ? 'tg-meta-in' : 'tg-meta-out')}>
           {meta}
         </span>

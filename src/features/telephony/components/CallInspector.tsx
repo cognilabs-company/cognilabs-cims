@@ -5,7 +5,9 @@ import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { leadPath, telephonyService, type TelephonyCall, type TelephonyCallDetail, type TelephonyLead } from '../../../shared/api/services/telephony.service'
+import { useAuth } from '../../auth/hooks/useAuth'
 import { RecordingPlayer } from './RecordingPlayer'
+import { CallQualityCard } from './CallQualityCard'
 import { CallBadge, CallResult } from './CallParts'
 import { callKindLabel, callTone, formatDayTime, formatPhone, formatTalkTime, hueOf, initialOf, sourceLabel, statusLabel } from './telephonyFormat'
 
@@ -49,6 +51,7 @@ function Fact({ label, children, danger }: { label: string; children: ReactNode;
 /** Right pane of the Calls page: who it was, what happened, recording, notes and the history with that number. */
 export function CallInspector({ call, related, canCall, showCall = true, onDial, onSelectCall, onBack, onClose }: CallInspectorProps) {
   const { t } = useLocale()
+  const { user } = useAuth()
   const [detail, setDetail] = useState<TelephonyCallDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState('')
@@ -193,6 +196,9 @@ export function CallInspector({ call, related, canCall, showCall = true, onDial,
             <RecordingPlayer callId={call.id} />
           </Card>
         ) : null}
+
+        {/* AI grade against the call script and the sales script (answered calls only) */}
+        {call.talk_seconds > 0 ? <CallQualityCard key={call.id} callId={call.id} hasRecording={Boolean(hasRecording)} canRegrade={user?.role === 'CEO'} /> : null}
 
         <Card title={t('telephony.notes', 'Notes')} icon={<StickyNote size={15} />} aside={notes.length ? <span className="text-[12px] tabular-nums text-[var(--muted)]">{notes.length}</span> : null}>
           {notes.length ? (

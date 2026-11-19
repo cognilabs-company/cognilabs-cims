@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { BrandMark } from './brand-logo'
+import { BrandWordmark } from './brand-logo'
 import { cn } from '../lib/cn'
 
 /** Minimal loader: a thin ring with one moving arc. */
@@ -27,7 +27,7 @@ export function AppSplash({ title, subtitle }: { title: string; subtitle?: strin
   return (
     <div role="status" aria-live="polite" className="app-splash">
       <div className="flex flex-col items-center gap-3 text-center">
-        <BrandMark size={52} />
+        <BrandWordmark height={34} className="text-[var(--foreground)]" />
         <BrandLoader size={22} />
         <div>
           <p className="text-[13.5px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{title}</p>

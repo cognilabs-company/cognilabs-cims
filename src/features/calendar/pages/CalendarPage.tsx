@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowClockwiseIcon, ArrowCounterClockwiseIcon, CaretLeftIcon, CaretRightIcon, FunnelSimpleIcon, GearSixIcon, MagnifyingGlassIcon, PlusIcon, UserIcon, XIcon } from '@phosphor-icons/react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { calendarService, type CalendarUser } from '../../../shared/api/services/calendar.service'
@@ -78,9 +78,20 @@ export function CalendarPage() {
   const userId = user?.id ?? null
 
   const today = tashkentToday()
+  // Opened from a CRM lead: /calendar?date=YYYY-MM-DD&customer_id=…&focus=recall
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [initialFocus] = useState(() => {
+    const date = searchParams.get('date')
+    const customerId = Number(searchParams.get('customer_id'))
+    const kind = searchParams.get('focus')
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+    return { date, customerId: Number.isFinite(customerId) && customerId > 0 ? customerId : null, kind: kind === 'meeting' ? 'meeting' as const : 'recall' as const }
+  })
+  /** Still waiting for the first load to select the lead's event (cleared once done). */
+  const focusRef = useRef(initialFocus)
   const [prefs, setPrefs] = useState(readPrefs)
-  const [cursor, setCursor] = useState(() => parseDay(tashkentToday()))
-  const [selectedDay, setSelectedDay] = useState(today)
+  const [cursor, setCursor] = useState(() => parseDay(initialFocus?.date ?? tashkentToday()))
+  const [selectedDay, setSelectedDay] = useState(initialFocus?.date ?? today)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [slide, setSlide] = useState<'left' | 'right' | null>(null)
   const [events, setEvents] = useState<CalEvent[] | null>(null)
@@ -94,7 +105,7 @@ export function CalendarPage() {
   const [dialog, setDialog] = useState<{ draft: EventDraft; saving: boolean; errors: Record<string, string> } | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [types, setTypes] = useState<EventKind[]>(DEFAULT_TYPES)
+  const [types, setTypes] = useState<EventKind[]>(() => (initialFocus && !DEFAULT_TYPES.includes(initialFocus.kind) ? [...DEFAULT_TYPES, initialFocus.kind] : DEFAULT_TYPES))
   const [customerNames, setCustomerNames] = useState<Map<number, string>>(() => new Map())
   const canCrm = can('customers') || can('crm')
   const canCalls = can('calls')
@@ -138,10 +149,39 @@ export function CalendarPage() {
     return () => { alive = false }
   }, [canCreate, showToast, t, userId])
 
+  // Coming from a CRM lead: select its call-back in the first loaded range, then clean the URL.
+  const focusOn = useEffectEvent((items: CalEvent[]) => {
+    const focus = focusRef.current
+    if (!focus) return
+    focusRef.current = null
+    const match = focus.customerId
+      ? items.find((event) => event.kind === focus.kind && event.customerId === focus.customerId && dayOf(event.start) === focus.date)
+        ?? items.find((event) => event.kind === focus.kind && event.customerId === focus.customerId)
+      : null
+    if (match) {
+      setSelectedEventId(match.id)
+      setSelectedDay(dayOf(match.start))
+    } else if (focus.customerId) {
+      showToast({ title: t('calendar.focus_missing', 'This call-back is not in your calendar view'), description: t('calendar.focus_missing_text', 'The day is opened; the event may belong to another manager.'), tone: 'info' })
+    }
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous)
+      next.delete('date')
+      next.delete('customer_id')
+      next.delete('focus')
+      return next
+    }, { replace: true })
+  })
+
   useEffect(() => {
     let alive = true
     loadCalendarEvents({ dateFrom: rangeStart, dateTo: rangeEnd, userId: personId, search: query })
-      .then((items) => { if (alive) { setEvents(items); setEventsFailed(false) } })
+      .then((items) => {
+        if (!alive) return
+        setEvents(items)
+        setEventsFailed(false)
+        focusOn(items)
+      })
       .catch(() => { if (alive) { setEvents([]); setEventsFailed(true) } })
     return () => { alive = false }
   }, [personId, query, rangeEnd, rangeStart, refreshKey])

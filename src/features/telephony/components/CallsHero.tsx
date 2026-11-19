@@ -3,6 +3,7 @@ import {
   CalendarDotsIcon,
   DotsNineIcon,
   HardDrivesIcon,
+  SealCheckIcon,
   PhoneCallIcon,
   PhoneIncomingIcon,
   PhoneOutgoingIcon,
@@ -31,7 +32,7 @@ function forwardingModeLabel(mode: string | null) {
 
 export type CallsView = 'all' | 'incoming' | 'outgoing' | 'missed'
 export type CallsCounts = Record<CallsView, number>
-export type CallsTab = 'calls' | 'system'
+export type CallsTab = 'calls' | 'quality' | 'system'
 
 const presets: Array<[Exclude<CallPeriod, 'custom'>, string, string]> = [
   ['today', 'telephony.period.today', 'Today'],
@@ -52,6 +53,8 @@ const tiles: Array<{ view: CallsView; icon: PhosphorIcon; label: [string, string
 type CallsHeroProps = {
   isCeo: boolean
   tab: CallsTab
+  /** Calls → Grades (AI grade against the call / sales script). */
+  showQuality?: boolean
   onTabChange: (tab: CallsTab) => void
   connection: string
   extension?: string | null
@@ -143,11 +146,12 @@ export function CallsHero(props: CallsHeroProps) {
           </div>
         </div>
 
-        {props.isCeo ? (
+        {props.showQuality || props.isCeo ? (
           <div role="tablist" aria-label={t('telephony.title', 'Calls')} className="inline-flex h-10 shrink-0 rounded-[13px] @max-[659px]:w-full @max-[659px]:[&>button]:flex-1 @max-[659px]:[&>button]:justify-center bg-[var(--muted-surface)] p-1">
             {([
               ['calls', t('telephony.tab.calls', 'Calls'), PhoneCallIcon],
-              ['system', t('telephony.tab.system', 'Phone system'), HardDrivesIcon],
+              ...(props.showQuality ? [['quality', t('telephony.tab.quality', 'Grades'), SealCheckIcon]] : []),
+              ...(props.isCeo ? [['system', t('telephony.tab.system', 'Phone system'), HardDrivesIcon]] : []),
             ] as Array<[CallsTab, string, PhosphorIcon]>).map(([value, label, Icon]) => (
               <button
                 key={value}
