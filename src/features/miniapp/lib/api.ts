@@ -30,7 +30,25 @@ export type Presence = {
   since: string | null
   checked_in_at: string | null
   checked_out_at: string | null
+  /** The backend closed the open session at the next 03:00 (not proof of the real departure time). */
+  auto_closed: boolean
+  /** Completed check-in/out intervals of the current attendance day (an open interval is not included). */
+  worked_minutes: number | null
 }
+
+/** One attendance day (03:00 → next 03:00, Asia/Tashkent). */
+export type DaySummary = {
+  /** YYYY-MM-DD */
+  attendance_date: string
+  record: {
+    check_in_at: string | null
+    check_out_at: string | null
+    worked_minutes: number
+    auto_closed: boolean
+  } | null
+}
+
+export type UploadedPhoto = { photo_id: string; photo_url: string | null }
 
 export type LocationsPayload = { items: MiniLocation[]; presence: Presence | null; maxAccuracy: number }
 
@@ -84,6 +102,24 @@ export function normalizePresence(raw: unknown): Presence | null {
     since: (stateValue === 'checked_in' ? checkedIn : checkedOut) ?? str(data.event_at) ?? str(data.updated_at) ?? str(data.timestamp),
     checked_in_at: checkedIn,
     checked_out_at: checkedOut,
+    auto_closed: data.auto_closed === true,
+    worked_minutes: data.worked_minutes === undefined || data.worked_minutes === null ? null : num(data.worked_minutes),
+  }
+}
+
+function normalizeSummary(raw: unknown, requestedDay: string | undefined): DaySummary {
+  const data = isObject(raw) ? raw : {}
+  const record = isObject(data.record) ? data.record : null
+  return {
+    attendance_date: str(data.attendance_date) ?? (record ? str(record.attendance_date) : null) ?? requestedDay ?? '',
+    record: record
+      ? {
+          check_in_at: str(record.check_in_at) ?? str(record.checked_in_at),
+          check_out_at: str(record.check_out_at) ?? str(record.checked_out_at),
+          worked_minutes: num(record.worked_minutes, Math.round(num(record.worked_hours_decimal) * 60)),
+          auto_closed: record.auto_closed === true,
+        }
+      : null,
   }
 }
 
@@ -139,10 +175,25 @@ export const miniApi = {
   position(initData: string, fix: GeoFix) {
     return request<unknown>({ path: '/miniapp/attendance/position', method: 'POST', headers: initHeaders(initData), body: fix })
   },
-  checkIn(initData: string, locationId: number, fix: GeoFix) {
-    return request<unknown>({ path: '/miniapp/attendance/check-in', method: 'POST', headers: initHeaders(initData), body: { location_id: locationId, ...fix } })
+  /** `photo_id` only when a photo was uploaded first (one photo → one event). */
+  checkIn(initData: string, locationId: number, fix: GeoFix, photoId?: string | null) {
+    return request<unknown>({ path: '/miniapp/attendance/check-in', method: 'POST', headers: initHeaders(initData), body: { location_id: locationId, ...fix, ...(photoId ? { photo_id: photoId } : {}) } })
   },
-  checkOut(initData: string, locationId: number, fix: GeoFix) {
-    return request<unknown>({ path: '/miniapp/attendance/check-out', method: 'POST', headers: initHeaders(initData), body: { location_id: locationId, ...fix } })
+  checkOut(initData: string, locationId: number, fix: GeoFix, photoId?: string | null) {
+    return request<unknown>({ path: '/miniapp/attendance/check-out', method: 'POST', headers: initHeaders(initData), body: { location_id: locationId, ...fix, ...(photoId ? { photo_id: photoId } : {}) } })
+  },
+  /** Optional check-in / check-out photo: JPEG, PNG or WebP up to 10 MB (413 when larger). */
+  async uploadPhoto(initData: string, photo: Blob): Promise<UploadedPhoto> {
+    const form = new FormData()
+    form.append('file', photo, photo.type === 'image/png' ? 'photo.png' : photo.type === 'image/webp' ? 'photo.webp' : 'photo.jpg')
+    const data = await request<unknown>({ path: '/miniapp/attendance/photos', method: 'POST', headers: initHeaders(initData), body: form })
+    const payload = isObject(data) ? data : {}
+    const photoId = str(payload.photo_id) ?? str(payload.id)
+    if (!photoId) throw new Error('No photo_id in the upload response')
+    return { photo_id: photoId, photo_url: str(payload.photo_url) }
+  },
+  /** One attendance day; omit `day` for the current one (03:00 boundary, not midnight). */
+  async summary(initData: string, day?: string) {
+    return normalizeSummary(await request<unknown>({ path: '/miniapp/attendance/summary', headers: initHeaders(initData), query: { day } }), day)
   },
 }

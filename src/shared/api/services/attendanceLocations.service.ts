@@ -397,13 +397,18 @@ export function applyLiveMessage(snapshot: LocationMapSnapshot, message: unknown
     return normalizeLocationMap(body, receivedAt)
   }
 
-  if (type === 'attendance_position' || type === 'attendance_presence') {
+  // attendance_auto_closed: the backend closed an open session at 03:00 — same presence fields, state checked_out.
+  if (type === 'attendance_position' || type === 'attendance_presence' || type === 'attendance_auto_closed') {
     const rows = Array.isArray(body.employees) ? body.employees : [body]
     let employees = snapshot.employees
     for (const row of rows) {
       const patch = employeePatch(row, receivedAt)
       if (!patch) continue
-      if (type === 'attendance_position') {
+      if (type === 'attendance_auto_closed') {
+        // The close time is the 03:00 boundary from the payload; never stamp it with the arrival time.
+        patch.state = 'checked_out'
+        patch.last_seen_at = patch.last_seen_at ?? receivedAt
+      } else if (type === 'attendance_position') {
         // A position just arrived: the employee is live right now.
         patch.live_at = receivedAt
         patch.last_seen_at = receivedAt
