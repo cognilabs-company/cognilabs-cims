@@ -1330,6 +1330,7 @@
   "nav./member/attendance.label": "My attendance",
   "nav./ceo/attendance.label": "Attendance",
   "nav./telephony.label": "Calls",
+  "nav./call-quality.label": "Call quality",
   "nav./crm/my-leads.label": "My leads",
   "nav./crm/archived.label": "CRM archive",
   "nav./outbound-crm.label": "Outbound CRM",

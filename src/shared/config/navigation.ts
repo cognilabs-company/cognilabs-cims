@@ -96,6 +96,15 @@ export const navigationItems: readonly NavigationItem[] = [
     audience: 'telephony',
   },
   {
+    to: '/call-quality',
+    label: 'Call quality',
+    description: 'AI grades of recorded calls against the call and sales scripts.',
+    group: 'Sales',
+    permissionKey: 'ceo',
+    sidebar: true,
+    defaultRedirect: false,
+  },
+  {
     to: '/crm/my-leads',
     label: 'My Leads',
     description: 'Sales manager sifatida o\'zingizga biriktirilgan leadlar va statistika.',

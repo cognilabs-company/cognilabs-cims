@@ -204,6 +204,10 @@ const TelephonyPage = lazyPage(
   () => import('../features/telephony/pages/TelephonyPage'),
   'TelephonyPage',
 )
+const CallQualityPage = lazyPage(
+  () => import('../features/telephony/pages/CallQualityPage'),
+  'CallQualityPage',
+)
 
 export const router = createBrowserRouter([
   // Telegram Mini App: its own session from Telegram initData (outside the web sign-in and layout).
@@ -337,6 +341,14 @@ export const router = createBrowserRouter([
                 element: (
                   <ProtectedRoute audience="telephony">
                     {withPageLoader(<TelephonyPage />)}
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: 'call-quality',
+                element: (
+                  <ProtectedRoute permissionKey="ceo">
+                    {withPageLoader(<CallQualityPage />)}
                   </ProtectedRoute>
                 ),
               },

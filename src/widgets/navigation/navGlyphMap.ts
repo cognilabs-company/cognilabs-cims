@@ -6,6 +6,7 @@ export type GlyphName =
   | 'my-leads'
   | 'customers'
   | 'phone'
+  | 'call-quality'
   | 'users'
   | 'team-updates'
   | 'website'
@@ -41,6 +42,7 @@ export type GlyphName =
 /** One distinct icon per page, so no two sidebar items look the same. */
 export function getNavigationGlyphName(pathname: string): GlyphName {
   if (pathname.startsWith('/telephony')) return 'phone'
+  if (pathname.startsWith('/call-quality')) return 'call-quality'
   if (pathname.startsWith('/mindmap')) return 'mindmap'
   if (pathname.startsWith('/calendar')) return 'calendar'
   if (pathname.startsWith('/files')) return 'files'

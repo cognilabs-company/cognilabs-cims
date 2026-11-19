@@ -1330,6 +1330,7 @@
   "nav./member/attendance.label": "Mening davomatim",
   "nav./ceo/attendance.label": "Davomat",
   "nav./telephony.label": "Qo'ng'iroqlar",
+  "nav./call-quality.label": "Qo'ng'iroqlarni baholash",
   "nav./crm/my-leads.label": "Mening lidlarim",
   "nav./crm/archived.label": "CRM arxivi",
   "nav./outbound-crm.label": "Outbound CRM",

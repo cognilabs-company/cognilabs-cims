@@ -1330,6 +1330,7 @@
   "nav./member/attendance.label": "Моя посещаемость",
   "nav./ceo/attendance.label": "Посещаемость",
   "nav./telephony.label": "Звонки",
+  "nav./call-quality.label": "Оценка звонков",
   "nav./crm/my-leads.label": "Мои лиды",
   "nav./crm/archived.label": "Архив CRM",
   "nav./outbound-crm.label": "Outbound CRM",

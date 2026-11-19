@@ -148,7 +148,7 @@ function withFrontendPages(groups: SidebarGroup[], entries: SidebarItem[]): Side
 
 function navGroupOf(path: string): NavGroupKey {
   if (path === '/member/dashboard' || path === '/ceo/dashboard') return 'main'
-  if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony')) return 'sales'
+  if (path.startsWith('/crm') || path.startsWith('/outbound-crm') || path.startsWith('/telephony') || path.startsWith('/call-quality')) return 'sales'
   if (path.startsWith('/projects') || path.startsWith('/mindmap') || path.startsWith('/calendar') || path.startsWith('/files') || path.startsWith('/vault')) return 'work'
   if (path.startsWith('/cognilabsai') || path.startsWith('/ceo/ai')) return 'ai'
   if (['/ceo/website-stats', '/ceo/management', '/audit', '/ceo/workday-overrides'].some((prefix) => path.startsWith(prefix))) return 'system'

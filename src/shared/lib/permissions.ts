@@ -19,6 +19,7 @@ const moduleRoutes: Array<[prefix: string, module: RbacModuleName]> = [
   ['/crm/my-leads', 'customers'],
   ['/crm', 'crm'],
   ['/telephony', 'calls'],
+  ['/call-quality', 'call_quality'],
   ['/projects', 'projects'],
   ['/mindmap', 'mind_map'],
   ['/calendar', 'calendar'],
