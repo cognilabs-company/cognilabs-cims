@@ -273,12 +273,6 @@ export const telephonyQualityService = {
     return { enabled: isObject(raw) ? raw.enabled !== false : true }
   },
 
-  /** CEO diagnostics of the grading pipeline for the last `hours` hours (shape not fixed, so it stays loose). */
-  async diagnostics(hours = 24) {
-    const raw = await request<unknown>({ path: '/telephony-quality/diagnostics', query: { hours } })
-    return isObject(raw) ? raw : {}
-  },
-
   async setEnabled(enabled: boolean) {
     await request<unknown>({ path: '/telephony-quality/settings', method: 'PATCH', body: { enabled } })
     return { enabled }

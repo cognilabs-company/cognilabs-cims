@@ -157,16 +157,60 @@ const shareLook: Record<'post' | 'reel' | 'story', { icon: LucideIcon; labelKey:
   story: { icon: Radio, labelKey: 'chat.media.story', fallback: 'Instagram story', color: '#F59E0B' },
 }
 
+/** `https://www.instagram.com/reel/ABC/?igsh=…` → its embed page; stories (and anything else) have none. */
+function instagramEmbedUrl(link: string | null): string | null {
+  const match = link?.match(/^https?:\/\/(?:www\.)?instagram\.com\/(p|reels?|tv)\/([\w-]+)/i)
+  if (!match) return null
+  const type = match[1].toLowerCase().startsWith('reel') ? 'reel' : match[1].toLowerCase()
+  return `https://www.instagram.com/${type}/${match[2]}/embed/`
+}
+
+/** Instagram's own embed player, so the post / reel can be watched without leaving the chat. */
+function InstagramEmbed({ src, title }: { src: string; title: string }) {
+  const frame = useRef<HTMLIFrameElement>(null)
+  const [height, setHeight] = useState(540)
+
+  // The embed page reports its real height (the same message Instagram's embed.js listens for).
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== 'https://www.instagram.com' || event.source !== frame.current?.contentWindow) return
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+        const next = Number(data?.details?.height)
+        if (data?.type === 'MEASURE' && next > 0) setHeight(Math.min(Math.ceil(next), 900))
+      } catch { /* not ours */ }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  return (
+    <iframe
+      ref={frame}
+      src={src}
+      title={title}
+      loading="lazy"
+      scrolling="no"
+      allow="autoplay; encrypted-media; picture-in-picture; clipboard-write"
+      allowFullScreen
+      className="block w-full border-0 bg-white"
+      style={{ height }}
+    />
+  )
+}
+
 /** A post / reel / story the client sent or replied to. */
 function SharedPostCard({ piece }: { piece: MediaPiece }) {
   const { t } = useLocale()
   const look = shareLook[piece.kind as 'post' | 'reel' | 'story'] ?? shareLook.post
   const [thumbFailed, setThumbFailed] = useState(false)
-  const body = (
+  const showThumb = Boolean(piece.thumbnail) && !thumbFailed
+  const embed = showThumb ? null : instagramEmbedUrl(piece.link)
+  const header = (
     <>
-      {piece.thumbnail && !thumbFailed ? (
+      {showThumb ? (
         <span className="relative block aspect-[4/5] max-h-[260px] w-full overflow-hidden bg-[var(--muted-surface)]">
-          <img src={piece.thumbnail} alt="" loading="lazy" onError={() => setThumbFailed(true)} className="h-full w-full object-cover" />
+          <img src={piece.thumbnail ?? undefined} alt="" loading="lazy" onError={() => setThumbFailed(true)} className="h-full w-full object-cover" />
           {piece.kind === 'reel' ? <span className="absolute inset-0 grid place-items-center"><span className="grid h-12 w-12 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm"><Play size={20} fill="currentColor" strokeWidth={0} className="ml-0.5" /></span></span> : null}
         </span>
       ) : null}
@@ -182,6 +226,16 @@ function SharedPostCard({ piece }: { piece: MediaPiece }) {
     </>
   )
   const className = '-mx-1 mb-1.5 block min-w-[230px] overflow-hidden rounded-[12px] border border-[var(--tg-border)] bg-[var(--tg-bg)] transition-colors hover:border-[var(--border-hover)]'
+  // No thumbnail from the backend: play the post / reel right in the chat; the row below still opens Instagram.
+  if (embed) {
+    return (
+      <div className={cn(className, 'w-[min(340px,68vw)]')}>
+        <InstagramEmbed src={embed} title={t(look.labelKey, look.fallback)} />
+        {piece.link ? <a href={piece.link} target="_blank" rel="noreferrer" className="block border-t border-[var(--tg-border)]">{header}</a> : header}
+      </div>
+    )
+  }
+  const body = header
   return piece.link
     ? <a href={piece.link} target="_blank" rel="noreferrer" className={className}>{body}</a>
     : <div className={className}>{body}</div>

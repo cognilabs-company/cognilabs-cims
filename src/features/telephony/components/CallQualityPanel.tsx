@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Activity, BadgeCheck, ChevronDown, FileText, Loader2, RefreshCw, Save, UserRound } from 'lucide-react'
+import { BadgeCheck, ChevronDown, FileText, Loader2, RefreshCw, Save, UserRound } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
@@ -232,99 +232,6 @@ function GradedCall({ item }: { item: CallQuality }) {
   )
 }
 
-type Loose = Record<string, unknown>
-
-function diagValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—'
-  if (typeof value === 'boolean') return value ? '✓' : '✗'
-  if (typeof value === 'number') return value.toLocaleString('ru-RU')
-  if (typeof value === 'string') return value
-  if (Array.isArray(value)) return String(value.length)
-  return ''
-}
-
-/** Labels for the fields GET /telephony-quality/diagnostics returns today; anything new shows under its raw key. */
-const DIAG_LABELS: Record<string, [string, string]> = {
-  'summary.total_calls': ['quality.diag.total_calls', 'Calls'],
-  'summary.answered_calls': ['quality.diag.answered_calls', 'Answered'],
-  'summary.recorded_calls': ['quality.diag.recorded_calls', 'Recorded'],
-  'summary.short_answered_calls': ['quality.diag.short_answered_calls', 'Answered but very short'],
-  'summary.average_talk_seconds': ['quality.diag.average_talk_seconds', 'Average talk time, sec'],
-}
-
-/**
- * Rows of a diagnostics answer ({hours, summary:{…}, hangup_causes:[{cause, count}]}): known fields get a label,
- * lists of {name, count} become one row each, other scalars and one nested level show under their key.
- */
-function diagRows(raw: Loose, t: (key: string, fallback: string) => string) {
-  const rows: Array<[string, string]> = []
-  const label = (path: string) => (DIAG_LABELS[path] ? t(...DIAG_LABELS[path]) : path.replace('.', ' · '))
-  for (const [key, value] of Object.entries(raw)) {
-    if (key === 'hours') continue
-    if (Array.isArray(value)) {
-      const prefix = key === 'hangup_causes' ? t('quality.diag.hangup_cause', 'Hang-up') : key
-      for (const entry of value) {
-        if (!entry || typeof entry !== 'object') continue
-        const item = entry as Loose
-        const name = item.cause ?? item.name ?? item.status ?? item.key
-        if (name !== undefined) rows.push([`${prefix} · ${String(name)}`, diagValue(item.count ?? item.total ?? item.value)])
-      }
-    } else if (value && typeof value === 'object') {
-      for (const [inner, innerValue] of Object.entries(value as Loose)) {
-        const text = diagValue(innerValue)
-        if (text) rows.push([label(`${key}.${inner}`), text])
-      }
-    } else {
-      rows.push([label(key), diagValue(value)])
-    }
-  }
-  return rows
-}
-
-/** CEO only: what the grading pipeline did in the last 24 hours (GET /telephony-quality/diagnostics). */
-function DiagnosticsCard() {
-  const { t } = useLocale()
-  const [open, setOpen] = useState(false)
-  const [data, setData] = useState<Loose | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  function toggle() {
-    const next = !open
-    setOpen(next)
-    if (!next || data) return
-    setError(null)
-    telephonyQualityService.diagnostics(24).then(setData).catch((cause: unknown) => setError(getApiErrorMessage(cause)))
-  }
-
-  const rows = data ? diagRows(data, t) : []
-  return (
-    <section className="rounded-[18px] bg-[var(--surface)] ring-1 ring-[var(--border)]">
-      <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-left">
-        <Activity size={15} className="text-[var(--primary)]" />
-        <span className="text-[13px] font-semibold text-[var(--muted-strong)]">{t('quality.diag.title', 'Diagnostics, last 24 hours')}</span>
-        <ChevronDown size={15} className={cn('ml-auto text-[var(--muted)] transition-transform', open && 'rotate-180')} />
-      </button>
-      {open ? (
-        <div className="border-t border-[var(--border)] px-4 py-3">
-          {error ? <p role="alert" className="text-[12.5px] text-[var(--danger-text)]">{error}</p>
-            : !data ? <p className="flex items-center gap-2 text-[12.5px] text-[var(--muted)]"><Loader2 size={14} className="animate-spin" />{t('common.loading', 'Loading…')}</p>
-            : !rows.length ? <p className="text-[12.5px] text-[var(--muted)]">{t('quality.diag.empty', 'Nothing to report.')}</p>
-            : (
-              <dl className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-                {rows.map(([label, value]) => (
-                  <div key={label} className="flex items-baseline justify-between gap-3 text-[12.5px]">
-                    <dt className="truncate text-[var(--muted)]">{label}</dt>
-                    <dd className="truncate font-semibold text-[var(--foreground)] tabular-nums">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
 /** Calls → "Grades" tab: average grades, the script, and every graded call. */
 export function CallQualityPanel({ isCeo }: { isCeo: boolean }) {
   const { t } = useLocale()
@@ -388,8 +295,6 @@ export function CallQualityPanel({ isCeo }: { isCeo: boolean }) {
       </div>
 
       <ScriptCard editable={isCeo} />
-
-      {isCeo ? <DiagnosticsCard /> : null}
 
       {stats ? (
         <section className="rounded-[18px] bg-[var(--surface)] p-4 ring-1 ring-[var(--border)]">
