@@ -105,6 +105,9 @@ export function AccessVaultPage() {
   const [people, setPeople] = useState<CalendarUser[]>([])
   const [peopleLoading, setPeopleLoading] = useState(false)
   const [editor, setEditor] = useState<VaultEditorTarget | null>(null)
+  /** Grants saved or read (detail API) in this session — the list API does not return them, so the cards show these. */
+  const [savedGrants, setSavedGrants] = useState<Record<number, number[]>>({})
+  const rememberGrants = useCallback((itemId: number, userIds: number[]) => setSavedGrants((current) => ({ ...current, [itemId]: userIds })), [])
   const editorKey = editor ? `${editor.mode}-${editor.mode === 'create' ? 'new' : editor.item.id}` : 'closed'
   const [saving, setSaving] = useState(false)
   const [auditItem, setAuditItem] = useState<VaultItem | null>(null)
@@ -184,6 +187,7 @@ export function AccessVaultPage() {
         const created = await accessVaultService.create({ ...payload, granted_user_ids: grantees })
         // Older backends ignore granted_user_ids on create — set them explicitly.
         if (created && grantees.length) await accessVaultService.setGrants(created.id, grantees).catch(() => undefined)
+        if (created) setSavedGrants((current) => ({ ...current, [created.id]: grantees }))
         showToast({ title: t('vault.saved_new', 'Access saved'), description: payload.title, tone: 'success' })
       } else if (editor.mode === 'edit') {
         await accessVaultService.update(editor.item.id, payload)
@@ -191,6 +195,7 @@ export function AccessVaultPage() {
         showToast({ title: t('vault.saved', 'Changes saved'), tone: 'success' })
       } else {
         await accessVaultService.setGrants(editor.item.id, grantees)
+        setSavedGrants((current) => ({ ...current, [editor.item.id]: grantees }))
         showToast({ title: t('vault.grants_saved', 'Access updated'), description: t('vault.people_count', '{{count}} people', { count: grantees.length }), tone: 'success' })
       }
       setEditor(null)
@@ -226,10 +231,15 @@ export function AccessVaultPage() {
     for (const item of items ?? []) out.set(categoryOf(item.category).value, (out.get(categoryOf(item.category).value) ?? 0) + 1)
     return out
   }, [items])
-  const visible = (items ?? []).filter((item) =>
+  const withGrants = useCallback((item: VaultItem): VaultItem => {
+    const saved = item.granteesKnown ? undefined : savedGrants[item.id]
+    if (!saved) return item
+    return { ...item, granteesKnown: true, grantees: saved.map((id) => ({ id, name: people.find((person) => person.id === id)?.name ?? `#${id}` })) }
+  }, [savedGrants, people])
+  const visible = (items ?? []).map(withGrants).filter((item) =>
     (!category || categoryOf(item.category).value === category)
     && (!needle || [item.title, item.login, item.url, item.notes].some((value) => value?.toLowerCase().includes(needle))))
-  const sharedCount = (items ?? []).filter((item) => item.grantees.length > 0).length
+  const sharedCount = (items ?? []).map(withGrants).filter((item) => item.grantees.length > 0).length
 
   return (
     <section className="flex flex-col gap-4">
@@ -347,7 +357,7 @@ export function AccessVaultPage() {
         </>
       )}
 
-      <VaultEditorDialog key={editorKey} target={editor} people={people} peopleLoading={peopleLoading} saving={saving} onClose={() => setEditor(null)} onSave={(payload, grantees) => void save(payload, grantees)} />
+      <VaultEditorDialog key={editorKey} target={editor} people={people} peopleLoading={peopleLoading} saving={saving} onClose={() => setEditor(null)} onSave={(payload, grantees) => void save(payload, grantees)} onGrantsLoaded={rememberGrants} />
 
       <Dialog
         open={auditItem !== null}

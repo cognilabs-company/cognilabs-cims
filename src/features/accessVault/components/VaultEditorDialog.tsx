@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react'
-import { Eye, EyeOff, KeyRound, Pencil, Plus, Sparkles } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Eye, EyeOff, KeyRound, Loader2, Pencil, Plus, RefreshCw, Sparkles } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import type { CalendarUser } from '../../../shared/api/services/calendar.service'
-import type { VaultItem, VaultItemPayload } from '../../../shared/api/services/accessVault.service'
+import { accessVaultService, type VaultItem, type VaultItemPayload } from '../../../shared/api/services/accessVault.service'
+import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
 import { Button } from '../../../shared/ui/button'
 import { Dialog } from '../../../shared/ui/dialog'
@@ -30,13 +31,15 @@ export type VaultEditorTarget = { mode: 'create' } | { mode: 'edit'; item: Vault
  * New access / edit / "who has access" — one dialog. When editing, the secret field stays empty and
  * the old secret is kept unless a new one is typed.
  */
-export function VaultEditorDialog({ target, people, peopleLoading, saving, onClose, onSave }: {
+export function VaultEditorDialog({ target, people, peopleLoading, saving, onClose, onSave, onGrantsLoaded }: {
   target: VaultEditorTarget | null
   people: CalendarUser[]
   peopleLoading: boolean
   saving: boolean
   onClose: () => void
   onSave: (payload: VaultItemPayload, grantees: number[]) => void
+  /** The current grants read from the detail API, so the page can show them on the card too. */
+  onGrantsLoaded?: (itemId: number, userIds: number[]) => void
 }) {
   const { t } = useLocale()
   const item = target && target.mode !== 'create' ? target.item : null
@@ -52,12 +55,45 @@ export function VaultEditorDialog({ target, people, peopleLoading, saving, onClo
   const [submitted, setSubmitted] = useState(false)
 
   const onlyGrants = target?.mode === 'grants'
+  // The list API never carries the grants, so "who has access" reads GET /access-vault/{id} first.
+  // Until that answer is in, Save stays off: PUT /grants replaces the whole list and an empty list removes everyone.
+  const needsGrants = onlyGrants && item !== null && !item.granteesKnown
+  const [grantsState, setGrantsState] = useState<'loading' | 'ready' | 'failed'>(needsGrants ? 'loading' : 'ready')
+  const [grantsError, setGrantsError] = useState<string | null>(null)
+  const [grantsAttempt, setGrantsAttempt] = useState(0)
+  const [initialGrantees, setInitialGrantees] = useState<number[]>(() => item?.grantees.map((person) => person.id) ?? [])
+  const itemId = item?.id ?? null
+
+  useEffect(() => {
+    if (!needsGrants || itemId === null) return
+    let alive = true
+    accessVaultService.get(itemId)
+      .then((detail) => {
+        if (!alive) return
+        if (!detail.granteesKnown) throw new Error('no granted_user_ids')
+        const ids = detail.grantees.map((person) => person.id)
+        setGrantees(ids)
+        setInitialGrantees(ids)
+        setGrantsState('ready')
+        onGrantsLoaded?.(itemId, ids)
+      })
+      .catch((cause: unknown) => {
+        if (!alive) return
+        setGrantsError(getApiErrorMessage(cause))
+        setGrantsState('failed')
+      })
+    return () => { alive = false }
+  }, [needsGrants, itemId, grantsAttempt, onGrantsLoaded])
+
+  const grantsBlocked = onlyGrants && grantsState !== 'ready'
+  const removesEveryone = onlyGrants && grantsState === 'ready' && grantees.length === 0 && initialGrantees.length > 0
   const creating = target?.mode === 'create'
   const titleError = submitted && !title.trim() ? t('vault.editor.title_required', 'Give the access a name.') : null
   const secretError = submitted && creating && !secret ? t('vault.editor.secret_required', 'Enter the password or key.') : null
 
   function submit() {
     setSubmitted(true)
+    if (grantsBlocked) return
     if (!onlyGrants && (!title.trim() || (creating && !secret))) return
     onSave({
       title: title.trim(),
@@ -84,7 +120,7 @@ export function VaultEditorDialog({ target, people, peopleLoading, saving, onClo
       footer={(
         <>
           <Button variant="secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</Button>
-          <Button onClick={submit} loading={saving}>{creating ? t('vault.editor.create', 'Save access') : t('common.save', 'Save')}</Button>
+          <Button onClick={submit} loading={saving} disabled={grantsBlocked}>{creating ? t('vault.editor.create', 'Save access') : t('common.save', 'Save')}</Button>
         </>
       )}
     >
@@ -148,7 +184,20 @@ export function VaultEditorDialog({ target, people, peopleLoading, saving, onClo
         {target?.mode === 'edit' ? null : (
           <div>
             <p className="mb-1.5 text-[12.5px] font-medium text-[var(--muted-strong)]">{t('vault.editor.people', 'Who has access')}</p>
-            <PeoplePicker people={people} selected={grantees} onChange={setGrantees} loading={peopleLoading} />
+            {onlyGrants && grantsState === 'loading' ? (
+              <p className="flex items-center gap-2 py-6 text-[12.5px] text-[var(--muted)]"><Loader2 size={14} className="animate-spin" />{t('vault.grants.loading', 'Loading who has access…')}</p>
+            ) : onlyGrants && grantsState === 'failed' ? (
+              <div role="alert" className="flex flex-wrap items-center gap-2 rounded-[10px] bg-[var(--danger-dim)] px-3 py-2 text-[12px] leading-[1.5] text-[var(--danger-text)]">
+                <span className="min-w-0 flex-1">{t('vault.grants.load_failed', 'Could not load the current list, so it cannot be changed now.')}{grantsError ? ` (${grantsError})` : ''}</span>
+                <Button type="button" variant="secondary" leftIcon={<RefreshCw size={13} />} onClick={() => { setGrantsState('loading'); setGrantsError(null); setGrantsAttempt((value) => value + 1) }}>{t('common.retry', 'Retry')}</Button>
+              </div>
+            ) : null}
+            {removesEveryone ? (
+              <p className="mb-2 rounded-[10px] border border-[var(--warning-border)] bg-[var(--warning-dim)] px-3 py-2 text-[12px] leading-[1.5] text-[var(--warning-text)]">
+                {t('vault.grants.remove_all_warning', 'Nobody is ticked: saving removes access for everyone except managers.')}
+              </p>
+            ) : null}
+            {grantsBlocked ? null : <PeoplePicker people={people} selected={grantees} onChange={setGrantees} loading={peopleLoading} />}
           </div>
         )}
       </form>

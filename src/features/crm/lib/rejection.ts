@@ -2,10 +2,10 @@
 
 const key = (value: string | null | undefined) => (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
 
-/** "rejected", "Rejected", "reject", "rad_etildi"… */
+/** Only the status named exactly `rejected` (any case) — the backend stores the reason only for that status and
+    clears it on any other one, so asking for a reason on look-alike custom statuses would lose it. */
 export function isRejectedStatus(status: string | null | undefined) {
-  const value = key(status)
-  return value.includes('reject') || value.includes('radetil') || value === 'otkaz' || value === 'lost'
+  return key(status) === 'rejected'
 }
 
 /** Shortest reason the backend gets (a single word like "qimmat" is not enough to learn from). */

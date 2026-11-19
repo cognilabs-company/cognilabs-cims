@@ -85,9 +85,13 @@ export function CardDetailModal({
     }
   }, [open, onClose])
 
-  useEffect(() => {
+  // Back to the first image whenever another card is shown or the modal reopens.
+  const imageResetKey = `${card?.id ?? ''}:${open}`
+  const [imageIndexKey, setImageIndexKey] = useState(imageResetKey)
+  if (imageIndexKey !== imageResetKey) {
+    setImageIndexKey(imageResetKey)
     setSelectedImageIndex(0)
-  }, [card?.id, open])
+  }
 
   if (!open || !card) return null
 

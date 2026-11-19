@@ -87,7 +87,11 @@ export function ProjectFormModal({
     { enabled: open },
   )
 
-  useEffect(() => {
+  // Reset the form when the modal opens or gets another record. Done during
+  // render (not in an effect) so the stale values never paint.
+  const [syncedWith, setSyncedWith] = useState({ open: false, initial })
+  if (syncedWith.open !== open || syncedWith.initial !== initial) {
+    setSyncedWith({ open, initial })
     if (open) {
       if (initial) {
         setValues({
@@ -108,7 +112,7 @@ export function ProjectFormModal({
 
       setErrors({})
     }
-  }, [open, initial])
+  }
 
   useEffect(() => {
     return () => {

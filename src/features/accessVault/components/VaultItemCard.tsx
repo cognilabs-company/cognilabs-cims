@@ -138,7 +138,9 @@ export function VaultItemCard({ item, secret, revealing, canManage, onReveal, on
           <span className="truncate text-[12px] text-[var(--muted)]">
             {item.grantees.length
               ? t('vault.card.people', '{{count}} people have access', { count: item.grantees.length })
-              : t('vault.card.only_admins', 'Only managers')}
+              : item.granteesKnown
+                ? t('vault.card.only_admins', 'Only managers')
+                : t('vault.card.grants_unknown', 'Who has access')}
           </span>
         </button>
         {!item.isActive ? <span className="rounded-[6px] bg-[var(--muted-surface)] px-1.5 py-0.5 text-[10.5px] font-semibold text-[var(--muted-strong)] uppercase">{t('vault.card.inactive', 'Archived')}</span> : null}

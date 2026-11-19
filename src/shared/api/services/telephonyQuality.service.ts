@@ -42,16 +42,38 @@ export type CallQuality = {
 
 export type QualityStats = {
   analyzed: number
+  /** Waiting in the queue plus being graded right now: the backend's `pending` already includes `processing`. */
   pending: number
+  /** Being graded right now (part of `pending`, never add the two). */
+  processing: number
   failed: number
   average: number | null
   callScript: number | null
   analysis: number | null
   salesScript: number | null
-  bySeller: Array<{ name: string; count: number; average: number | null }>
+  /** Completed analyses only, already sorted by `average` descending. The three part-scores exist only at the top level. */
+  bySeller: Array<{ userId: number | null; name: string; count: number; average: number | null }>
 }
 
-export type SalesScript = { title: string; content: string; updatedAt: string | null; updatedBy: string | null }
+/** `callScript` and `salesScript` are graded separately (call_script_score / sales_script_score);
+    `content` is the older single text, still sent so the backend keeps its general rules. */
+export type SalesScript = { title: string; content: string; callScript: string; salesScript: string; updatedAt: string | null; updatedBy: string | null }
+
+export type SalesScriptInput = Pick<SalesScript, 'title' | 'content' | 'callScript' | 'salesScript'>
+
+/** `dateFrom` / `dateTo` are ISO 8601 with an offset (e.g. 2026-11-19T00:00:00+05:00), applied to the call's
+    `started_at` inclusively. A bare YYYY-MM-DD would be read as UTC midnight, and `date_to` as the start of that day. */
+export type QualityStatsFilter = { dateFrom?: string; dateTo?: string; userId?: number }
+
+const pad = (value: number, size = 2) => String(value).padStart(size, '0')
+
+/** Start (00:00:00) or end (23:59:59.999999) of the Tashkent calendar day `daysAgo` days before today, as ISO 8601 +05:00.
+    Tashkent has no DST, so the offset is fixed. */
+export function tashkentDayBound(daysAgo: number, edge: 'start' | 'end') {
+  const shifted = new Date(Date.now() + 5 * 3_600_000 - daysAgo * 86_400_000)
+  const day = `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`
+  return `${day}T${edge === 'start' ? '00:00:00' : '23:59:59.999999'}+05:00`
+}
 
 type Loose = Record<string, unknown>
 
@@ -68,15 +90,14 @@ function listOf(value: unknown, keys = ['items', 'results', 'data', 'calls', 'an
   return []
 }
 
-/** 0–1, 0–10, 0–5 or 0–100 → 0–100. */
+/** The backend scores (overall and every criterion) are integers 0–100; a score with its own `max` is scaled to 0–100.
+    No guessing of 0–10 scales: a real 8/100 must stay 8, not become 80. */
 function percent(value: unknown, max?: unknown): number | null {
   const score = num(value)
   if (score === null) return null
   const outOf = num(max)
-  if (outOf && outOf > 0) return Math.round((score / outOf) * 100)
-  if (score <= 1 && !Number.isInteger(score)) return Math.round(score * 100)
-  if (score <= 10) return Math.round(score * 10)
-  return Math.round(Math.min(100, score))
+  const scaled = outOf && outOf > 0 ? (score / outOf) * 100 : score
+  return Math.round(Math.max(0, Math.min(100, scaled)))
 }
 
 function firstScore(source: Loose, keys: string[]) {
@@ -175,16 +196,18 @@ function normalizeStats(raw: unknown): QualityStats {
   const byStatus = isObject(source.by_status) ? source.by_status : isObject(source.status_counts) ? source.status_counts : {}
   return {
     analyzed: num(source.analyzed) ?? num(source.completed) ?? num(byStatus.completed) ?? num(source.total_analyzed) ?? 0,
-    pending: (num(source.pending) ?? num(byStatus.pending) ?? 0) + (num(source.processing) ?? num(byStatus.processing) ?? 0),
+    pending: num(source.pending) ?? num(byStatus.pending) ?? 0,
+    processing: num(source.processing) ?? num(byStatus.processing) ?? 0,
     failed: num(source.failed) ?? num(byStatus.failed) ?? 0,
     average: firstScore(source, ['average_score', 'avg_score', 'average', 'avg_overall_score', 'overall_average']),
     callScript: firstScore(source, ['avg_call_script_score', 'call_script_average', 'avg_script_score']),
     analysis: firstScore(source, ['avg_analysis_score', 'analysis_average']),
     salesScript: firstScore(source, ['avg_sales_script_score', 'sales_script_average', 'avg_sales_score']),
     bySeller: listOf(source.by_user ?? source.by_seller ?? source.users ?? [], ['items']).filter(isObject).map((entry) => ({
-      name: str(entry.user_name) ?? str(entry.name) ?? str(entry.full_name) ?? '—',
-      count: num(entry.count) ?? num(entry.analyzed) ?? num(entry.total) ?? 0,
-      average: firstScore(entry, ['average_score', 'avg_score', 'average']),
+      userId: num(entry.user_id) ?? num(entry.id),
+      name: str(entry.user_name) ?? str(entry.full_name) ?? str(entry.name) ?? '—',
+      count: num(entry.count) ?? num(entry.completed) ?? num(entry.analyzed) ?? num(entry.total) ?? 0,
+      average: firstScore(entry, ['average_score', 'avg_score', 'average', 'avg_overall_score']),
     })),
   }
 }
@@ -194,6 +217,8 @@ function normalizeScript(raw: unknown): SalesScript {
   return {
     title: str(source.title) ?? '',
     content: str(source.content) ?? str(source.text) ?? '',
+    callScript: str(source.call_script) ?? '',
+    salesScript: str(source.sales_script) ?? '',
     updatedAt: str(source.updated_at),
     updatedBy: str(source.updated_by_name) ?? (isObject(source.updated_by) ? str(source.updated_by.full_name) : null),
   }
@@ -224,16 +249,23 @@ export const telephonyQualityService = {
     return normalizeCallQuality(await request<unknown>({ path: `/telephony-quality/calls/${callId}/analyze`, method: 'POST', body: { force } }), callId)
   },
 
-  async stats() {
-    return normalizeStats(await request<unknown>({ path: '/telephony-quality/stats' }))
+  async stats(filter: QualityStatsFilter = {}) {
+    return normalizeStats(await request<unknown>({
+      path: '/telephony-quality/stats',
+      query: { date_from: filter.dateFrom, date_to: filter.dateTo, user_id: filter.userId },
+    }))
   },
 
   async script() {
     return normalizeScript(await request<unknown>({ path: '/telephony-quality/script' }))
   },
 
-  async saveScript(title: string, content: string) {
-    return normalizeScript(await request<unknown>({ path: '/telephony-quality/script', method: 'PUT', body: { title, content } }))
+  async saveScript(script: SalesScriptInput) {
+    return normalizeScript(await request<unknown>({
+      path: '/telephony-quality/script',
+      method: 'PUT',
+      body: { title: script.title, content: script.content, call_script: script.callScript || null, sales_script: script.salesScript || null },
+    }))
   },
 
   async settings() {

@@ -87,8 +87,8 @@ export function TelephonyPage() {
   const isCeo = user?.role === 'CEO'
   // RBAC calls:create shows the call buttons at all; canDial says whether the line can call right now.
   const mayCall = can('calls', 'create')
-  // RBAC call_quality:view opens the AI grades tab (the CEO always has it).
-  const mayGrade = isCeo || can('call_quality', 'view')
+  // The /telephony-quality API is CEO/admin-only for now (call_quality:view alone gets 403), so only the CEO sees the tab.
+  const mayGrade = isCeo
   const canCall = canDial
   const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, () => true)
 

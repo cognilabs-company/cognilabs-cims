@@ -15,6 +15,10 @@ export type VaultItem = {
   notes: string | null
   isActive: boolean
   grantees: VaultGrantee[]
+  /** False when the answer has no grants at all — the list (GET /access-vault) never sends them, only the
+      CEO detail (GET /access-vault/{id}) does — so an empty `grantees` means "unknown", not "nobody".
+      PUT /{id}/grants replaces the whole list. */
+  granteesKnown: boolean
   createdByName: string | null
   createdAt: string | null
   updatedAt: string | null
@@ -95,6 +99,7 @@ export function normalizeVaultItem(raw: unknown): VaultItem | null {
     notes: str(item.notes),
     isActive: item.is_active !== false,
     grantees: normalizeGrantees(item),
+    granteesKnown: ['grants', 'granted_users', 'users', 'granted_user_ids'].some((key) => Array.isArray(item[key])),
     createdByName: personName(item.created_by_user ?? item.owner) ?? str(item.created_by_name) ?? str(item.created_by_full_name),
     createdAt: str(item.created_at),
     updatedAt: str(item.updated_at),
@@ -144,6 +149,13 @@ export const accessVaultService = {
       if (batch.length < pageSize || (total !== null && all.length >= total)) break
     }
     return all
+  },
+
+  /** CEO detail: the only answer that carries `granted_user_ids`. */
+  async get(id: number) {
+    const item = normalizeVaultItem(await request<unknown>({ path: `/access-vault/${id}` }))
+    if (!item) throw new Error('Empty access-vault item')
+    return item
   },
 
   async create(payload: VaultItemPayload) {

@@ -68,8 +68,15 @@ function shareKind(link: string): MediaKind {
 export function extractMedia(msg: MessageItem): { pieces: MediaPiece[]; text: string; placeholder: MediaKind | null } {
   const pieces: MediaPiece[] = []
   const attachments = [...(msg.attachments ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+  // The backend has no uniqueness on attachments, so the same media can arrive twice; show it once.
+  const seen = new Set<string>()
   attachments.forEach((item: MessageAttachment, index) => {
     if (isStickerMediaType(item.attachment_type)) return
+    const identity = item.url ?? item.media_id ?? item.thumbnail_url
+    if (identity) {
+      if (seen.has(identity)) return
+      seen.add(identity)
+    }
     const type = (item.attachment_type ?? '').toLowerCase()
     if (NON_MEDIA_TYPES.has(type) && !item.url) return
     if (!item.url && !item.thumbnail_url && !item.media_id) return

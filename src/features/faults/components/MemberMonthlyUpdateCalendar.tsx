@@ -400,10 +400,15 @@ export function MemberMonthlyUpdateCalendarBoard({
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [isFocusPanelOpen, setIsFocusPanelOpen] = useState(false)
 
-  useEffect(() => {
+  // Reset the selection when the visible month changes (adjusting state during
+  // render instead of in an effect avoids an extra cascading render).
+  const monthKey = `${calendar.year}-${calendar.month}`
+  const [selectionMonthKey, setSelectionMonthKey] = useState(monthKey)
+  if (selectionMonthKey !== monthKey) {
+    setSelectionMonthKey(monthKey)
     setSelectedDate(null)
     setIsFocusPanelOpen(false)
-  }, [calendar.month, calendar.year])
+  }
 
   useEffect(() => {
     if (!isFocusPanelOpen) {
