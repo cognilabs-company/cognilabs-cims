@@ -818,6 +818,7 @@
   "customers.table.notes": "Заметки",
   "customers.table.phone": "Телефон",
   "customers.table.recall": "Время повторной связи",
+  "customers.table.open_calendar": "Открыть в календаре",
   "customers.table.status": "Статус",
   "customers.toast.created.title": "Клиент создан",
   "customers.toast.deleted.description": "{{name}} удалён из списка CRM.",

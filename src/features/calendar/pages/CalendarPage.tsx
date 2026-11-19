@@ -157,8 +157,11 @@ export function CalendarPage() {
     const match = focus.customerId
       ? items.find((event) => event.kind === focus.kind && event.customerId === focus.customerId && dayOf(event.start) === focus.date)
         ?? items.find((event) => event.kind === focus.kind && event.customerId === focus.customerId)
+        // The backend decides recall vs meeting; fall back to the lead's other CRM event that day.
+        ?? items.find((event) => (event.kind === 'recall' || event.kind === 'meeting') && event.customerId === focus.customerId && dayOf(event.start) === focus.date)
       : null
     if (match) {
+      if (match.kind !== focus.kind) setTypes((previous) => (previous.includes(match.kind) ? previous : [...previous, match.kind]))
       setSelectedEventId(match.id)
       setSelectedDay(dayOf(match.start))
     } else if (focus.customerId) {

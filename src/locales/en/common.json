@@ -818,6 +818,7 @@
   "customers.table.notes": "Notes",
   "customers.table.phone": "Phone",
   "customers.table.recall": "Recall time",
+  "customers.table.open_calendar": "Open in calendar",
   "customers.table.status": "Status",
   "customers.toast.created.title": "Customer created",
   "customers.toast.deleted.description": "{{name}} has been removed from the CRM list.",

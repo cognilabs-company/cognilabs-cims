@@ -818,6 +818,7 @@
   "customers.table.notes": "Izohlar",
   "customers.table.phone": "Telefon",
   "customers.table.recall": "Qayta aloqa vaqti",
+  "customers.table.open_calendar": "Kalendarda ochish",
   "customers.table.status": "Holat",
   "customers.toast.created.title": "Mijoz yaratildi",
   "customers.toast.deleted.description": "{{name}} CRM ro'yxatidan olib tashlandi.",

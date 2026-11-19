@@ -2,7 +2,7 @@
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlarmClock, Archive as ArchiveIcon, ArrowRight, Bot, CircleDashed, ListTodo, NotebookPen, Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react'
+import { AlarmClock, Archive as ArchiveIcon, ArrowRight, Bot, CalendarDays, CircleDashed, ListTodo, NotebookPen, Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react'
 import { env } from '../../../shared/config/env'
 import type { CustomerSummary, DynamicStatusOption } from '../../../shared/api/types'
 import { useConfirm } from '../../../shared/confirm/useConfirm'
@@ -18,6 +18,7 @@ import {
 import { formatNumericDateTime } from '../../../shared/lib/format'
 import { useToast } from '../../../shared/toast/useToast'
 import { getRecallTimeTone, getRecallTimeToneClasses } from '../lib/recallTime'
+import { wallFromInstant } from '../lib/tashkentTime'
 import { Button } from '../../../shared/ui/button'
 import { DataGrid, type GridColumn } from '../../../shared/ui/data-grid'
 import type { SelectFieldOption } from '../../../shared/ui/select-field'
@@ -494,6 +495,32 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const { can } = useAuth()
   // RBAC "customers" actions (the outbound CRM is not an RBAC module and keeps its own rules).
   const mayCustomers = (action: string) => crmKind === 'outbound' || can('customers', action)
+  // Leads with a scheduled time get a small button next to the name that opens it in the calendar.
+  // Calendar events link to inbound CRM customers, so outbound leads don't get it.
+  const canOpenCalendar = crmKind !== 'outbound' && can('calendar', 'view')
+  function renderCalendarLink(row: CustomerSummary) {
+    const ms = row.recall_time ? new Date(row.recall_time).getTime() : Number.NaN
+    if (Number.isNaN(ms)) return null
+    const wall = wallFromInstant(ms)
+    const focus = normalizeStatusKey(row.status ?? '') === 'meetingscheduled' ? 'meeting' : 'recall'
+    const label = t('customers.table.open_calendar', 'Open in calendar')
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          const params = new URLSearchParams({ date: wall.date, customer_id: String(row.id), focus })
+          navigate(`/calendar?${params.toString()}`)
+        }}
+        aria-label={label}
+        title={`${label} · ${formatDateTime(row.recall_time)}`}
+        className="inline-flex h-5 shrink-0 items-center gap-px rounded-[6px] border border-[var(--border)] bg-[var(--surface)] px-1 text-[var(--muted)] transition-all hover:border-[var(--primary)] hover:bg-[var(--blue-dim)] hover:text-[var(--primary)] active:scale-90"
+      >
+        <CalendarDays size={12} />
+        <ArrowRight size={10} />
+      </button>
+    )
+  }
   const canCreateCustomer = mayCustomers('create')
   const canEditCustomer = mayCustomers('edit')
   const canDeleteCustomer = mayCustomers('delete')
@@ -1271,6 +1298,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           <span className="flex min-w-0 items-center gap-2.5">
             <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-bold ring-2 ring-[var(--surface)]', avatarTone(name))}>{initialsFor(name)}</span>
             <span className="truncate font-semibold text-[var(--foreground)] transition-colors group-hover/row:text-[var(--primary)]">{name}</span>
+            {canOpenCalendar ? renderCalendarLink(row) : null}
           </span>
         )
       },
