@@ -37,6 +37,8 @@ import { statusIconFor, statusKpiIconFor } from '../lib/statusIcon'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
 import { RejectReasonDialog } from '../components/RejectReasonDialog'
+import { PreviousStatus } from '../components/PreviousStatus'
+import { rememberPreviousStatus } from '../lib/previousStatus'
 import { isRejectedStatus, rejectionReasonError } from '../lib/rejection'
 import { useRejectionReason } from '../lib/useRejectionReason'
 import { useCrmScope } from '../lib/crmScope'
@@ -1036,6 +1038,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     syncCustomerInUi({ ...customer, status: nextStatus, ...(rejectionReason ? { rejection_reason: rejectionReason, rejected_at: new Date().toISOString() } : {}) })
     try {
       await crmService.patchCustomer(customer.id, formData)
+      rememberPreviousStatus(crmKind, customer.id, nextStatus, customer.status)
       showToast({
         title: t('customers.toast.status_changed', 'Status changed'),
         description: t('customers.toast.status_changed_description', '{{name}} → {{status}}', {
@@ -1340,23 +1343,32 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     {
       key: 'status',
       header: t('customers.table.status', 'Status'),
-      width: 210,
+      width: 320,
       sortValue: (row) => row.status,
       exportValue: (row) => statusMetaFor(row.status).label,
       render: (row) => {
         const meta = statusMetaFor(row.status)
-        if (!canEditCustomer) return <StatusPill label={meta.label} color={meta.color} icon={meta.icon} />
+        const renderPrevious = (previous: string) => {
+          const previousMeta = statusMetaFor(previous)
+          return <StatusPill label={previousMeta.label} color={previousMeta.color} icon={previousMeta.icon} />
+        }
         return (
-          <StatusSelect
-            current={row.status}
-            label={meta.label}
-            color={meta.color}
-            icon={meta.icon}
-            options={statusChoices}
-            saving={savingStatusId === row.id}
-            title={t('customers.table.change_status', 'Change status')}
-            onChange={(next) => void handleInlineStatusChange(row, next)}
-          />
+          <PreviousStatus customerId={row.id} status={row.status} renderPrevious={renderPrevious}>
+            {canEditCustomer ? (
+              <StatusSelect
+                current={row.status}
+                label={meta.label}
+                color={meta.color}
+                icon={meta.icon}
+                options={statusChoices}
+                saving={savingStatusId === row.id}
+                title={t('customers.table.change_status', 'Change status')}
+                onChange={(next) => void handleInlineStatusChange(row, next)}
+              />
+            ) : (
+              <StatusPill label={meta.label} color={meta.color} icon={meta.icon} />
+            )}
+          </PreviousStatus>
         )
       },
     },
