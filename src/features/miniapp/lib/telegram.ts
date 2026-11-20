@@ -1,5 +1,7 @@
 /* Telegram Mini App SDK (https://core.telegram.org/bots/webapps) — only the parts CIMS uses. */
 
+import { useEffect, useRef } from 'react'
+
 export type TgLocationData = {
   latitude: number
   longitude: number
@@ -38,6 +40,12 @@ export type TgWebApp = {
     selectionChanged: () => void
   }
   LocationManager?: TgLocationManager
+  BackButton?: {
+    show: () => void
+    hide: () => void
+    onClick: (handler: () => void) => void
+    offClick: (handler: () => void) => void
+  }
 }
 
 type TelegramWindow = Window & { Telegram?: { WebApp?: TgWebApp } }
@@ -81,4 +89,21 @@ export function haptic(kind: 'tap' | 'success' | 'error' | 'warning' | 'select')
     else if (kind === 'select') feedback.selectionChanged()
     else feedback.notificationOccurred(kind)
   } catch { /* old clients */ }
+}
+
+/** While `active`, Telegram's own Back button (top-left) runs `onBack` — closes sheets and the camera. */
+export function useTelegramBack(active: boolean, onBack: () => void) {
+  const handlerRef = useRef(onBack)
+  useEffect(() => {
+    handlerRef.current = onBack
+  })
+  useEffect(() => {
+    const button = current()?.BackButton
+    if (!active || !button) return
+    const handler = () => handlerRef.current()
+    try { button.onClick(handler); button.show() } catch { /* old clients */ }
+    return () => {
+      try { button.offClick(handler); button.hide() } catch { /* old clients */ }
+    }
+  }, [active])
 }

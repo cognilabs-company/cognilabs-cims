@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import { MapPinIcon, MapTrifoldIcon, PhoneIcon, TelegramLogoIcon, WarningCircleIcon } from '@phosphor-icons/react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties } from 'react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import type { TelephonyLead } from '../../../shared/api/services/telephony.service'
 import { getApiErrorMessage, getApiErrorStatus } from '../../../shared/lib/api-error'
@@ -14,6 +13,9 @@ import { PhoneTab } from '../components/PhoneTab'
 import { miniApi, type MiniCapabilities, type MiniUser } from '../lib/api'
 import { telephonyService } from '../../../shared/api/services/telephony.service'
 import { haptic, loadTelegramSdk, type TgWebApp } from '../lib/telegram'
+import { IcGlobe, IcMap, IcPhone, IcPin, IcRefresh, IcSend, IcWarning, type IconProps } from '../ui/icons'
+import { OrbitLoader } from '../ui/motion'
+import '../miniapp.css'
 
 type Boot =
   | { phase: 'loading' }
@@ -25,6 +27,7 @@ type Tab = 'phone' | 'attendance' | 'map'
 
 const TAB_KEY = 'cims.miniapp.tab'
 const LANG_FLAG = 'cims.miniapp.lang-v2'
+const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap'
 
 /* Visible = the page is shown and Telegram has not put the Mini App in the background. */
 let telegramActive = true
@@ -48,6 +51,21 @@ function applyTelegramTheme(webApp: TgWebApp) {
   }
 }
 
+/** The Mini App look (fonts + scoped tokens) is on only while this page is mounted. */
+function useMiniLook() {
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    root.classList.add('mini-root')
+    if (!document.querySelector(`link[href="${FONTS_URL}"]`)) {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = FONTS_URL
+      document.head.appendChild(link)
+    }
+    return () => root.classList.remove('mini-root')
+  }, [])
+}
+
 function readTab(): Tab {
   try {
     const value = sessionStorage.getItem(TAB_KEY)
@@ -55,11 +73,21 @@ function readTab(): Tab {
   } catch { return 'attendance' }
 }
 
+/** Morning / day / evening / night in Tashkent. */
+function greetingOf(t: ReturnType<typeof useLocale>['t']) {
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Tashkent' }).format(new Date())) % 24
+  if (hour >= 5 && hour < 12) return t('miniapp.hello.morning', 'Good morning')
+  if (hour >= 12 && hour < 18) return t('miniapp.hello.day', 'Good afternoon')
+  if (hour >= 18 && hour < 23) return t('miniapp.hello.evening', 'Good evening')
+  return t('miniapp.hello.night', 'Good night')
+}
+
 /** /miniapp — Telegram Mini App: Phone (WebRTC calls) and Attendance (location check-in / check-out). */
 export function MiniAppPage() {
   const { t, locale, setLocale } = useLocale()
   const [boot, setBoot] = useState<Boot>({ phase: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  useMiniLook()
 
   useEffect(() => {
     let alive = true
@@ -119,8 +147,8 @@ export function MiniAppPage() {
 
   if (boot.phase === 'loading') {
     return (
-      <div className="grid min-h-[100dvh] place-items-center bg-[var(--app-canvas)]">
-        <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[var(--border)] border-t-[var(--primary)]" />
+      <div className="m-app grid min-h-[100dvh] place-items-center">
+        <div className="m-fade"><OrbitLoader label={t('miniapp.loading', 'Loading…')} /></div>
       </div>
     )
   }
@@ -128,12 +156,16 @@ export function MiniAppPage() {
   if (boot.phase === 'outside' || boot.phase === 'error') {
     const outside = boot.phase === 'outside'
     return (
-      <div className="grid min-h-[100dvh] place-items-center bg-[var(--app-canvas)] px-6">
-        <div className="mini-in max-w-sm text-center">
-          <span className={cn('mx-auto grid h-16 w-16 place-items-center rounded-full', outside ? 'bg-[var(--blue-dim)] text-[var(--primary)]' : 'bg-[var(--danger-dim)] text-[var(--danger-text)]')}>
-            {outside ? <TelegramLogoIcon size={34} weight="duotone" /> : <WarningCircleIcon size={34} weight="duotone" />}
+      <div className="m-app grid min-h-[100dvh] place-items-center px-6">
+        <div className="m-rise flex max-w-sm flex-col items-center text-center">
+          <span className="relative grid h-28 w-28 place-items-center">
+            <span className="absolute inset-1 rotate-[12deg] rounded-[34px] border-2 border-[var(--primary)]/40" />
+            <span className={cn('absolute inset-1 -rotate-[9deg] rounded-[34px] border-2', outside ? 'border-[var(--m-lime)]' : 'border-[var(--m-coral)]/60')} />
+            <span className={cn('relative grid h-[88px] w-[88px] place-items-center rounded-[30px] bg-[var(--m-hero)] shadow-[var(--m-shadow-lift)]', outside ? 'text-[var(--m-lime)]' : 'text-[var(--m-coral)]')}>
+              {outside ? <IcSend size={40} duo={0.25} /> : <IcWarning size={40} duo={0.25} />}
+            </span>
           </span>
-          <p className="mt-4 text-[20px] font-bold text-[var(--foreground)]">
+          <p className="mt-6 text-[22px] leading-tight font-extrabold text-[var(--foreground)]">
             {outside
               ? t('miniapp.outside.title', 'Open in Telegram')
               : boot.code === 401 || boot.code === 403 || boot.code === 404
@@ -144,8 +176,8 @@ export function MiniAppPage() {
             {outside ? t('miniapp.outside.text', 'This page works inside the CIMS bot in Telegram.') : boot.message}
           </p>
           {!outside ? (
-            <button type="button" onClick={() => { setBoot({ phase: 'loading' }); setAttempt((value) => value + 1) }} className="mt-5 h-11 rounded-[14px] bg-[var(--primary)] px-5 text-[15px] font-semibold text-white">
-              {t('miniapp.retry', 'Try again')}
+            <button type="button" onClick={() => { setBoot({ phase: 'loading' }); setAttempt((value) => value + 1) }} className="m-press mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-[var(--foreground)] px-6 text-[15px] font-bold text-[var(--app-canvas)]">
+              <IcRefresh size={18} /> {t('miniapp.retry', 'Try again')}
             </button>
           ) : null}
         </div>
@@ -216,20 +248,9 @@ function MiniShell({ user, initData, webApp, access, mapAllowed }: { user: MiniU
   const phone = useTelephony()
   const [tab, setTab] = useState<Tab>(readTab)
   const [opened, setOpened] = useState<Record<Tab, boolean>>(() => ({ phone: readTab() === 'phone', attendance: readTab() === 'attendance', map: readTab() === 'map' }))
+  const [direction, setDirection] = useState<1 | -1>(1)
   const [dialed, setDialed] = useState<string | null>(null)
   const appVisible = useSyncExternalStore(subscribeVisible, readVisible, () => true)
-
-  const switchTab = useCallback((next: Tab) => {
-    haptic('select')
-    setTab(next)
-    setOpened((current) => (current[next] ? current : { ...current, [next]: true }))
-    try { sessionStorage.setItem(TAB_KEY, next) } catch { /* ignore */ }
-  }, [])
-
-  const dial = useCallback((number: string, lead?: TelephonyLead | null) => {
-    setDialed(number)
-    phone.dial(number, lead)
-  }, [phone])
 
   const fullName = [user.name, user.surname].filter(Boolean).join(' ') || t('miniapp.employee', 'Employee')
   const initials = ((user.name?.[0] ?? '') + (user.surname?.[0] ?? '')).toUpperCase() || 'C'
@@ -237,77 +258,119 @@ function MiniShell({ user, initData, webApp, access, mapAllowed }: { user: MiniU
   const phoneAllowed = access.state === 'allowed'
   // Only the sections this employee may use; a single section means no tab bar.
   const tabs = ([
-    ...(phoneAllowed ? [['phone', PhoneIcon, t('miniapp.tab.phone', 'Phone')]] : []),
-    ['attendance', MapPinIcon, t('miniapp.tab.attendance', 'Attendance')],
-    ...(mapAllowed ? [['map', MapTrifoldIcon, t('miniapp.tab.map', 'Map')]] : []),
-  ] as Array<[Tab, typeof PhoneIcon, string]>)
+    ...(phoneAllowed ? [['phone', IcPhone, t('miniapp.tab.phone', 'Phone')]] : []),
+    ['attendance', IcPin, t('miniapp.tab.attendance', 'Attendance')],
+    ...(mapAllowed ? [['map', IcMap, t('miniapp.tab.map', 'Map')]] : []),
+  ] as Array<[Tab, ComponentType<IconProps>, string]>)
   const current: Tab = tabs.some(([value]) => value === tab) ? tab : 'attendance'
   const withTabBar = tabs.length > 1
   const currentIndex = Math.max(0, tabs.findIndex(([value]) => value === current))
   const nextLocale = locale === 'uz' ? 'ru' : locale === 'ru' ? 'en' : 'uz'
 
+  // Each section keeps its own scroll position.
+  const scrollRef = useRef<Partial<Record<Tab, number>>>({})
+  useLayoutEffect(() => {
+    window.scrollTo(0, scrollRef.current[current] ?? 0)
+  }, [current])
+
+  const switchTab = useCallback((next: Tab, nextIndex: number) => {
+    if (next === current) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    haptic('select')
+    scrollRef.current[current] = window.scrollY
+    setDirection(nextIndex >= currentIndex ? 1 : -1)
+    setTab(next)
+    setOpened((value) => (value[next] ? value : { ...value, [next]: true }))
+    try { sessionStorage.setItem(TAB_KEY, next) } catch { /* ignore */ }
+  }, [current, currentIndex])
+
+  const dial = useCallback((number: string, lead?: TelephonyLead | null) => {
+    setDialed(number)
+    phone.dial(number, lead)
+  }, [phone])
+
+  const shellStyle = {
+    '--m-tabbar': withTabBar ? 'calc(74px + max(10px, env(safe-area-inset-bottom)))' : 'max(14px, env(safe-area-inset-bottom))',
+  } as CSSProperties
+  const swapStyle = { '--dx': `${direction * 24}px` } as CSSProperties
+
   return (
-    <div className="mini-app min-h-[100dvh] bg-[var(--app-canvas)] text-[var(--foreground)]">
+    <div className="m-app min-h-[100dvh]" style={shellStyle}>
       {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center gap-3 bg-[var(--app-canvas)]/90 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-3 backdrop-blur">
-        <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--blue-dim)] text-[15px] font-bold text-[var(--primary)]" data-i18n-skip="true">
-          {initials}
-          {phoneAllowed ? <span className={cn('absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-[3px] border-[var(--app-canvas)]', ready ? 'bg-[var(--success)]' : 'bg-[var(--warning)]')} title={phone.connection} /> : null}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[16px] font-bold" data-i18n-skip="true">{fullName}</p>
-          <p className="truncate text-[12.5px] text-[var(--muted)]">{user.role_name || 'CIMS'}</p>
+      <header className="sticky top-0 z-20 bg-[var(--app-canvas)] px-4 pt-[max(12px,env(safe-area-inset-top))] pb-3">
+        {/* Content scrolls softly under the header. */}
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-full h-4" style={{ background: 'linear-gradient(var(--app-canvas), color-mix(in srgb, var(--app-canvas) 0%, transparent))' }} />
+        <div className="m-rise flex items-center gap-3">
+          <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-[18px]" style={{ background: 'conic-gradient(from 210deg, var(--primary), var(--m-lime), var(--primary))' }} data-i18n-skip="true">
+            <span className="m-display grid h-[42px] w-[42px] place-items-center rounded-[15px] bg-[var(--m-hero)] text-[14px] font-semibold text-[var(--m-lime)]">{initials}</span>
+            {phoneAllowed ? (
+              <span className={cn('absolute -right-1 -bottom-1 grid h-4 w-4 place-items-center rounded-full border-[3px] border-[var(--app-canvas)]', ready ? 'bg-[var(--success)]' : 'bg-[var(--warning)]')} title={phone.connection}>
+                {ready ? null : <span className="m-breathe block h-1 w-1 rounded-full bg-white" />}
+              </span>
+            ) : null}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12px] font-semibold text-[var(--muted)]">
+              {greetingOf(t)}{user.role_name ? <span className="text-[var(--caption)]"> · {user.role_name}</span> : null}
+            </p>
+            <p className="truncate text-[17px] leading-tight font-extrabold text-[var(--foreground)]" data-i18n-skip="true">{fullName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { haptic('select'); setLocale(nextLocale) }}
+            aria-label={t('miniapp.language', 'Language')}
+            className="m-press inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-[var(--surface)] pr-3.5 pl-2.5 text-[12.5px] font-extrabold tracking-wide text-[var(--foreground)] uppercase shadow-[var(--m-shadow)]"
+          >
+            <IcGlobe size={17} className="text-[var(--primary)]" />
+            <span key={locale} className="m-pop">{locale}</span>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => { haptic('select'); setLocale(nextLocale) }}
-          aria-label={t('miniapp.language', 'Language')}
-          className="mini-key h-9 shrink-0 rounded-full bg-[var(--muted-surface)] px-3 text-[12.5px] font-bold tracking-wide text-[var(--muted-strong)] uppercase"
-        >
-          {locale}
-        </button>
       </header>
 
-      {/* Both sections stay mounted (the line keeps ringing, location keeps updating while open). */}
-      <main className={withTabBar ? 'pb-[calc(76px+env(safe-area-inset-bottom))]' : 'pb-[env(safe-area-inset-bottom)]'}>
+      {/* Sections stay mounted (the line keeps ringing, location keeps updating while open). */}
+      <main style={{ paddingBottom: withTabBar ? 'calc(var(--m-tabbar) + 8px)' : 'var(--m-tabbar)' }}>
         {phoneAllowed ? (
-          <div className={current === 'phone' ? 'block' : 'hidden'}>
+          <div className={current === 'phone' ? 'm-swap block' : 'hidden'} style={swapStyle}>
             {opened.phone || current === 'phone' ? <PhoneTab active={current === 'phone'} onDial={dial} canCall={access.canCall} canEdit={access.canEdit} userId={user.id} /> : null}
           </div>
         ) : null}
-        <div className={current === 'attendance' ? 'block' : 'hidden'}>
+        <div className={current === 'attendance' ? 'm-swap block' : 'hidden'} style={swapStyle}>
           {opened.attendance || current === 'attendance' ? <AttendanceTab active={current === 'attendance'} appVisible={appVisible} initData={initData} webApp={webApp} withTabBar={withTabBar} /> : null}
         </div>
         {/* The live map (and its socket) starts only once the tab is opened, and only with the permission. */}
         {mapAllowed && (opened.map || current === 'map') ? (
-          <div className={current === 'map' ? 'block' : 'hidden'}>
+          <div className={current === 'map' ? 'm-swap block' : 'hidden'} style={swapStyle}>
             <MapTab active={current === 'map'} withTabBar={withTabBar} />
           </div>
         ) : null}
       </main>
 
-      {/* Two big tabs at the bottom — reachable with one thumb (only when the phone is available) */}
-      {withTabBar ? <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--surface)]/95 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur">
-        <div className="relative mx-auto grid max-w-md gap-2" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
-          <span
-            aria-hidden="true"
-            className="mini-tab-indicator absolute inset-y-0 rounded-[16px] bg-[var(--blue-dim)]"
-            style={{ width: `calc((100% - ${(tabs.length - 1) * 8}px) / ${tabs.length})`, transform: `translateX(calc(${currentIndex} * (100% + 8px)))` }}
-          />
-          {tabs.map(([value, Icon, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => switchTab(value)}
-              aria-current={current === value ? 'page' : undefined}
-              className={cn('relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-[16px] text-[12.5px] font-semibold transition-colors', current === value ? 'text-[var(--primary)]' : 'text-[var(--muted-strong)]')}
-            >
-              <Icon size={24} weight={current === value ? 'duotone' : 'regular'} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </nav> : null}
+      {/* Floating dock — reachable with one thumb */}
+      {withTabBar ? (
+        <nav className="fixed inset-x-3 z-40 mx-auto max-w-md" style={{ bottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+          <div className="m-dock relative grid h-16 p-1.5" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+            <span
+              aria-hidden="true"
+              className="m-dock-pill absolute inset-y-1.5 left-1.5"
+              style={{ width: `calc((100% - 12px) / ${tabs.length})`, transform: `translateX(${currentIndex * 100}%)` }}
+            />
+            {tabs.map(([value, Icon, label], index) => {
+              const on = current === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => switchTab(value, index)}
+                  aria-current={on ? 'page' : undefined}
+                  className={cn('m-press relative z-10 flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11.5px] font-bold transition-colors duration-300', on ? 'text-[var(--m-pill-fg)]' : 'text-[var(--muted-strong)]')}
+                >
+                  <Icon size={22} duo={on ? 0.35 : 0.12} className={cn('transition-transform duration-500', on && '-translate-y-px scale-110')} />
+                  <span className="max-w-full truncate px-1">{label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+      ) : null}
 
       {phoneAllowed ? <CallScreen dialed={dialed} /> : null}
     </div>

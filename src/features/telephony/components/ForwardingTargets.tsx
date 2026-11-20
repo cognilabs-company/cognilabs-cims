@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { ArrowDown, ArrowUp, Hash, Loader2, Pencil, Phone, Plus, Trash2, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
@@ -17,11 +17,17 @@ const modes: ForwardingMode[] = ['always', 'busy', 'no_answer', 'offline']
 type Draft = { mode: ForwardingMode; target_type: ForwardingTargetType; target: string; timeout: string }
 const emptyDraft: Draft = { mode: 'always', target_type: 'phone', target: '', timeout: '20' }
 
+type IconLike = ComponentType<{ size?: number; className?: string }>
+/** The icons of the list — the Mini App passes its own set. */
+export type ForwardingIcons = Record<'up' | 'down' | 'edit' | 'remove' | 'add' | 'close' | 'phone' | 'extension' | 'spinner', IconLike>
+const defaultIcons: ForwardingIcons = { up: ArrowUp, down: ArrowDown, edit: Pencil, remove: Trash2, add: Plus, close: X, phone: Phone, extension: Hash, spinner: Loader2 }
+
 const byPosition = (left: ForwardingTarget, right: ForwardingTarget) => left.position - right.position || left.id - right.id
 
 /** The forwarding targets of one extension — any number; saved one by one through their own endpoints. */
-export function ForwardingTargets({ userId, initial, disabled }: { userId: number; initial?: ForwardingTarget[]; disabled?: boolean }) {
+export function ForwardingTargets({ userId, initial, disabled, icons }: { userId: number; initial?: ForwardingTarget[]; disabled?: boolean; icons?: Partial<ForwardingIcons> }) {
   const { t } = useLocale()
+  const I = { ...defaultIcons, ...icons }
   const [targets, setTargets] = useState<ForwardingTarget[]>(() => [...(initial ?? [])].sort(byPosition))
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<number | 'new' | null>(null)
@@ -144,7 +150,7 @@ export function ForwardingTargets({ userId, initial, disabled }: { userId: numbe
       <div className="flex justify-end gap-2 sm:col-span-2">
         <button type="button" onClick={() => setEditingId(null)} className="h-8 rounded-[9px] px-3 text-[13px] font-medium text-[var(--muted-strong)] hover:bg-[var(--input-surface)]">{t('common.cancel', 'Cancel')}</button>
         <button type="button" onClick={saveDraft} disabled={busyId !== null} className="inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-[var(--primary)] px-3.5 text-[13px] font-semibold text-white hover:bg-[var(--primary-hover)] disabled:opacity-50">
-          {busyId === editingId ? <Loader2 size={13} className="animate-spin" /> : null}
+          {busyId === editingId ? <I.spinner size={13} className="animate-spin" /> : null}
           {editingId === 'new' ? t('common.add', 'Add') : t('common.save', 'Save')}
         </button>
       </div>
@@ -165,7 +171,7 @@ export function ForwardingTargets({ userId, initial, disabled }: { userId: numbe
             {editingId === target.id ? editor : (
               <div className="flex items-center gap-2.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
                 <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-[10px]', target.enabled ? 'bg-[var(--blue-dim)] text-[var(--blue-text)]' : 'bg-[var(--input-surface)] text-[var(--muted)]')}>
-                  {target.target_type === 'phone' ? <Phone size={14} /> : <Hash size={14} />}
+                  {target.target_type === 'phone' ? <I.phone size={14} /> : <I.extension size={14} />}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className={cn('block truncate text-[13.5px] font-semibold tabular-nums', target.enabled ? 'text-[var(--foreground)]' : 'text-[var(--muted)] line-through')}>
@@ -175,12 +181,12 @@ export function ForwardingTargets({ userId, initial, disabled }: { userId: numbe
                     {modeLabel[target.mode] ?? target.mode} · {t('telephony.targets.seconds', '{{count}} s', { count: target.timeout_seconds })}
                   </span>
                 </span>
-                {busyId === target.id ? <Loader2 size={14} className="animate-spin text-[var(--muted)]" /> : null}
+                {busyId === target.id ? <I.spinner size={14} className="animate-spin text-[var(--muted)]" /> : null}
                 <span className="flex shrink-0 items-center">
-                  <button type="button" onClick={() => move(index, -1)} disabled={index === 0 || busyId !== null} aria-label={t('grid.move_up', 'Move up')} className="grid h-7 w-6 place-items-center rounded-[7px] text-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowUp size={13} /></button>
-                  <button type="button" onClick={() => move(index, 1)} disabled={index === targets.length - 1 || busyId !== null} aria-label={t('grid.move_down', 'Move down')} className="grid h-7 w-6 place-items-center rounded-[7px] text-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-30"><ArrowDown size={13} /></button>
-                  <button type="button" onClick={() => startEdit(target)} disabled={busyId !== null} aria-label={t('common.edit', 'Edit')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--primary)]"><Pencil size={13} /></button>
-                  <button type="button" onClick={() => remove(target)} disabled={busyId !== null} aria-label={t('common.delete', 'Delete')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]"><Trash2 size={13} /></button>
+                  <button type="button" onClick={() => move(index, -1)} disabled={index === 0 || busyId !== null} aria-label={t('grid.move_up', 'Move up')} className="grid h-7 w-6 place-items-center rounded-[7px] text-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-30"><I.up size={13} /></button>
+                  <button type="button" onClick={() => move(index, 1)} disabled={index === targets.length - 1 || busyId !== null} aria-label={t('grid.move_down', 'Move down')} className="grid h-7 w-6 place-items-center rounded-[7px] text-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-30"><I.down size={13} /></button>
+                  <button type="button" onClick={() => startEdit(target)} disabled={busyId !== null} aria-label={t('common.edit', 'Edit')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] hover:bg-[var(--input-surface)] hover:text-[var(--primary)]"><I.edit size={13} /></button>
+                  <button type="button" onClick={() => remove(target)} disabled={busyId !== null} aria-label={t('common.delete', 'Delete')} className="grid h-7 w-7 place-items-center rounded-[7px] text-[var(--muted)] hover:bg-[var(--danger-dim)] hover:text-[var(--danger-text)]"><I.remove size={13} /></button>
                 </span>
                 <Switch size="sm" checked={target.enabled} disabled={busyId !== null} onChange={(value) => toggle(target, value)} label={t('telephony.targets.toggle', 'Forward to this number')} />
               </div>
@@ -191,14 +197,14 @@ export function ForwardingTargets({ userId, initial, disabled }: { userId: numbe
 
       {editingId === 'new' ? editor : (
         <button type="button" onClick={() => startEdit(null)} disabled={busyId !== null} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-dashed border-[var(--border-hover)] px-3 text-[13px] font-semibold text-[var(--primary)] hover:bg-[var(--blue-dim)] disabled:opacity-50">
-          <Plus size={15} /> {t('telephony.targets.add', 'Add number')}
+          <I.add size={15} /> {t('telephony.targets.add', 'Add number')}
         </button>
       )}
 
       {error ? (
         <p role="alert" className="flex items-start gap-2 rounded-[12px] bg-[var(--danger-dim)] px-3 py-2 text-[12.5px] text-[var(--danger-text)]">
           <span className="flex-1">{error}</span>
-          <button type="button" onClick={() => setError(null)} aria-label={t('common.close', 'Close')}><X size={13} /></button>
+          <button type="button" onClick={() => setError(null)} aria-label={t('common.close', 'Close')}><I.close size={13} /></button>
         </p>
       ) : null}
     </div>
