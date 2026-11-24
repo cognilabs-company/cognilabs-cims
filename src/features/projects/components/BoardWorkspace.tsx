@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChevronLeft, Plus } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -184,18 +184,28 @@ export function BoardWorkspace({
   const canEdit = !isBoardLocked && can('projects', 'edit')
   const canDelete = !isBoardLocked && can('projects', 'delete')
   const selectedCardId = parsePositiveId(searchParams.get('card'))
+  // Last ?card= value already applied to the modal. The URL is updated inside a router
+  // transition, so it lags behind setDetailCard(null); without this guard the stale ?card=
+  // would immediately reopen the modal after an outside click.
+  const appliedCardIdRef = useRef<number | null | undefined>(undefined)
 
   useEffect(() => {
     if (!board) {
       return
     }
 
-    const matchingCard = selectedCardId === null ? null : findCardInBoard(board, selectedCardId)
-    if (matchingCard) {
-      if (matchingCard.id !== detailCard?.id) {
-        setDetailCard(matchingCard)
+    if (appliedCardIdRef.current !== selectedCardId) {
+      const matchingCard = selectedCardId === null ? null : findCardInBoard(board, selectedCardId)
+      if (matchingCard) {
+        appliedCardIdRef.current = selectedCardId
+        if (matchingCard.id !== detailCard?.id) {
+          setDetailCard(matchingCard)
+        }
+        return
       }
-      return
+      if (selectedCardId === null) {
+        appliedCardIdRef.current = null
+      }
     }
 
     if (detailCard && !findCardInBoard(board, detailCard.id)) {
@@ -327,6 +337,7 @@ export function BoardWorkspace({
   }
 
   function openCardDetail(card: CardRecord) {
+    appliedCardIdRef.current = card.id
     setDetailCard(card)
     setSearchParams((current) => {
       const next = new URLSearchParams(current)
@@ -336,6 +347,8 @@ export function BoardWorkspace({
   }
 
   function closeCardDetail() {
+    // Mark the (still stale) ?card= as handled so the sync effect does not reopen it.
+    appliedCardIdRef.current = selectedCardId
     setDetailCard(null)
     setSearchParams((current) => {
       const next = new URLSearchParams(current)

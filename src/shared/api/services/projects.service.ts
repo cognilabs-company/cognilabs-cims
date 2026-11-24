@@ -228,6 +228,9 @@ type ApiCardStatusHistoryRecord = Partial<CardStatusHistoryRecord> & {
   status_name?: string | null
   started_on?: string | null
   ended_on?: string | null
+  /** Live backend (CardStatusHistoryResponse): entered_at / left_at. */
+  entered_at?: string | null
+  left_at?: string | null
   duration?: number | null
 }
 
@@ -334,8 +337,8 @@ function normalizeCardStatusHistory(history?: ApiCardStatusHistoryRecord[] | nul
     id: entry.id ?? null,
     column_id: entry.column_id ?? entry.status_id ?? null,
     column_name: entry.column_name ?? entry.status_name ?? null,
-    started_at: entry.started_at ?? entry.started_on ?? null,
-    ended_at: entry.ended_at ?? entry.ended_on ?? null,
+    started_at: entry.started_at ?? entry.entered_at ?? entry.started_on ?? null,
+    ended_at: entry.ended_at ?? entry.left_at ?? entry.ended_on ?? null,
     duration_seconds: entry.duration_seconds ?? entry.duration ?? null,
   }))
 }
@@ -743,6 +746,32 @@ function flattenBoardCards(project: Pick<ProjectRecord, 'id' | 'project_name'>, 
   return cards
 }
 
+// ─── Readable-access snapshot ─────────────────────────────────────────────────
+// "Readable" projects are gathered by asking /open/projects/user/{id} for every user. One page used to
+// repeat that fan-out per project (projects × users requests), so the snapshot is shared for a few
+// seconds and concurrent callers reuse the same in-flight requests. Project/team writes clear it.
+
+type ReadableAccess = {
+  candidateUserIds: number[]
+  projectsByUser: Map<number, ProjectRecord[]>
+}
+
+const READABLE_ACCESS_TTL_MS = 15_000
+const readableAccessCache = new Map<number, { at: number; promise: Promise<ReadableAccess> }>()
+
+function invalidateReadableAccess() {
+  readableAccessCache.clear()
+}
+
+function afterWrite<T>(promise: Promise<T>) {
+  return promise.finally(invalidateReadableAccess)
+}
+
+function readableUserIdsFor(access: ReadableAccess, projectId: number) {
+  return access.candidateUserIds.filter((userId) =>
+    access.projectsByUser.get(userId)?.some((project) => project.id === projectId))
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export const projectsService = {
@@ -769,26 +798,26 @@ export const projectsService = {
   },
 
   createTeam(payload: { name: string; description?: string; member_ids: number[] }) {
-    return request<CreateResponse>({
+    return afterWrite(request<CreateResponse>({
       path: '/projects/teams',
       method: 'POST',
       body: payload,
-    })
+    }))
   },
 
   updateTeam(teamId: number, payload: { name: string; description?: string; member_ids: number[] }) {
-    return request<SuccessResponse>({
+    return afterWrite(request<SuccessResponse>({
       path: `/projects/teams/${teamId}`,
       method: 'PATCH',
       body: payload,
-    })
+    }))
   },
 
   deleteTeam(teamId: number) {
-    return request<SuccessResponse>({
+    return afterWrite(request<SuccessResponse>({
       path: `/projects/teams/${teamId}`,
       method: 'DELETE',
-    })
+    }))
   },
 
   // Projects
@@ -810,22 +839,47 @@ export const projectsService = {
     }))
   },
 
-  async listReadableProjects(preferredUserId?: number | null) {
-    const users = await this.getAllUsers()
-    const candidateUserIds = Array.from(new Set(
-      [preferredUserId ?? null, ...users.map((user) => user.id)]
-        .filter((userId): userId is number => typeof userId === 'number' && Number.isFinite(userId) && userId > 0),
-    ))
+  /** Users to ask and the projects each of them can read (shared for a few seconds, see above). */
+  loadReadableAccess(preferredUserId?: number | null): Promise<ReadableAccess> {
+    const key = typeof preferredUserId === 'number' && preferredUserId > 0 ? preferredUserId : 0
+    const cached = readableAccessCache.get(key)
+    if (cached && Date.now() - cached.at < READABLE_ACCESS_TTL_MS) {
+      return cached.promise
+    }
 
-    const results = await Promise.allSettled(candidateUserIds.map((userId) => this.listUserOpenProjects(userId)))
+    const promise = (async () => {
+      const users = await this.getAllUsers()
+      const candidateUserIds = Array.from(new Set(
+        [preferredUserId ?? null, ...users.map((user) => user.id)]
+          .filter((userId): userId is number => typeof userId === 'number' && Number.isFinite(userId) && userId > 0),
+      ))
+
+      const results = await Promise.allSettled(candidateUserIds.map((userId) => this.listUserOpenProjects(userId)))
+      const projectsByUser = new Map<number, ProjectRecord[]>()
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          projectsByUser.set(candidateUserIds[index], result.value.projects)
+        }
+      })
+
+      return { candidateUserIds, projectsByUser }
+    })()
+
+    readableAccessCache.set(key, { at: Date.now(), promise })
+    promise.catch(() => {
+      if (readableAccessCache.get(key)?.promise === promise) {
+        readableAccessCache.delete(key)
+      }
+    })
+    return promise
+  },
+
+  async listReadableProjects(preferredUserId?: number | null) {
+    const access = await this.loadReadableAccess(preferredUserId)
     const projects = new Map<number, ProjectRecord>()
 
-    for (const result of results) {
-      if (result.status !== 'fulfilled') {
-        continue
-      }
-
-      for (const project of result.value.projects) {
+    for (const userProjects of access.projectsByUser.values()) {
+      for (const project of userProjects) {
         const current = projects.get(project.id)
         projects.set(project.id, current ? mergeProjectRecord(current, project) : project)
       }
@@ -845,11 +899,11 @@ export const projectsService = {
   },
 
   createProject(formData: FormData) {
-    return request<CreateResponse>({
+    return afterWrite(request<CreateResponse>({
       path: '/projects',
       method: 'POST',
       body: formData,
-    })
+    }))
   },
 
   getProject(projectId: number) {
@@ -863,17 +917,7 @@ export const projectsService = {
   },
 
   async getReadableProjectDetail(projectId: number, preferredUserId?: number | null) {
-    const users = await this.getAllUsers()
-    const candidateUserIds = Array.from(new Set(
-      [preferredUserId ?? null, ...users.map((user) => user.id)]
-        .filter((userId): userId is number => typeof userId === 'number' && Number.isFinite(userId) && userId > 0),
-    ))
-
-    const accessResults = await Promise.allSettled(candidateUserIds.map((userId) => this.listUserOpenProjects(userId)))
-    const readableUserIds = candidateUserIds.filter((_, index) => {
-      const result = accessResults[index]
-      return result?.status === 'fulfilled' && result.value.projects.some((project) => project.id === projectId)
-    })
+    const readableUserIds = readableUserIdsFor(await this.loadReadableAccess(preferredUserId), projectId)
 
     const details = await Promise.allSettled(readableUserIds.map((userId) => this.getUserOpenProjectDetail(projectId, userId)))
     const mergedDetail = details.reduce<ProjectDetail | null>((current, result) => {
@@ -892,26 +936,26 @@ export const projectsService = {
   },
 
   updateProject(projectId: number, formData: FormData) {
-    return request<SuccessResponse>({
+    return afterWrite(request<SuccessResponse>({
       path: `/projects/${projectId}`,
       method: 'PATCH',
       body: formData,
-    })
+    }))
   },
 
   updateProjectTelegramGroup(projectId: number, telegramGroupId: string | null) {
-    return request<SuccessResponse>({
+    return afterWrite(request<SuccessResponse>({
       path: `/projects/${projectId}/telegram-group`,
       method: 'PATCH',
       body: { telegram_group_id: telegramGroupId },
-    })
+    }))
   },
 
   deleteProject(projectId: number) {
-    return request<SuccessResponse>({
+    return afterWrite(request<SuccessResponse>({
       path: `/projects/${projectId}`,
       method: 'DELETE',
-    })
+    }))
   },
 
   // Boards
@@ -930,17 +974,7 @@ export const projectsService = {
   },
 
   async getReadableProjectBoards(projectId: number, preferredUserId?: number | null) {
-    const users = await this.getAllUsers()
-    const candidateUserIds = Array.from(new Set(
-      [preferredUserId ?? null, ...users.map((user) => user.id)]
-        .filter((userId): userId is number => typeof userId === 'number' && Number.isFinite(userId) && userId > 0),
-    ))
-
-    const accessResults = await Promise.allSettled(candidateUserIds.map((userId) => this.listUserOpenProjects(userId)))
-    const readableUserIds = candidateUserIds.filter((_, index) => {
-      const result = accessResults[index]
-      return result?.status === 'fulfilled' && result.value.projects.some((project) => project.id === projectId)
-    })
+    const readableUserIds = readableUserIdsFor(await this.loadReadableAccess(preferredUserId), projectId)
 
     const boardResults = await Promise.allSettled(readableUserIds.map((userId) => this.listUserOpenProjectBoards(projectId, userId)))
     const boards = new Map<number, BoardDetail>()

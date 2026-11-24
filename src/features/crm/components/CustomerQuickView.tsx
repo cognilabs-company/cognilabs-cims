@@ -19,7 +19,6 @@ import {
   PhoneCall,
   SendHorizontal,
   Sparkles,
-  Timer,
   Trash2,
   X,
   type LucideIcon,
@@ -44,6 +43,8 @@ import { statusIconFor } from '../lib/statusIcon'
 import { formatClock, formatDayShort, wallFromInstant, type WallTime } from '../lib/tashkentTime'
 import { AudioPlayerCard } from './AudioPlayerCard'
 import { CustomerCallRecordings } from './CustomerCallRecordings'
+import { LEAD_TONES, LeadPanel, LeadPulse } from './LeadPulse'
+import { useCustomerCalls } from '../lib/customerCalls'
 import { CustomerStatusHistory } from './CustomerStatusHistory'
 import { isRejectedStatus } from '../lib/rejection'
 import { CopyButton, StatusPill } from './CustomerFilters'
@@ -120,17 +121,6 @@ function InfoRow({ icon: Icon, label, children, color }: { icon: LucideIcon; lab
   )
 }
 
-function SectionLabel({ icon: Icon, children, aside }: { icon: LucideIcon; children: ReactNode; aside?: ReactNode }) {
-  return (
-    <div className="mb-2 flex items-center justify-between gap-2">
-      <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.06em] text-[var(--muted)] uppercase">
-        <Icon size={13} /> {children}
-      </p>
-      {aside}
-    </div>
-  )
-}
-
 /* ── notes ─────────────────────────────────────────────── */
 
 type NoteItem = { id: number | string; note: string; author: string; createdAt: string | null; isAi: boolean }
@@ -196,10 +186,12 @@ function CustomerNotes({ customer, readOnly = false }: { customer: CustomerSumma
   }
 
   return (
-    <section>
-      <SectionLabel icon={MessagesSquare} aside={notes.length ? <span className="text-[11px] font-semibold text-[var(--caption)] tabular-nums">{notes.length}</span> : null}>
-        {t('customers.detail.notes.title', 'Notes')}
-      </SectionLabel>
+    <LeadPanel
+      tone={LEAD_TONES.notes}
+      icon={MessagesSquare}
+      title={t('customers.detail.notes.title', 'Notes')}
+      aside={notes.length ? <span className="rounded-full bg-[var(--surface)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--muted)] tabular-nums ring-1 ring-[var(--border)]">{notes.length}</span> : null}
+    >
 
       {readOnly ? null : <div className="flex items-center gap-1.5 rounded-[12px] border border-[var(--border)] bg-[var(--surface)] py-1 pr-1 pl-3 transition-colors focus-within:border-[var(--primary)] focus-within:shadow-[0_0_0_3px_var(--blue-dim)]">
         <input
@@ -229,7 +221,7 @@ function CustomerNotes({ customer, readOnly = false }: { customer: CustomerSumma
       ) : (
         <ul className="mt-2.5 space-y-1.5">
           {notes.map((note) => (
-            <li key={String(note.id)} className="group/note rounded-[12px] bg-[var(--muted-surface)] px-3 py-2.5">
+            <li key={String(note.id)} className={cn('group/note rounded-[12px] border-l-[3px] bg-[var(--surface)] px-3 py-2.5 shadow-[0_1px_2px_rgba(14,21,37,0.05)]', note.isAi ? 'border-l-[var(--violet-text)]' : 'border-l-[var(--tone)]')}>
               {editingId === note.id ? (
                 <div className="space-y-2">
                   <textarea
@@ -265,7 +257,7 @@ function CustomerNotes({ customer, readOnly = false }: { customer: CustomerSumma
           ))}
         </ul>
       )}
-    </section>
+    </LeadPanel>
   )
 }
 
@@ -396,14 +388,17 @@ export function CustomerQuickView({
   const rejected = isRejectedStatus(customer.status)
 
   const language = customer.conversation_language ? formatConversationLanguageLabel((key, fallback) => t(key, fallback), customer.conversation_language) : null
-  const metrics = customer.lead_response_metrics
+  const callData = useCustomerCalls(customer.id, phoneNumber)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* header */}
-      <header className="flex items-start gap-3 px-4 pt-4 pb-3 sm:px-5">
+      <header
+        className="flex items-start gap-3 border-b border-[var(--border)] px-4 pt-4 pb-3 sm:px-5"
+        style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${status.color} 13%, var(--surface)) 0%, var(--surface) 100%)` }}
+      >
         <span
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] text-[17px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-[15px] text-[18px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_18px_-10px_rgba(15,23,42,0.6)]"
           style={{ background: `linear-gradient(140deg, hsl(${hue} 72% 60%) 0%, hsl(${hue + 40} 68% 44%) 100%)` }}
         >
           {initialOf(name) || '?'}
@@ -428,7 +423,10 @@ export function CustomerQuickView({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-5 sm:px-5">
+      <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto px-4 pt-3.5 pb-5 sm:px-5">
+        {/* the lead at a glance: age, first response, calls, AI grade */}
+        <LeadPulse customer={customer} calls={callData} />
+
         {/* quick actions */}
         <section>
           <div className={cn('grid gap-2', statusChoices && onChangeStatus ? 'grid-cols-3' : 'grid-cols-2')}>
@@ -539,7 +537,8 @@ export function CustomerQuickView({
         ) : null}
 
         {/* details */}
-        <section className="grid grid-cols-1 gap-x-4 rounded-[16px] border border-[var(--border)] px-3 py-1.5 sm:grid-cols-2">
+        <LeadPanel tone={LEAD_TONES.details} icon={Phone} title={t('customers.detail.contact', 'Contact')}>
+        <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
           <InfoRow icon={Phone} label={t('common.phone', 'Phone')}>
             <span className="truncate tabular-nums">{phoneNumber ? formatPhone(phoneNumber) : '—'}</span>
             {phoneNumber ? <CopyButton value={phoneNumber} label={t('customers.copy_phone', 'Copy phone')} /> : null}
@@ -568,31 +567,13 @@ export function CustomerQuickView({
           <InfoRow icon={CalendarPlus} label={t('common.created', 'Created')}>
             <span className="truncate tabular-nums">{formatNumericDate(customer.created_at)}</span>
           </InfoRow>
-        </section>
-
-        {/* lead response */}
-        {metrics ? (
-          <section className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[14px] bg-[var(--muted-surface)] px-3 py-2.5">
-            <span className="flex items-center gap-1.5 text-[12.5px] text-[var(--muted-strong)]">
-              <Timer size={14} />
-              {t('customers.detail.lead_response.title', 'Response time')}
-              <strong className={cn('font-semibold', metrics.is_late_response ? 'text-[var(--danger-text)]' : 'text-[var(--success-text)]')}>{metrics.response_human ?? '—'}</strong>
-            </span>
-            <span className="flex flex-wrap gap-1">
-              {!metrics.status_changed ? <span className="rounded-[6px] bg-[var(--warning-dim)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--warning-text)]">{t('customers.detail.lead_response.not_contacted', 'Not contacted yet')}</span> : null}
-              {metrics.status_changed && !metrics.is_late_response ? <span className="rounded-[6px] bg-[var(--success-dim)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--success-text)]">{t('customers.detail.lead_response.on_time', 'On time')}</span> : null}
-              {metrics.is_late_response ? <span className="rounded-[6px] bg-[var(--danger-dim)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--danger-text)]">{t('customers.detail.lead_response.late', 'Late')}</span> : null}
-              {metrics.status_changed_without_note ? <span className="rounded-[6px] bg-[var(--warning-dim)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--warning-text)]">{t('customers.detail.lead_response.no_note', 'No note written')}</span> : null}
-            </span>
-            <span className="ml-auto text-[11px] text-[var(--muted)]">SLA {metrics.response_limit_minutes} {t('customers.recall.unit_min_short', 'min')}</span>
-          </section>
-        ) : null}
+        </div>
+        </LeadPanel>
 
         {/* AI summary */}
         {customer.aisummary ? (
-          <section>
-            <SectionLabel icon={Sparkles}>{t('customers.detail.ai_summary.title', 'AI summary')}</SectionLabel>
-            <div className="rounded-[14px] bg-[color-mix(in_srgb,var(--violet-dim)_70%,transparent)] px-3.5 py-3">
+          <LeadPanel tone={LEAD_TONES.summary} icon={Sparkles} title={t('customers.detail.ai_summary.title', 'AI summary')}>
+            <div>
               <p className={cn('text-[13px] leading-[1.6] whitespace-pre-wrap text-[var(--muted-strong)]', !summaryOpen && 'line-clamp-4')}>{customer.aisummary}</p>
               {customer.aisummary.length > 260 ? (
                 <button type="button" onClick={() => setSummaryOpen((open) => !open)} className="mt-1 inline-flex items-center gap-0.5 text-[12px] font-semibold text-[var(--violet-text)]">
@@ -601,27 +582,28 @@ export function CustomerQuickView({
                 </button>
               ) : null}
             </div>
-          </section>
+          </LeadPanel>
         ) : null}
 
         {/* audio */}
         {audioSource ? (
-          <section>
-            <SectionLabel
-              icon={Phone}
-              aside={<a href={audioSource} download className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-[var(--primary)] hover:underline"><Download size={12} />{t('common.download', 'Download')}</a>}
-            >
-              {t('customers.detail.recording', 'Recording')}
-            </SectionLabel>
+          <LeadPanel
+            tone={LEAD_TONES.calls}
+            icon={Phone}
+            title={t('customers.detail.recording', 'Recording')}
+            aside={<a href={audioSource} download className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-[var(--primary)] hover:underline"><Download size={12} />{t('common.download', 'Download')}</a>}
+          >
             <AudioPlayerCard src={audioSource} name={name} />
-          </section>
+          </LeadPanel>
         ) : null}
 
         {/* which status the lead moved from / to, and how long it stayed in each */}
-        <CustomerStatusHistory customerId={customer.id} currentStatus={customer.status} statusChoices={statusChoices} />
+        <LeadPanel tone={LEAD_TONES.history}>
+          <CustomerStatusHistory customerId={customer.id} currentStatus={customer.status} statusChoices={statusChoices} />
+        </LeadPanel>
 
         {/* recorded phone calls with this customer */}
-        {phoneNumber ? <CustomerCallRecordings key={customer.id} customerId={customer.id} phoneNumber={phoneNumber} /> : null}
+        <CustomerCallRecordings key={customer.id} data={callData} />
 
         <CustomerNotes customer={customer} readOnly={!onSaveRecall} />
       </div>

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CalendarClock, FileAudio, SlidersHorizontal, Upload, UserPen, UserPlus, UserRound, X, type LucideIcon } from 'lucide-react'
 import { Button } from '../../../shared/ui/button'
@@ -8,6 +8,7 @@ import { CalendarField } from '../../../shared/ui/calendar-field'
 import { Modal } from '../../../shared/ui/modal'
 import { SelectField } from '../../../shared/ui/select-field'
 import { isRejectedStatus } from '../lib/rejection'
+import { normalizePhone, phoneDuplicates, type PhoneDuplicate } from '../lib/leadData'
 import { RejectionReasonField } from './RejectReasonDialog'
 
 export type CustomerFormValues = {
@@ -24,6 +25,8 @@ export type CustomerFormValues = {
   conversation_language: string
   /** Required while the status is "rejected". */
   rejection_reason: string
+  /** Won deal amount, so'm, as typed ("12 500 000"); sent as a number. */
+  deal_amount: string
 }
 
 type StatusOption = {
@@ -44,6 +47,8 @@ type CustomerFormModalProps = {
   isSubmitting: boolean
   /** Shown under the rejection reason after a failed submit. */
   rejectionError?: string | null
+  /** Inbound CRM only: asks the backend whether the phone is already in the base. */
+  checkPhone?: (phone: string) => Promise<unknown>
 }
 
 function Section({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
@@ -78,10 +83,27 @@ export function CustomerFormModal({
   onSubmit,
   isSubmitting,
   rejectionError,
+  customerId,
+  checkPhone,
 }: CustomerFormModalProps) {
   const { t } = useTranslation()
   const fileRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState('')
+  const [duplicates, setDuplicates] = useState<{ phone: string; items: PhoneDuplicate[] } | null>(null)
+  const normalizedPhone = normalizePhone(values.phone_number)
+
+  /* Duplicate warning: a short pause after typing, then one check. Saving is never blocked by it. */
+  useEffect(() => {
+    if (!open || !checkPhone || normalizedPhone.replace(/\D/g, '').length < 9) return
+    let alive = true
+    const timer = window.setTimeout(() => {
+      checkPhone(normalizedPhone)
+        .then((raw) => { if (alive) setDuplicates({ phone: normalizedPhone, items: phoneDuplicates(raw).filter((item) => item.id !== customerId) }) })
+        .catch(() => undefined)
+    }, 500)
+    return () => { alive = false; window.clearTimeout(timer) }
+  }, [open, checkPhone, normalizedPhone, customerId])
+  const duplicateItems = duplicates?.phone === normalizedPhone ? duplicates.items : []
 
   const conversationLanguages = [
     { value: 'uz', label: t('common.language.uz', 'Uzbek') },
@@ -131,7 +153,20 @@ export function CustomerFormModal({
               <Input value={values.full_name} onChange={(event) => onChange('full_name', event.target.value)} autoFocus={mode === 'create'} />
             </Field>
             <Field label={t('common.phone', 'Phone')}>
-              <Input value={values.phone_number} onChange={(event) => onChange('phone_number', event.target.value)} inputMode="tel" placeholder="+998 90 123 45 67" />
+              <Input
+                value={values.phone_number}
+                onChange={(event) => onChange('phone_number', event.target.value)}
+                onBlur={() => { if (normalizedPhone && normalizedPhone !== values.phone_number) onChange('phone_number', normalizedPhone) }}
+                inputMode="tel"
+                placeholder="+998901234567"
+              />
+              {duplicateItems.length > 0 ? (
+                <span role="alert" className="text-[12px] font-medium text-[var(--danger-text)]">
+                  {t('customers.form.phone_duplicate', 'This number is already in the base: {{names}}', {
+                    names: duplicateItems.slice(0, 3).map((item) => [item.name || (item.id ? `#${item.id}` : ''), item.status].filter(Boolean).join(' · ')).join(', '),
+                  })}
+                </span>
+              ) : null}
             </Field>
             <Field label={t('common.username', 'Username')}>
               <Input value={values.username} onChange={(event) => onChange('username', event.target.value)} placeholder="@username" />
@@ -163,6 +198,9 @@ export function CustomerFormModal({
             </Field>
             <Field label={t('common.assistant', 'Assistant')}>
               <Input value={values.assistant_name} onChange={(event) => onChange('assistant_name', event.target.value)} />
+            </Field>
+            <Field label={t('customers.form.deal_amount', "Deal amount (so'm)")}>
+              <Input value={values.deal_amount} onChange={(event) => onChange('deal_amount', event.target.value.replace(/[^\d\s]/g, ''))} inputMode="numeric" placeholder="12 500 000" />
             </Field>
           </div>
           {isRejectedStatus(values.status) ? (

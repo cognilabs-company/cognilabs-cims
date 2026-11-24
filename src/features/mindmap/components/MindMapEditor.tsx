@@ -544,7 +544,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
     commit(next)
     setSelectedEdge(null)
     setSelectedRelation(id)
-    showToast({ title: t('mindmap.relation_added', 'Link added'), description: t('mindmap.relation_added_hint', 'Both nodes keep their own lines. Click the dashed link and press Delete to remove it.'), tone: 'info' })
+    showToast({ title: t('mindmap.relation_added', 'Link added'), description: t('mindmap.relation_added_hint', 'Both nodes keep their own lines. Click the link and press Delete to remove it.'), tone: 'info' })
   }
 
   function removeRelationById(id: string) {
@@ -1007,7 +1007,7 @@ export function MindMapEditor({ initial, autoEditRoot, canCreateTask, onSave, on
                 <ToolButton iconOnly flat icon={<QuestionIcon size={16} />} label={t('mindmap.help', 'How it works')} onClick={() => setHelpOpen((open) => !open)} active={helpOpen} />
                 <span className={cn('absolute bottom-[calc(100%+10px)] left-0 w-[300px] rounded-[12px] border border-[var(--border)] bg-[var(--card)] p-3 text-[12px] leading-relaxed text-[var(--muted-strong)] shadow-[var(--elev-lg)]', helpOpen ? 'block' : 'hidden group-hover/help:block')}>
                   {hint.split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
-                  {t('mindmap.hint_v3', 'Select a node — “+” on every side adds there (around the central topic: a branch that way) · drag a node anywhere — it stays there and keeps its line; drop it onto another node to move it there · click a line: ✂ or Delete cuts it, pulling the line onto another node moves that branch there · pull the handle at a selected node’s corner onto another node: a free node gets connected, two connected nodes get a dashed link — no line is ever cut by it · “Back to its place” or Auto layout tidies nodes up').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
+                  {t('mindmap.hint_v3', 'Select a node — “+” on every side adds there (around the central topic: a branch that way) · drag a node anywhere — it stays there and keeps its line; drop it onto another node to move it there · click a line: ✂ or Delete cuts it, pulling the line onto another node moves that branch there · pull the handle at a selected node’s corner onto another node: a free node gets connected, two connected nodes get an extra link — no line is ever cut by it · “Back to its place” or Auto layout tidies nodes up').split(' · ').map((line) => <span key={line} className="block">• {line}</span>)}
                   <span className="mt-1.5 block text-[var(--muted)]">{t('mindmap.edit_tip', 'Double-click or start typing to edit')} · Tab / Enter / Delete · Ctrl+Z</span>
                 </span>
               </span>

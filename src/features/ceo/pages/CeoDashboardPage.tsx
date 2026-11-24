@@ -30,6 +30,7 @@ import { isDueDateOverdue } from '../../projects/lib/format'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { HeaderActions } from '../../../widgets/navigation/HeaderActions'
 import { cn } from '../../../shared/lib/cn'
+import { CallStatsSection } from '../../crm/components/CallStatsSection'
 
 const initialBroadcastMessage: MessageComposerValues = {
   subject: '',
@@ -966,6 +967,8 @@ export function CeoDashboardPage() {
           />
         )}
       </div>
+
+      <CallStatsSection />
 
       {hasSla && (
         <Card noPadding>

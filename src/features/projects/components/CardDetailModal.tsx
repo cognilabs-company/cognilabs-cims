@@ -7,6 +7,7 @@ import { toneDot, tonePill, type Tone } from '../../../shared/ui/tone'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import type { CardRecord } from '../../../shared/api/services/projects.service'
 import { Avatar } from './Avatar'
+import { CardStatusTime } from './CardStatusTime'
 import { formatProjectDate, formatProjectDateTime, getPriorityConfig } from '../lib/format'
 import { cn } from '../../../shared/lib/cn'
 import { resolveMediaUrl } from '../../../shared/lib/media-url'
@@ -108,9 +109,6 @@ export function CardDetailModal({
       ? card.files
       : []
   const selectedImage = images[selectedImageIndex] ?? images[0] ?? null
-  const statusHistory = [...card.status_history].sort((left, right) =>
-    (right.started_at ?? '').localeCompare(left.started_at ?? ''),
-  )
   const hasTelegramSource = Boolean(
     card.telegram_source_kind ||
     card.telegram_source_command ||
@@ -371,30 +369,11 @@ export function CardDetailModal({
                     </DetailInfoBlock>
                   ) : null}
 
-                  {card.current_status_duration_seconds !== null ? (
-                    <DetailInfoBlock label={lt('Time in current status')}>
-                      <span className="text-[var(--muted-strong)]">{formatDuration(card.current_status_duration_seconds)}</span>
-                    </DetailInfoBlock>
-                  ) : null}
                 </div>
               </div>
 
-              {statusHistory.length > 0 ? (
-                <div className="space-y-3 border-t border-[var(--border-hover)] pt-[18px]">
-                  <h4 className="ui-card-label">{lt('Status history')}</h4>
-                  <div className="space-y-2">
-                    {statusHistory.map((entry, index) => (
-                      <div key={entry.id ?? `${entry.column_id ?? 'status'}-${entry.started_at ?? index}`} className="rounded-[14px] bg-[var(--surface)] px-3.5 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="min-w-0 truncate text-[13px] font-semibold text-[var(--foreground)]">{entry.column_name || lt('Status')}</span>
-                          <span className="shrink-0 text-[12.5px] font-medium tabular-nums text-[var(--muted-strong)]">{formatDuration(entry.duration_seconds)}</span>
-                        </div>
-                        {entry.started_at ? <p className="mt-1 text-[12px] text-[var(--muted)]">{formatProjectDateTime(entry.started_at)}{entry.ended_at ? ` - ${formatProjectDateTime(entry.ended_at)}` : ''}</p> : null}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+              {/* Time spent in each status (live for the current one) + step-by-step history. */}
+              <CardStatusTime card={card} />
 
               {hasTelegramSource ? (
                 <div className="space-y-3 border-t border-[var(--border-hover)] pt-[18px]">

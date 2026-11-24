@@ -32,6 +32,8 @@ export type CallQuality = {
   recommendations: string[]
   criteria: QualityCriterion[]
   transcript: string | null
+  /** The same talk with exact times, when the backend sends it as segments (seconds from the start of the recording). */
+  segments: TranscriptSegment[] | null
   sellerName: string | null
   customerName: string | null
   phone: string | null
@@ -39,6 +41,9 @@ export type CallQuality = {
   analyzedAt: string | null
   error: string | null
 }
+
+export type TranscriptWord = { text: string; start: number; end: number }
+export type TranscriptSegment = { speaker: string | null; text: string; start: number; end: number | null; words: TranscriptWord[] | null }
 
 export type QualityStats = {
   analyzed: number
@@ -120,6 +125,67 @@ function strings(value: unknown): string[] {
   return value.map((entry) => (typeof entry === 'string' ? entry : isObject(entry) ? str(entry.text ?? entry.title ?? entry.comment ?? entry.description) : null)).filter((entry): entry is string => Boolean(entry))
 }
 
+/** The transcript as text. Some backends send it as segments ({speaker, text, start}); those become
+    "[m:ss] Speaker: text" lines so the call card can show them as a dialogue. */
+function transcriptOf(value: unknown): string | null {
+  const text = str(value)
+  if (text) return text
+  if (!Array.isArray(value)) return null
+  const clock = (seconds: number | null) => (seconds === null ? '' : `[${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}] `)
+  const lines = value.flatMap((entry) => {
+    if (typeof entry === 'string') return entry.trim() ? [entry.trim()] : []
+    if (!isObject(entry)) return []
+    const words = str(entry.text) ?? str(entry.content) ?? str(entry.message) ?? str(entry.utterance)
+    if (!words) return []
+    const speaker = str(entry.speaker) ?? str(entry.role) ?? str(entry.speaker_label) ?? str(entry.name)
+    return [`${clock(num(entry.start) ?? num(entry.start_time) ?? num(entry.from))}${speaker ? `${speaker}: ` : ''}${words}`]
+  })
+  return lines.length ? lines.join('\n') : null
+}
+
+/** Seconds from a number (12.4), a numeric string or a clock ("0:12.4", "00:00:12,400"). */
+function seconds(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : null
+  if (typeof value !== 'string' || !value.trim()) return null
+  const text = value.trim().replace(',', '.')
+  if (/^\d+(\.\d+)?$/.test(text)) return Number(text)
+  if (!/^\d{1,2}(:\d{1,2}){1,2}(\.\d+)?$/.test(text)) return null
+  return text.split(':').reduce((sum, part) => sum * 60 + Number(part), 0)
+}
+
+function timeOf(entry: Record<string, unknown>, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = seconds(entry[key])
+    if (value !== null) return /_ms$/.test(key) ? value / 1000 : value
+  }
+  return null
+}
+
+const START_KEYS = ['start', 'start_time', 'from', 'begin', 'start_sec', 'start_seconds', 'offset', 'timestamp', 'start_ms']
+const END_KEYS = ['end', 'end_time', 'to', 'finish', 'end_sec', 'end_seconds', 'end_ms']
+
+/** Segments with their exact times, kept apart from the text so the player can follow them to the word. */
+function segmentsOf(value: unknown): TranscriptSegment[] | null {
+  if (!Array.isArray(value)) return null
+  const list = value.flatMap((entry): TranscriptSegment[] => {
+    if (!isObject(entry)) return []
+    const text = str(entry.text) ?? str(entry.content) ?? str(entry.message) ?? str(entry.utterance)
+    const start = timeOf(entry, START_KEYS)
+    if (!text || start === null) return []
+    const rawWords = Array.isArray(entry.words) ? entry.words : Array.isArray(entry.tokens) ? entry.tokens : []
+    const words = rawWords.flatMap((word): TranscriptWord[] => {
+      if (!isObject(word)) return []
+      const said = str(word.word) ?? str(word.text) ?? str(word.token)
+      const from = timeOf(word, START_KEYS)
+      const to = timeOf(word, END_KEYS)
+      return said && from !== null ? [{ text: said.trim(), start: from, end: to ?? from }] : []
+    }).filter((word) => word.text)
+    const speaker = str(entry.speaker) ?? str(entry.role) ?? str(entry.speaker_label) ?? str(entry.name) ?? (typeof entry.speaker === 'number' ? `SPEAKER_${entry.speaker}` : null)
+    return [{ speaker, text: text.trim(), start, end: timeOf(entry, END_KEYS), words: words.length ? words : null }]
+  })
+  return list.length ? list.sort((a, b) => a.start - b.start) : null
+}
+
 function groupOf(raw: string | null): QualityCriterion['group'] {
   const key = (raw ?? '').toLowerCase()
   if (key.includes('sales') || key.includes('sotuv') || key.includes('offer') || key.includes('objection') || key.includes('close')) return 'sales_script'
@@ -181,7 +247,8 @@ export function normalizeCallQuality(raw: unknown, fallbackCallId = 0): CallQual
     mistakes: strings(source.mistakes ?? source.weaknesses ?? source.issues ?? source.negatives),
     recommendations: strings(source.recommendations ?? source.suggestions ?? source.improvements ?? source.advice),
     criteria: normalizeCriteria(source),
-    transcript: str(source.transcript) ?? str(source.transcription) ?? str(source.text),
+    segments: segmentsOf(source.segments) ?? segmentsOf(source.transcript) ?? segmentsOf(source.transcription) ?? segmentsOf(source.utterances) ?? (isObject(source.transcript) ? segmentsOf(source.transcript.segments) : null),
+    transcript: transcriptOf(source.transcript) ?? transcriptOf(source.transcription) ?? transcriptOf(source.segments) ?? transcriptOf(source.utterances) ?? (isObject(source.transcript) ? transcriptOf(source.transcript.text) ?? transcriptOf(source.transcript.segments) : null) ?? str(source.text),
     sellerName: str(source.user_name) ?? str(source.seller_name) ?? str(call.user_name) ?? (isObject(source.user) ? str(source.user.full_name) ?? str(source.user.name) : null),
     customerName: str(source.customer_name) ?? str(call.customer_name),
     phone: str(source.phone_number) ?? str(call.phone_number),
@@ -225,10 +292,10 @@ function normalizeScript(raw: unknown): SalesScript {
 }
 
 export const telephonyQualityService = {
-  async calls(params: { status?: string; userId?: number; page?: number; pageSize?: number } = {}) {
+  async calls(params: { status?: string; userId?: number; page?: number; pageSize?: number; dateFrom?: string; dateTo?: string } = {}) {
     const raw = await request<unknown>({
       path: '/telephony-quality/calls',
-      query: { status: params.status, user_id: params.userId, page: params.page ?? 1, page_size: params.pageSize ?? 30 },
+      query: { status: params.status, user_id: params.userId, page: params.page ?? 1, page_size: params.pageSize ?? 30, date_from: params.dateFrom, date_to: params.dateTo },
     })
     const items = listOf(raw).map((entry) => normalizeCallQuality(entry)).filter((entry): entry is CallQuality => entry !== null)
     const total = isObject(raw) ? num(raw.total) ?? num(raw.total_count) ?? items.length : items.length

@@ -1,12 +1,14 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, SyntheticEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { CalendarDays, Paperclip, Pencil, Trash2 } from 'lucide-react'
+import { CalendarDays, Hourglass, Paperclip, Pencil, Trash2 } from 'lucide-react'
+import { useLocale } from '../../../app/hooks/useLocale'
 import { translateCurrentLiteral } from '../../../shared/i18n/translations'
 import { cn } from '../../../shared/lib/cn'
 import { ActionsMenu, type ActionsMenuItem } from '../../../shared/ui/actions-menu'
 import type { CardPriority, CardRecord } from '../../../shared/api/services/projects.service'
 import { Avatar } from './Avatar'
+import { currentStatusSeconds, formatSpan } from '../lib/statusTime'
 import { formatProjectDateTime, formatProjectDueShort, getPriorityConfig, isDueDateOverdue } from '../lib/format'
 
 type KanbanCardProps = {
@@ -85,7 +87,10 @@ function CardContent({ card, reserveMenuSpace }: { card: CardRecord; reserveMenu
   const assignees = Array.isArray(card.assignees) && card.assignees.length > 0 ? card.assignees : card.assignee ? [card.assignee] : []
   const assigneeNames = assignees.map((assignee) => [assignee.name, assignee.surname].filter(Boolean).join(' ').trim()).join(', ')
   const visibleAssignees = assignees.slice(0, 3)
-  const hasFooter = Boolean(priority || card.due_date || images.length > 0 || assignees.length > 0)
+  // How long the task has sat in its current column (hidden once it is completed).
+  const inStatus = card.completed_at ? null : currentStatusSeconds(card)
+  const { t } = useLocale()
+  const hasFooter = Boolean(priority || card.due_date || images.length > 0 || assignees.length > 0 || inStatus !== null)
 
   return (
     <>
@@ -110,6 +115,12 @@ function CardContent({ card, reserveMenuSpace }: { card: CardRecord; reserveMenu
               <Fact strong={overdue} title={formatProjectDateTime(card.due_date)}>
                 <CalendarDays size={12} strokeWidth={2} className="shrink-0" />
                 {formatProjectDueShort(card.due_date)}
+              </Fact>
+            ) : null}
+            {inStatus !== null ? (
+              <Fact strong={inStatus >= 3 * 86_400} title={translateCurrentLiteral('Time in current status')}>
+                <Hourglass size={12} strokeWidth={2} className="shrink-0" />
+                {formatSpan(inStatus, { d: t('kpi.timing.unit.d', 'd'), h: t('kpi.timing.unit.h', 'h'), m: t('kpi.timing.unit.m', 'm') })}
               </Fact>
             ) : null}
             {images.length > 0 ? (

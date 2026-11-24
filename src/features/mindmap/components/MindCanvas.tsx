@@ -333,7 +333,7 @@ export function MindCanvas(props: Props) {
   const relations = relationsOf(map).flatMap((relation) => {
     const from = shown.boxes.get(relation.from)
     const to = shown.boxes.get(relation.to)
-    return from && to ? [{ ...relation, ...relationGeometry(from, to) }] : []
+    return from && to ? [{ ...relation, ...relationGeometry(from, to, map.edgeStyle) }] : []
   })
   const pad = 400
   const svgBox = {
@@ -426,13 +426,12 @@ export function MindCanvas(props: Props) {
           {relations.map((relation) => {
             const line: LineRef = { kind: 'rel', id: relation.id }
             const selected = sameLine(selectedLineRef, line)
-            const color = selected || sameLine(hoverLine, line) ? 'var(--primary)' : 'var(--muted-strong)'
+            const active = selected || sameLine(hoverLine, line)
             const fading = leavingIds.has(relation.from) || leavingIds.has(relation.to)
             return (
               <g key={relation.id} className={cn('mm-rel', fading && 'mm-edge-leave')}>
-                {selected ? <path d={relation.d} fill="none" stroke="var(--primary)" strokeOpacity={0.16} strokeWidth={10} strokeLinecap="round" /> : null}
-                <path d={relation.d} fill="none" stroke={color} strokeOpacity={selected ? 1 : 0.75} strokeWidth={selected ? 2.5 : 2} strokeDasharray="7 6" strokeLinecap="round" />
-                <path d={relation.arrow} fill={color} fillOpacity={selected ? 1 : 0.85} />
+                {selected ? <path d={relation.d} fill="none" stroke="var(--primary)" strokeOpacity={0.18} strokeWidth={10} strokeLinecap="round" /> : null}
+                <path d={relation.d} fill="none" stroke={selected ? 'var(--primary)' : relation.color} strokeOpacity={active ? 1 : 0.7} strokeWidth={2 + (active ? 1.5 : 0)} strokeLinecap="round" />
               </g>
             )
           })}

@@ -398,8 +398,6 @@ export function AppSidebar() {
     )
   }
 
-  const subtitle = isOutboundCrmRoute ? 'Outbound CRM' : (user?.job_title?.trim() || user?.role || t('shell.user'))
-
   return (
     <>
       <button
@@ -425,7 +423,6 @@ export function AppSidebar() {
             {rail ? <BrandMonogram height={26} className="text-[var(--sb-strong)]" /> : null}
             <div className={cn('min-w-0 flex-1', rail && 'hidden')}>
               <BrandWordmark height={21} className="block text-[var(--sb-strong)]" />
-              <p className="mt-1 truncate text-[11.5px] leading-4 font-medium text-[var(--sb-label)]">CIMS · {subtitle}</p>
             </div>
             <button
               type="button"

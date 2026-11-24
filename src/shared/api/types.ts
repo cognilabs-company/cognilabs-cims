@@ -152,6 +152,8 @@ export type CustomerSummary = {
   lead_response_metrics?: LeadResponseMetrics | null
   /** Why the lead was rejected (required when the status becomes "rejected"). */
   rejection_reason?: string | null
+  /** Won deal amount in so'm (task #667). */
+  deal_amount?: number | string | null
   rejected_at?: string | null
   rejected_by?: number | null
 }

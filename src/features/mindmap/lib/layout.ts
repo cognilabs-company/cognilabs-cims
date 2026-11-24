@@ -396,28 +396,11 @@ export function borderPoint(box: Pick<NodeBox, 'x' | 'y' | 'w' | 'h'>, tx: numbe
 }
 
 /**
- * An extra line (relation) from `from` to `to`: a dashed arc that bends to one side, so it never hides a
- * tree line, with an arrow head at `to`. `mid` = the point of the arc where its remove button sits.
+ * An extra line (relation) from `from` to `to`: drawn just like a tree line (same shape and style, solid,
+ * in the colour of `to`). The side is picked from where the two boxes are, not from their own tree lines.
+ * `cut` = where its remove button sits (beside the line, never on it).
  */
-export function relationGeometry(from: NodeBox, to: NodeBox) {
-  const ax = from.x + from.w / 2
-  const ay = from.y + from.h / 2
-  const bx = to.x + to.w / 2
-  const by = to.y + to.h / 2
-  const length = Math.hypot(bx - ax, by - ay) || 1
-  const bend = Math.min(90, length * 0.22)
-  const cx = (ax + bx) / 2 - ((by - ay) / length) * bend
-  const cy = (ay + by) / 2 + ((bx - ax) / length) * bend
-  const start = borderPoint(from, cx, cy, 4)
-  const end = borderPoint(to, cx, cy, 7)
-  const angle = Math.atan2(end.y - cy, end.x - cx)
-  const head = 9
-  const spread = 4.5
-  const back = { x: end.x - Math.cos(angle) * head, y: end.y - Math.sin(angle) * head }
-  const arrow = `M ${end.x} ${end.y} L ${back.x - Math.sin(angle) * spread} ${back.y + Math.cos(angle) * spread} L ${back.x + Math.sin(angle) * spread} ${back.y - Math.cos(angle) * spread} Z`
-  const mid = { x: 0.25 * start.x + 0.5 * cx + 0.25 * end.x, y: 0.25 * start.y + 0.5 * cy + 0.25 * end.y }
-  // The remove button: just outside the arc, on its bulging side (never on the line itself).
-  const out = Math.hypot(cx - mid.x, cy - mid.y) || 1
-  const cut = { x: mid.x + ((cx - mid.x) / out) * 20, y: mid.y + ((cy - mid.y) / out) * 20 }
-  return { d: `M ${start.x} ${start.y} Q ${cx} ${cy} ${end.x} ${end.y}`, arrow, mid, cut }
+export function relationGeometry(from: NodeBox, to: NodeBox, style: EdgeStyle = 'curved') {
+  const target = { ...to, pinned: true }
+  return { d: edgePath(from, target, style), cut: edgeCutPoint(from, target, style), color: to.color }
 }

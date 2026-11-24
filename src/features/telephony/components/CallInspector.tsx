@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ChevronLeft, Copy, ExternalLink, Headphones, MessageSquarePlus, Phone, StickyNote, UserRound, X } from 'lucide-react'
+import { Check, ChevronLeft, Copy, ExternalLink, FileText, Maximize2, PanelLeft, Headphones, Loader2, MessageSquarePlus, Phone, StickyNote, UserRound, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
@@ -8,6 +8,9 @@ import { leadPath, telephonyService, type TelephonyCall, type TelephonyCallDetai
 import { useAuth } from '../../auth/hooks/useAuth'
 import { RecordingPlayer } from './RecordingPlayer'
 import { CallQualityCard } from './CallQualityCard'
+import { TranscriptView } from './CallTranscript'
+import type { StageTranscript } from './TranscriptStage'
+import type { CallQuality } from '../../../shared/api/services/telephonyQuality.service'
 import { CallBadge, CallResult } from './CallParts'
 import { callKindLabel, callTone, formatDayTime, formatPhone, formatTalkTime, hueOf, initialOf, sourceLabel, statusLabel } from './telephonyFormat'
 
@@ -24,6 +27,11 @@ type CallInspectorProps = {
   onBack?: () => void
   /** Desktop: close the card and show the keypad again. */
   onClose?: () => void
+  /** Desktop: the transcript, once the AI has it, for the big read-along view on the left. */
+  onTranscript?: (value: StageTranscript | null) => void
+  /** The big view is open: the recording plays there, so it is not repeated here. */
+  stageOpen?: boolean
+  onOpenStage?: () => void
 }
 
 function Card({ title, icon, aside, children, className }: { title: string; icon: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
@@ -49,7 +57,7 @@ function Fact({ label, children, danger }: { label: string; children: ReactNode;
 }
 
 /** Right pane of the Calls page: who it was, what happened, recording, notes and the history with that number. */
-export function CallInspector({ call, related, canCall, showCall = true, onDial, onSelectCall, onBack, onClose }: CallInspectorProps) {
+export function CallInspector({ call, related, canCall, showCall = true, onDial, onSelectCall, onBack, onClose, onTranscript, stageOpen = false, onOpenStage }: CallInspectorProps) {
   const { t } = useLocale()
   const { user } = useAuth()
   const [detail, setDetail] = useState<TelephonyCallDetail | null>(null)
@@ -58,6 +66,9 @@ export function CallInspector({ call, related, canCall, showCall = true, onDial,
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
   const noteRef = useRef<HTMLTextAreaElement>(null)
+  // The transcript comes with the AI grade; the grade card loads it and hands it over.
+  const [quality, setQuality] = useState<{ callId: number; value: CallQuality | null | undefined } | null>(null)
+  const onQuality = useCallback((value: CallQuality | null | undefined) => setQuality({ callId: call.id, value }), [call.id])
 
   useEffect(() => {
     let active = true
@@ -99,6 +110,18 @@ export function CallInspector({ call, related, canCall, showCall = true, onDial,
     ? { crm_source: call.crm_source, customer_id: call.customer_id, full_name: call.customer_name ?? '', phone_number: call.phone_number, status: null, platform: null, seller_id: call.user_id, seller_name: call.user_name }
     : null)
   const notes = detail?.notes ?? []
+  const graded = quality?.callId === call.id ? quality.value : undefined
+  const transcript = graded?.status === 'completed' ? graded.transcript : null
+  const transcribing = graded?.status === 'pending' || graded?.status === 'processing'
+  const stageSeller = graded?.sellerName ?? call.user_name ?? null
+  const stageCustomer = graded?.customerName ?? name ?? null
+  const stageSegments = graded?.status === 'completed' ? graded.segments : null
+  const canStage = Boolean(onTranscript && transcript && hasRecording)
+
+  useEffect(() => {
+    if (!onTranscript) return
+    onTranscript(transcript && hasRecording ? { callId: call.id, transcript, segments: stageSegments, sellerName: stageSeller, customerName: stageCustomer } : null)
+  }, [onTranscript, call.id, transcript, stageSegments, hasRecording, stageSeller, stageCustomer])
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] bg-[var(--muted-surface)] ring-1 ring-[var(--border)]">
@@ -191,14 +214,46 @@ export function CallInspector({ call, related, canCall, showCall = true, onDial,
           </dl>
         </section>
 
-        {hasRecording ? (
+        {hasRecording && !(stageOpen && canStage) ? (
           <Card title={t('telephony.recording', 'Recording')} icon={<Headphones size={15} />}>
             <RecordingPlayer callId={call.id} />
           </Card>
         ) : null}
 
+        {/* What was said: the transcript made by the AI while grading (answered calls with a recording only) */}
+        {call.talk_seconds > 0 && hasRecording ? (
+          <Card
+            title={t('transcript.title', 'Transcript')}
+            icon={<FileText size={15} />}
+            className="ring-[color-mix(in_srgb,var(--primary)_22%,var(--border))]"
+            aside={canStage && !stageOpen ? (
+              <button type="button" onClick={onOpenStage} className="inline-flex h-7 items-center gap-1 rounded-[9px] bg-[var(--blue-dim)] px-2.5 text-[12px] font-semibold text-[var(--blue-text)] hover:bg-[var(--blue-soft)]">
+                <Maximize2 size={12} /> {t('transcript.open_large', 'Open large')}
+              </button>
+            ) : graded?.analyzedAt && transcript ? <span className="text-[11.5px] font-medium text-[var(--muted)]">AI</span> : null}
+          >
+            {canStage && stageOpen ? (
+              <p className="flex items-center gap-2.5 rounded-[12px] bg-[var(--blue-dim)] px-3 py-2.5 text-[12.5px] leading-[1.5] text-[var(--blue-text)]">
+                <PanelLeft size={16} className="shrink-0" />{t('transcript.shown_left', 'The transcript and the recording are open on the left, in large view.')}
+              </p>
+            ) : graded === undefined ? (
+              <p className="flex items-center gap-2 text-[12.5px] text-[var(--muted)]"><Loader2 size={14} className="animate-spin" />{t('common.loading', 'Loading...')}</p>
+            ) : transcript ? (
+              <TranscriptView key={call.id} transcript={transcript} sellerName={graded?.sellerName ?? call.user_name ?? null} customerName={graded?.customerName ?? name ?? null} />
+            ) : transcribing ? (
+              <p className="flex items-center gap-2 rounded-[12px] bg-[var(--blue-dim)] px-3 py-2.5 text-[12.5px] leading-[1.5] text-[var(--blue-text)]"><Loader2 size={14} className="shrink-0 animate-spin" />{t('transcript.working', 'The AI is writing down the conversation…')}</p>
+            ) : (
+              <p className="text-[12.5px] leading-[1.5] text-[var(--muted)]">
+                {graded?.status === 'completed'
+                  ? t('transcript.empty', 'The AI graded this call but did not return its text.')
+                  : t('transcript.none', 'The transcript appears once the AI grades the call. Press “Grade the call” below.')}
+              </p>
+            )}
+          </Card>
+        ) : null}
+
         {/* AI grade against the call script and the sales script (answered calls only) */}
-        {call.talk_seconds > 0 ? <CallQualityCard key={call.id} callId={call.id} hasRecording={Boolean(hasRecording)} canRegrade={user?.role === 'CEO'} /> : null}
+        {call.talk_seconds > 0 ? <CallQualityCard key={call.id} callId={call.id} hasRecording={Boolean(hasRecording)} canRegrade={user?.role === 'CEO'} onQuality={onQuality} /> : null}
 
         <Card title={t('telephony.notes', 'Notes')} icon={<StickyNote size={15} />} aside={notes.length ? <span className="text-[12px] tabular-nums text-[var(--muted)]">{notes.length}</span> : null}>
           {notes.length ? (

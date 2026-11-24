@@ -233,6 +233,10 @@ function GradedCall({ item }: { item: CallQuality }) {
 }
 
 /** Calls → "Grades" tab: average grades, the script, and every graded call. */
+function periodRange(period: Period) {
+  return period === 'all' ? {} : { dateFrom: tashkentDayBound(Number(period) - 1, 'start'), dateTo: tashkentDayBound(0, 'end') }
+}
+
 export function CallQualityPanel({ isCeo }: { isCeo: boolean }) {
   const { t } = useLocale()
   const [stats, setStats] = useState<QualityStats | null>(null)
@@ -246,7 +250,7 @@ export function CallQualityPanel({ isCeo }: { isCeo: boolean }) {
 
   useEffect(() => {
     let alive = true
-    const range = period === 'all' ? {} : { dateFrom: tashkentDayBound(Number(period) - 1, 'start'), dateTo: tashkentDayBound(0, 'end') }
+    const range = periodRange(period)
     telephonyQualityService.stats(range)
       .then((value) => { if (alive) setStats(value) })
       .catch(() => undefined)
@@ -255,7 +259,8 @@ export function CallQualityPanel({ isCeo }: { isCeo: boolean }) {
 
   useEffect(() => {
     let alive = true
-    telephonyQualityService.calls({ status: filter === 'all' ? undefined : filter, page, pageSize: 20 })
+    // The list follows the same period as the tiles (it used to show every call whatever the period).
+    telephonyQualityService.calls({ status: filter === 'all' ? undefined : filter, page, pageSize: 20, ...periodRange(period) })
       .then((value) => {
         if (!alive) return
         setError(null)
@@ -264,7 +269,7 @@ export function CallQualityPanel({ isCeo }: { isCeo: boolean }) {
       })
       .catch((cause: unknown) => { if (alive) { setItems((current) => current ?? []); setError(getApiErrorMessage(cause)) } })
     return () => { alive = false }
-  }, [filter, page, version])
+  }, [filter, page, version, period])
 
   const filters: Array<[Filter, string]> = [
     ['all', t('quality.filter.all', 'All')],
@@ -284,7 +289,7 @@ export function CallQualityPanel({ isCeo }: { isCeo: boolean }) {
     <div className="space-y-4">
       <div role="radiogroup" aria-label={t('quality.period.label', 'Period')} className="flex w-fit gap-1 rounded-[13px] bg-[var(--muted-surface)] p-1">
         {periods.map(([value, label]) => (
-          <button key={value} type="button" role="radio" aria-checked={period === value} onClick={() => setPeriod(value)} className={cn('h-8 rounded-[10px] px-3 text-[12.5px] font-semibold transition-colors', period === value ? 'bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_3px_rgba(14,21,37,0.12)]' : 'text-[var(--muted-strong)] hover:text-[var(--foreground)]')}>{label}</button>
+          <button key={value} type="button" role="radio" aria-checked={period === value} onClick={() => { setPeriod(value); setPage(1) }} className={cn('h-8 rounded-[10px] px-3 text-[12.5px] font-semibold transition-colors', period === value ? 'bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_3px_rgba(14,21,37,0.12)]' : 'text-[var(--muted-strong)] hover:text-[var(--foreground)]')}>{label}</button>
         ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

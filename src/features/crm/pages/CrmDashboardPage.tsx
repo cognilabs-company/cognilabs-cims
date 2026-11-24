@@ -26,9 +26,15 @@ import { EmptyStateBlock, ErrorStateBlock, LoadingStateBlock } from '../../../sh
 import { crmService as baseCrmService } from '../../../shared/api/services/crm.service'
 import { AudioPlayerModal } from '../components/AudioPlayerModal'
 import { CrmDashboardOverview } from '../components/CrmDashboardOverview'
+import { SalesPanel } from '../components/SalesPanel'
+import { useSalesPanel } from '../lib/useSalesPanel'
+import { tashkentDayBound, telephonyQualityService } from '../../../shared/api/services/telephonyQuality.service'
+import { loadCallActivity } from '../lib/callActivity'
+import type { PanelPeriod } from '../lib/salesPanel'
 import { CopyButton, FilterPanel, FilterToken, FlagTag, StatusPill, StatusSelect } from '../components/CustomerFilters'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { platformVisual } from '../lib/platformIcon'
+import { formatDealAmount, normalizePhone, normalizePlatform, parseDealAmount } from '../lib/leadData'
 import { avatarTone, initialsFor } from '../lib/customerAvatar'
 import { MetricTile } from '../../../shared/ui/metric-tile'
 import { UsersThreeIcon } from '@phosphor-icons/react'
@@ -37,8 +43,6 @@ import { statusIconFor, statusKpiIconFor } from '../lib/statusIcon'
 import { CustomerDetailDrawer } from '../components/CustomerDetailDrawer'
 import { CustomerFormModal, type CustomerFormValues } from '../components/CustomerFormModal'
 import { RejectReasonDialog } from '../components/RejectReasonDialog'
-import { PreviousStatus } from '../components/PreviousStatus'
-import { rememberPreviousStatus } from '../lib/previousStatus'
 import { isRejectedStatus, rejectionReasonError } from '../lib/rejection'
 import { useRejectionReason } from '../lib/useRejectionReason'
 import { useCrmScope } from '../lib/crmScope'
@@ -64,6 +68,7 @@ const initialFormValues: CustomerFormValues = {
   customer_type: '',
   conversation_language: 'uz',
   rejection_reason: '',
+  deal_amount: '',
 }
 
 function toDateTimeLocalValue(value?: string | null) {
@@ -123,6 +128,7 @@ function toFormValues(customer?: CustomerSummary | null): CustomerFormValues {
     customer_type: '',
     conversation_language: customer.conversation_language ?? 'uz',
     rejection_reason: customer.rejection_reason ?? '',
+    deal_amount: formatDealAmount(customer.deal_amount),
   }
 }
 
@@ -136,8 +142,8 @@ function buildCustomerFormData(
 
   const mappedFields: Array<[string, string]> = [
     ['full_name', values.full_name.trim()],
-    ['platform', values.platform.trim()],
-    ['phone_number', values.phone_number.trim()],
+    ['platform', normalizePlatform(values.platform)],
+    ['phone_number', normalizePhone(values.phone_number)],
     ['username', values.username.trim()],
     ['assistant_name', values.assistant_name.trim()],
     ['notes', values.notes.trim()],
@@ -162,6 +168,11 @@ function buildCustomerFormData(
 
   if (isRejectedStatus(normalizedStatus) && values.rejection_reason.trim()) {
     formData.append('rejection_reason', values.rejection_reason.trim())
+  }
+
+  const dealAmount = parseDealAmount(values.deal_amount)
+  if (dealAmount !== null) {
+    formData.append('deal_amount', String(dealAmount))
   }
 
   if (values.recall_time) {
@@ -189,8 +200,8 @@ function buildCustomerDraft(customer: CustomerSummary, values: CustomerFormValue
   return {
     ...customer,
     full_name: values.full_name.trim(),
-    platform: values.platform.trim(),
-    phone_number: values.phone_number.trim(),
+    platform: normalizePlatform(values.platform),
+    phone_number: normalizePhone(values.phone_number),
     status: values.status.trim(),
     username: values.username.trim(),
     assistant_name: values.assistant_name.trim(),
@@ -198,7 +209,13 @@ function buildCustomerDraft(customer: CustomerSummary, values: CustomerFormValue
     recall_time: normalizedRecallTime,
     conversation_language: values.conversation_language.trim(),
     rejection_reason: isRejectedStatus(values.status) ? values.rejection_reason.trim() || customer.rejection_reason || null : customer.rejection_reason ?? null,
+    deal_amount: parseDealAmount(values.deal_amount) ?? customer.deal_amount ?? null,
   }
+}
+
+/** Inbound CRM duplicate warning in the customer form (task #667). Module-level so its identity never changes. */
+function checkLeadPhone(phone: string) {
+  return baseCrmService.phoneCheck(phone)
 }
 
 function formatDateTime(value?: string | null) {
@@ -320,8 +337,8 @@ function getConversationIdFromChatUrl(value?: string | null) {
   return match ? Number(match[1]) : null
 }
 
-function normalizeStatusKey(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
+function normalizeStatusKey(value: string | null | undefined) {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 function normalizeFilterValue(value?: string | null) {
@@ -494,7 +511,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   const { confirm } = useConfirm()
   const [searchParams, setSearchParams] = useSearchParams()
   const { service: crmService, apiBasePath, routeBasePath, storageKey, kind: crmKind } = useCrmScope()
-  const { can } = useAuth()
+  const { can, hasPermission } = useAuth()
   // RBAC "customers" actions (the outbound CRM is not an RBAC module and keeps its own rules).
   const mayCustomers = (action: string) => crmKind === 'outbound' || can('customers', action)
   // Leads with a scheduled time get a small button next to the name that opens it in the calendar.
@@ -639,6 +656,35 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
   )
 
   const statusMetaMap = useMemo(() => buildNormalizedStatusMetaMap(statusOptions), [statusOptions])
+
+  /* Inbound /crm overview = "Savdo paneli" (task #667): every block follows the 7/30/90-day switch. */
+  const [panelPeriod, setPanelPeriod] = useState<PanelPeriod>(30)
+  const isSalesPanel = view === 'overview' && crmKind !== 'outbound'
+  const salesPanel = useSalesPanel(dashboardQuery.data?.customers ?? emptyCustomers, statusOptions, panelPeriod, isSalesPanel)
+  // AI call grades for the dashboard: same period as the panel; call quality is CEO-only (/call-quality route).
+  const canCallAnalytics = isSalesPanel && hasPermission('ceo')
+  const callAnalyticsQuery = useAsyncData(async () => {
+    const range = { dateFrom: tashkentDayBound(panelPeriod - 1, 'start'), dateTo: tashkentDayBound(0, 'end') }
+    const [stats, calls] = await Promise.allSettled([
+      telephonyQualityService.stats(range),
+      telephonyQualityService.calls({ ...range, status: 'completed', pageSize: 50 }),
+    ])
+    if (stats.status === 'rejected' && calls.status === 'rejected') throw stats.reason
+    return { stats: stats.status === 'fulfilled' ? stats.value : null, calls: calls.status === 'fulfilled' ? calls.value.items : [] }
+  }, [panelPeriod], { enabled: canCallAnalytics })
+  // Calls of the period per employee (/telephony/calls) for the "manager work quality" board; hidden if the user may not read calls.
+  const callActivityQuery = useAsyncData(() => loadCallActivity(panelPeriod), [panelPeriod], { enabled: isSalesPanel })
+  const callActivity = isSalesPanel && !callActivityQuery.isError
+    ? { data: callActivityQuery.data ?? null, loading: callActivityQuery.isLoading }
+    : null
+  const callAnalytics = canCallAnalytics
+    ? {
+        loading: callAnalyticsQuery.isLoading || callAnalyticsQuery.isIdle,
+        failed: callAnalyticsQuery.isError,
+        stats: callAnalyticsQuery.data?.stats ?? null,
+        calls: callAnalyticsQuery.data?.calls ?? [],
+      }
+    : null
 
   useEffect(() => {
     const customerIdParam = searchParams.get('customer_id')
@@ -1038,7 +1084,6 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     syncCustomerInUi({ ...customer, status: nextStatus, ...(rejectionReason ? { rejection_reason: rejectionReason, rejected_at: new Date().toISOString() } : {}) })
     try {
       await crmService.patchCustomer(customer.id, formData)
-      rememberPreviousStatus(crmKind, customer.id, nextStatus, customer.status)
       showToast({
         title: t('customers.toast.status_changed', 'Status changed'),
         description: t('customers.toast.status_changed_description', '{{name}} → {{status}}', {
@@ -1232,6 +1277,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
         onFileChange={setAudioFile}
         onSubmit={() => void handleSubmitCustomer()}
         isSubmitting={isFormSubmitting}
+        checkPhone={crmKind === 'outbound' ? undefined : checkLeadPhone}
         rejectionError={rejectionError}
       />
 
@@ -1256,8 +1302,37 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
           <Button onClick={() => navigate(`${routeBasePath}/customers`)} rightIcon={<ArrowRight size={16} />} className="min-h-11 rounded-full px-5">
             {t('customers.page.open_list', 'Customer list')}
           </Button>
+          {isSalesPanel && canCreateCustomer ? (
+            <Button onClick={openCreateModal} leftIcon={<Plus size={16} />} className="min-h-11 rounded-full px-5">
+              {t('crm.panel.new_lead', 'New lead')}
+            </Button>
+          ) : null}
         </HeaderActions>
 
+        {isSalesPanel ? (
+          <SalesPanel
+            summary={salesPanel.summary}
+            loading={dashboardQuery.isLoading}
+            managersLoaded={salesPanel.managersLoaded}
+            callAnalytics={callAnalytics}
+            callActivity={callActivity}
+            period={panelPeriod}
+            onPeriodChange={setPanelPeriod}
+            statusMeta={(status) => {
+              const meta = statusMetaMap.get(normalizeStatusKey(status))
+              const raw = status ?? ''
+              return { label: meta?.label ?? localizeStatus(raw, raw.replace(/_/g, ' ')), color: meta?.color ?? '#8A90A2' }
+            }}
+            onOpenCustomer={(customerId) => {
+              const match = (dashboardQuery.data?.customers ?? emptyCustomers).find((customer) => customer.id === customerId)
+              if (match) setDetailCustomer(match)
+            }}
+            onFocusStatus={(statusKey) => {
+              const match = statusOptions.find((option) => normalizeStatusKey(option.value) === normalizeStatusKey(statusKey))
+              navigate(`${routeBasePath}/customers?status=${encodeURIComponent(match?.value ?? statusKey)}`)
+            }}
+          />
+        ) : (
         <CrmDashboardOverview
           statusLabels={Object.fromEntries(statusOptions.map((option) => [option.value, option.label]))}
           customers={baseCustomers}
@@ -1276,6 +1351,7 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
             navigate(`${routeBasePath}/customers?status=${encodeURIComponent(match?.value ?? statusKey)}`)
           }}
         />
+        )}
         {modals}
       </section>
     )
@@ -1343,32 +1419,23 @@ function CrmWorkspace({ view }: { view: CrmPageView }) {
     {
       key: 'status',
       header: t('customers.table.status', 'Status'),
-      width: 320,
+      width: 210,
       sortValue: (row) => row.status,
       exportValue: (row) => statusMetaFor(row.status).label,
       render: (row) => {
         const meta = statusMetaFor(row.status)
-        const renderPrevious = (previous: string) => {
-          const previousMeta = statusMetaFor(previous)
-          return <StatusPill label={previousMeta.label} color={previousMeta.color} icon={previousMeta.icon} />
-        }
+        if (!canEditCustomer) return <StatusPill label={meta.label} color={meta.color} icon={meta.icon} />
         return (
-          <PreviousStatus customerId={row.id} status={row.status} renderPrevious={renderPrevious}>
-            {canEditCustomer ? (
-              <StatusSelect
-                current={row.status}
-                label={meta.label}
-                color={meta.color}
-                icon={meta.icon}
-                options={statusChoices}
-                saving={savingStatusId === row.id}
-                title={t('customers.table.change_status', 'Change status')}
-                onChange={(next) => void handleInlineStatusChange(row, next)}
-              />
-            ) : (
-              <StatusPill label={meta.label} color={meta.color} icon={meta.icon} />
-            )}
-          </PreviousStatus>
+          <StatusSelect
+            current={row.status}
+            label={meta.label}
+            color={meta.color}
+            icon={meta.icon}
+            options={statusChoices}
+            saving={savingStatusId === row.id}
+            title={t('customers.table.change_status', 'Change status')}
+            onChange={(next) => void handleInlineStatusChange(row, next)}
+          />
         )
       },
     },

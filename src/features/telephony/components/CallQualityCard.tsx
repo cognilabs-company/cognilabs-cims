@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, BadgeCheck, ChevronDown, CircleCheck, CircleX, Lightbulb, Loader2, RotateCw, Sparkles, ThumbsUp } from 'lucide-react'
+import { TranscriptView } from './CallTranscript'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
@@ -87,8 +88,9 @@ function CriteriaList({ criteria }: { criteria: QualityCriterion[] }) {
   )
 }
 
-/** The grade itself: total, the three parts, the checklist and the AI's notes. */
-export function QualityReport({ quality }: { quality: CallQuality }) {
+/** The grade itself: total, the three parts, the checklist and the AI's notes.
+    `showTranscript={false}` when the transcript already has its own card next to it. */
+export function QualityReport({ quality, showTranscript = true }: { quality: CallQuality; showTranscript?: boolean }) {
   const { t } = useLocale()
   const [transcriptOpen, setTranscriptOpen] = useState(false)
   return (
@@ -112,13 +114,13 @@ export function QualityReport({ quality }: { quality: CallQuality }) {
         <Bullets icon={Lightbulb} title={t('quality.recommendations', 'What to improve')} items={quality.recommendations} tone="var(--blue-text)" />
       </div>
 
-      {quality.transcript ? (
+      {showTranscript && quality.transcript ? (
         <div>
           <button type="button" onClick={() => setTranscriptOpen((open) => !open)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--primary)]">
             {transcriptOpen ? t('quality.hide_transcript', 'Hide transcript') : t('quality.show_transcript', 'Show transcript')}
             <ChevronDown size={13} className={cn('transition-transform', transcriptOpen && 'rotate-180')} />
           </button>
-          {transcriptOpen ? <p className="mt-2 max-h-64 overflow-y-auto rounded-[12px] bg-[var(--muted-surface)] px-3 py-2.5 text-[12.5px] leading-[1.6] whitespace-pre-wrap text-[var(--muted-strong)]">{quality.transcript}</p> : null}
+          {transcriptOpen ? <div className="mt-3"><TranscriptView transcript={quality.transcript} sellerName={quality.sellerName} customerName={quality.customerName} compact /></div> : null}
         </div>
       ) : null}
 
@@ -131,12 +133,20 @@ export function QualityReport({ quality }: { quality: CallQuality }) {
  * Call card section: the AI grade of this call against the call script and the sales script.
  * Asks for a grade when there is none yet and follows it until it is ready.
  */
-export function CallQualityCard({ callId, hasRecording, canRegrade }: { callId: number; hasRecording: boolean; canRegrade: boolean }) {
+export function CallQualityCard({ callId, hasRecording, canRegrade, onQuality }: {
+  callId: number
+  hasRecording: boolean
+  canRegrade: boolean
+  /** Every time the grade is (re)loaded: undefined while loading, null when there is none. */
+  onQuality?: (quality: CallQuality | null | undefined) => void
+}) {
   const { t } = useLocale()
   const [quality, setQuality] = useState<CallQuality | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const working = quality?.status === 'pending' || quality?.status === 'processing'
+
+  useEffect(() => { onQuality?.(quality) }, [onQuality, quality])
 
   useEffect(() => {
     let alive = true
@@ -187,7 +197,7 @@ export function CallQualityCard({ callId, hasRecording, canRegrade }: { callId: 
       {quality === undefined ? (
         <p className="flex items-center gap-2 text-[12.5px] text-[var(--muted)]"><Loader2 size={14} className="animate-spin" />{t('common.loading', 'Loading...')}</p>
       ) : done && quality ? (
-        <QualityReport quality={quality} />
+        <QualityReport quality={quality} showTranscript={!onQuality} />
       ) : working ? (
         <div className="flex items-center gap-3 rounded-[12px] bg-[var(--blue-dim)] px-3 py-3">
           <Loader2 size={18} className="shrink-0 animate-spin text-[var(--primary)]" />
@@ -218,5 +228,5 @@ export function CallQualityCard({ callId, hasRecording, canRegrade }: { callId: 
 }
 
 function emptyQuality(callId: number): CallQuality {
-  return { callId, status: 'pending', overall: null, callScript: null, analysis: null, salesScript: null, summary: null, strengths: [], mistakes: [], recommendations: [], criteria: [], transcript: null, sellerName: null, customerName: null, phone: null, callStartedAt: null, analyzedAt: null, error: null }
+  return { callId, status: 'pending', overall: null, callScript: null, analysis: null, salesScript: null, summary: null, strengths: [], mistakes: [], recommendations: [], criteria: [], transcript: null, segments: null, sellerName: null, customerName: null, phone: null, callStartedAt: null, analyzedAt: null, error: null }
 }

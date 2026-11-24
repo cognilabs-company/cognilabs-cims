@@ -365,6 +365,22 @@ export const crmService = {
     })
   },
 
+  /** Is this phone already in the base? (task #667). The answer shape is read loosely by `phoneDuplicates`. */
+  phoneCheck(phone: string, excludeCustomerId?: number) {
+    return request<unknown>({
+      path: '/crm/dashboard/phone-check',
+      query: { phone, exclude_customer_id: excludeCustomerId },
+    })
+  },
+
+  /** One answer for every block of the sales panel (task #667); `period` = 7 | 30 | 90 days. */
+  dashboardSummary(period: number) {
+    return request<unknown>({
+      path: '/crm/dashboard/summary',
+      query: { period },
+    })
+  },
+
   assignSalesManager(payload: Record<string, unknown>) {
     return request<SuccessResponse>({
       path: '/crm/assign-sales-manager',

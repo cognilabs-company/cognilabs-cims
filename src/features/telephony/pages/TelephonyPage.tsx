@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { Eye, ListFilter, PhoneOff, RotateCcw, Search, X } from 'lucide-react'
@@ -12,6 +12,7 @@ import { normalizePhone, telephonyService, type CallHistoryQuery, type Telephony
 import { SelectField } from '../../../shared/ui/select-field'
 import { Button } from '../../../shared/ui/button'
 import { CallInspector } from '../components/CallInspector'
+import { TranscriptStage, type StageTranscript } from '../components/TranscriptStage'
 import { CallRow, CallRowSkeleton } from '../components/CallParts'
 import { CallsHero, type CallsCounts, type CallsTab, type CallsView } from '../components/CallsHero'
 import { CallDayPicker } from '../components/CallDayPicker'
@@ -131,7 +132,26 @@ export function TelephonyPage() {
 
   // ── selection ────────────────────────────────────────────────
   const [selected, setSelected] = useState<TelephonyCall | null>(null)
+  // Desktop: the transcript of the open call takes the left side in large view (read along with the recording).
+  const [stageData, setStageData] = useState<StageTranscript | null>(null)
+  const [stageHidden, setStageHidden] = useState<number | null>(null)
+  const onTranscript = useCallback((value: StageTranscript | null) => setStageData(value), [])
   const [mobileSheet, setMobileSheet] = useState<'call' | 'dialer' | null>(() => (params.get('phone') && !isDesktop() ? 'dialer' : null))
+
+  // `?call=<id>` (e.g. from a lead card) opens that call in the inspector, even when it is not in the loaded page.
+  const linkedCallId = Number(params.get('call')) || null
+  useEffect(() => {
+    if (!linkedCallId) return
+    let active = true
+    void telephonyService.call(linkedCallId)
+      .then((call) => {
+        if (!active) return
+        setSelected(call)
+        if (!isDesktop()) setMobileSheet('call')
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [linkedCallId])
 
   useEffect(() => {
     const nextPhone = params.get('phone')
@@ -259,6 +279,8 @@ export function TelephonyPage() {
 
   const view: CallsView = status === 'missed' ? 'missed' : direction === 'incoming' ? 'incoming' : direction === 'outgoing' ? 'outgoing' : 'all'
   const filtered = Boolean(search || status || direction || period !== 'all')
+  const stage = desktop && selectedCall && stageData?.callId === selectedCall.id ? stageData : null
+  const stageOpen = Boolean(stage && stageHidden !== selectedCall?.id)
   const dialerShown = desktop ? !selectedCall : mobileSheet === 'dialer'
 
   function changeView(next: CallsView) {
@@ -386,7 +408,12 @@ export function TelephonyPage() {
         </div>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(340px,380px)] 2xl:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="min-w-0 space-y-4">
+          {stageOpen && stage && selectedCall ? (
+            <div className="sticky top-0 h-[calc(100dvh-var(--header-h)-116px)] min-h-[460px] min-w-0">
+              <TranscriptStage key={selectedCall.id} call={selectedCall} data={stage} onClose={() => setStageHidden(selectedCall.id)} />
+            </div>
+          ) : null}
+          <div className={cn('min-w-0 space-y-4', stageOpen && 'hidden')}>
             {hero}
             {phoneAlert}
             {/* ── Day-by-day list ─────────────────────────────── */}
@@ -513,6 +540,9 @@ export function TelephonyPage() {
                 onDial={dial}
                 onSelectCall={selectCallById}
                 onClose={() => setSelected(null)}
+                onTranscript={onTranscript}
+                stageOpen={stageOpen}
+                onOpenStage={() => setStageHidden(null)}
               />
             ) : mayCall ? dialer() : (
               <div className="grid h-full place-items-center rounded-[22px] bg-[var(--surface)] px-8 text-center ring-1 ring-[var(--border)]">

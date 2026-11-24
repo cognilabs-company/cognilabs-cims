@@ -12,13 +12,14 @@ export function isRejectedStatus(status: string | null | undefined) {
 export const MIN_REJECTION_REASON = 5
 
 /** Quick picks for the most common reasons; the text can still be edited afterwards. */
+/* Task #667: the same categories the CRM sales panel groups rejections by (salesPanel.rejectionKeyOf). "Boshqa" = type your own. */
 export const REJECTION_PRESETS: Array<{ key: string; fallback: string }> = [
-  { key: 'customers.reject.preset.price', fallback: 'Price is too high' },
-  { key: 'customers.reject.preset.not_needed', fallback: 'Does not need the service now' },
-  { key: 'customers.reject.preset.competitor', fallback: 'Chose another company' },
-  { key: 'customers.reject.preset.no_budget', fallback: 'No budget' },
-  { key: 'customers.reject.preset.no_answer', fallback: 'Stopped answering' },
-  { key: 'customers.reject.preset.not_target', fallback: 'Not our target client' },
+  { key: 'customers.reject.preset.no_answer', fallback: 'No answer' },
+  { key: 'customers.reject.preset.not_fit', fallback: 'Service does not fit' },
+  { key: 'customers.reject.preset.by_mistake', fallback: 'Left the form by mistake' },
+  { key: 'customers.reject.preset.competitor', fallback: 'Solved it or chose a competitor' },
+  { key: 'customers.reject.preset.small_turnover', fallback: 'Turnover too small' },
+  { key: 'customers.reject.preset.price', fallback: 'Too expensive' },
 ]
 
 type Translate = (key: string, fallback: string, params?: { count: number }) => string

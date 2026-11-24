@@ -626,7 +626,7 @@ export function CustomerDetailDrawer({
           role="dialog"
           aria-modal="true"
           aria-label={customer ? getCustomerDisplayName(customer) : t('customers.detail', 'Customer detail')}
-          className="modal-pop pointer-events-auto flex max-h-[min(88vh,860px)] w-full max-w-[620px] flex-col overflow-hidden rounded-[22px] bg-[var(--surface)] shadow-[var(--elev-xl)] ring-1 ring-black/[0.04]"
+          className="modal-pop pointer-events-auto flex max-h-[min(88vh,860px)] w-full max-w-[680px] flex-col overflow-hidden rounded-[22px] bg-[var(--surface)] shadow-[var(--elev-xl)] ring-1 ring-black/[0.04]"
         >
           {isCustomerUnavailable ? (
             <>

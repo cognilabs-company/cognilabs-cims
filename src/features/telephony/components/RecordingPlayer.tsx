@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react'
 import { Download } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
-import { getApiErrorMessage } from '../../../shared/lib/api-error'
 import { cn } from '../../../shared/lib/cn'
-import { telephonyService } from '../../../shared/api/services/telephony.service'
+import { useRecordingUrl } from '../lib/useRecordingUrl'
+import {
+  AudioPlayer,
+  AudioPlayerControlBar,
+  AudioPlayerDurationDisplay,
+  AudioPlayerElement,
+  AudioPlayerPlayButton,
+  AudioPlayerTimeDisplay,
+  AudioPlayerTimeRange,
+} from '../../../components/ai-elements/audio-player'
 
 const looks = {
   // The macOS Phone inspector (--mp-* tokens live under .mac-phone).
@@ -24,24 +31,7 @@ const looks = {
 export function RecordingPlayer({ callId, variant = 'phone' }: { callId: number; variant?: keyof typeof looks }) {
   const { t } = useLocale()
   const look = looks[variant]
-  const [url, setUrl] = useState<string | null>(null)
-  const [extension, setExtension] = useState('webm')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let active = true
-    void telephonyService.recording(callId).then((blob) => {
-      if (active) {
-        setExtension(blob.type.includes('mpeg') ? 'mp3' : blob.type.includes('wav') ? 'wav' : blob.type.includes('ogg') ? 'ogg' : 'webm')
-        setUrl(URL.createObjectURL(blob))
-      }
-    }).catch((cause: unknown) => { if (active) setError(getApiErrorMessage(cause)) })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [callId])
-
-  useEffect(() => () => { if (url) URL.revokeObjectURL(url) }, [url])
+  const { url, extension, loading, error } = useRecordingUrl(callId)
 
   if (loading) {
     return variant === 'app'
@@ -51,18 +41,40 @@ export function RecordingPlayer({ callId, variant = 'phone' }: { callId: number;
   if (error) return <p role="alert" className={look.error}>{error}</p>
   if (!url) return null
 
+  const download = (
+    <a
+      href={url}
+      download={`call-${callId}.${extension}`}
+      title={t('telephony.recording_download', 'Download recording')}
+      aria-label={t('telephony.recording_download', 'Download recording')}
+      className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors', look.download)}
+    >
+      <Download size={15} aria-hidden="true" />
+    </a>
+  )
+
+  // In-app look: the site's own player (play, time, scrubber) instead of the browser's grey <audio> bar.
+  if (variant === 'app') {
+    return (
+      <div className="flex items-center gap-1.5 rounded-full bg-[var(--surface)] py-0.5 pr-1 pl-0.5 ring-1 ring-[var(--border)]">
+        <AudioPlayer className="min-w-0 flex-1">
+          <AudioPlayerElement src={url} preload="metadata" />
+          <AudioPlayerControlBar className="w-full">
+            <AudioPlayerPlayButton />
+            <AudioPlayerTimeDisplay className="text-[11.5px] text-[var(--muted)]" />
+            <AudioPlayerTimeRange />
+            <AudioPlayerDurationDisplay className="text-[11.5px] text-[var(--muted)]" />
+          </AudioPlayerControlBar>
+        </AudioPlayer>
+        {download}
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2">
       <audio className="h-9 min-w-0 flex-1" src={url} controls preload="metadata" />
-      <a
-        href={url}
-        download={`call-${callId}.${extension}`}
-        title={t('telephony.recording_download', 'Download recording')}
-        aria-label={t('telephony.recording_download', 'Download recording')}
-        className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors', look.download)}
-      >
-        <Download size={15} aria-hidden="true" />
-      </a>
+      {download}
     </div>
   )
 }
