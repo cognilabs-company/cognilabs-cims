@@ -5,11 +5,11 @@ import { tashkentDayBound } from '../../../shared/api/services/telephonyQuality.
  * Call activity of a period, built from /telephony/calls (the same list the Calls page shows):
  * totals for the dashboard and one row per employee who made or took calls, for the
  * "manager work quality" board in the CRM. The backend has no aggregate endpoint, so the calls
- * are paged through (200 per page, at most MAX_PAGES pages) and counted here.
+ * are paged through (100 per page — the server maximum — at most MAX_PAGES pages) and counted here.
  */
 
-const PAGE_SIZE = 200
-const MAX_PAGES = 10
+const PAGE_SIZE = 100 // server rejects page_size > 100 (422)
+const MAX_PAGES = 20
 
 export type CallActivityUser = {
   userId: number | null

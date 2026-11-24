@@ -102,8 +102,9 @@ export function loadCustomerNames() {
 /** Telephony calls (incoming / outgoing) in a day range, newest pages first (at most ~1000). */
 export async function loadCalls(dateFrom: string, dateTo: string): Promise<CalEvent[]> {
   const out: CalEvent[] = []
-  for (let page = 1; page <= 5; page += 1) {
-    const response = await telephonyService.calls({ page, page_size: 200, date_from: dateFrom, date_to: dateTo })
+  // The server caps page_size at 100 (422 above that), so 10 pages ≈ the old 5×200.
+  for (let page = 1; page <= 10; page += 1) {
+    const response = await telephonyService.calls({ page, page_size: 100, date_from: dateFrom, date_to: dateTo })
     for (const call of response.items ?? []) {
       if (!call.started_at || Number.isNaN(new Date(call.started_at).getTime())) continue
       const talk = Number(call.talk_seconds) || 0
