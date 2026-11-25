@@ -34,6 +34,9 @@ export type CallQuality = {
   transcript: string | null
   /** The same talk with exact times, when the backend sends it as segments (seconds from the start of the recording). */
   segments: TranscriptSegment[] | null
+  /** How the talk was split into speakers: 'channel' = separate operator/customer tracks (roles are exact),
+      'unavailable' = old mixed recording, every segment is role 'unknown'. null when the backend does not say. */
+  speakerSeparation: string | null
   sellerName: string | null
   customerName: string | null
   phone: string | null
@@ -43,7 +46,9 @@ export type CallQuality = {
 }
 
 export type TranscriptWord = { text: string; start: number; end: number }
-export type TranscriptSegment = { speaker: string | null; text: string; start: number; end: number | null; words: TranscriptWord[] | null }
+/** Who said a segment, as the backend knows it. 'unknown' must stay unknown: never guess the role from the order. */
+export type SegmentRole = 'operator' | 'customer' | 'unknown'
+export type TranscriptSegment = { speaker: string | null; role: SegmentRole | null; text: string; start: number; end: number | null; words: TranscriptWord[] | null }
 
 export type QualityStats = {
   analyzed: number
@@ -164,6 +169,15 @@ function timeOf(entry: Record<string, unknown>, keys: string[]): number | null {
 const START_KEYS = ['start', 'start_time', 'from', 'begin', 'start_sec', 'start_seconds', 'offset', 'timestamp', 'start_ms']
 const END_KEYS = ['end', 'end_time', 'to', 'finish', 'end_sec', 'end_seconds', 'end_ms']
 
+/** The backend's role ('operator' / 'customer' / 'unknown', or SPEAKER_OPERATOR / SPEAKER_CUSTOMER / SPEAKER_UNKNOWN). */
+function roleOf(entry: Loose): SegmentRole | null {
+  const key = (str(entry.role) ?? str(entry.speaker) ?? '').toLowerCase().replace(/^speaker[_\s-]*/, '')
+  if (key === 'operator') return 'operator'
+  if (key === 'customer') return 'customer'
+  if (key === 'unknown') return 'unknown'
+  return null
+}
+
 /** Segments with their exact times, kept apart from the text so the player can follow them to the word. */
 function segmentsOf(value: unknown): TranscriptSegment[] | null {
   if (!Array.isArray(value)) return null
@@ -181,9 +195,10 @@ function segmentsOf(value: unknown): TranscriptSegment[] | null {
       return said && from !== null ? [{ text: said.trim(), start: from, end: to ?? from }] : []
     }).filter((word) => word.text)
     const speaker = str(entry.speaker) ?? str(entry.role) ?? str(entry.speaker_label) ?? str(entry.name) ?? (typeof entry.speaker === 'number' ? `SPEAKER_${entry.speaker}` : null)
-    return [{ speaker, text: text.trim(), start, end: timeOf(entry, END_KEYS), words: words.length ? words : null }]
+    return [{ speaker, role: roleOf(entry), text: text.trim(), start, end: timeOf(entry, END_KEYS), words: words.length ? words : null }]
   })
-  return list.length ? list.sort((a, b) => a.start - b.start) : null
+  // Kept in the backend's order: overlapping speech can have overlapping times, so sorting could reorder it.
+  return list.length ? list : null
 }
 
 function groupOf(raw: string | null): QualityCriterion['group'] {
@@ -249,6 +264,7 @@ export function normalizeCallQuality(raw: unknown, fallbackCallId = 0): CallQual
     criteria: normalizeCriteria(source),
     segments: segmentsOf(source.segments) ?? segmentsOf(source.transcript) ?? segmentsOf(source.transcription) ?? segmentsOf(source.utterances) ?? (isObject(source.transcript) ? segmentsOf(source.transcript.segments) : null),
     transcript: transcriptOf(source.transcript) ?? transcriptOf(source.transcription) ?? transcriptOf(source.segments) ?? transcriptOf(source.utterances) ?? (isObject(source.transcript) ? transcriptOf(source.transcript.text) ?? transcriptOf(source.transcript.segments) : null) ?? str(source.text),
+    speakerSeparation: str(source.speaker_separation) ?? str(outer.speaker_separation),
     sellerName: str(source.user_name) ?? str(source.seller_name) ?? str(call.user_name) ?? (isObject(source.user) ? str(source.user.full_name) ?? str(source.user.name) : null),
     customerName: str(source.customer_name) ?? str(call.customer_name),
     phone: str(source.phone_number) ?? str(call.phone_number),

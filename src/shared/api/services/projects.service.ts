@@ -168,6 +168,15 @@ export type CardStatusHistoryRecord = {
   started_at: string | null
   ended_at: string | null
   duration_seconds: number | null
+  /** Enriched history (GET /cards/{id}/status-history): null on the first entry ("created in"). */
+  from_status: string | null
+  to_status: string | null
+  /** Who moved the card; null means unknown (show "System / unknown", never guess). */
+  changed_by_name: string | null
+  /** Timezone-aware UTC moment of the move. */
+  changed_at: string | null
+  /** The open status interval; its duration is counted at request time. null when the backend does not say. */
+  is_current: boolean | null
 }
 
 export type UserOpenCardRecord = CardRecord & {
@@ -232,6 +241,7 @@ type ApiCardStatusHistoryRecord = Partial<CardStatusHistoryRecord> & {
   entered_at?: string | null
   left_at?: string | null
   duration?: number | null
+  moved_by_name?: string | null
 }
 
 type ApiColumnRecord = Omit<Partial<ColumnRecord>, 'cards'> & {
@@ -340,6 +350,11 @@ function normalizeCardStatusHistory(history?: ApiCardStatusHistoryRecord[] | nul
     started_at: entry.started_at ?? entry.entered_at ?? entry.started_on ?? null,
     ended_at: entry.ended_at ?? entry.left_at ?? entry.ended_on ?? null,
     duration_seconds: entry.duration_seconds ?? entry.duration ?? null,
+    from_status: entry.from_status ?? null,
+    to_status: entry.to_status ?? null,
+    changed_by_name: entry.changed_by_name ?? entry.moved_by_name ?? null,
+    changed_at: entry.changed_at ?? null,
+    is_current: typeof entry.is_current === 'boolean' ? entry.is_current : null,
   }))
 }
 
@@ -1104,6 +1119,12 @@ export const projectsService = {
 
   getCard(cardId: number) {
     return request<ApiCardRecord>({ path: `/cards/${cardId}` }).then(normalizeCard)
+  },
+
+  /** Chronological status visits with who moved the card and when (same access rules as getCard). */
+  getCardStatusHistory(cardId: number) {
+    return request<ApiCardStatusHistoryRecord[] | { items?: ApiCardStatusHistoryRecord[] | null } | null>({ path: `/cards/${cardId}/status-history` })
+      .then((response) => normalizeCardStatusHistory(Array.isArray(response) ? response : response?.items))
   },
 
   listUserOpenCards(userId: number, projectId?: number | null) {

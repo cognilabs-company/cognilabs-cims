@@ -1,4 +1,4 @@
-import type { TranscriptSegment } from '../../../shared/api/services/telephonyQuality.service'
+import type { SegmentRole, TranscriptSegment } from '../../../shared/api/services/telephonyQuality.service'
 import { resolveSides, sideOf, type Turn } from './transcriptParse'
 
 /* Puts the transcript on the audio's clock so the page can follow the recording word by word.
@@ -9,7 +9,7 @@ import { resolveSides, sideOf, type Turn } from './transcriptParse'
    - inside a turn the words are spread by their length over the time it takes to say them. */
 
 export type TimedWord = { text: string; start: number; end: number }
-export type TimedTurn = Turn & { start: number; end: number; words: TimedWord[] }
+export type TimedTurn = Turn & { start: number; end: number; words: TimedWord[]; role?: SegmentRole | null }
 
 const PAUSE = 8 // a pause between turns, counted in characters
 const SECONDS_PER_CHAR = 0.062 // ~16 characters a second: phone talk is quick, a slower guess makes the highlight lag
@@ -78,6 +78,8 @@ function spread(text: string, from: number, to: number): TimedWord[] {
   })
 }
 
+export const ROLE_SIDE: Record<SegmentRole, Turn['side']> = { operator: 'seller', customer: 'client', unknown: 'other' }
+
 /** Segments that already carry their own times: exact, no guessing beyond the words inside a segment
     (spread over the segment's own span when the backend gives no per-word times). */
 export function timeSegments(segments: TranscriptSegment[], sellerName: string | null, customerName: string | null, duration: number): TimedTurn[] {
@@ -86,22 +88,20 @@ export function timeSegments(segments: TranscriptSegment[], sellerName: string |
     const guess = segment.start + Math.max(0.5, (segment.text.length + 1) * SECONDS_PER_CHAR)
     const end = segment.end !== null && segment.end > segment.start ? segment.end : Math.min(guess, next ?? Math.max(duration, guess))
     const words = segment.words?.length ? segment.words : spread(segment.text, segment.start, end)
-    const side = segment.speaker ? sideOf(segment.speaker, sellerName, customerName) : null
-    return { id: index, speaker: segment.speaker, side: side ?? 'other', time: null, text: segment.text, start: segment.start, end, words }
+    const side = segment.role ? ROLE_SIDE[segment.role] : segment.speaker ? sideOf(segment.speaker, sellerName, customerName) : null
+    return { id: index, speaker: segment.speaker, role: segment.role, side: side ?? 'other', time: null, text: segment.text, start: segment.start, end, words }
   })
-  return resolveSides(turns)
+  // Roles from the backend are final ('unknown' stays unknown); only unlabelled generic speakers get paired up.
+  return turns.some((turn) => turn.role) ? turns : resolveSides(turns)
 }
 
 /** Which turn and word are being said at `time` (-1 when before the first or between nothing).
     `speaking` is false in the pause after the turn's last word, so nothing is lit while nobody talks. */
 export function positionAt(turns: TimedTurn[], time: number): { turn: number; word: number; speaking: boolean } {
-  let low = 0
-  let high = turns.length - 1
+  // The last line that has started. A plain scan: backend segments keep their order and may overlap,
+  // so the starts are not guaranteed to be sorted for a binary search.
   let found = -1
-  while (low <= high) {
-    const middle = (low + high) >> 1
-    if (turns[middle].start <= time) { found = middle; low = middle + 1 } else high = middle - 1
-  }
+  for (let index = 0; index < turns.length; index += 1) if (turns[index].start <= time) found = index
   if (found === -1) return { turn: -1, word: -1, speaking: false }
   const words = turns[found].words
   let word = -1

@@ -8,7 +8,7 @@ import { parseTranscript, speakerNumbers } from '../lib/transcriptParse'
 import { useRecordingUrl } from '../lib/useRecordingUrl'
 import { CallBadge } from './CallParts'
 import { callKindLabel, formatDayTime, formatPhone } from './telephonyFormat'
-import { SIDE_TEXT, stamp } from '../lib/transcriptStyle'
+import { SIDE_BUBBLE, SIDE_TEXT, stamp } from '../lib/transcriptStyle'
 import { positionAt, timeSegments, timeTurns, type TimedTurn } from '../lib/transcriptTiming'
 
 /* The big "listen and read" view of a call: it takes the left side of the Calls page, plays the
@@ -64,7 +64,7 @@ const TurnLine = memo(function TurnLine({ turn, phase, word, speaking, label, on
               'inline-block max-w-full rounded-[12px] border px-4 py-2.5 text-[16px] leading-[1.65] whitespace-pre-wrap',
               active
                 ? 'border-[color-mix(in_srgb,var(--primary)_45%,var(--border))] bg-[var(--surface)] shadow-[0_10px_28px_-18px_var(--primary)]'
-                : 'border-[var(--border)] bg-[var(--muted-surface)]',
+                : turn.role ? SIDE_BUBBLE[turn.side] : 'border-[var(--border)] bg-[var(--muted-surface)]',
               phase === 'past' ? 'text-[var(--muted)]' : 'text-[var(--foreground)]',
             )}
             data-i18n-skip="true"
@@ -114,11 +114,17 @@ export function TranscriptStage({ call, data, onClose }: { call: TelephonyCall; 
   const sellerLabel = t('transcript.seller', 'Seller')
   const clientLabel = t('transcript.client', 'Client')
   const numbers = useMemo(() => speakerNumbers(turns.map((turn) => turn.speaker)), [turns])
+  const roleLabel = useMemo(() => ({
+    operator: t('transcript.role.operator', 'Operator'),
+    customer: t('transcript.role.customer', 'Customer'),
+    unknown: t('transcript.role.unknown', 'Conversation'),
+  }), [t])
   const labelOf = useCallback((turn: TimedTurn) => {
+    if (turn.role) return roleLabel[turn.role]
     const number = turn.speaker ? numbers.get(turn.speaker) : undefined
     if (number !== undefined) return t('transcript.speaker_n', '{{n}}-speaker', { n: number })
     return turn.speaker ?? (turn.side === 'seller' ? sellerLabel : turn.side === 'client' ? clientLabel : null)
-  }, [numbers, t, sellerLabel, clientLabel])
+  }, [numbers, t, sellerLabel, clientLabel, roleLabel])
 
   // Who talked how much, by the people in the transcript (works for "1-speaker / 2-speaker" too).
   const share = useMemo(() => {

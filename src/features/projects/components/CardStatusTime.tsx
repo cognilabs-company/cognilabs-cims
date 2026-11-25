@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocale } from '../../../app/hooks/useLocale'
-import type { CardRecord } from '../../../shared/api/services/projects.service'
+import { projectsService, type CardRecord } from '../../../shared/api/services/projects.service'
+import { useAsyncData } from '../../../shared/hooks/useAsyncData'
 import { cn } from '../../../shared/lib/cn'
 import { formatProjectDateTime } from '../lib/format'
-import { formatSpan, statusColor, summarizeStatusTime } from '../lib/statusTime'
+import { formatSpan, formatTashkent, statusColor, summarizeStatusTime } from '../lib/statusTime'
 
 /** Re-renders every minute so the open status keeps counting while the card is open. */
 function useNow(intervalMs = 60_000) {
@@ -20,9 +21,17 @@ function useNow(intervalMs = 60_000) {
  * per-status totals (all visits summed, share of the task's life) and the full step-by-step history.
  */
 export function CardStatusTime({ card }: { card: CardRecord }) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const now = useNow()
-  const summary = useMemo(() => summarizeStatusTime(card, now), [card, now])
+  // The full history (with who moved it and from where) comes from its own endpoint; the card's own
+  // status_history is the fallback while it loads or when the endpoint is not there.
+  const history = useAsyncData(
+    () => projectsService.getCardStatusHistory(card.id).then((entries) => ({ cardId: card.id, entries })),
+    [card.id, card.column_id, card.updated_at],
+    { enabled: card.id > 0 },
+  )
+  const entries = history.data?.cardId === card.id && history.data.entries.length ? history.data.entries : card.status_history
+  const summary = useMemo(() => summarizeStatusTime({ status_history: entries }, now), [entries, now])
   const [showSteps, setShowSteps] = useState(false)
   const units = { d: t('kpi.timing.unit.d', 'd'), h: t('kpi.timing.unit.h', 'h'), m: t('kpi.timing.unit.m', 'm') }
   const fmt = (seconds: number | null | undefined) => formatSpan(seconds, units)
@@ -128,7 +137,20 @@ export function CardStatusTime({ card }: { card: CardRecord }) {
                   <span className="min-w-0 truncate text-[12.5px] font-semibold text-[var(--foreground)]">{visit.name}</span>
                   <span className="shrink-0 text-[12px] font-medium tabular-nums text-[var(--muted-strong)]">{fmt(visit.seconds)}</span>
                 </div>
-                {Number.isFinite(visit.start) ? (
+                {visit.detailed ? (
+                  <>
+                    <p className="truncate text-[11.5px] text-[var(--muted-strong)]">
+                      {visit.from
+                        ? <><span title={visit.from}>{visit.from}</span>{' → '}<span title={visit.name}>{visit.name}</span></>
+                        : t('task_status_time.created_in', 'Created in «{{status}}»', { status: visit.name })}
+                    </p>
+                    <p className="truncate text-[11.5px] tabular-nums text-[var(--muted)]">
+                      <span className={visit.by ? undefined : 'italic'}>{visit.by ?? t('task_status_time.unknown_actor', 'System / unknown')}</span>
+                      {' · '}
+                      {formatTashkent(Number.isFinite(visit.changedAt) ? visit.changedAt : visit.start, locale)}
+                    </p>
+                  </>
+                ) : Number.isFinite(visit.start) ? (
                   <p className="text-[11.5px] tabular-nums text-[var(--muted)]">
                     {formatProjectDateTime(new Date(visit.start).toISOString())}
                     {' → '}

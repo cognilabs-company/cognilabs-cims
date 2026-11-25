@@ -120,7 +120,7 @@ export function QualityReport({ quality, showTranscript = true }: { quality: Cal
             {transcriptOpen ? t('quality.hide_transcript', 'Hide transcript') : t('quality.show_transcript', 'Show transcript')}
             <ChevronDown size={13} className={cn('transition-transform', transcriptOpen && 'rotate-180')} />
           </button>
-          {transcriptOpen ? <div className="mt-3"><TranscriptView transcript={quality.transcript} sellerName={quality.sellerName} customerName={quality.customerName} compact /></div> : null}
+          {transcriptOpen ? <div className="mt-3"><TranscriptView transcript={quality.transcript} segments={quality.segments} sellerName={quality.sellerName} customerName={quality.customerName} compact /></div> : null}
         </div>
       ) : null}
 
@@ -228,5 +228,5 @@ export function CallQualityCard({ callId, hasRecording, canRegrade, onQuality }:
 }
 
 function emptyQuality(callId: number): CallQuality {
-  return { callId, status: 'pending', overall: null, callScript: null, analysis: null, salesScript: null, summary: null, strengths: [], mistakes: [], recommendations: [], criteria: [], transcript: null, segments: null, sellerName: null, customerName: null, phone: null, callStartedAt: null, analyzedAt: null, error: null }
+  return { callId, status: 'pending', overall: null, callScript: null, analysis: null, salesScript: null, summary: null, strengths: [], mistakes: [], recommendations: [], criteria: [], transcript: null, segments: null, speakerSeparation: null, sellerName: null, customerName: null, phone: null, callStartedAt: null, analyzedAt: null, error: null }
 }

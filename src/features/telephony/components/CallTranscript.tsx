@@ -3,7 +3,9 @@ import { Check, ChevronDown, Copy, Search, X } from 'lucide-react'
 import { useLocale } from '../../../app/hooks/useLocale'
 import { cn } from '../../../shared/lib/cn'
 import { parseTranscript, speakerNumbers, type Turn } from '../lib/transcriptParse'
-import { SIDE_TEXT } from '../lib/transcriptStyle'
+import { ROLE_SIDE } from '../lib/transcriptTiming'
+import { SIDE_BUBBLE, SIDE_TEXT, stamp } from '../lib/transcriptStyle'
+import type { SegmentRole, TranscriptSegment } from '../../../shared/api/services/telephonyQuality.service'
 
 /* The call transcript as rows: who and when on the left, what was said in a bubble.
    The backend sends it as plain text, usually one "Speaker: words" line per turn, sometimes with a
@@ -26,16 +28,31 @@ function highlight(text: string, query: string): ReactNode {
   return parts
 }
 
+type ViewTurn = Turn & { role?: SegmentRole | null }
+
+/** Backend segments that carry a role become the dialogue as they are (order kept, 'unknown' never guessed). */
+function turnsFromSegments(segments: TranscriptSegment[] | null | undefined): ViewTurn[] | null {
+  if (!segments?.length || !segments.some((segment) => segment.role)) return null
+  return segments.map((segment, index) => ({
+    id: index,
+    speaker: segment.speaker,
+    role: segment.role,
+    side: segment.role ? ROLE_SIDE[segment.role] : 'other',
+    time: stamp(segment.start),
+    text: segment.text,
+  }))
+}
+
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length
 
 /** Transcript card body: talk share, search, copy, and the dialogue itself. */
-export function TranscriptView({ transcript, sellerName, customerName, compact }: { transcript: string; sellerName: string | null; customerName: string | null; compact?: boolean }) {
+export function TranscriptView({ transcript, segments, sellerName, customerName, compact }: { transcript: string; segments?: TranscriptSegment[] | null; sellerName: string | null; customerName: string | null; compact?: boolean }) {
   const { t } = useLocale()
   const [query, setQuery] = useState('')
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const turns = useMemo(() => parseTranscript(transcript, sellerName, customerName), [transcript, sellerName, customerName])
-  const dialogue = turns.some((turn) => turn.speaker)
+  const turns = useMemo<ViewTurn[]>(() => turnsFromSegments(segments) ?? parseTranscript(transcript, sellerName, customerName), [segments, transcript, sellerName, customerName])
+  const dialogue = turns.some((turn) => turn.speaker || turn.role)
 
   const share = useMemo(() => {
     const seller = turns.filter((turn) => turn.side === 'seller').reduce((sum, turn) => sum + words(turn.text), 0)
@@ -58,7 +75,10 @@ export function TranscriptView({ transcript, sellerName, customerName, compact }
   const sellerLabel = t('transcript.seller', 'Seller')
   const clientLabel = t('transcript.client', 'Client')
   const numbers = useMemo(() => speakerNumbers(turns.map((turn) => turn.speaker)), [turns])
-  const labelOf = (turn: Turn) => {
+  const labelOf = (turn: ViewTurn) => {
+    if (turn.role === 'operator') return t('transcript.role.operator', 'Operator')
+    if (turn.role === 'customer') return t('transcript.role.customer', 'Customer')
+    if (turn.role === 'unknown') return t('transcript.role.unknown', 'Conversation')
     const number = turn.speaker ? numbers.get(turn.speaker) : undefined
     if (number !== undefined) return t('transcript.speaker_n', '{{n}}-speaker', { n: number })
     return turn.speaker ?? (turn.side === 'seller' ? sellerLabel : turn.side === 'client' ? clientLabel : null)
@@ -116,7 +136,7 @@ export function TranscriptView({ transcript, sellerName, customerName, compact }
                     {turn.time ? <span className="mt-0.5 block text-[11px] font-medium tabular-nums text-[var(--muted)]" data-i18n-skip="true">{turn.time}</span> : null}
                   </span>
                   <span className="min-w-0">
-                    <span className="inline-block max-w-full rounded-[10px] border border-[var(--border)] bg-[var(--muted-surface)] px-3 py-2 text-[12.5px] leading-[1.55] whitespace-pre-wrap text-[var(--foreground)]" data-i18n-skip="true">
+                    <span className={cn('inline-block max-w-full rounded-[10px] border px-3 py-2 text-[12.5px] leading-[1.55] whitespace-pre-wrap text-[var(--foreground)]', turn.role ? SIDE_BUBBLE[turn.side] : 'border-[var(--border)] bg-[var(--muted-surface)]')} data-i18n-skip="true">
                       {highlight(turn.text, needle)}
                     </span>
                   </span>

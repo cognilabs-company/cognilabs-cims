@@ -239,7 +239,7 @@ export function CallInspector({ call, related, canCall, showCall = true, onDial,
             ) : graded === undefined ? (
               <p className="flex items-center gap-2 text-[12.5px] text-[var(--muted)]"><Loader2 size={14} className="animate-spin" />{t('common.loading', 'Loading...')}</p>
             ) : transcript ? (
-              <TranscriptView key={call.id} transcript={transcript} sellerName={graded?.sellerName ?? call.user_name ?? null} customerName={graded?.customerName ?? name ?? null} />
+              <TranscriptView key={call.id} transcript={transcript} segments={stageSegments} sellerName={graded?.sellerName ?? call.user_name ?? null} customerName={graded?.customerName ?? name ?? null} />
             ) : transcribing ? (
               <p className="flex items-center gap-2 rounded-[12px] bg-[var(--blue-dim)] px-3 py-2.5 text-[12.5px] leading-[1.5] text-[var(--blue-text)]"><Loader2 size={14} className="shrink-0 animate-spin" />{t('transcript.working', 'The AI is writing down the conversation…')}</p>
             ) : (
